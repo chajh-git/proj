@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Roblox Universe Hub - 5 Games & Profile</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0b0f19;
+            color: #ffffff;
+            user-select: none;
+        }
+
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+
+        /* Card Hover Effects */
+        .rbx-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .rbx-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 16px 30px -8px rgba(0, 0, 0, 0.7), 0 0 25px 2px rgba(59, 130, 246, 0.35);
+        }
+
+
+        .btn-rbx {
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4);
+        }
+        .btn-rbx:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+        }
+
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+
+        /* Canvas Overlay */
+        #game-canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+
+    <!-- ========================================================= -->
+    <!-- 1. ROBLOX PLATFORM HUB / DASHBOARD UI -->
+    <!-- ========================================================= -->
+    <div id="hub-ui" class="flex flex-col h-full w-full z-10 bg-slate-950 overflow-hidden">
+       
+        <!-- Top Navigation Bar -->
+        <header class="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shrink-0">
+            <!-- Left Logo & Search -->
+            <div class="flex items-center gap-5">
+                <div onclick="switchTab('discover')" class="flex items-center gap-2.5 cursor-pointer group">
+                    <div class="w-9 h-9 bg-gradient-to-br from-red-600 to-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-900/40 transform -rotate-3 group-hover:rotate-0 transition-transform">
+                        <i class="fa-solid fa-cube text-white text-xl"></i>
+                    </div>
+                    <span class="font-black text-xl tracking-wider text-white">ROBLOX<span class="text-xs text-rose-500 ml-1 font-bold">STUDIO</span></span>
+                </div>
+
+
+                <div class="hidden md:flex items-center bg-slate-800/90 border border-slate-700/70 rounded-full px-3.5 py-1.5 w-64 lg:w-80 shadow-inner">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 mr-2.5 text-sm"></i>
+                    <input type="text" placeholder="입양하세요, 타워 클라임 검색..." class="bg-transparent border-none text-sm text-white placeholder-slate-400 focus:outline-none w-full">
+                </div>
+            </div>
+
+
+            <!-- Right Profile & Robux Stats -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center bg-slate-800 border border-slate-700/80 rounded-full px-3.5 py-1 gap-2 shadow-sm">
+                    <i class="fa-solid fa-coins text-amber-400"></i>
+                    <span id="hub-coins" class="text-sm font-extrabold text-amber-300">2,450</span>
+                </div>
+
+
+                <div onclick="switchTab('profile')" class="flex items-center gap-2.5 pl-2 border-l border-slate-800 cursor-pointer hover:opacity-90">
+                    <div id="nav-avatar-icon" class="w-9 h-9 rounded-full bg-blue-600 border-2 border-blue-400 flex items-center justify-center font-bold text-sm text-white shadow-md">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <span id="nav-username" class="hidden sm:inline text-sm font-bold text-slate-200">RobloxPlayer</span>
+                </div>
+            </div>
+        </header>
+
+
+        <!-- Main Workspace (Sidebar + Dynamic View Container) -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Left Sidebar Navigation -->
+            <aside class="w-16 md:w-56 bg-slate-900/70 border-r border-slate-800/80 flex flex-col justify-between py-4 shrink-0">
+                <nav class="space-y-2 px-2.5">
+                    <button id="nav-btn-discover" onclick="switchTab('discover')" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm transition-all shadow-md shadow-blue-600/30">
+                        <i class="fa-solid fa-compass text-lg"></i>
+                        <span class="hidden md:inline">디스커버</span>
+                    </button>
+                    <button id="nav-btn-profile" onclick="switchTab('profile')" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white font-bold text-sm transition-all">
+                        <i class="fa-solid fa-shirt text-lg"></i>
+                        <span class="hidden md:inline">프로필 & 아바타</span>
+                    </button>
+                    <button id="nav-btn-ranking" onclick="switchTab('ranking')" class="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white font-bold text-sm transition-all">
+                        <i class="fa-solid fa-trophy text-lg"></i>
+                        <span class="hidden md:inline">리더보드</span>
+                    </button>
+                </nav>
+            </aside>
+
+
+            <!-- VIEW 1: GAMES DISCOVER PAGE -->
+            <main id="tab-discover" class="flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+                <!-- Hero Featured Games Carousel Banner -->
+                <div class="relative w-full h-48 md:h-64 rounded-3xl overflow-hidden mb-8 shadow-2xl bg-gradient-to-r from-rose-600 via-purple-700 to-indigo-800 p-6 md:p-10 flex flex-col justify-center border border-white/10">
+                    <div class="z-10 max-w-xl space-y-3">
+                        <span class="bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">신규 업데이트 핫 플레이스</span>
+                        <h1 class="text-2xl md:text-4xl font-black text-white tracking-tight">입양하세요! (Adopt Me 3D)</h1>
+                        <p class="text-xs md:text-sm text-pink-100 font-medium leading-relaxed">귀여운 아기 펫을 부화시키고 먹이를 주며 함께 신나는 3D 파크 마을을 탐험해보세요!</p>
+                        <button onclick="openGameModal('adoptme')" class="btn-rbx bg-white hover:bg-slate-100 text-slate-950 font-black px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer mt-2">
+                            <i class="fa-solid fa-play text-rose-600"></i>지금 입장하기
+                        </button>
+                    </div>
+                    <!-- Decorative Graphic SVG Background -->
+                    <div class="absolute right-6 -bottom-6 opacity-30 md:opacity-40 pointer-events-none">
+                        <i class="fa-solid fa-paw text-[200px] text-white"></i>
+                    </div>
+                </div>
+
+
+                <!-- Games Grid Section Header -->
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl md:text-2xl font-black text-white flex items-center gap-2.5">
+                        <i class="fa-solid fa-fire text-rose-500"></i> 인기 3D 플레이스 목록 (5개)
+                    </h2>
+                    <span class="text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">즉시 플레이 가능</span>
+                </div>
+
+
+                <!-- 5 Game Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                   
+                    <!-- Game Card 1: Adopt Me! (입양하세요!) -->
+                    <div onclick="openGameModal('adoptme')" class="rbx-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden cursor-pointer group flex flex-col shadow-xl">
+                        <div class="h-44 bg-gradient-to-br from-pink-500 via-rose-500 to-purple-600 relative overflow-hidden flex items-center justify-center p-4">
+                            <!-- Visual Graphic Thumbnail -->
+                            <div class="text-center">
+                                <i class="fa-solid fa-dog text-6xl text-white/90 group-hover:scale-110 transition-transform mb-1 drop-shadow-md"></i>
+                                <div class="text-white font-black text-lg drop-shadow">ADOPT ME!</div>
+                            </div>
+                            <span class="absolute top-3 right-3 bg-rose-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase">HOT</span>
+                            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-pink-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-paw mr-1"></i> 펫육성 / 오픈월드
+                            </span>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-white group-hover:text-pink-400 transition-colors">입양하세요! (Adopt Me 3D)</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2">알을 부화시켜 3D 아기강아지, 고양이 펫을 키우고 광장을 탐험하세요!</p>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-medium pt-2 border-t border-slate-800">
+                                <span><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> 98%</span>
+                                <span><i class="fa-solid fa-user text-blue-400 mr-1"></i> 8.4k 명</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Game Card 2: Speed Runner -->
+                    <div onclick="openGameModal('speedrunner')" class="rbx-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden cursor-pointer group flex flex-col shadow-xl">
+                        <div class="h-44 bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 relative overflow-hidden flex items-center justify-center p-4">
+                            <div class="text-center">
+                                <i class="fa-solid fa-bolt text-6xl text-white/90 group-hover:scale-110 transition-transform mb-1 drop-shadow-md"></i>
+                                <div class="text-white font-black text-lg drop-shadow">SPEED RUNNER</div>
+                            </div>
+                            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-amber-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-person-running mr-1"></i> 액션 / 장애물
+                            </span>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-white group-hover:text-amber-400 transition-colors">스피드 러너 3D</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2">3개의 라인을 오가며 다가오는 장애물을 피하고 코인을 수집하세요.</p>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-medium pt-2 border-t border-slate-800">
+                                <span><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> 95%</span>
+                                <span><i class="fa-solid fa-user text-blue-400 mr-1"></i> 3.2k 명</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Game Card 3: Block Tycoon -->
+                    <div onclick="openGameModal('tycoon')" class="rbx-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden cursor-pointer group flex flex-col shadow-xl">
+                        <div class="h-44 bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-800 relative overflow-hidden flex items-center justify-center p-4">
+                            <div class="text-center">
+                                <i class="fa-solid fa-city text-6xl text-white/90 group-hover:scale-110 transition-transform mb-1 drop-shadow-md"></i>
+                                <div class="text-white font-black text-lg drop-shadow">BLOCK TYCOON</div>
+                            </div>
+                            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-wheat-awn mr-1"></i> 건설 / 시뮬레이션
+                            </span>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-white group-hover:text-emerald-400 transition-colors">블록 타이쿤 (Block Tycoon)</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2">드롭퍼와 3D 네온 건물을 건설하고 나만의 수익 창출 기지를 완성하세요!</p>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-medium pt-2 border-t border-slate-800">
+                                <span><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> 93%</span>
+                                <span><i class="fa-solid fa-user text-blue-400 mr-1"></i> 4.5k 명</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Game Card 4: Tower Climb -->
+                    <div onclick="openGameModal('towerclimb')" class="rbx-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden cursor-pointer group flex flex-col shadow-xl">
+                        <div class="h-44 bg-gradient-to-br from-indigo-600 via-purple-700 to-pink-700 relative overflow-hidden flex items-center justify-center p-4">
+                            <div class="text-center">
+                                <i class="fa-solid fa-gopural text-6xl text-white/90 group-hover:scale-110 transition-transform mb-1 drop-shadow-md"></i>
+                                <div class="text-white font-black text-lg drop-shadow">TOWER CLIMB</div>
+                            </div>
+                            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-purple-300 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-mountain mr-1"></i> 파르쿠르 / 타워
+                            </span>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-white group-hover:text-purple-400 transition-colors">타워 클라임 (Tower Climb)</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2">차오르는 위험을 피해 회전 발판을 타고 끝없는 3D 타워 꼭대기를 향해 등반하세요!</p>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-medium pt-2 border-t border-slate-800">
+                                <span><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> 96%</span>
+                                <span><i class="fa-solid fa-user text-blue-400 mr-1"></i> 5.1k 명</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Game Card 5: Zombie Survival -->
+                    <div onclick="openGameModal('zombie')" class="rbx-card bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden cursor-pointer group flex flex-col shadow-xl">
+                        <div class="h-44 bg-gradient-to-br from-slate-700 via-emerald-950 to-slate-900 relative overflow-hidden flex items-center justify-center p-4">
+                            <div class="text-center">
+                                <i class="fa-solid fa-skull text-6xl text-emerald-400 group-hover:scale-110 transition-transform mb-1 drop-shadow-md"></i>
+                                <div class="text-white font-black text-lg drop-shadow">ZOMBIE SURVIVAL</div>
+                            </div>
+                            <span class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-crosshairs mr-1"></i> 슈팅 / 서바이벌
+                            </span>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col justify-between space-y-3">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-white group-hover:text-emerald-400 transition-colors">좀비 서바이벌 3D</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2">몰려드는 3D 좀비 웨이브를 총기와 발판 트랩으로 살아남으세요!</p>
+                            </div>
+                            <div class="flex items-center justify-between text-xs text-slate-400 font-medium pt-2 border-t border-slate-800">
+                                <span><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> 94%</span>
+                                <span><i class="fa-solid fa-user text-blue-400 mr-1"></i> 2.8k 명</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </main>
+
+
+            <!-- VIEW 2: AVATAR CUSTOMIZATION & PROFILE PAGE -->
+            <main id="tab-profile" class="hidden flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+                <div class="max-w-4xl mx-auto space-y-8">
+                    <!-- Profile Header Banner -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-2xl">
+                        <!-- Avatar Preview Card -->
+                        <div class="w-32 h-32 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center border-4 border-slate-700 shadow-xl shrink-0">
+                            <div id="profile-avatar-render" class="text-6xl text-white transform hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-user-ninja"></i>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-center sm:text-left flex-1">
+                            <div class="flex items-center justify-center sm:justify-start gap-3">
+                                <h2 id="profile-username" class="text-2xl font-black text-white">RobloxPlayer</h2>
+                                <span class="bg-blue-600/30 border border-blue-500/40 text-blue-400 text-xs font-bold px-2.5 py-0.5 rounded-full">VIP 프리미엄</span>
+                            </div>
+                            <p class="text-xs text-slate-400">가입일: 2026.01.15 | 경험 수준: 레벨 18 챔피언</p>
+                            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-2 text-xs font-semibold">
+                                <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/80"><i class="fa-solid fa-coins text-amber-400 mr-1.5"></i>보유 코인: 2,450</div>
+                                <div class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/80"><i class="fa-solid fa-gamepad text-purple-400 mr-1.5"></i>플레이 횟수: 42 회</div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Avatar Shop & Customization Studio -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                            <h3 class="text-xl font-black text-white flex items-center gap-2">
+                                <i class="fa-solid fa-wand-magic-sparkles text-blue-400"></i> 아바타 스타일 커스터마이징
+                            </h3>
+                            <span class="text-xs text-slate-400">변경사항 즉시 3D 게임 적용</span>
+                        </div>
+
+
+                        <!-- Color Palettes -->
+                        <div class="space-y-3">
+                            <label class="text-sm font-bold text-slate-300">몸통 셔츠 칼라 선택</label>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="setAvatarColor('#2563eb')" class="w-10 h-10 rounded-xl bg-blue-600 border-2 border-white/20 hover:scale-110 transition-transform cursor-pointer"></button>
+                                <button onclick="setAvatarColor('#dc2626')" class="w-10 h-10 rounded-xl bg-red-600 border-2 border-white/20 hover:scale-110 transition-transform cursor-pointer"></button>
+                                <button onclick="setAvatarColor('#16a34a')" class="w-10 h-10 rounded-xl bg-green-600 border-2 border-white/20 hover:scale-110 transition-transform cursor-pointer"></button>
+                                <button onclick="setAvatarColor('#9333ea')" class="w-10 h-10 rounded-xl bg-purple-600 border-2 border-white/20 hover:scale-110 transition-transform cursor-pointer"></button>
+                                <button onclick="setAvatarColor('#ea580c')" class="w-10 h-10 rounded-xl bg-orange-600 border-2 border-white/20 hover:scale-110 transition-transform cursor-pointer"></button>
+                            </div>
+                        </div>
+
+
+                        <!-- Accessory Toggle Grid -->
+                        <div class="space-y-3 pt-4">
+                            <label class="text-sm font-bold text-slate-300">모자 & 모션 바이저 장착</label>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                <div onclick="toggleAccessory('visor')" id="acc-visor-card" class="bg-slate-800 border-2 border-blue-500 rounded-2xl p-4 cursor-pointer flex items-center gap-3">
+                                    <i class="fa-solid fa-glasses text-2xl text-blue-400"></i>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">사이보그 바이저</div>
+                                        <div class="text-[10px] text-emerald-400">장착됨</div>
+                                    </div>
+                                </div>
+                                <div onclick="toggleAccessory('crown')" id="acc-crown-card" class="bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 cursor-pointer flex items-center gap-3">
+                                    <i class="fa-solid fa-crown text-2xl text-amber-400"></i>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">황금 왕관</div>
+                                        <div class="text-[10px] text-slate-400">해제됨</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- GAME DETAILS MODAL -->
+    <!-- ========================================================= -->
+    <div id="game-modal" class="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative flex flex-col">
+            <button onclick="closeGameModal()" class="absolute top-4 right-4 z-10 w-9 h-9 bg-black/40 hover:bg-black/70 rounded-full flex items-center justify-center text-slate-300 hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+
+            <div id="modal-banner" class="h-52 bg-slate-800 flex items-center justify-center relative">
+                <i id="modal-icon" class="fa-solid fa-gamepad text-8xl text-white/30"></i>
+            </div>
+
+
+            <div class="p-6 space-y-5">
+                <div>
+                    <h2 id="modal-title" class="text-2xl font-black text-white">게임 제목</h2>
+                    <p id="modal-desc" class="text-sm text-slate-400 mt-1">게임 설명이 표시됩니다.</p>
+                </div>
+
+
+                <div class="flex items-center justify-between bg-slate-800/60 rounded-xl p-3 text-xs font-semibold text-slate-300">
+                    <div><i class="fa-solid fa-thumbs-up text-emerald-400 mr-1"></i> <span id="modal-likes">98%</span> 추천</div>
+                    <div><i class="fa-solid fa-users text-blue-400 mr-1"></i> <span id="modal-players">8.4k</span> 플레이 중</div>
+                    <div><i class="fa-solid fa-code-branch text-purple-400 mr-1"></i> v2.1.0</div>
+                </div>
+
+
+                <button id="modal-play-btn" onclick="launchCurrentGame()" class="btn-rbx w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 rounded-2xl text-lg flex items-center justify-center gap-3 cursor-pointer shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-play text-xl"></i> 지금 플레이 (Play)
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- 2. GAME CANVAS & HUD OVERLAY LAYER -->
+    <!-- ========================================================= -->
+    <div id="game-container" class="hidden absolute inset-0 z-20 bg-black">
+        <div id="game-canvas-container"></div>
+
+
+        <!-- In-Game Roblox Top Left Menu Controls -->
+        <div class="absolute top-4 left-4 z-30 flex items-center gap-3">
+            <button onclick="exitGameToHub()" class="btn-rbx bg-slate-900/90 hover:bg-slate-800 border border-white/20 text-white font-extrabold px-4 py-2.5 rounded-xl flex items-center gap-2 backdrop-blur-md cursor-pointer text-sm">
+                <i class="fa-solid fa-arrow-left"></i> 허브로 돌아가기
+            </button>
+        </div>
+
+
+        <!-- Game Info / Score Stats Display Overlay -->
+        <div class="absolute top-4 right-4 z-30 pointer-events-none">
+            <div class="glass-panel px-5 py-3 rounded-2xl flex items-center gap-6 shadow-xl border border-white/10">
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">현재 게임</span>
+                    <span id="ingame-title" class="text-sm font-black text-amber-400">Mini Game</span>
+                </div>
+                <div class="h-6 w-px bg-white/10"></div>
+                <div class="flex flex-col">
+                    <span id="ingame-stat1-label" class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">점수</span>
+                    <span id="ingame-stat1-val" class="text-base font-extrabold text-white font-mono">0</span>
+                </div>
+                <div id="ingame-stat2-box" class="flex flex-col hidden">
+                    <span id="ingame-stat2-label" class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">코인</span>
+                    <span id="ingame-stat2-val" class="text-base font-extrabold text-emerald-400 font-mono">0</span>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- In-Game Controls & Hints -->
+        <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
+            <div id="ingame-hint" class="glass-panel px-6 py-2.5 rounded-full text-xs font-semibold text-slate-200 shadow-xl border border-white/10 text-center">
+                WASD : 이동 | SPACE : 점프 | 마우스 드래그 : 시점 회전
+            </div>
+        </div>
+
+
+        <!-- Mobile Touch Jump / Action Buttons -->
+        <div class="md:hidden absolute bottom-6 right-6 z-30 flex gap-3">
+            <button id="mobile-action-btn" class="btn-rbx bg-blue-600 text-white w-16 h-16 rounded-full font-black flex items-center justify-center text-xl shadow-2xl">
+                <i class="fa-solid fa-hand-pointer"></i>
+            </button>
+            <button id="mobile-jump-btn" class="btn-rbx bg-emerald-600 text-white w-16 h-16 rounded-full font-black flex items-center justify-center text-xl shadow-2xl">
+                JUMP
+            </button>
+        </div>
+    </div>
+
+
+    <!-- ========================================================= -->
+    <!-- JAVASCRIPT LOGIC & 5 MINI-GAMES -->
+    <!-- ========================================================= -->
+    <script>
+        // Global Avatar Customization State
+        let avatarConfig = {
+            shirtColor: 0x2563eb,
+            visor: true,
+            crown: false
+        };
+
+
+        // GAMES DATABASE
+        const GAMES_DATA = {
+            adoptme: {
+                id: 'adoptme',
+                title: '입양하세요! (Adopt Me 3D)',
+                category: '펫육성 / 오픈월드',
+                desc: '마을 광장에서 알을 부화시키고 3D 강아지 펫을 얻으세요! 펫 먹이주기 및 광장 산책 시뮬레이션입니다.',
+                icon: 'fa-paw',
+                gradient: 'from-pink-500 via-rose-500 to-purple-600',
+                likes: '98%',
+                players: '8.4k',
+                hint: 'WASD로 이동 | 중앙 부화 발판에 올라서서 새로운 펫 알 부화하기!'
+            },
+            speedrunner: {
+                id: 'speedrunner',
+                title: '스피드 러너 3D',
+                category: '액션 / 장애물',
+                desc: '3개의 라인을 오가며 다가오는 장애물을 피하고 코인을 수집하세요.',
+                icon: 'fa-bolt',
+                gradient: 'from-amber-500 via-orange-600 to-red-600',
+                likes: '95%',
+                players: '3.2k',
+                hint: 'A / D (좌우 방향키) 로 라인 변경 | Space 키로 장애물 점프'
+            },
+            tycoon: {
+                id: 'tycoon',
+                title: '블록 타이쿤 (Block Tycoon)',
+                category: '건설 / 시뮬레이션',
+                desc: '드롭퍼를 구매하고 수익을 모아 3D 네온 타워를 만드세요.',
+                icon: 'fa-city',
+                gradient: 'from-emerald-600 via-teal-700 to-cyan-800',
+                likes: '93%',
+                players: '4.5k',
+                hint: '발판 위에 서서 업그레이드를 자동 구매하세요!'
+            },
+            towerclimb: {
+                id: 'towerclimb',
+                title: '타워 클라임 (Tower Climb 3D)',
+                category: '파르쿠르 / 타워',
+                desc: '용암이 올라오는 타워 꼭대기를 향해 3D 나선형 발판을 점프하며 등반하세요!',
+                icon: 'fa-gopural',
+                gradient: 'from-indigo-600 via-purple-700 to-pink-700',
+                likes: '96%',
+                players: '5.1k',
+                hint: 'WASD로 이동 | Space로 연속 점프하며 상승'
+            },
+            zombie: {
+                id: 'zombie',
+                title: '좀비 서바이벌 3D',
+                category: '슈팅 / 서바이벌',
+                desc: '격리 구역에서 끊임없이 몰려오는 3D 좀비 웨이브를 퇴치하세요.',
+                icon: 'fa-skull',
+                gradient: 'from-slate-700 via-emerald-950 to-slate-900',
+                likes: '94%',
+                players: '2.8k',
+                hint: 'WASD 이동 | 마우스 클릭 또는 Action 버튼으로 3D 좀비 퇴치'
+            }
+        };
+
+
+        let selectedGameId = null;
+        let activeGameInstance = null;
+
+
+        // TAB SWITCHING LOGIC
+        function switchTab(tabName) {
+            document.getElementById('tab-discover').classList.add('hidden');
+            document.getElementById('tab-profile').classList.add('hidden');
+
+
+            document.getElementById('nav-btn-discover').className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white font-bold text-sm transition-all";
+            document.getElementById('nav-btn-profile').className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white font-bold text-sm transition-all";
+
+
+            if (tabName === 'discover') {
+                document.getElementById('tab-discover').classList.remove('hidden');
+                document.getElementById('nav-btn-discover').className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm transition-all shadow-md shadow-blue-600/30";
+            } else if (tabName === 'profile') {
+                document.getElementById('tab-profile').classList.remove('hidden');
+                document.getElementById('nav-btn-profile').className = "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl bg-blue-600 text-white font-bold text-sm transition-all shadow-md shadow-blue-600/30";
+            }
+        }
+
+
+        // AVATAR CUSTOMIZATION LOGIC
+        function setAvatarColor(hexStr) {
+            avatarConfig.shirtColor = parseInt(hexStr.replace('#', '0x'));
+        }
+
+
+        function toggleAccessory(accType) {
+            if (accType === 'visor') {
+                avatarConfig.visor = !avatarConfig.visor;
+                document.getElementById('acc-visor-card').className = avatarConfig.visor
+                    ? "bg-slate-800 border-2 border-blue-500 rounded-2xl p-4 cursor-pointer flex items-center gap-3"
+                    : "bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 cursor-pointer flex items-center gap-3";
+            } else if (accType === 'crown') {
+                avatarConfig.crown = !avatarConfig.crown;
+                document.getElementById('acc-crown-card').className = avatarConfig.crown
+                    ? "bg-slate-800 border-2 border-amber-500 rounded-2xl p-4 cursor-pointer flex items-center gap-3"
+                    : "bg-slate-800 border-2 border-slate-700 rounded-2xl p-4 cursor-pointer flex items-center gap-3";
+            }
+        }
+
+
+        function openGameModal(gameId) {
+            selectedGameId = gameId;
+            const data = GAMES_DATA[gameId];
+
+
+            document.getElementById('modal-title').innerText = data.title;
+            document.getElementById('modal-desc').innerText = data.desc;
+            document.getElementById('modal-likes').innerText = data.likes;
+            document.getElementById('modal-players').innerText = data.players;
+
+
+            document.getElementById('modal-banner').className = `h-52 bg-gradient-to-br ${data.gradient} flex items-center justify-center relative`;
+            document.getElementById('modal-icon').className = `fa-solid ${data.icon} text-8xl text-white/30`;
+
+
+            document.getElementById('game-modal').classList.remove('hidden');
+        }
+
+
+        function closeGameModal() {
+            document.getElementById('game-modal').classList.add('hidden');
+        }
+
+
+        function launchCurrentGame() {
+            closeGameModal();
+            document.getElementById('hub-ui').classList.add('hidden');
+            document.getElementById('game-container').classList.remove('hidden');
+
+
+            const data = GAMES_DATA[selectedGameId];
+            document.getElementById('ingame-title').innerText = data.title;
+            document.getElementById('ingame-hint').innerText = data.hint;
+
+
+            // Instantiate corresponding 3D Game Class
+            if (selectedGameId === 'adoptme') activeGameInstance = new AdoptMeGame();
+            else if (selectedGameId === 'speedrunner') activeGameInstance = new SpeedRunnerGame();
+            else if (selectedGameId === 'tycoon') activeGameInstance = new TycoonGame();
+            else if (selectedGameId === 'towerclimb') activeGameInstance = new TowerClimbGame();
+            else if (selectedGameId === 'zombie') activeGameInstance = new ZombieGame();
+        }
+
+
+        function exitGameToHub() {
+            if (activeGameInstance) {
+                activeGameInstance.destroy();
+                activeGameInstance = null;
+            }
+            document.getElementById('game-container').classList.add('hidden');
+            document.getElementById('hub-ui').classList.remove('hidden');
+        }
+
+
+        // =========================================================
+        // THREE.JS CORE ENGINE & ROBLOX BASE CLASS
+        // =========================================================
+        class Base3DGame {
+            constructor() {
+                this.container = document.getElementById('game-canvas-container');
+                this.container.innerHTML = '';
+
+
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x38bdf8); // Sky blue
+                this.scene.fog = new THREE.FogExp2(0x38bdf8, 0.01);
+
+
+                this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                this.renderer.shadowMap.enabled = true;
+                this.container.appendChild(this.renderer.domElement);
+
+
+                this.clock = new THREE.Clock();
+                this.isRunning = true;
+
+
+                this.keys = { forward: false, backward: false, left: false, right: false, jump: false };
+                this.mouseDrag = false;
+                this.prevMousePos = { x: 0, y: 0 };
+                this.camTheta = 0;
+                this.camPhi = Math.PI / 6;
+
+
+                this.setupLighting();
+                this.setupInputListeners();
+
+
+                this.onResize = this.onResize.bind(this);
+                window.addEventListener('resize', this.onResize);
+            }
+
+
+            setupLighting() {
+                const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+                this.scene.add(ambient);
+
+
+                const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+                sun.position.set(30, 50, 20);
+                sun.castShadow = true;
+                sun.shadow.mapSize.width = 1024;
+                sun.shadow.mapSize.height = 1024;
+                this.scene.add(sun);
+            }
+
+
+            setupInputListeners() {
+                this.keyDownHandler = (e) => {
+                    switch (e.code) {
+                        case 'KeyW': case 'ArrowUp': this.keys.forward = true; break;
+                        case 'KeyS': case 'ArrowDown': this.keys.backward = true; break;
+                        case 'KeyA': case 'ArrowLeft': this.keys.left = true; break;
+                        case 'KeyD': case 'ArrowRight': this.keys.right = true; break;
+                        case 'Space': this.keys.jump = true; break;
+                    }
+                };
+
+
+                this.keyUpHandler = (e) => {
+                    switch (e.code) {
+                        case 'KeyW': case 'ArrowUp': this.keys.forward = false; break;
+                        case 'KeyS': case 'ArrowDown': this.keys.backward = false; break;
+                        case 'KeyA': case 'ArrowLeft': this.keys.left = false; break;
+                        case 'KeyD': case 'ArrowRight': this.keys.right = false; break;
+                        case 'Space': this.keys.jump = false; break;
+                    }
+                };
+
+
+                this.mouseDownHandler = (e) => {
+                    if (e.target.tagName !== 'BUTTON') {
+                        this.mouseDrag = true;
+                        this.prevMousePos = { x: e.clientX, y: e.clientY };
+                    }
+                };
+
+
+                this.mouseUpHandler = () => this.mouseDrag = false;
+
+
+                this.mouseMoveHandler = (e) => {
+                    if (!this.mouseDrag) return;
+                    const dx = e.clientX - this.prevMousePos.x;
+                    const dy = e.clientY - this.prevMousePos.y;
+
+
+                    this.camTheta -= dx * 0.005;
+                    this.camPhi += dy * 0.005;
+                    this.camPhi = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, this.camPhi));
+
+
+                    this.prevMousePos = { x: e.clientX, y: e.clientY };
+                };
+
+
+                window.addEventListener('keydown', this.keyDownHandler);
+                window.addEventListener('keyup', this.keyUpHandler);
+                window.addEventListener('mousedown', this.mouseDownHandler);
+                window.addEventListener('mouseup', this.mouseUpHandler);
+                window.addEventListener('mousemove', this.mouseMoveHandler);
+
+
+                const mobileJump = document.getElementById('mobile-jump-btn');
+                if (mobileJump) {
+                    mobileJump.ontouchstart = (e) => { e.preventDefault(); this.keys.jump = true; };
+                    mobileJump.ontouchend = (e) => { e.preventDefault(); this.keys.jump = false; };
+                }
+            }
+
+
+            createRobloxCharacter() {
+                const character = new THREE.Group();
+
+
+                const skinMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.3 });
+                const shirtMat = new THREE.MeshStandardMaterial({ color: avatarConfig.shirtColor, roughness: 0.3 });
+                const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+
+
+                // Torso & Head
+                const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat);
+                torso.position.y = 0.9;
+                torso.castShadow = true;
+                character.add(torso);
+
+
+                const head = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65), skinMat);
+                head.position.y = 1.75;
+                head.castShadow = true;
+                character.add(head);
+
+
+                // Accessories
+                if (avatarConfig.visor) {
+                    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.18, 0.4), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7 }));
+                    visor.position.set(0, 1.8, 0.18);
+                    character.add(visor);
+                }
+
+
+                if (avatarConfig.crown) {
+                    const crown = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.3, 5), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8 }));
+                    crown.position.set(0, 2.2, 0);
+                    character.add(crown);
+                }
+
+
+                // Limbs
+                const armGeo = new THREE.BoxGeometry(0.38, 0.9, 0.38);
+                const leftArm = new THREE.Mesh(armGeo, skinMat);
+                leftArm.position.set(-0.68, 0.9, 0);
+                character.add(leftArm);
+
+
+                const rightArm = new THREE.Mesh(armGeo, skinMat);
+                rightArm.position.set(0.68, 0.9, 0);
+                character.add(rightArm);
+
+
+                const legGeo = new THREE.BoxGeometry(0.4, 0.9, 0.4);
+                const leftLeg = new THREE.Mesh(legGeo, pantsMat);
+                leftLeg.position.set(-0.23, 0.0, 0);
+                character.add(leftLeg);
+
+
+                const rightLeg = new THREE.Mesh(legGeo, pantsMat);
+                rightLeg.position.set(0.23, 0.0, 0);
+                character.add(rightLeg);
+
+
+                character.limbs = { leftArm, rightArm, leftLeg, rightLeg };
+                return character;
+            }
+
+
+            animateLimbs(character, isMoving, isGrounded, time) {
+                if (!character || !character.limbs) return;
+                const { leftArm, rightArm, leftLeg, rightLeg } = character.limbs;
+
+
+                if (isMoving && isGrounded) {
+                    leftArm.rotation.x = Math.sin(time * 10) * 0.6;
+                    rightArm.rotation.x = -Math.sin(time * 10) * 0.6;
+                    leftLeg.rotation.x = -Math.sin(time * 10) * 0.6;
+                    rightLeg.rotation.x = Math.sin(time * 10) * 0.6;
+                } else if (!isGrounded) {
+                    leftArm.rotation.x = Math.PI / 1.5;
+                    rightArm.rotation.x = Math.PI / 1.5;
+                } else {
+                    leftArm.rotation.x *= 0.8;
+                    rightArm.rotation.x *= 0.8;
+                    leftLeg.rotation.x *= 0.8;
+                    rightLeg.rotation.x *= 0.8;
+                }
+            }
+
+
+            onResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+
+            destroy() {
+                this.isRunning = false;
+                window.removeEventListener('resize', this.onResize);
+                window.removeEventListener('keydown', this.keyDownHandler);
+                window.removeEventListener('keyup', this.keyUpHandler);
+                window.removeEventListener('mousedown', this.mouseDownHandler);
+                window.removeEventListener('mouseup', this.mouseUpHandler);
+                window.removeEventListener('mousemove', this.mouseMoveHandler);
+                this.renderer.dispose();
+                this.container.innerHTML = '';
+            }
+        }
+
+
+        // =========================================================
+        // GAME 1: ADOPT ME 3D (입양하세요!)
+        // =========================================================
+        class AdoptMeGame extends Base3DGame {
+            constructor() {
+                super();
+                document.getElementById('ingame-stat1-label').innerText = '보유 펫 수';
+                document.getElementById('ingame-stat2-box').classList.remove('hidden');
+                document.getElementById('ingame-stat2-label').innerText = '하트 포인트';
+
+
+                this.petsCount = 1;
+                this.hearts = 100;
+                this.activePet = null;
+
+
+                // Create Park Town
+                const park = new THREE.Mesh(new THREE.CylinderGeometry(30, 30, 0.6, 32), new THREE.MeshStandardMaterial({ color: 0x4ade80 }));
+                park.position.y = -0.3;
+                park.receiveShadow = true;
+                this.scene.add(park);
+
+
+                // Hatching Pad Center
+                const pad = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.2, 16), new THREE.MeshStandardMaterial({ color: 0xf472b6, emissive: 0xdb2777, emissiveIntensity: 0.4 }));
+                pad.position.set(0, 0.05, 0);
+                this.scene.add(pad);
+                this.hatchPad = pad;
+
+
+                // Player
+                this.player = this.createRobloxCharacter();
+                this.scene.add(this.player);
+
+
+                // Create Pet Companion
+                this.createPetCompanion();
+
+
+                this.loop();
+            }
+
+
+            createPetCompanion() {
+                if (this.activePet) this.scene.remove(this.activePet);
+
+
+                const pet = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.9), new THREE.MeshStandardMaterial({ color: 0xf97316 }));
+                body.position.y = 0.4;
+                pet.add(body);
+
+
+                // Ears
+                const ear1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.2), new THREE.MeshStandardMaterial({ color: 0xea580c }));
+                ear1.position.set(-0.25, 0.85, -0.2);
+                const ear2 = ear1.clone();
+                ear2.position.x = 0.25;
+                pet.add(ear1);
+                pet.add(ear2);
+
+
+                pet.position.set(2, 0, 2);
+                this.scene.add(pet);
+                this.activePet = pet;
+            }
+
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+
+
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+
+                // Player Movement
+                const moveSpeed = 10 * delta;
+                const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+
+
+                if (this.keys.forward) this.player.position.z -= moveSpeed;
+                if (this.keys.backward) this.player.position.z += moveSpeed;
+                if (this.keys.left) this.player.position.x -= moveSpeed;
+                if (this.keys.right) this.player.position.x += moveSpeed;
+
+
+                // Pet follow player logic
+                if (this.activePet) {
+                    const targetPos = this.player.position.clone().add(new THREE.Vector3(1.2, 0, 1.2));
+                    this.activePet.position.lerp(targetPos, 4 * delta);
+                    this.activePet.rotation.y = time * 2;
+                }
+
+
+                // Check Hatching Pad Collision
+                if (this.player.position.distanceTo(this.hatchPad.position) < 3.5) {
+                    if (!this.hatchCooldown) {
+                        this.hatchCooldown = true;
+                        this.petsCount++;
+                        this.hearts += 50;
+                        this.createPetCompanion();
+                        setTimeout(() => this.hatchCooldown = false, 2000);
+                    }
+                }
+
+
+                document.getElementById('ingame-stat1-val').innerText = `${this.petsCount} 마리`;
+                document.getElementById('ingame-stat2-val').innerText = this.hearts;
+
+
+                // Orbit Camera
+                const target = this.player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                const camX = target.x + 12 * Math.sin(this.camTheta);
+                const camZ = target.z + 12 * Math.cos(this.camTheta);
+                this.camera.position.set(camX, target.y + 7, camZ);
+                this.camera.lookAt(target);
+
+
+                this.animateLimbs(this.player, isMoving, true, time);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+
+        // =========================================================
+        // GAME 2: SPEED RUNNER 3D
+        // =========================================================
+        class SpeedRunnerGame extends Base3DGame {
+            constructor() {
+                super();
+                document.getElementById('ingame-stat1-label').innerText = '거리 (m)';
+                document.getElementById('ingame-stat2-box').classList.remove('hidden');
+                document.getElementById('ingame-stat2-label').innerText = '코인';
+
+
+                this.score = 0;
+                this.coins = 0;
+                this.speed = 22;
+                this.currentLane = 0;
+                this.lanePositions = [-3.5, 0, 3.5];
+
+
+                this.player = this.createRobloxCharacter();
+                this.scene.add(this.player);
+
+
+                this.obstacles = [];
+                this.trackSegments = [];
+                for (let i = 0; i < 15; i++) this.spawnTrackSegment(-i * 20);
+
+
+                this.loop();
+            }
+
+
+            spawnTrackSegment(zPos) {
+                const seg = new THREE.Mesh(new THREE.BoxGeometry(12, 1, 20), new THREE.MeshStandardMaterial({ color: (Math.abs(zPos / 20) % 2 === 0) ? 0x1e293b : 0x334155 }));
+                seg.position.set(0, -0.5, zPos);
+                this.scene.add(seg);
+                this.trackSegments.push(seg);
+
+
+                if (zPos < -30 && Math.random() > 0.4) {
+                    const lane = Math.floor(Math.random() * 3) - 1;
+                    const obs = new THREE.Mesh(new THREE.BoxGeometry(3, 1.8, 1.5), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+                    obs.position.set(this.lanePositions[lane + 1], 0.9, zPos);
+                    this.scene.add(obs);
+                    this.obstacles.push(obs);
+                }
+            }
+
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+
+
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+
+                if (this.keys.left && this.currentLane > -1 && !this.keyLockLeft) { this.currentLane--; this.keyLockLeft = true; }
+                if (!this.keys.left) this.keyLockLeft = false;
+                if (this.keys.right && this.currentLane < 1 && !this.keyLockRight) { this.currentLane++; this.keyLockRight = true; }
+                if (!this.keys.right) this.keyLockRight = false;
+
+
+                const targetX = this.lanePositions[this.currentLane + 1];
+                this.player.position.x += (targetX - this.player.position.x) * 15 * delta;
+
+
+                const moveDist = this.speed * delta;
+                this.score += Math.floor(moveDist);
+
+
+                this.trackSegments.forEach(seg => {
+                    seg.position.z += moveDist;
+                    if (seg.position.z > 20) seg.position.z -= 300;
+                });
+
+
+                for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                    const obs = this.obstacles[i];
+                    obs.position.z += moveDist;
+                    if (Math.abs(obs.position.z - this.player.position.z) < 1.2 && Math.abs(obs.position.x - this.player.position.x) < 1.2) {
+                        this.score = 0;
+                    }
+                    if (obs.position.z > 10) {
+                        this.scene.remove(obs);
+                        this.obstacles.splice(i, 1);
+                        this.spawnTrackSegment(-280);
+                    }
+                }
+
+
+                document.getElementById('ingame-stat1-val').innerText = `${this.score}m`;
+                document.getElementById('ingame-stat2-val').innerText = this.coins;
+
+
+                this.camera.position.set(0, 5, 9);
+                this.camera.lookAt(0, 2, -5);
+
+
+                this.animateLimbs(this.player, true, true, time);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+
+        // =========================================================
+        // GAME 3: BLOCK TYCOON
+        // =========================================================
+        class TycoonGame extends Base3DGame {
+            constructor() {
+                super();
+                document.getElementById('ingame-stat1-label').innerText = '소유 캐시';
+                document.getElementById('ingame-stat2-box').classList.add('hidden');
+
+
+                this.cash = 100;
+                const ground = new THREE.Mesh(new THREE.BoxGeometry(30, 0.5, 30), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+                ground.position.y = -0.25;
+                this.scene.add(ground);
+
+
+                this.player = this.createRobloxCharacter();
+                this.scene.add(this.player);
+
+
+                this.loop();
+            }
+
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+
+
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+
+                const moveSpeed = 10 * delta;
+                const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+
+
+                if (this.keys.forward) this.player.position.z -= moveSpeed;
+                if (this.keys.backward) this.player.position.z += moveSpeed;
+                if (this.keys.left) this.player.position.x -= moveSpeed;
+                if (this.keys.right) this.player.position.x += moveSpeed;
+
+
+                this.cash += Math.floor(delta * 15);
+                document.getElementById('ingame-stat1-val').innerText = `$${this.cash}`;
+
+
+                const target = this.player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                this.camera.position.set(target.x, target.y + 10, target.z + 12);
+                this.camera.lookAt(target);
+
+
+                this.animateLimbs(this.player, isMoving, true, time);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+
+        // =========================================================
+        // GAME 4: TOWER CLIMB 3D
+        // =========================================================
+        class TowerClimbGame extends Base3DGame {
+            constructor() {
+                super();
+                document.getElementById('ingame-stat1-label').innerText = '등반 높이';
+                document.getElementById('ingame-stat2-box').classList.add('hidden');
+
+
+                this.height = 0;
+                this.player = this.createRobloxCharacter();
+                this.scene.add(this.player);
+
+
+                // Spiraling platforms
+                for (let i = 0; i < 30; i++) {
+                    const plat = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 3), new THREE.MeshStandardMaterial({ color: 0x8b5cf6 }));
+                    const angle = i * 0.5;
+                    plat.position.set(Math.cos(angle) * 6, i * 2, Math.sin(angle) * 6);
+                    this.scene.add(plat);
+                }
+
+
+                this.loop();
+            }
+
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+
+
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+
+                const moveSpeed = 8 * delta;
+                const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+
+
+                if (this.keys.forward) this.player.position.z -= moveSpeed;
+                if (this.keys.backward) this.player.position.z += moveSpeed;
+                if (this.keys.left) this.player.position.x -= moveSpeed;
+                if (this.keys.right) this.player.position.x += moveSpeed;
+
+
+                if (this.keys.jump) this.player.position.y += 12 * delta;
+                else if (this.player.position.y > 0) this.player.position.y -= 6 * delta;
+
+
+                this.height = Math.max(0, Math.floor(this.player.position.y * 5));
+                document.getElementById('ingame-stat1-val').innerText = `${this.height} FL`;
+
+
+                const target = this.player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                this.camera.position.set(target.x + 8, target.y + 6, target.z + 8);
+                this.camera.lookAt(target);
+
+
+                this.animateLimbs(this.player, isMoving, true, time);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+
+        // =========================================================
+        // GAME 5: ZOMBIE SURVIVAL 3D
+        // =========================================================
+        class ZombieGame extends Base3DGame {
+            constructor() {
+                super();
+                document.getElementById('ingame-stat1-label').innerText = '생존 웨이브';
+                document.getElementById('ingame-stat2-box').classList.remove('hidden');
+                document.getElementById('ingame-stat2-label').innerText = '처치 수';
+
+
+                this.wave = 1;
+                this.kills = 0;
+
+
+                const ground = new THREE.Mesh(new THREE.PlaneGeometry(50, 50), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                ground.rotation.x = -Math.PI / 2;
+                this.scene.add(ground);
+
+
+                this.player = this.createRobloxCharacter();
+                this.scene.add(this.player);
+
+
+                this.loop();
+            }
+
+
+            loop() {
+                if (!this.isRunning) return;
+                requestAnimationFrame(() => this.loop());
+
+
+                const delta = this.clock.getDelta();
+                const time = this.clock.getElapsedTime();
+
+
+                const moveSpeed = 10 * delta;
+                const isMoving = this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+
+
+                if (this.keys.forward) this.player.position.z -= moveSpeed;
+                if (this.keys.backward) this.player.position.z += moveSpeed;
+                if (this.keys.left) this.player.position.x -= moveSpeed;
+                if (this.keys.right) this.player.position.x += moveSpeed;
+
+
+                document.getElementById('ingame-stat1-val').innerText = `Wave ${this.wave}`;
+                document.getElementById('ingame-stat2-val').innerText = this.kills;
+
+
+                const target = this.player.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+                this.camera.position.set(target.x, target.y + 8, target.z + 10);
+                this.camera.lookAt(target);
+
+
+                this.animateLimbs(this.player, isMoving, true, time);
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+    </script>
+</body>
+</html>

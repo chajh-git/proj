@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2차 세계대전 전차전 : Panzer Commander 1944</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f141c;
+            color: #e2e8f0;
+            user-select: none;
+            overflow: hidden;
+        }
+        .font-header {
+            font-family: 'Black Han Sans', sans-serif;
+        }
+        /* Custom Military Styled Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Glow effects */
+        .military-border {
+            border: 2px solid #4a5d4e;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 0 8px rgba(74, 93, 78, 0.4);
+        }
+        .tank-card:hover {
+            transform: translateY(-4px);
+            border-color: #fbbf24;
+            box-shadow: 0 10px 20px rgba(251, 191, 36, 0.2);
+        }
+        .tab-btn.active {
+            background-color: #d97706;
+            color: #ffffff;
+            border-color: #f59e0b;
+        }
+        /* Radar pulse background */
+        .radar-grid {
+            background-image: radial-gradient(rgba(34, 197, 94, 0.15) 1px, transparent 0);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between relative bg-slate-950">
+
+    <!-- TOP HEADER / NAVBAR -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between z-20 shadow-lg shrink-0">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid font-bold text-amber-500 text-2xl fa-shield-halved"></i>
+            <h1 class="text-xl md:text-2xl font-header tracking-wider text-amber-400">PANZER COMMANDER 1944</h1>
+            <span class="text-xs bg-amber-900/60 text-amber-300 border border-amber-700/50 px-2 py-0.5 rounded font-mono">v1.0 WWII Tank Ops</span>
+        </div>
+       
+        <div class="flex items-center space-x-4">
+            <!-- Gold Display -->
+            <div class="flex items-center space-x-2 bg-slate-800/80 border border-amber-500/30 px-3 py-1 rounded-full">
+                <i class="fa-solid fa-coins text-amber-400"></i>
+                <span id="global-gold-display" class="font-mono font-bold text-amber-300 text-base">0</span>
+                <span class="text-xs text-slate-400">G</span>
+            </div>
+
+            <!-- Audio Toggle Button -->
+            <button id="btn-audio-toggle" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition border border-slate-700">
+                <i id="audio-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+
+            <!-- Code Copy Button -->
+            <button id="btn-copy-code" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white rounded-lg transition border border-slate-700 flex items-center space-x-1">
+                <i class="fa-solid fa-code"></i>
+                <span class="hidden sm:inline">소스 코드 복사</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN UI CONTAINER (MODAL / SCREEN SWITCHER) -->
+    <main id="main-container" class="relative flex-grow w-full h-[calc(100vh-3.5rem)] overflow-hidden">
+
+        <!-- ==================== 1. MAIN MENU SCREEN ==================== -->
+        <div id="screen-main-menu" class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-gradient-to-b from-slate-950 via-slate-900 to-amber-950/20 p-4">
+            <div class="max-w-xl w-full text-center space-y-6 military-border p-8 rounded-2xl bg-slate-900/90 backdrop-blur">
+                <div class="space-y-2">
+                    <div class="text-amber-500 font-mono tracking-widest text-sm font-bold uppercase">2D Tactical WWII Simulator</div>
+                    <h2 class="text-4xl md:text-5xl font-header text-amber-400 drop-shadow-md">강철의 포화 : WWII</h2>
+                    <p class="text-slate-400 text-sm">독일, 소련, 미국의 역사적 전차를 조종하여 전장의 승리를 쟁취하십시오.</p>
+                </div>
+
+                <div class="pt-4 space-y-3">
+                    <button id="btn-start-game" class="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-header text-xl tracking-wider rounded-xl shadow-lg shadow-amber-900/40 transform active:scale-95 transition">
+                        <i class="fa-solid fa-play mr-2"></i> 전장 출격 (격고 및 가고)
+                    </button>
+                    <button id="btn-open-controls" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl border border-slate-700 transition">
+                        <i class="fa-solid fa-keyboard mr-2 text-amber-400"></i> 조작법 및 전차 가이드
+                    </button>
+                </div>
+
+                <!-- Stats summary -->
+                <div class="grid grid-cols-3 gap-2 pt-4 border-t border-slate-800 text-xs text-slate-400 font-mono">
+                    <div>
+                        <div class="text-slate-500">참전 국가</div>
+                        <div class="text-amber-400 font-bold text-sm">3개국</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-500">전차 병과</div>
+                        <div class="text-amber-400 font-bold text-sm">4개 병과</div>
+                    </div>
+                    <div>
+                        <div class="text-slate-500">작전 지역</div>
+                        <div class="text-amber-400 font-bold text-sm">3개 전장</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 2. HANGAR & TANK SELECTION SCREEN ==================== -->
+        <div id="screen-hangar" class="hidden absolute inset-0 z-10 bg-slate-950 flex flex-col p-4 md:p-6 overflow-y-auto">
+            <div class="max-w-6xl w-full mx-auto flex flex-col h-full space-y-4">
+               
+                <!-- Hangar Header Nav -->
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-2xl font-header text-amber-400">기지 격고 (Hangar)</span>
+                        <span class="text-xs text-slate-400">전차를 선택하고 업그레이드를 진행하세요</span>
+                    </div>
+
+                    <!-- Nation Filter Tabs -->
+                    <div class="flex bg-slate-900 p-1 rounded-xl border border-slate-800 space-x-1" id="nation-tabs">
+                        <button data-nation="germany" class="tab-btn active px-4 py-1.5 rounded-lg text-sm font-bold border border-transparent transition flex items-center space-x-1">
+                            <span> 독일</span>
+                        </button>
+                        <button data-nation="ussr" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-bold border border-transparent transition flex items-center space-x-1">
+                            <span> 소련</span>
+                        </button>
+                        <button data-nation="usa" class="tab-btn px-4 py-1.5 rounded-lg text-sm font-bold border border-transparent transition flex items-center space-x-1">
+                            <span> 미국</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Hangar Content Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+                   
+                    <!-- Left: Tank Cards List (8 cols) -->
+                    <div class="lg:col-span-7 flex flex-col space-y-3">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">사용 가능한 전차 병과</div>
+                        <div id="tank-card-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Dynamically populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Selected Tank Stats & Upgrades (5 cols) -->
+                    <div class="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xl">
+                        <div>
+                            <!-- Selected Tank Info Header -->
+                            <div class="flex items-start justify-between border-b border-slate-800 pb-3">
+                                <div>
+                                    <div id="selected-tank-nation" class="text-xs font-bold text-amber-500 uppercase tracking-widest">독일 국방군</div>
+                                    <h3 id="selected-tank-name" class="text-2xl font-header text-white">Tiger I (티거)</h3>
+                                    <div id="selected-tank-class" class="text-xs text-slate-400 mt-0.5">중전차 (Heavy Tank)</div>
+                                </div>
+                                <div id="selected-tank-badge" class="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono font-bold rounded">
+                                    CLASS: HEAVY
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <p id="selected-tank-desc" class="text-xs text-slate-300 my-3 leading-relaxed">
+                                막강한 중장갑과 88mm KwK 주포를 갖춘 독일의 대표적인 중전차. 느린 이동속도를압도적인 방어력과 단발 화력으로 보완합니다.
+                            </p>
+
+                            <!-- Base Specs Chart -->
+                            <div class="space-y-2 text-xs font-mono bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400"><i class="fa-solid fa-crosshairs text-red-400 w-4"></i> 주포 공격력:</span>
+                                    <span id="spec-atk" class="font-bold text-slate-200">160</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400"><i class="fa-solid fa-shield-halved text-blue-400 w-4"></i> 체력/장갑:</span>
+                                    <span id="spec-hp" class="font-bold text-slate-200">450 HP (45%)</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400"><i class="fa-solid fa-gauge-high text-green-400 w-4"></i> 이동 속도:</span>
+                                    <span id="spec-spd" class="font-bold text-slate-200">1.8</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-400"><i class="fa-solid fa-rotate-right text-amber-400 w-4"></i> 재장전 속도:</span>
+                                    <span id="spec-reload" class="font-bold text-slate-200">2.2초</span>
+                                </div>
+                            </div>
+
+                            <!-- Global Upgrades Section -->
+                            <div class="mt-4">
+                                <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                                    <span>기술 업그레이드 (공통 적용)</span>
+                                    <span class="text-[10px] text-amber-400">골드로 전차 능력 상향</span>
+                                </div>
+                                <div class="space-y-2" id="upgrade-list">
+                                    <!-- Dynamic Upgrade items -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hangar Bottom Action -->
+                        <div class="pt-3 border-t border-slate-800 flex space-x-3">
+                            <button id="btn-back-to-menu" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </button>
+                            <button id="btn-go-stage-select" class="flex-grow py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-header text-lg rounded-xl shadow-lg transition">
+                                전장 선택 및 출격 <i class="fa-solid fa-chevron-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 3. STAGE SELECTION SCREEN ==================== -->
+        <div id="screen-stage-select" class="hidden absolute inset-0 z-10 bg-slate-950 flex flex-col p-6 overflow-y-auto">
+            <div class="max-w-4xl w-full mx-auto flex flex-col justify-between h-full space-y-6">
+               
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-back-to-hangar" class="p-2 text-slate-400 hover:text-white">
+                            <i class="fa-solid fa-arrow-left text-xl"></i>
+                        </button>
+                        <h2 class="text-3xl font-header text-amber-400">작전 구역 선택 (Operation Zone)</h2>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1 ml-9">역사적 전장을 선택하여 적 부대를 소탕하십시오.</p>
+                </div>
+
+                <!-- Stage Cards Container -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 my-auto">
+                   
+                    <!-- Stage 1 -->
+                    <div data-stage="1" class="stage-card bg-slate-900 border-2 border-amber-500/80 hover:border-amber-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1 transition shadow-lg relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20"></div>
+                        <div>
+                            <span class="px-2.5 py-0.5 bg-slate-800 border border-slate-700 text-amber-400 text-[10px] font-mono font-bold rounded">STAGE 01</span>
+                            <h3 class="text-xl font-header text-white mt-2">스탈린그라드</h3>
+                            <div class="text-xs text-slate-400 font-mono">Stalingrad Urban Blitz</div>
+                            <p class="text-xs text-slate-300 my-3 leading-relaxed">
+                                폐허가 된 시가지에서의 근접전. 적 경전차와 수비 벙커 진지가 배치되어 있습니다.
+                            </p>
+                        </div>
+                        <div class="space-y-1.5 pt-3 border-t border-slate-800 text-[11px] text-slate-400 font-mono">
+                            <div class="flex justify-between"><span>주요 적:</span> <span class="text-slate-200">경전차, 기관포 벙커</span></div>
+                            <div class="flex justify-between"><span>클리어 보상:</span> <span class="text-amber-400 font-bold">+500 Gold</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 2 -->
+                    <div data-stage="2" class="stage-card bg-slate-900 border-2 border-slate-800 hover:border-amber-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1 transition shadow-lg relative overflow-hidden group">
+                        <div>
+                            <span class="px-2.5 py-0.5 bg-slate-800 border border-slate-700 text-amber-400 text-[10px] font-mono font-bold rounded">STAGE 02</span>
+                            <h3 class="text-xl font-header text-white mt-2">쿠르스크 대평원</h3>
+                            <div class="text-xs text-slate-400 font-mono">Kursk Tank Clash</div>
+                            <p class="text-xs text-slate-300 my-3 leading-relaxed">
+                                역사상 최대의 전차전. 평원에서 대규모 중형전차 및 구축전차 부대와 맞서야 합니다.
+                            </p>
+                        </div>
+                        <div class="space-y-1.5 pt-3 border-t border-slate-800 text-[11px] text-slate-400 font-mono">
+                            <div class="flex justify-between"><span>주요 적:</span> <span class="text-slate-200">중형전차, 구축전차</span></div>
+                            <div class="flex justify-between"><span>클리어 보상:</span> <span class="text-amber-400 font-bold">+1,200 Gold</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 3 -->
+                    <div data-stage="3" class="stage-card bg-slate-900 border-2 border-slate-800 hover:border-amber-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1 transition shadow-lg relative overflow-hidden group">
+                        <div>
+                            <span class="px-2.5 py-0.5 bg-slate-800 border border-slate-700 text-amber-400 text-[10px] font-mono font-bold rounded">STAGE 03</span>
+                            <h3 class="text-xl font-header text-white mt-2">아르덴 요새</h3>
+                            <div class="text-xs text-slate-400 font-mono">Ardennes Bulge Defensive</div>
+                            <p class="text-xs text-slate-300 my-3 leading-relaxed">
+                                험준한 설원 요새 지대. 강력한 보스 중전차 및 중무장 요새 포탑이 도달을 막아섭니다.
+                            </p>
+                        </div>
+                        <div class="space-y-1.5 pt-3 border-t border-slate-800 text-[11px] text-slate-400 font-mono">
+                            <div class="flex justify-between"><span>주요 적:</span> <span class="text-slate-200">보스 중전차, 요새 벙커</span></div>
+                            <div class="flex justify-between"><span>클리어 보상:</span> <span class="text-amber-400 font-bold">+2,500 Gold</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Stage 4 (El Alamein) -->
+                    <div data-stage="4" class="stage-card bg-slate-900 border-2 border-slate-800 hover:border-amber-400 rounded-2xl p-5 flex flex-col justify-between cursor-pointer transform hover:-translate-y-1 transition shadow-lg relative overflow-hidden group">
+                        <div>
+                            <span class="px-2.5 py-0.5 bg-amber-900/60 border border-amber-700/50 text-amber-300 text-[10px] font-mono font-bold rounded">STAGE 04 (DESERT)</span>
+                            <h3 class="text-xl font-header text-amber-400 mt-2">엘 알라메인</h3>
+                            <div class="text-xs text-slate-400 font-mono">El Alamein Desert Battle</div>
+                            <p class="text-xs text-slate-300 my-3 leading-relaxed">
+                                북아프리카의 뜨거운 사막 전장! 광활한 모래 사막에서 대규모 기갑전이 벌어집니다.
+                            </p>
+                        </div>
+                        <div class="space-y-1.5 pt-3 border-t border-slate-800 text-[11px] text-slate-400 font-mono">
+                            <div class="flex justify-between"><span>주요 적:</span> <span class="text-slate-200">사막 주력전차, 벙커</span></div>
+                            <div class="flex justify-between"><span>클리어 보상:</span> <span class="text-amber-400 font-bold">+1,800 Gold</span></div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Launch Button -->
+                <div class="flex justify-end pt-4">
+                    <button id="btn-launch-battle" class="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-header text-xl rounded-xl shadow-xl transition">
+                        <i class="fa-solid fa-crosshairs mr-2"></i> 전장 입장 (Battle Start)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 4. GAME PLAY SCREEN (CANVAS) ==================== -->
+        <div id="screen-game" class="hidden absolute inset-0 z-0 bg-black">
+            <!-- CANVAS ELEMENT -->
+            <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+            <!-- IN-GAME HUD OVERLAY -->
+            <div id="game-hud" class="absolute inset-0 pointer-events-none p-4 flex flex-col justify-between select-none">
+               
+                <!-- HUD Top Bar -->
+                <div class="flex items-start justify-between">
+                    <!-- Player Status Box -->
+                    <div class="bg-slate-900/80 backdrop-blur border border-slate-800 p-3 rounded-xl pointer-events-auto flex flex-col space-y-1.5 min-w-[220px]">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span id="hud-tank-name" class="font-bold text-amber-400">Tiger I</span>
+                            <span id="hud-hp-text" class="text-slate-300 font-bold">450 / 450</span>
+                        </div>
+                        <!-- Health Bar -->
+                        <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                            <div id="hud-hp-bar" class="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-200 w-full"></div>
+                        </div>
+                        <!-- Reload Status -->
+                        <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                            <span>주포 상태:</span>
+                            <span id="hud-reload-status" class="text-amber-400 font-bold">장전 완료 (READY)</span>
+                        </div>
+                    </div>
+
+                    <!-- Stage & Objective Tracker -->
+                    <div class="bg-slate-900/80 backdrop-blur border border-slate-800 px-4 py-2 rounded-xl text-center pointer-events-auto">
+                        <div id="hud-stage-title" class="text-xs font-mono text-amber-400 font-bold">STAGE 1: 스탈린그라드</div>
+                        <div id="hud-enemy-count" class="text-sm font-header text-slate-200 mt-0.5">남은 적: <span id="hud-enemy-remaining" class="text-red-400">0</span> / <span id="hud-enemy-total">0</span></div>
+                    </div>
+
+                    <!-- Score & Game Controls -->
+                    <div class="flex items-center space-x-2 pointer-events-auto">
+                        <button id="btn-pause-game" class="px-3 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold rounded-xl transition">
+                            <i class="fa-solid fa-pause mr-1"></i> 일시정지
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HUD Bottom Bar -->
+                <div class="flex items-end justify-between">
+                    <!-- Controls Quick Reference -->
+                    <div class="bg-slate-900/75 backdrop-blur p-2.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1 font-mono">
+                        <div><span class="text-amber-400 font-bold">WASD / 화살표</span> : 이동 / 회전</div>
+                        <div><span class="text-amber-400 font-bold">마우스</span> : 포탑 조준 & 좌클릭 사격</div>
+                    </div>
+
+                    <!-- Radar Minimap -->
+                    <div class="relative bg-slate-900/90 border-2 border-slate-700 rounded-xl overflow-hidden pointer-events-auto p-1 shadow-2xl">
+                        <canvas id="minimapCanvas" width="140" height="140" class="radar-grid block rounded"></canvas>
+                        <div class="absolute top-1 left-2 text-[9px] font-mono text-amber-400/80 font-bold">RADAR</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ==================== 5. MODAL OVERLAYS (PAUSE / VICTORY / GAMEOVER / CONTROLS) ==================== -->
+       
+        <!-- Controls Modal -->
+        <div id="modal-controls" class="hidden absolute inset-0 z-30 bg-slate-950/90 backdrop-blur flex items-center justify-center p-4">
+            <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 military-border">
+                <h3 class="text-2xl font-header text-amber-400 border-b border-slate-800 pb-2">조작법 및 병과 특성 가이드</h3>
+                <div class="space-y-3 text-xs text-slate-300 leading-relaxed">
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                        <div class="font-bold text-amber-400">기본 조작 (배틀 시티 탑뷰)</div>
+                        <div>• <span class="text-white">WASD / 방향키</span>: 차체 이동 및 회전</div>
+                        <div>• <span class="text-white">마우스 이동</span>: 포탑 조준</div>
+                        <div>• <span class="text-white">마우스 좌클릭</span>: 주포 발사</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                        <div class="font-bold text-amber-400">병과별 밸런스 특성</div>
+                        <div>• <span class="text-amber-300">경전차 (Light)</span>:  최고 속도,  초고속 재장전 /  약한 공격 & 방어력</div>
+                        <div>• <span class="text-amber-300">중형전차 (Medium)</span>:  기동, 방어, 공격, 장전 모두 표준 밸런스</div>
+                        <div>• <span class="text-amber-300">중전차 (Heavy)</span>:  높은 공격력 &  단단한 장갑 /  느린 기동 & 장전</div>
+                        <div>• <span class="text-amber-300">구축전차 (TD)</span>:  높은 방어력 &  고화력 /  느린 장전, 고정 포탑</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                        <div class="font-bold text-amber-400">전장 전리품 & 특수 지원</div>
+                        <div>• <span class="text-amber-300"> 공중 지원 아이템</span>: 전장에 떨어진 무전기 아이템 습득 시 폭격기가 출동하여 융단폭격을 퍼붓습니다!</div>
+                    </div>
+                </div>
+                <button id="btn-close-controls" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition">닫기</button>
+            </div>
+        </div>
+
+        <!-- Pause Modal -->
+        <div id="modal-pause" class="hidden absolute inset-0 z-30 bg-slate-950/80 backdrop-blur flex items-center justify-center p-4">
+            <div class="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 shadow-2xl military-border">
+                <h3 class="text-2xl font-header text-amber-400">작전 일시 정지</h3>
+                <div class="space-y-2">
+                    <button id="btn-resume-game" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition">작전 재개</button>
+                    <button id="btn-abandon-game" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition">격고로 후퇴</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Modal (Victory / Game Over) -->
+        <div id="modal-result" class="hidden absolute inset-0 z-30 bg-slate-950/90 backdrop-blur flex items-center justify-center p-4">
+            <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-5 military-border">
+                <div id="result-badge" class="text-5xl"></div>
+                <div>
+                    <h3 id="result-title" class="text-3xl font-header text-amber-400">작전 성공!</h3>
+                    <p id="result-desc" class="text-xs text-slate-400 mt-1">적 구역을 성공적으로 소탕하였습니다.</p>
+                </div>
+
+                <!-- Rewards summary -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 font-mono space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">파괴한 적 전차:</span>
+                        <span id="result-kills" class="text-slate-200 font-bold">0대</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">획득 전리품 (골드):</span>
+                        <span id="result-gold" class="text-amber-400 font-bold">+0 G</span>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button id="btn-result-hangar" class="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-header text-lg rounded-xl transition">
+                        격고로 이동
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ==================== GAME LOGIC SCRIPT ==================== -->
+    <script>
+        /* ==========================================================================
+           1. DATA STRUCTURES & CONFIGURATIONS
+           ========================================================================== */
+       
+        // Nations and Tanks Data
+        const TANK_DATABASE = {
+            germany: {
+                nationName: "독일",
+                flag: "",
+                tanks: {
+                    light: { name: "Panzer 38(t)", classTitle: "경전차 (Light)", hp: 165, atk: 30, speed: 4.2, reload: 0.6, armor: 0.05, desc: "빠른 기동성과 초고속 연사력! 저먼 회색(Panzer Gray) 도장이 적용되었습니다.", color: "#5d656c", barrelLen: 22, size: 24 },
+                    medium: { name: "Panzer IV", classTitle: "중형전차 (Medium)", hp: 360, atk: 75, speed: 2.8, reload: 1.2, armor: 0.20, desc: "독일 국방군 회색 묵직한 중형전차. 밸런스가 조화롭습니다.", color: "#484f56", barrelLen: 30, size: 30 },
+                    heavy: { name: "Tiger I (티거)", classTitle: "중전차 (Heavy)", hp: 750, atk: 170, speed: 1.7, reload: 2.4, armor: 0.45, desc: "묵직한 펜저 그레이 중장갑과 88mm 주포를 지닌 주력 중전차입니다.", color: "#363b41", barrelLen: 36, size: 36 },
+                    td: { name: "Hetzer (헤처)", classTitle: "구축전차 (TD)", hp: 480, atk: 220, speed: 2.4, reload: 2.6, armor: 0.50, desc: "회색 수렵 장갑과 강력한 고정 구축포를 탑재했습니다.", color: "#50575e", barrelLen: 34, size: 30, isTD: true }
+                }
+            },
+            ussr: {
+                nationName: "소련",
+                flag: "",
+                tanks: {
+                    light: { name: "T-26", classTitle: "경전차 (Light)", hp: 150, atk: 28, speed: 4.3, reload: 0.55, armor: 0.05, desc: "최고의 순발력과 쾌속 연사 주포 탑재! 방어력은 약하나 기습 정찰에 뛰어납니다.", color: "#4d5d43", barrelLen: 20, size: 24 },
+                    medium: { name: "T-34-85", classTitle: "중형전차 (Medium)", hp: 375, atk: 80, speed: 2.8, reload: 1.25, armor: 0.22, desc: "모든 능력치가 균형 잡힌 주력 중형전차입니다.", color: "#3f4d36", barrelLen: 32, size: 30 },
+                    heavy: { name: "IS-2 (스탈린)", classTitle: "중전차 (Heavy)", hp: 780, atk: 190, speed: 1.6, reload: 2.7, armor: 0.48, desc: "육중한 장갑과 대구경 주포! 속도와 장전은 느리지만 치명적인 단발 화력을 선사합니다.", color: "#33402b", barrelLen: 38, size: 37 },
+                    td: { name: "SU-100", classTitle: "구축전차 (TD)", hp: 510, atk: 240, speed: 2.3, reload: 2.7, armor: 0.45, desc: "높은 맷집과 막강한 100mm 포를 탑재한 저격 구축전차입니다.", color: "#42523b", barrelLen: 36, size: 31, isTD: true }
+                }
+            },
+            usa: {
+                nationName: "미국",
+                flag: "",
+                tanks: {
+                    light: { name: "M3 Stuart", classTitle: "경전차 (Light)", hp: 158, atk: 26, speed: 4.5, reload: 0.5, armor: 0.05, desc: "압도적인 최고 기동 속도와 0.5초의 초광속 장전 능력을 지닌 경전차입니다.", color: "#5b5e43", barrelLen: 20, size: 24 },
+                    medium: { name: "M4 Sherman", classTitle: "중형전차 (Medium)", hp: 353, atk: 70, speed: 2.9, reload: 1.15, armor: 0.18, desc: "표준적인 기동성, 방어, 공격 성능을 갖춘 다목적 범용 전차입니다.", color: "#4b4d36", barrelLen: 28, size: 30 },
+                    heavy: { name: "M26 Pershing", classTitle: "중전차 (Heavy)", hp: 720, atk: 165, speed: 1.8, reload: 2.2, armor: 0.42, desc: "느린 조작감과 재장전 시간을 묵직한 공격력과 방어력으로 커버하는 중전차입니다.", color: "#3e402b", barrelLen: 35, size: 35 },
+                    td: { name: "M18 Hellcat", classTitle: "구축전차 (TD)", hp: 450, atk: 210, speed: 2.6, reload: 2.3, armor: 0.40, desc: "높은 방어력과 정밀 주포 화력을 갖춘 대전차 자주포입니다.", color: "#54573f", barrelLen: 34, size: 29, isTD: true }
+                }
+            }
+        };
+
+        // Upgrade Specs Configuration
+        const UPGRADE_CONFIG = {
+            atk: { title: "주포 화력 (Firepower)", icon: "fa-crosshairs", stat: "atk", boost: 0.12, baseCost: 200, maxLvl: 5 },
+            hp: { title: "장갑/체력 (Armor & HP)", icon: "fa-shield-halved", stat: "hp", boost: 0.15, baseCost: 200, maxLvl: 5 },
+            speed: { title: "엔진 기동성 (Mobility)", icon: "fa-gauge-high", stat: "speed", boost: 0.10, baseCost: 150, maxLvl: 5 },
+            reload: { title: "장전 장치 (Reload System)", icon: "fa-rotate-right", stat: "reload", boost: -0.08, baseCost: 250, maxLvl: 5 }
+        };
+
+        // Stages Configuration
+        const STAGE_CONFIG = {
+            1: {
+                name: "스탈린그라드 시가지",
+                subtitle: "Stalingrad Urban Blitz",
+                mapSize: { w: 2200, h: 1800 },
+                bgColor: "#23262b",
+                accentColor: "#3d424a",
+                reward: 500,
+                enemies: [
+                    { type: "light", count: 4 },
+                    { type: "medium", count: 3 },
+                    { type: "bunker_mg", count: 3 }
+                ],
+                obstaclesCount: 20
+            },
+            2: {
+                name: "쿠르스크 대평원",
+                subtitle: "Kursk Tank Clash",
+                mapSize: { w: 2800, h: 2200 },
+                bgColor: "#2a2e21",
+                accentColor: "#39402c",
+                reward: 1200,
+                enemies: [
+                    { type: "medium", count: 6 },
+                    { type: "td", count: 4 },
+                    { type: "heavy", count: 2 },
+                    { type: "bunker_cannon", count: 4 }
+                ],
+                obstaclesCount: 30
+            },
+            3: {
+                name: "아르덴 요새",
+                subtitle: "Ardennes Bulge Defensive",
+                mapSize: { w: 3000, h: 2500 },
+                bgColor: "#2e373d",
+                accentColor: "#434f57",
+                reward: 2500,
+                enemies: [
+                    { type: "medium", count: 5 },
+                    { type: "heavy", count: 4 },
+                    { type: "td", count: 3 },
+                    { type: "bunker_fortress", count: 2 },
+                    { type: "boss", count: 1 } // Super Heavy Boss
+                ],
+                obstaclesCount: 35
+            },
+            4: {
+                name: "엘 알라메인 사막",
+                subtitle: "El Alamein Desert Battle",
+                mapSize: { w: 2600, h: 2000 },
+                bgColor: "#756143",
+                accentColor: "#594a33",
+                reward: 1800,
+                enemies: [
+                    { type: "light", count: 3 },
+                    { type: "medium", count: 5 },
+                    { type: "heavy", count: 3 },
+                    { type: "td", count: 3 },
+                    { type: "bunker_cannon", count: 4 }
+                ],
+                obstaclesCount: 25
+            }
+        };
+
+        /* ==========================================================================
+           2. SOUND SYNTHESIZER (WEB AUDIO API)
+           ========================================================================== */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) this.ctx = new AudioContext();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            playShoot() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.15);
+                } catch(e) {}
+            }
+            playExplosion() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const bufferSize = this.ctx.sampleRate * 0.3;
+                    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        output[i] = Math.random() * 2 - 1;
+                    }
+                    const whiteNoise = this.ctx.createBufferSource();
+                    whiteNoise.buffer = buffer;
+
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                    filter.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.3);
+
+                    const gain = this.ctx.createGain();
+                    gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+                    whiteNoise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    whiteNoise.start();
+                } catch(e) {}
+            }
+            playHit() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch(e) {}
+            }
+            playItem() {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.2);
+                } catch(e) {}
+            }
+        }
+        const sfx = new SoundFX();
+
+        /* ==========================================================================
+           3. GAME ENGINE STATE & ENTITIES
+           ========================================================================== */
+        const playerState = {
+            gold: 500,
+            currentNation: 'germany',
+            currentTankKey: 'medium',
+            upgrades: { atk: 0, hp: 0, speed: 0, reload: 0 }
+        };
+
+        const gameState = {
+            activeScreen: 'menu',
+            currentStage: 1,
+            isPaused: false,
+            isGameOver: false,
+            score: 0,
+            kills: 0,
+            enemyRemaining: 0,
+            enemyTotal: 0
+        };
+
+        // Input state
+        const keys = {};
+        let mouseX = 0, mouseY = 0, isMouseDown = false;
+        let lastTime = 0;
+        let animationFrameId = null;
+
+        // Entities arrays
+        let player = null;
+        let enemies = [];
+        let bunkers = [];
+        let bullets = [];
+        let particles = [];
+        let obstacles = [];
+        let items = [];
+        let airstrikes = [];
+        let itemSpawnTimer = 0;
+
+        // Canvas & Contexts
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const mctx = minimapCanvas.getContext('2d');
+
+        // Draw Helper Fallback for roundRect
+        function drawRoundRect(c, x, y, w, h, r) {
+            if (c.roundRect) {
+                c.beginPath();
+                c.roundRect(x, y, w, h, r);
+                c.fill();
+            } else {
+                c.fillRect(x, y, w, h);
+            }
+        }
+
+        /* ==========================================================================
+           4. CLASSES DEFINITION
+           ========================================================================== */
+
+        class Particle {
+            constructor(x, y, color, size, vx, vy, life) {
+                this.x = x; this.y = y;
+                this.color = color;
+                this.size = size;
+                this.vx = vx; this.vy = vy;
+                this.life = life;
+                this.maxLife = life;
+            }
+            update(dt) {
+                this.x += this.vx * dt * 60;
+                this.y += this.vy * dt * 60;
+                this.life -= dt;
+            }
+            draw(ctx, camX, camY) {
+                const alpha = Math.max(0, this.life / this.maxLife);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x - camX, this.y - camY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, vx, vy, damage, isPlayer, size = 3) {
+                this.x = x; this.y = y;
+                this.vx = vx; this.vy = vy;
+                this.damage = damage;
+                this.isPlayer = isPlayer;
+                this.size = size;
+                this.life = 3.0;
+            }
+            update(dt) {
+                this.x += this.vx * dt * 60;
+                this.y += this.vy * dt * 60;
+                this.life -= dt;
+            }
+            draw(ctx, camX, camY) {
+                ctx.save();
+                ctx.fillStyle = this.isPlayer ? '#fef08a' : '#f87171';
+                ctx.shadowColor = this.isPlayer ? '#f59e0b' : '#ef4444';
+                ctx.shadowBlur = 6;
+                ctx.beginPath();
+                ctx.arc(this.x - camX, this.y - camY, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class PickupItem {
+            constructor(x, y, type = 'airstrike') {
+                this.x = x; this.y = y;
+                this.type = type;
+                this.size = 18;
+                this.active = true;
+                this.pulse = 0;
+            }
+            update(dt) {
+                this.pulse += dt * 4;
+            }
+            draw(ctx, camX, camY) {
+                const drawX = this.x - camX;
+                const drawY = this.y - camY;
+                const scale = 1 + Math.sin(this.pulse) * 0.1;
+
+                ctx.save();
+                ctx.translate(drawX, drawY);
+                ctx.scale(scale, scale);
+
+                // Glow ring
+                ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size + 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Crate Body
+                ctx.fillStyle = '#b45309';
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.strokeStyle = '#fef08a';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
+
+                // Icon
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px FontAwesome';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('', 0, 0);
+
+                ctx.restore();
+            }
+        }
+
+        class Airstrike {
+            constructor(startX, startY, targetX, targetY) {
+                this.x = startX;
+                this.y = startY;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                const angle = Math.atan2(targetY - startY, targetX - startX);
+                this.vx = Math.cos(angle) * 12;
+                this.vy = Math.sin(angle) * 12;
+                this.bombTimer = 0;
+                this.bombsDropped = 0;
+                this.maxBombs = 8;
+                this.finished = false;
+            }
+            update(dt) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.bombTimer += dt;
+
+                if (this.bombTimer > 0.15 && this.bombsDropped < this.maxBombs) {
+                    this.bombTimer = 0;
+                    this.bombsDropped++;
+                    createExplosion(this.x, this.y, 80, 250);
+                    sfx.playExplosion();
+                }
+
+                if (this.bombsDropped >= this.maxBombs && this.bombTimer > 1.0) {
+                    this.finished = true;
+                }
+            }
+            draw(ctx, camX, camY) {
+                ctx.save();
+                ctx.translate(this.x - camX, this.y - camY);
+                const angle = Math.atan2(this.vy, this.vx);
+                ctx.rotate(angle);
+
+                // Bomber plane shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.moveTo(15, 15);
+                ctx.lineTo(-20, 35);
+                ctx.lineTo(-10, 15);
+                ctx.lineTo(-20, -5);
+                ctx.fill();
+
+                // Bomber plane sprite
+                ctx.fillStyle = '#64748b';
+                ctx.beginPath();
+                ctx.moveTo(25, 0);
+                ctx.lineTo(-20, 25);
+                ctx.lineTo(-10, 0);
+                ctx.lineTo(-20, -25);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#334155';
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Obstacle {
+            constructor(x, y, w, h, isRock = false) {
+                this.x = x; this.y = y;
+                this.w = w; this.h = h;
+                this.isRock = isRock;
+            }
+            draw(ctx, camX, camY) {
+                const rx = this.x - camX;
+                const ry = this.y - camY;
+                ctx.save();
+                if (this.isRock) {
+                    ctx.fillStyle = '#475569';
+                    drawRoundRect(ctx, rx, ry, this.w, this.h, 8);
+                    ctx.strokeStyle = '#334155';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(rx, ry, this.w, this.h);
+                } else {
+                    ctx.fillStyle = '#78350f';
+                    ctx.fillRect(rx, ry, this.w, this.h);
+                    ctx.strokeStyle = '#451a03';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(rx, ry, this.w, this.h);
+                }
+                ctx.restore();
+            }
+        }
+
+        class Bunker {
+            constructor(x, y, type = 'bunker_cannon') {
+                this.x = x; this.y = y;
+                this.type = type;
+                this.size = 34;
+                this.maxHp = type === 'bunker_fortress' ? 800 : (type === 'bunker_cannon' ? 400 : 250);
+                this.hp = this.maxHp;
+                this.atk = type === 'bunker_cannon' ? 45 : (type === 'bunker_fortress' ? 70 : 20);
+                this.reloadTime = type === 'bunker_mg' ? 0.3 : 1.8;
+                this.reloadTimer = 0;
+                this.turretAngle = 0;
+            }
+            update(dt, playerTank) {
+                if (this.reloadTimer > 0) this.reloadTimer -= dt;
+                if (!playerTank || playerTank.hp <= 0) return;
+
+                const dx = playerTank.x - this.x;
+                const dy = playerTank.y - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < 550) {
+                    this.turretAngle = Math.atan2(dy, dx);
+                    if (this.reloadTimer <= 0) {
+                        this.reloadTimer = this.reloadTime;
+                        const bSpeed = 7;
+                        bullets.push(new Bullet(
+                            this.x + Math.cos(this.turretAngle) * 24,
+                            this.y + Math.sin(this.turretAngle) * 24,
+                            Math.cos(this.turretAngle) * bSpeed,
+                            Math.sin(this.turretAngle) * bSpeed,
+                            this.atk,
+                            false,
+                            4
+                        ));
+                        sfx.playShoot();
+                    }
+                }
+            }
+            draw(ctx, camX, camY) {
+                const rx = this.x - camX;
+                const ry = this.y - camY;
+
+                ctx.save();
+                ctx.translate(rx, ry);
+
+                // Concrete Base
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                // Turret
+                ctx.rotate(this.turretAngle);
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, -5, 28, 10);
+                ctx.fillStyle = '#475569';
+                ctx.beginPath();
+                ctx.arc(0, 0, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+
+                // HP Bar
+                if (this.hp < this.maxHp) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                    ctx.fillRect(rx - 20, ry - this.size - 12, 40, 5);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(rx - 20, ry - this.size - 12, (this.hp / this.maxHp) * 40, 5);
+                    ctx.restore();
+                }
+            }
+        }
+
+        class Tank {
+            constructor(x, y, data, isPlayer = false, nation = 'germany') {
+                this.x = x; this.y = y;
+                this.name = data.name;
+                this.classTitle = data.classTitle;
+                this.color = data.color;
+                this.size = data.size || 30;
+                this.barrelLen = data.barrelLen || 28;
+                this.isTD = data.isTD || false;
+                this.isPlayer = isPlayer;
+                this.nation = nation;
+
+                // Stats calculation
+                const up = isPlayer ? playerState.upgrades : { atk:0, hp:0, speed:0, reload:0 };
+                this.maxHp = Math.round(data.hp * (1 + up.hp * UPGRADE_CONFIG.hp.boost));
+                this.hp = this.maxHp;
+                this.atk = Math.round(data.atk * (1 + up.atk * UPGRADE_CONFIG.atk.boost));
+                this.baseSpeed = data.speed * (1 + up.speed * UPGRADE_CONFIG.speed.boost);
+                this.speed = this.baseSpeed;
+                this.reloadTime = Math.max(0.2, data.reload * (1 + up.reload * UPGRADE_CONFIG.reload.boost));
+                this.reloadTimer = 0;
+
+                this.angle = 0;
+                this.turretAngle = 0;
+                this.trackOffset = 0;
+            }
+
+            update(dt, targetTank) {
+                if (this.reloadTimer > 0) this.reloadTimer -= dt;
+
+                if (this.isPlayer) {
+                    let moveX = 0, moveY = 0;
+                    if (keys['KeyW'] || keys['ArrowUp']) moveY -= 1;
+                    if (keys['KeyS'] || keys['ArrowDown']) moveY += 1;
+                    if (keys['KeyA'] || keys['ArrowLeft']) moveX -= 1;
+                    if (keys['KeyD'] || keys['ArrowRight']) moveX += 1;
+
+                    if (moveX !== 0 || moveY !== 0) {
+                        const moveAngle = Math.atan2(moveY, moveX);
+                        this.angle = moveAngle;
+                        const nextX = this.x + Math.cos(moveAngle) * this.speed * dt * 60;
+                        const nextY = this.y + Math.sin(moveAngle) * this.speed * dt * 60;
+
+                        if (!checkObstacleCollision(nextX, nextY, this.size)) {
+                            this.x = nextX;
+                            this.y = nextY;
+                            this.trackOffset = (this.trackOffset + this.speed * 0.2) % 8;
+                        }
+                    }
+
+                    // Turret rotation
+                    const camX = this.x - canvas.width / 2;
+                    const camY = this.y - canvas.height / 2;
+                    const worldMouseX = mouseX + camX;
+                    const worldMouseY = mouseY + camY;
+
+                    if (this.isTD) {
+                        this.turretAngle = this.angle; // Fixed turret for TD
+                    } else {
+                        this.turretAngle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+                    }
+
+                    // Shooting
+                    if (isMouseDown && this.reloadTimer <= 0) {
+                        this.shoot();
+                    }
+                } else {
+                    // AI Enemy logic
+                    if (!targetTank || targetTank.hp <= 0) return;
+
+                    const dx = targetTank.x - this.x;
+                    const dy = targetTank.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist < 650) {
+                        const targetAngle = Math.atan2(dy, dx);
+                        this.angle = targetAngle;
+                        if (!this.isTD) this.turretAngle = targetAngle;
+                        else this.turretAngle = this.angle;
+
+                        if (dist > 180) {
+                            const nextX = this.x + Math.cos(this.angle) * this.speed * dt * 35;
+                            const nextY = this.y + Math.sin(this.angle) * this.speed * dt * 35;
+                            if (!checkObstacleCollision(nextX, nextY, this.size)) {
+                                this.x = nextX;
+                                this.y = nextY;
+                            }
+                        }
+
+                        if (this.reloadTimer <= 0) {
+                            this.shoot();
+                        }
+                    }
+                }
+
+                // Map Boundary Constrain
+                const stage = STAGE_CONFIG[gameState.currentStage];
+                this.x = Math.max(this.size, Math.min(stage.mapSize.w - this.size, this.x));
+                this.y = Math.max(this.size, Math.min(stage.mapSize.h - this.size, this.y));
+            }
+
+            shoot() {
+                this.reloadTimer = this.reloadTime;
+                const bSpeed = 9.5;
+                const spawnX = this.x + Math.cos(this.turretAngle) * (this.barrelLen + 4);
+                const spawnY = this.y + Math.sin(this.turretAngle) * (this.barrelLen + 4);
+
+                bullets.push(new Bullet(
+                    spawnX, spawnY,
+                    Math.cos(this.turretAngle) * bSpeed,
+                    Math.sin(this.turretAngle) * bSpeed,
+                    this.atk,
+                    this.isPlayer,
+                    this.isPlayer ? 4 : 3
+                ));
+
+                // Flash particle
+                particles.push(new Particle(spawnX, spawnY, '#fde047', 6, Math.cos(this.turretAngle)*2, Math.sin(this.turretAngle)*2, 0.1));
+                sfx.playShoot();
+            }
+
+            draw(ctx, camX, camY) {
+                const rx = this.x - camX;
+                const ry = this.y - camY;
+
+                ctx.save();
+                ctx.translate(rx, ry);
+
+                // Chassis Base
+                ctx.rotate(this.angle);
+
+                // Tracks
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(-this.size/2 - 2, -this.size/2 - 4, this.size + 4, 6);
+                ctx.fillRect(-this.size/2 - 2, this.size/2 - 2, this.size + 4, 6);
+
+                // Track lines
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 1;
+                for (let i = -this.size/2; i < this.size/2; i += 6) {
+                    const pos = i + (this.trackOffset % 6);
+                    ctx.beginPath();
+                    ctx.moveTo(pos, -this.size/2 - 4); ctx.lineTo(pos, -this.size/2 + 2);
+                    ctx.moveTo(pos, this.size/2 - 2); ctx.lineTo(pos, this.size/2 + 4);
+                    ctx.stroke();
+                }
+
+                // Main Body Hull
+                ctx.fillStyle = this.color;
+                drawRoundRect(ctx, -this.size/2, -this.size/2, this.size, this.size, 4);
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-this.size/2, -this.size/2, this.size, this.size);
+
+                // Restore chassis rot, apply turret rot
+                ctx.rotate(-this.angle);
+                ctx.rotate(this.turretAngle);
+
+                // Cannon Barrel
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, -4, this.barrelLen, 8);
+
+                // Turret Cupola
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#0f172a';
+                ctx.stroke();
+
+                ctx.restore();
+
+                // Overhead Health Bar
+                if (!this.isPlayer || this.hp < this.maxHp) {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(rx - 18, ry - this.size/2 - 14, 36, 5);
+                    ctx.fillStyle = this.isPlayer ? '#22c55e' : '#ef4444';
+                    ctx.fillRect(rx - 18, ry - this.size/2 - 14, Math.max(0, (this.hp / this.maxHp) * 36), 5);
+                    ctx.restore();
+                }
+            }
+        }
+
+        /* ==========================================================================
+           5. GAME SYSTEM FUNCTIONS & COLLISION
+           ========================================================================== */
+
+        function checkObstacleCollision(x, y, radius) {
+            for (const obs of obstacles) {
+                if (x + radius > obs.x && x - radius < obs.x + obs.w &&
+                    y + radius > obs.y && y - radius < obs.y + obs.h) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function createExplosion(x, y, count = 25, radius = 40) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 5;
+                const colors = ['#f97316', '#ef4444', '#eab308', '#475569'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                particles.push(new Particle(
+                    x, y, color,
+                    2 + Math.random() * 5,
+                    Math.cos(angle) * speed,
+                    Math.sin(angle) * speed,
+                    0.3 + Math.random() * 0.5
+                ));
+            }
+
+            // Damage surrounding enemies if airstrike explosion
+            enemies.forEach(e => {
+                if (Math.hypot(e.x - x, e.y - y) < radius) {
+                    e.hp -= 180;
+                }
+            });
+            bunkers.forEach(b => {
+                if (Math.hypot(b.x - x, b.y - y) < radius) {
+                    b.hp -= 180;
+                }
+            });
+        }
+
+        function triggerAirstrike(targetX, targetY) {
+            const startX = targetX - 800;
+            const startY = targetY - 800;
+            airstrikes.push(new Airstrike(startX, startY, targetX, targetY));
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - 56;
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('#main-container > div').forEach(div => {
+                if (div.id === screenId) {
+                    div.classList.remove('hidden');
+                } else {
+                    div.classList.add('hidden');
+                }
+            });
+
+            if (screenId === 'screen-game') {
+                resizeCanvas();
+            }
+        }
+
+        function updateGlobalGoldUI() {
+            document.getElementById('global-gold-display').innerText = playerState.gold.toLocaleString();
+        }
+
+        /* ==========================================================================
+           6. HANGAR & UPGRADE UI MANAGEMENT
+           ========================================================================== */
+
+        function renderHangar() {
+            const container = document.getElementById('tank-card-container');
+            container.innerHTML = '';
+
+            const nationData = TANK_DATABASE[playerState.currentNation];
+            Object.keys(nationData.tanks).forEach(key => {
+                const tank = nationData.tanks[key];
+                const isSelected = playerState.currentTankKey === key;
+
+                const card = document.createElement('div');
+                card.className = `tank-card p-4 rounded-xl border-2 cursor-pointer transition flex flex-col justify-between ${
+                    isSelected ? 'bg-amber-950/40 border-amber-500' : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                }`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-mono text-amber-400 font-bold uppercase">${tank.classTitle}</span>
+                            <h4 class="text-lg font-header text-white">${tank.name}</h4>
+                        </div>
+                        <div class="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center">
+                            ${isSelected ? '<div class="w-2 h-2 rounded-full bg-amber-400"></div>' : ''}
+                        </div>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-1 text-[11px] font-mono text-slate-400">
+                        <div>HP: <span class="text-slate-200 font-bold">${tank.hp}</span></div>
+                        <div>ATK: <span class="text-slate-200 font-bold">${tank.atk}</span></div>
+                        <div>속도: <span class="text-slate-200 font-bold">${tank.speed}</span></div>
+                        <div>장전: <span class="text-slate-200 font-bold">${tank.reload}s</span></div>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    playerState.currentTankKey = key;
+                    renderHangar();
+                    updateSelectedTankDetails();
+                });
+
+                container.appendChild(card);
+            });
+
+            updateSelectedTankDetails();
+            renderUpgrades();
+            updateGlobalGoldUI();
+        }
+
+        function updateSelectedTankDetails() {
+            const nationData = TANK_DATABASE[playerState.currentNation];
+            const tank = nationData.tanks[playerState.currentTankKey];
+
+            document.getElementById('selected-tank-nation').innerText = `${nationData.flag} ${nationData.nationName}`;
+            document.getElementById('selected-tank-name').innerText = tank.name;
+            document.getElementById('selected-tank-class').innerText = tank.classTitle;
+            document.getElementById('selected-tank-badge').innerText = `CLASS: ${playerState.currentTankKey.toUpperCase()}`;
+            document.getElementById('selected-tank-desc').innerText = tank.desc;
+
+            const up = playerState.upgrades;
+            const curAtk = Math.round(tank.atk * (1 + up.atk * UPGRADE_CONFIG.atk.boost));
+            const curHp = Math.round(tank.hp * (1 + up.hp * UPGRADE_CONFIG.hp.boost));
+            const curSpd = (tank.speed * (1 + up.speed * UPGRADE_CONFIG.speed.boost)).toFixed(1);
+            const curReload = Math.max(0.2, (tank.reload * (1 + up.reload * UPGRADE_CONFIG.reload.boost))).toFixed(2);
+
+            document.getElementById('spec-atk').innerText = `
+curAtk({up.atk > 0 ? '+' + (up.atk * 12) + '%' : '기본'})`;
+            document.getElementById('spec-hp').innerText = `curHpHP({up.hp > 0 ? '+' + (up.hp * 15) + '%' : '기본'})`;
+            document.getElementById('spec-spd').innerText = `curSpd({up.speed > 0 ? '+' + (up.speed * 10) + '%' : '기본'})`;
+            document.getElementById('spec-reload').innerText = `curReload초({up.reload > 0 ? '-' + (up.reload * 8) + '%' : '기본'})`;
+        }
+
+        function renderUpgrades() {
+            const container = document.getElementById('upgrade-list');
+            container.innerHTML = '';
+
+            Object.keys(UPGRADE_CONFIG).forEach(key => {
+                const cfg = UPGRADE_CONFIG[key];
+                const curLvl = playerState.upgrades[key];
+                const isMax = curLvl >= cfg.maxLvl;
+                const cost = cfg.baseCost * (curLvl + 1);
+
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs';
+                item.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid ${cfg.icon} text-amber-400 w-4 text-center"></i>
+                        <div>
+                            <div class="font-bold text-slate-200">${cfg.title}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">Lv. ${curLvl} / ${cfg.maxLvl}</div>
+                        </div>
+                    </div>
+                    <button class="btn-upgrade px-3 py-1.5 rounded-lg font-bold text-xs font-mono transition ${
+                        isMax
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                            : (playerState.gold >= cost
+                                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
+                                : 'bg-slate-800 text-slate-500 border border-slate-700')
+                    }" data-key="${key}" ${isMax ? 'disabled' : ''}>
+                        ${isMax ? 'MAX' : cost + ' G'}
+                    </button>
+                `;
+
+                const btn = item.querySelector('.btn-upgrade');
+                if (!isMax) {
+                    btn.addEventListener('click', () => {
+                        if (playerState.gold >= cost) {
+                            playerState.gold -= cost;
+                            playerState.upgrades[key]++;
+                            renderHangar();
+                        }
+                    });
+                }
+
+                container.appendChild(item);
+            });
+        }
+
+        /* ==========================================================================
+           7. STAGE INITIALIZATION & BATTLE LOOP
+           ========================================================================== */
+
+        function initStage(stageId) {
+            gameState.currentStage = stageId;
+            gameState.isPaused = false;
+            gameState.isGameOver = false;
+            gameState.kills = 0;
+
+            const stage = STAGE_CONFIG[stageId];
+           
+            // Clean arrays
+            enemies = [];
+            bunkers = [];
+            bullets = [];
+            particles = [];
+            obstacles = [];
+            items = [];
+            airstrikes = [];
+            itemSpawnTimer = 0;
+
+            // Spawn Player
+            const tankData = TANK_DATABASE[playerState.currentNation].tanks[playerState.currentTankKey];
+            player = new Tank(stage.mapSize.w / 2, stage.mapSize.h / 2, tankData, true, playerState.currentNation);
+
+            // Spawn Obstacles
+            for (let i = 0; i < stage.obstaclesCount; i++) {
+                const ox = 100 + Math.random() * (stage.mapSize.w - 200);
+                const oy = 100 + Math.random() * (stage.mapSize.h - 200);
+                if (Math.hypot(ox - player.x, oy - player.y) > 250) {
+                    obstacles.push(new Obstacle(ox, oy, 60 + Math.random() * 40, 60 + Math.random() * 40, Math.random() > 0.4));
+                }
+            }
+
+            // Spawn Enemies
+            stage.enemies.forEach(group => {
+                if (group.type.startsWith('bunker')) {
+                    for (let i = 0; i < group.count; i++) {
+                        const bx = 150 + Math.random() * (stage.mapSize.w - 300);
+                        const by = 150 + Math.random() * (stage.mapSize.h - 300);
+                        if (Math.hypot(bx - player.x, by - player.y) > 350) {
+                            bunkers.push(new Bunker(bx, by, group.type));
+                        }
+                    }
+                } else if (group.type === 'boss') {
+                    const bossData = { name: "King Tiger (Super Boss)", classTitle: "보스 중전차", hp: 2400, atk: 260, speed: 1.4, reload: 2.2, color: "#1e293b", barrelLen: 42, size: 45 };
+                    enemies.push(new Tank(stage.mapSize.w - 300, stage.mapSize.h - 300, bossData, false, 'germany'));
+                } else {
+                    for (let i = 0; i < group.count; i++) {
+                        const ex = 100 + Math.random() * (stage.mapSize.w - 200);
+                        const ey = 100 + Math.random() * (stage.mapSize.h - 200);
+                        if (Math.hypot(ex - player.x, ey - player.y) > 400) {
+                            // Pick enemy tank spec
+                            const randNation = ['germany', 'ussr', 'usa'][Math.floor(Math.random() * 3)];
+                            const eTankData = TANK_DATABASE[randNation].tanks[group.type] || TANK_DATABASE.germany.tanks.medium;
+                            enemies.push(new Tank(ex, ey, eTankData, false, randNation));
+                        }
+                    }
+                }
+            });
+
+            // Initial Air support drop item
+            items.push(new PickupItem(player.x + 150, player.y + 150));
+
+            gameState.enemyTotal = enemies.length + bunkers.length;
+            gameState.enemyRemaining = gameState.enemyTotal;
+
+            // HUD update safely
+            document.getElementById('hud-tank-name').innerText = player.name;
+            document.getElementById('hud-stage-title').innerText = `STAGE ${stageId}: ${stage.name}`;
+           
+            const remEl = document.getElementById('hud-enemy-remaining');
+            const totEl = document.getElementById('hud-enemy-total');
+            if (remEl) remEl.innerText = gameState.enemyRemaining;
+            if (totEl) totEl.innerText = gameState.enemyTotal;
+
+            showScreen('screen-game');
+            lastTime = performance.now();
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function gameLoop(timestamp) {
+            const dt = Math.min(0.1, (timestamp - lastTime) / 1000);
+            lastTime = timestamp;
+
+            if (!gameState.isPaused && !gameState.isGameOver) {
+                // Update Logic
+                player.update(dt, null);
+
+                // Periodic Item Spawn
+                itemSpawnTimer += dt;
+                if (itemSpawnTimer > 18) {
+                    itemSpawnTimer = 0;
+                    const stage = STAGE_CONFIG[gameState.currentStage];
+                    items.push(new PickupItem(
+                        200 + Math.random() * (stage.mapSize.w - 400),
+                        200 + Math.random() * (stage.mapSize.h - 400)
+                    ));
+                }
+
+                // Update Items & Collision with player
+                items.forEach(item => {
+                    item.update(dt);
+                    if (item.active && Math.hypot(item.x - player.x, item.y - player.y) < player.size + item.size) {
+                        item.active = false;
+                        sfx.playItem();
+                        triggerAirstrike(player.x, player.y);
+                    }
+                });
+                items = items.filter(i => i.active);
+
+                // Update Airstrikes
+                airstrikes.forEach(a => a.update(dt));
+                airstrikes = airstrikes.filter(a => !a.finished);
+
+                // Update Enemies & Bunkers
+                enemies.forEach(e => e.update(dt, player));
+                bunkers.forEach(b => b.update(dt, player));
+
+                // Update Bullets
+                bullets.forEach(b => {
+                    b.update(dt);
+                    // Bullet - Player collision
+                    if (!b.isPlayer && Math.hypot(b.x - player.x, b.y - player.y) < player.size/2 + b.size) {
+                        player.hp -= b.damage;
+                        b.life = 0;
+                        sfx.playHit();
+                        particles.push(new Particle(b.x, b.y, '#ef4444', 4, 0, 0, 0.2));
+                    }
+                    // Bullet - Enemies collision
+                    if (b.isPlayer) {
+                        enemies.forEach(e => {
+                            if (e.hp > 0 && Math.hypot(b.x - e.x, b.y - e.y) < e.size/2 + b.size) {
+                                e.hp -= b.damage;
+                                b.life = 0;
+                                sfx.playHit();
+                                particles.push(new Particle(b.x, b.y, '#f59e0b', 4, 0, 0, 0.2));
+                                if (e.hp <= 0) {
+                                    gameState.kills++;
+                                    createExplosion(e.x, e.y);
+                                    sfx.playExplosion();
+                                }
+                            }
+                        });
+                        bunkers.forEach(bk => {
+                            if (bk.hp > 0 && Math.hypot(b.x - bk.x, b.y - bk.y) < bk.size + b.size) {
+                                bk.hp -= b.damage;
+                                b.life = 0;
+                                sfx.playHit();
+                                particles.push(new Particle(b.x, b.y, '#f59e0b', 4, 0, 0, 0.2));
+                                if (bk.hp <= 0) {
+                                    gameState.kills++;
+                                    createExplosion(bk.x, bk.y);
+                                    sfx.playExplosion();
+                                }
+                            }
+                        });
+                    }
+
+                    // Bullet - Obstacle collision
+                    if (checkObstacleCollision(b.x, b.y, b.size)) {
+                        b.life = 0;
+                        particles.push(new Particle(b.x, b.y, '#94a3b8', 3, 0, 0, 0.15));
+                    }
+                });
+
+                // Filter dead entities
+                enemies = enemies.filter(e => e.hp > 0);
+                bunkers = bunkers.filter(b => b.hp > 0);
+                bullets = bullets.filter(b => b.life > 0);
+
+                // Update particles
+                particles.forEach(p => p.update(dt));
+                particles = particles.filter(p => p.life > 0);
+
+                // Update Enemy counts & HUD
+                gameState.enemyRemaining = enemies.length + bunkers.length;
+                const remEl = document.getElementById('hud-enemy-remaining');
+                if (remEl) remEl.innerText = gameState.enemyRemaining;
+
+                // Update Player HP & Reload UI
+                const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+                document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
+                document.getElementById('hud-hp-text').innerText = `${Math.max(0, Math.round(player.hp))} / ${player.maxHp}`;
+               
+                const reloadStatusEl = document.getElementById('hud-reload-status');
+                if (player.reloadTimer > 0) {
+                    reloadStatusEl.innerText = `장전 중 (${player.reloadTimer.toFixed(1)}s)`;
+                    reloadStatusEl.className = 'text-amber-500 font-bold';
+                } else {
+                    reloadStatusEl.innerText = '장전 완료 (READY)';
+                    reloadStatusEl.className = 'text-green-400 font-bold';
+                }
+
+                // Check Victory / Defeat
+                if (player.hp <= 0) {
+                    endBattle(false);
+                } else if (gameState.enemyRemaining === 0) {
+                    endBattle(true);
+                }
+            }
+
+            // RENDER PHASE
+            renderBattle();
+
+            if (gameState.activeScreen === 'game' && !gameState.isGameOver) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function renderBattle() {
+            const stage = STAGE_CONFIG[gameState.currentStage];
+            const camX = player.x - canvas.width / 2;
+            const camY = player.y - canvas.height / 2;
+
+            // Background
+            ctx.fillStyle = stage.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Grid Lines
+            ctx.strokeStyle = stage.accentColor;
+            ctx.lineWidth = 1;
+            const gridSize = 100;
+            const startX = -camX % gridSize;
+            const startY = -camY % gridSize;
+            for (let x = startX; x < canvas.width; x += gridSize) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = startY; y < canvas.height; y += gridSize) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // Draw Entities
+            obstacles.forEach(o => o.draw(ctx, camX, camY));
+            items.forEach(i => i.draw(ctx, camX, camY));
+            bunkers.forEach(b => b.draw(ctx, camX, camY));
+            enemies.forEach(e => e.draw(ctx, camX, camY));
+            if (player.hp > 0) player.draw(ctx, camX, camY);
+            bullets.forEach(b => b.draw(ctx, camX, camY));
+            particles.forEach(p => p.draw(ctx, camX, camY));
+            airstrikes.forEach(a => a.draw(ctx, camX, camY));
+
+            // Render Radar Minimap
+            renderMinimap(stage);
+        }
+
+        function renderMinimap(stage) {
+            const mw = minimapCanvas.width;
+            const mh = minimapCanvas.height;
+            mctx.clearRect(0, 0, mw, mh);
+
+            const scaleX = mw / stage.mapSize.w;
+            const scaleY = mh / stage.mapSize.h;
+
+            // Player dot
+            mctx.fillStyle = '#22c55e';
+            mctx.beginPath();
+            mctx.arc(player.x * scaleX, player.y * scaleY, 3, 0, Math.PI * 2);
+            mctx.fill();
+
+            // Enemies red dots
+            mctx.fillStyle = '#ef4444';
+            enemies.forEach(e => {
+                mctx.beginPath();
+                mctx.arc(e.x * scaleX, e.y * scaleY, 2.5, 0, Math.PI * 2);
+                mctx.fill();
+            });
+
+            // Bunkers orange dots
+            mctx.fillStyle = '#f97316';
+            bunkers.forEach(b => {
+                mctx.fillRect(b.x * scaleX - 2, b.y * scaleY - 2, 4, 4);
+            });
+        }
+
+        function endBattle(isVictory) {
+            gameState.isGameOver = true;
+            const stage = STAGE_CONFIG[gameState.currentStage];
+            const reward = isVictory ? stage.reward : Math.round(stage.reward * 0.3);
+
+            playerState.gold += reward;
+            updateGlobalGoldUI();
+
+            document.getElementById('result-badge').innerText = isVictory ? '' : '';
+            document.getElementById('result-title').innerText = isVictory ? '작전 성공!' : '전차 파괴됨!';
+            document.getElementById('result-desc').innerText = isVictory ? '적 구역을 완벽히 소탕하였습니다.' : '전투 중 적의 포화에 전차가 파괴되었습니다.';
+            document.getElementById('result-kills').innerText = `${gameState.kills}대`;
+            document.getElementById('result-gold').innerText = `+${reward.toLocaleString()} G`;
+
+            document.getElementById('modal-result').classList.remove('hidden');
+        }
+
+        /* ==========================================================================
+           8. EVENT LISTENERS & INITIALIZATION
+           ========================================================================== */
+
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            sfx.init();
+        });
+        window.addEventListener('keyup', e => { keys[e.code] = false; });
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        window.addEventListener('mousedown', e => {
+            if (e.button === 0) isMouseDown = true;
+            sfx.init();
+        });
+        window.addEventListener('mouseup', e => {
+            if (e.button === 0) isMouseDown = false;
+        });
+        window.addEventListener('resize', resizeCanvas);
+
+        // UI Click Handlers
+        document.getElementById('btn-start-game').addEventListener('click', () => {
+            sfx.init();
+            renderHangar();
+            showScreen('screen-hangar');
+        });
+
+        document.getElementById('btn-open-controls').addEventListener('click', () => {
+            document.getElementById('modal-controls').classList.remove('hidden');
+        });
+        document.getElementById('btn-close-controls').addEventListener('click', () => {
+            document.getElementById('modal-controls').classList.add('hidden');
+        });
+
+        document.getElementById('btn-back-to-menu').addEventListener('click', () => {
+            showScreen('screen-main-menu');
+        });
+        document.getElementById('btn-go-stage-select').addEventListener('click', () => {
+            showScreen('screen-stage-select');
+        });
+        document.getElementById('btn-back-to-hangar').addEventListener('click', () => {
+            showScreen('screen-hangar');
+        });
+
+        // Nation Selection Tabs
+        document.querySelectorAll('#nation-tabs button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('#nation-tabs button').forEach(b => b.classList.remove('active'));
+                const target = e.currentTarget;
+                target.classList.add('active');
+                playerState.currentNation = target.getAttribute('data-nation');
+                renderHangar();
+            });
+        });
+
+        // Stage Selection Cards
+        let selectedStageId = 1;
+        document.querySelectorAll('.stage-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                document.querySelectorAll('.stage-card').forEach(c => c.classList.remove('border-amber-400', 'border-2'));
+                const target = e.currentTarget;
+                target.classList.add('border-amber-400', 'border-2');
+                selectedStageId = parseInt(target.getAttribute('data-stage'));
+            });
+        });
+
+        document.getElementById('btn-launch-battle').addEventListener('click', () => {
+            gameState.activeScreen = 'game';
+            initStage(selectedStageId);
+        });
+
+        // Pause & Abandon Handlers
+        document.getElementById('btn-pause-game').addEventListener('click', () => {
+            gameState.isPaused = true;
+            document.getElementById('modal-pause').classList.remove('hidden');
+        });
+        document.getElementById('btn-resume-game').addEventListener('click', () => {
+            gameState.isPaused = false;
+            document.getElementById('modal-pause').classList.add('hidden');
+        });
+        document.getElementById('btn-abandon-game').addEventListener('click', () => {
+            gameState.isPaused = false;
+            document.getElementById('modal-pause').classList.add('hidden');
+            renderHangar();
+            showScreen('screen-hangar');
+        });
+        document.getElementById('btn-result-hangar').addEventListener('click', () => {
+            document.getElementById('modal-result').classList.add('hidden');
+            renderHangar();
+            showScreen('screen-hangar');
+        });
+
+        // Audio Toggle Button
+        document.getElementById('btn-audio-toggle').addEventListener('click', () => {
+            sfx.muted = !sfx.muted;
+            const icon = document.getElementById('audio-icon');
+            icon.className = sfx.muted ? 'fa-solid fa-volume-xmark text-red-400' : 'fa-solid fa-volume-high text-slate-300';
+        });
+
+        // Code Copy Button
+        document.getElementById('btn-copy-code').addEventListener('click', () => {
+            const fullHtml = document.documentElement.outerHTML;
+            const textarea = document.createElement('textarea');
+            textarea.value = fullHtml;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('전체 소스 코드가 클립보드에 복사되었습니다!');
+        });
+
+        // Initialize Hangar and UI on load
+        window.addEventListener('load', () => {
+            updateGlobalGoldUI();
+            renderHangar();
+        });
+    </script>
+</body>
+</html> 

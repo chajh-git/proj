@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>부캉이를 탈출시켜라!</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#111827;color:white;
+  font-family:Arial,sans-serif;text-align:center;
+}
+h1{color:#facc15;margin:18px 0 8px}
+.panel{margin:10px auto;max-width:850px;padding:10px}
+.controls{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+button,select{
+  padding:10px 15px;border:0;border-radius:8px;
+  background:#334155;color:white;font-size:15px;cursor:pointer
+}
+button:hover{background:#475569}
+#game{
+  width:min(96vw,800px);height:auto;aspect-ratio:8/5;
+  background:#20352e;border:3px solid #64748b;
+  border-radius:10px;display:block;margin:auto;
+}
+.hud{
+  display:flex;justify-content:center;gap:18px;flex-wrap:wrap;
+  margin:12px;font-size:16px
+}
+#healthOuter{width:150px;height:16px;background:#7f1d1d;
+  border-radius:10px;overflow:hidden;display:inline-block;vertical-align:middle}
+#health{height:100%;width:100%;background:#4ade80;transition:width .15s}
+#message{min-height:26px;color:#fde68a;font-weight:bold}
+small{color:#cbd5e1;line-height:1.8}
+</style>
+</head>
+<body>
+<h1>🐾 부캉이를 탈출시켜라!</h1>
+
+<div class="panel">
+  <div class="controls">
+    <label>난이도
+      <select id="difficulty">
+        <option value="easy">쉬움</option>
+        <option value="normal" selected>보통</option>
+        <option value="hard">어려움</option>
+      </select>
+    </label>
+    <button id="start">게임 시작 / 재시작</button>
+  </div>
+  <div class="hud">
+    <span>❤️ 체력 <span id="hpText">100</span>
+      <span id="healthOuter"><span id="health"></span></span>
+    </span>
+    <span>🥤 회복: <span id="heals">0</span></span>
+    <span>⏱️ 생존: <span id="time">0</span>초</span>
+  </div>
+  <canvas id="game" width="800" height="500"></canvas>
+  <p id="message">게임 시작을 누르고 WASD로 부캉이를 움직이세요!</p>
+  <small>
+    이동: W A S D 또는 방향키 · 장애물을 피해 출구 🟩로 이동<br>
+    🍗 생닭에 맞으면 피해 · ☕ 커피를 먹으면 체력 회복<br>
+    적의 공격을 피하고 오른쪽 아래 출구로 탈출하세요.
+  </small>
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+
+const W=800,H=500;
+const keys={};
+let player, enemies, projectiles, obstacles;
+let running=false, ended=false, last=0, elapsed=0;
+let heals=0, spawnTimer=0, coffeeTimer=0;
+let difficulty="normal", chickenDamage=12, enemySpeed=85;
+let invincible=0, frame=0;
+
+const maps=[
+  {x:170,y:65,w:100,h:120},
+  {x:350,y:0,w:55,h:145},
+  {x:330,y:245,w:150,h:55},
+  {x:550,y:105,w:75,h:145},
+  {x:570,y:335,w:100,h:45},
+  {x:100,y:350,w:125,h:55},
+  {x:245,y:410,w:60,h:55}
+];
+
+function reset(){
+  difficulty=$("difficulty").value;
+  chickenDamage={easy:5,normal:12,hard:22}[difficulty];
+  enemySpeed={easy:60,normal:85,hard:115}[difficulty];
+
+  player={x:45,y:45,r:14,hp:100,speed:220};
+  enemies=[
+    {x:390,y:190,type:"chicken",name:"생닭 투척자",cd:1.1},
+    {x:670,y:60,type:"chicken",name:"생닭 투척자",cd:2},
+    {x:690,y:290,type:"coffee",name:"커피집 사장",cd:1.5}
+  ];
+  projectiles=[];
+  obstacles=maps.map(o=>({...o}));
+  elapsed=0;heals=0;spawnTimer=0;coffeeTimer=0;
+  invincible=0;frame=0;last=0;
+  running=true;ended=false;
+  $("message").textContent="생닭 투척자를 피하고 커피를 먹으며 출구로 가세요!";
+  updateHUD();
+  draw();
+}
+
+function updateHUD(){
+  $("hpText").textContent=Math.ceil(player.hp);
+  $("health").style.width=Math.max(0,player.hp)+"%";
+  $("heals").textContent=heals;
+  $("time").textContent=Math.floor(elapsed);
+}
+
+function circleRect(x,y,r,o){
+  const cx=Math.max(o.x,Math.min(x,o.x+o.w));
+  const cy=Math.max(o.y,Math.min(y,o.y+o.h));
+  return (x-cx)**2+(y-cy)**2<r*r;
+}
+
+function blocked(x,y,r){
+  if(x-r<0||y-r<0||x+r>W||y+r>H)return true;
+  return obstacles.some(o=>circleRect(x,y,r,o));
+}
+
+function movePlayer(dx,dy,dt){
+  const distance=Math.hypot(dx,dy);
+  if(distance>0){dx/=distance;dy/=distance;}
+  const nx=player.x+dx*player.speed*dt;
+  const ny=player.y+dy*player.speed*dt;
+
+  if(!blocked(nx,player.y,player.r))player.x=nx;
+  if(!blocked(player.x,ny,player.r))player.y=ny;
+}
+
+function throwItem(enemy){
+  const dx=player.x-enemy.x,dy=player.y-enemy.y;
+  const d=Math.hypot(dx,dy)||1;
+  projectiles.push({
+    x:enemy.x,y:enemy.y,
+    vx:dx/d*(enemy.type==="coffee"?250:enemySpeed*2.1),
+    vy:dy/d*(enemy.type==="coffee"?250:enemySpeed*2.1),
+    type:enemy.type,r:enemy.type==="coffee"?10:9,
+    life:4
+  });
+}
+
+function finish(won){
+  running=false;ended=true;
+  $("message").textContent=won
+    ?"🎉 탈출 성공! 부캉이가 안전하게 탈출했어요!"
+    :"💀 게임 오버! 생닭 공격에 쓰러졌어요. 다시 도전하세요!";
+  draw();
+}
+
+function update(dt){
+  if(!running)return;
+  elapsed+=dt;frame+=dt;
+  invincible=Math.max(0,invincible-dt);
+
+  let dx=0,dy=0;
+  if(keys.w||keys.arrowup)dy--;
+  if(keys.s||keys.arrowdown)dy++;
+  if(keys.a||keys.arrowleft)dx--;
+  if(keys.d||keys.arrowright)dx++;
+  movePlayer(dx,dy,dt);
+
+  for(const e of enemies){
+    e.cd-=dt;
+    if(e.cd<=0){
+      throwItem(e);
+      e.cd=e.type==="coffee"?1.7:Math.max(.65,2.4-(difficulty==="hard"?.8:0));
+    }
+  }
+
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+
+    const outside=p.x<0||p.y<0||p.x>W||p.y>H;
+    const hitWall=obstacles.some(o=>circleRect(p.x,p.y,p.r,o));
+    if(p.life<=0||outside||hitWall){
+      projectiles.splice(i,1);continue;
+    }
+
+    if(Math.hypot(p.x-player.x,p.y-player.y)<p.r+player.r){
+      if(p.type==="coffee"){
+        if(player.hp<100){
+          player.hp=Math.min(100,player.hp+25);
+          heals++;
+          $("message").textContent="☕ 커피를 먹었어요! 체력 +25";
+        }else{
+          $("message").textContent="☕ 체력이 가득 차 있어요!";
+        }
+      }else{
+        if(invincible<=0){
+          player.hp-=chickenDamage;
+          invincible=.65;
+          $("message").textContent=
+            `🍗 생닭에 맞았어요! 체력 -${chickenDamage}`;
+          if(player.hp<=0){player.hp=0;updateHUD();finish(false);return;}
+        }
+      }
+      projectiles.splice(i,1);
+    }
+  }
+
+  // 출구 도착
+  if(player.x>W-48&&player.y>H-65){
+    finish(true);return;
+  }
+
+  // 적이 부캉이에게 너무 가까워도 위험
+  for(const e of enemies){
+    const d=Math.hypot(player.x-e.x,player.y-e.y);
+    if(d<player.r+14&&invincible<=0){
+      player.hp-=chickenDamage;
+      invincible=.65;
+      if(player.hp<=0){player.hp=0;updateHUD();finish(false);return;}
+    }
+  }
+
+  updateHUD();
+}
+
+function roundedRect(x,y,w,h,r,color){
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.roundRect(x,y,w,h,r);ctx.fill();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#20352e";ctx.fillRect(0,0,W,H);
+
+  // 바닥 타일
+  ctx.strokeStyle="#ffffff0a";ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){
+    for(let y=0;y<H;y+=40)ctx.strokeRect(x,y,40,40);
+  }
+
+  // 장애물
+  for(const o of obstacles){
+    roundedRect(o.x,o.y,o.w,o.h,6,"#64748b");
+    ctx.strokeStyle="#94a3b8";ctx.strokeRect(o.x+4,o.y+4,o.w-8,o.h-8);
+    ctx.fillStyle="#334155";ctx.fillRect(o.x+8,o.y+8,Math.max(0,o.w-16),5);
+  }
+
+  // 출구
+  roundedRect(W-55,H-68,43,56,7,"#16a34a");
+  ctx.fillStyle="white";ctx.font="25px Arial";
+  ctx.fillText("🚪",W-52,H-31);
+  ctx.fillStyle="#bbf7d0";ctx.font="12px Arial";
+  ctx.fillText("출구",W-50,H-8);
+
+  // 적
+  for(const e of enemies){
+    ctx.fillStyle=e.type==="coffee"?"#fbbf24":"#fb7185";
+    ctx.beginPath();ctx.arc(e.x,e.y,17,0,Math.PI*2);ctx.fill();
+    ctx.font="23px Arial";ctx.textAlign="center";
+    ctx.fillText(e.type==="coffee"?"☕":"🍗",e.x,e.y+8);
+    ctx.font="11px Arial";ctx.fillStyle="white";
+    ctx.fillText(e.name,e.x,e.y-24);
+  }
+
+  // 투사체
+  for(const p of projectiles){
+    ctx.font="22px Arial";ctx.textAlign="center";
+    ctx.fillText(p.type==="coffee"?"☕":"🍗",p.x,p.y+7);
+  }
+
+  // 부캉이
+  ctx.globalAlpha=invincible>0&&Math.floor(frame*16)%2===0?.35:1;
+  ctx.font="30px Arial";ctx.textAlign="center";
+  ctx.fillText("🐾",player.x,player.y+10);
+  ctx.globalAlpha=1;
+
+  // 시작/종료 안내
+  if(!running){
+    ctx.fillStyle="#0009";ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="white";ctx.textAlign="center";
+    ctx.font="bold 32px Arial";
+    ctx.fillText(ended?"게임 종료":"준비 완료",W/2,H/2-10);
+    ctx.font="18px Arial";
+    ctx.fillText(ended?"재시작 버튼을 눌러 다시 도전하세요":"게임 시작 버튼을 누르세요",W/2,H/2+28);
+  }
+}
+
+function loop(timestamp){
+  if(!last)last=timestamp;
+  const dt=Math.min((timestamp-last)/1000,.04);
+  last=timestamp;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+  if(["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){
+    e.preventDefault();keys[k]=true;
+  }
+});
+window.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false;});
+window.addEventListener("blur",()=>{Object.keys(keys).forEach(k=>keys[k]=false);});
+$("start").addEventListener("click",reset);
+$("difficulty").addEventListener("change",()=>{
+  if(!running)draw();
+});
+
+reset();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

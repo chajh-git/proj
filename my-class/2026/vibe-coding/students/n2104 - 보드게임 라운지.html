@@ -1,0 +1,2103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>보드게임 라운지 (Board Game Lounge)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans KR"', '"Outfit"', 'sans-serif'],
+          },
+          colors: {
+            lounge: {
+              bg: '#121016',
+              card: '#1d1926',
+              accent: '#d97706',
+              felt: '#0f382c',
+              wood: '#3a2115',
+              panel: 'rgba(30, 25, 40, 0.85)',
+            }
+          },
+          animation: {
+            'bounce-short': 'bounce 0.4s ease-in-out 1',
+            'ring-bell': 'ring 0.3s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            ring: {
+              '0%': { transform: 'rotate(-12deg) scale(1.05)' },
+              '100%': { transform: 'rotate(12deg) scale(1.05)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbars & Utilities */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+    ::-webkit-scrollbar-thumb { background: rgba(217, 119, 6, 0.5); border-radius: 4px; }
+    
+    .wood-texture {
+      background-color: #3a2115;
+      background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 0);
+      background-size: 16px 16px;
+    }
+    .felt-texture {
+      background-color: #0b2e23;
+      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0);
+      background-size: 12px 12px;
+    }
+
+    .tile-shadow {
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    .stone-shadow {
+      box-shadow: 2px 4px 6px rgba(0,0,0,0.6), inset -2px -2px 4px rgba(0,0,0,0.4);
+    }
+
+    .card-flip-anim {
+      animation: flipCard 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes flipCard {
+      0% { transform: rotateY(90deg) scale(0.9); opacity: 0; }
+      100% { transform: rotateY(0deg) scale(1); opacity: 1; }
+    }
+
+    /* Dragging Tile Floating Shadow */
+    .tile-dragging {
+      position: fixed !important;
+      z-index: 9999 !important;
+      pointer-events: none !important;
+      transform: scale(1.1) rotate(2deg) !important;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.5) !important;
+      opacity: 0.95;
+    }
+
+    .drop-zone-highlight {
+      outline: 2px dashed #f59e0b !important;
+      background-color: rgba(245, 158, 11, 0.2) !important;
+    }
+
+    * { user-select: none; -webkit-user-select: none; }
+  </style>
+</head>
+<body class="bg-lounge-bg text-gray-100 min-h-screen flex flex-col font-sans overflow-x-hidden">
+
+  <!-- Sound Synthesizer Engine (Web Audio API) -->
+  <script>
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.volume = 0.5;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playFlip() { // 카드 뒤집기 '슉'
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(70, now + 0.08);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1200, now);
+
+        gain.gain.setValueAtTime(0.3 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playDrop() { // 오목 돌/카드 놓기 '톡'
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(550, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.05);
+
+        gain.gain.setValueAtTime(0.5 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+
+      playTile() { // 타일 '딱'
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(1300, now);
+        osc.frequency.exponentialRampToValueAtTime(350, now + 0.035);
+
+        gain.gain.setValueAtTime(0.35 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.035);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.035);
+      }
+
+      playBell() { // 할리갈리 종 소리 '딸랑!'
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        
+        [1567.98, 2093.00, 3135.96].forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime((0.4 - idx * 0.1) * this.volume, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 1.1);
+        });
+      }
+
+      playClick() { // UI 클릭 소리
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(750, now);
+        gain.gain.setValueAtTime(0.15 * this.volume, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.04);
+      }
+
+      playWin() {
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, index) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + index * 0.1);
+
+          gain.gain.setValueAtTime(0.3 * this.volume, now + index * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.1 + 0.4);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now + index * 0.1);
+          osc.stop(now + index * 0.1 + 0.4);
+        });
+      }
+
+      playLose() {
+        if (this.muted) return;
+        this.init();
+        const now = this.ctx.currentTime;
+        const notes = [400, 350, 300, 250];
+        notes.forEach((freq, index) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, now + index * 0.15);
+
+          gain.gain.setValueAtTime(0.2 * this.volume, now + index * 0.15);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + index * 0.15 + 0.3);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now + index * 0.15);
+          osc.stop(now + index * 0.15 + 0.3);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+  </script>
+
+  <!-- SVG Fruit Vector Assets Generator -->
+  <script>
+    const SVGFruits = {
+      strawberry: `
+        <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow">
+          <path d="M32 12 C18 12, 10 24, 14 44 C18 58, 30 62, 32 62 C34 62, 46 58, 50 44 C54 24, 46 12, 32 12 Z" fill="#e63946"/>
+          <path d="M32 14 C28 4, 18 6, 16 12 C24 14, 28 20, 32 14 Z" fill="#2d6a4f"/>
+          <path d="M32 14 C36 4, 46 6, 48 12 C40 14, 36 20, 32 14 Z" fill="#2d6a4f"/>
+          <circle cx="24" cy="28" r="1.5" fill="#fef08a"/>
+          <circle cx="40" cy="28" r="1.5" fill="#fef08a"/>
+          <circle cx="32" cy="38" r="1.5" fill="#fef08a"/>
+          <circle cx="22" cy="44" r="1.5" fill="#fef08a"/>
+          <circle cx="42" cy="44" r="1.5" fill="#fef08a"/>
+          <circle cx="32" cy="52" r="1.5" fill="#fef08a"/>
+        </svg>`,
+      banana: `
+        <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow">
+          <path d="M10 46 C20 58, 44 58, 54 36 C58 26, 56 12, 54 8 C52 12, 48 24, 40 34 C30 44, 18 46, 10 46 Z" fill="#ffb703"/>
+          <path d="M54 8 C56 6, 58 6, 60 8 C58 10, 56 10, 54 8 Z" fill="#854d0e"/>
+          <path d="M10 46 C8 46, 6 48, 6 50 C8 52, 10 50, 10 46 Z" fill="#854d0e"/>
+        </svg>`,
+      lime: `
+        <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow">
+          <ellipse cx="32" cy="32" rx="24" ry="20" fill="#52b788"/>
+          <path d="M12 32 C12 20, 52 20, 52 32 C52 44, 12 44, 12 32 Z" fill="#2a9d8f" opacity="0.4"/>
+          <path d="M8 32 Q 4 32, 6 28 Q 10 32, 8 32 Z" fill="#1b4332"/>
+          <path d="M56 32 Q 60 32, 58 36 Q 54 32, 56 32 Z" fill="#1b4332"/>
+        </svg>`,
+      plum: `
+        <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow">
+          <circle cx="32" cy="36" r="22" fill="#9d0208"/>
+          <path d="M32 14 C28 24, 30 46, 32 58" stroke="#590d22" stroke-width="3" fill="none" opacity="0.6"/>
+          <path d="M32 14 C34 6, 42 8, 44 14 Z" fill="#2d6a4f"/>
+        </svg>`
+    };
+  </script>
+
+  <!-- Navigation Header -->
+  <header class="bg-lounge-card/90 backdrop-blur border-b border-amber-900/30 px-4 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showLounge()">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white shadow-md font-bold text-xl">
+        <i class="fa-solid fa-dice text-amber-200"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-extrabold tracking-wider bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 bg-clip-text text-transparent">
+          보드게임 라운지
+        </h1>
+        <p class="text-xs text-amber-500/80 font-medium">1v1 AI Premium Lounge</p>
+      </div>
+    </div>
+
+    <!-- Right Menu Options -->
+    <div class="flex items-center space-x-2 sm:space-x-4">
+      <button onclick="app.toggleSound()" id="sound-btn" class="p-2.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-amber-400 transition-all border border-gray-700">
+        <i class="fa-solid fa-volume-high text-lg"></i>
+      </button>
+
+      <button onclick="app.openStatsModal()" class="px-3 py-2 rounded-lg bg-amber-900/40 hover:bg-amber-900/60 text-amber-200 text-sm font-semibold transition-all border border-amber-700/50 flex items-center gap-2">
+        <i class="fa-solid fa-trophy text-amber-400"></i>
+        <span class="hidden sm:inline">전적 기록</span>
+      </button>
+
+      <button onclick="app.showLounge()" id="back-to-lounge-btn" class="hidden px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-semibold transition-all border border-gray-700 flex items-center gap-1.5">
+        <i class="fa-solid fa-house"></i>
+        <span>로비로</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main id="main-container" class="flex-1 flex flex-col justify-center items-center p-2 sm:p-4 md:p-6 max-w-6xl mx-auto w-full">
+    <!-- View rendered via JS -->
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900/95 border border-amber-500/50 text-amber-100 px-6 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none flex items-center space-x-3 backdrop-blur-md">
+    <i id="toast-icon" class="fa-solid fa-circle-info text-amber-400 text-lg"></i>
+    <span id="toast-msg" class="text-sm font-semibold"></span>
+  </div>
+
+  <!-- Global Modal Window -->
+  <div id="modal-overlay" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-content" class="bg-lounge-card border border-amber-800/40 rounded-2xl p-6 max-w-md w-full shadow-2xl relative text-gray-200">
+    </div>
+  </div>
+
+  <!-- System Controller & Stats Manager -->
+  <script>
+    const StatsManager = {
+      get() {
+        return JSON.parse(localStorage.getItem('bg_lounge_stats') || '{"halligalli":{"w":0,"l":0},"omok":{"w":0,"l":0},"rummikub":{"w":0,"l":0}}');
+      },
+      addWin(game) {
+        const stats = this.get();
+        if (stats[game]) stats[game].w += 1;
+        localStorage.setItem('bg_lounge_stats', JSON.stringify(stats));
+      },
+      addLoss(game) {
+        const stats = this.get();
+        if (stats[game]) stats[game].l += 1;
+        localStorage.setItem('bg_lounge_stats', JSON.stringify(stats));
+      }
+    };
+
+    class BoardGameLounge {
+      constructor() {
+        this.currentView = 'lounge';
+        this.activeGame = null;
+        this.difficulty = 'medium';
+      }
+
+      init() {
+        this.showLounge();
+      }
+
+      toast(msg, icon = 'fa-circle-info') {
+        const toastEl = document.getElementById('toast');
+        const msgEl = document.getElementById('toast-msg');
+        const iconEl = document.getElementById('toast-icon');
+
+        msgEl.textContent = msg;
+        iconEl.className = `fa-solid ${icon} text-amber-400 text-lg`;
+
+        toastEl.classList.remove('opacity-0', 'pointer-events-none');
+        toastEl.classList.add('opacity-100');
+
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => {
+          toastEl.classList.remove('opacity-100');
+          toastEl.classList.add('opacity-0', 'pointer-events-none');
+        }, 2800);
+      }
+
+      toggleSound() {
+        sound.muted = !sound.muted;
+        const btn = document.getElementById('sound-btn');
+        if (sound.muted) {
+          btn.innerHTML = `<i class="fa-solid fa-volume-xmark text-lg text-red-400"></i>`;
+          this.toast('소리가 음소거 되었습니다.');
+        } else {
+          btn.innerHTML = `<i class="fa-solid fa-volume-high text-lg text-amber-400"></i>`;
+          sound.playClick();
+          this.toast('소리가 켜졌습니다.');
+        }
+      }
+
+      showLounge() {
+        this.currentView = 'lounge';
+        if (this.activeGame && this.activeGame.cleanup) {
+          this.activeGame.cleanup();
+        }
+        this.activeGame = null;
+        document.getElementById('back-to-lounge-btn').classList.add('hidden');
+        
+        const container = document.getElementById('main-container');
+        container.innerHTML = `
+          <div class="w-full max-w-4xl space-y-8 py-4">
+            <div class="text-center space-y-3 bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-amber-950/40 p-8 rounded-3xl border border-amber-800/30 shadow-2xl">
+              <span class="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-bold rounded-full border border-amber-500/20 uppercase tracking-widest">
+                AI Match Lounge
+              </span>
+              <h2 class="text-3xl sm:text-4xl font-black text-amber-100 tracking-tight">
+                원하는 보드게임을 선택하세요
+              </h2>
+              <p class="text-gray-400 text-sm max-w-xl mx-auto">
+                규칙에 정통한 인공지능 상대와 1대1 대결을 펼치세요. 합리적인 AI 전략과 몰입감 넘치는 사운드를 경험할 수 있습니다.
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              <!-- Halli Galli -->
+              <div class="bg-lounge-card rounded-2xl border border-red-900/40 overflow-hidden hover:border-red-500/50 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between group">
+                <div class="p-6 space-y-4">
+                  <div class="w-14 h-14 rounded-2xl bg-red-900/40 border border-red-500/30 flex items-center justify-center text-red-400 text-2xl group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-bell"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold text-red-200">할리갈리</h3>
+                    <p class="text-xs text-red-400/80 font-medium">선명한 과일 SVG & 300ms AI 종치기</p>
+                  </div>
+                  <p class="text-xs text-gray-400 leading-relaxed">
+                    테이블 위 같은 과일이 5개가 되면 즉시 종을 누르세요! AI는 정확히 5개일 때 300ms 후에 반응합니다.
+                  </p>
+                </div>
+                <div class="p-6 pt-0">
+                  <button onclick="app.selectDifficulty('halligalli')" class="w-full py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play text-xs"></i> 게임 시작
+                  </button>
+                </div>
+              </div>
+
+              <!-- Omok -->
+              <div class="bg-lounge-card rounded-2xl border border-amber-900/40 overflow-hidden hover:border-amber-500/50 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between group">
+                <div class="p-6 space-y-4">
+                  <div class="w-14 h-14 rounded-2xl bg-amber-900/40 border border-amber-500/30 flex items-center justify-center text-amber-400 text-2xl group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-chess-board"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold text-amber-200">오목 (15x15)</h3>
+                    <p class="text-xs text-amber-400/80 font-medium">전략적 수읽기 AI</p>
+                  </div>
+                  <p class="text-xs text-gray-400 leading-relaxed">
+                    15×15 바둑판에서 연속 5개의 돌을 먼저 연결하세요. 공격과 방어 흐름을 판단하는 AI와 맞붙습니다.
+                  </p>
+                </div>
+                <div class="p-6 pt-0">
+                  <button onclick="app.selectDifficulty('omok')" class="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play text-xs"></i> 게임 시작
+                  </button>
+                </div>
+              </div>
+
+              <!-- Rummikub -->
+              <div class="bg-lounge-card rounded-2xl border border-blue-900/40 overflow-hidden hover:border-blue-500/50 transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between group">
+                <div class="p-6 space-y-4">
+                  <div class="w-14 h-14 rounded-2xl bg-blue-900/40 border border-blue-500/30 flex items-center justify-center text-blue-400 text-2xl group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-cubes"></i>
+                  </div>
+                  <div>
+                    <h3 class="text-xl font-bold text-blue-200">루미큐브</h3>
+                    <p class="text-xs text-blue-400/80 font-medium">드래그&드롭 / 3장 조합 등록</p>
+                  </div>
+                  <p class="text-xs text-gray-400 leading-relaxed">
+                    타일을 마우스 드래그로 자유롭게 이동하세요! 유효한 3장 조합을 선택해 쉽게 등록할 수 있습니다.
+                  </p>
+                </div>
+                <div class="p-6 pt-0">
+                  <button onclick="app.selectDifficulty('rummikub')" class="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play text-xs"></i> 게임 시작
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        `;
+      }
+
+      selectDifficulty(gameKey) {
+        sound.playClick();
+        const modal = document.getElementById('modal-overlay');
+        const content = document.getElementById('modal-content');
+        const gameNames = { halligalli: '할리갈리', omok: '오목', rummikub: '루미큐브' };
+
+        content.innerHTML = `
+          <div class="space-y-6">
+            <div class="flex items-center justify-between border-b border-gray-700 pb-3">
+              <h3 class="text-lg font-bold text-amber-300">${gameNames[gameKey]} - 난이도 선택</h3>
+              <button onclick="app.closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <p class="text-xs text-gray-300">상대할 컴퓨터 플레이어의 AI 난이도를 결정하세요.</p>
+
+            <div class="space-y-3">
+              <button onclick="app.startGame('${gameKey}', 'easy')" class="w-full p-4 rounded-xl bg-gray-800 hover:bg-emerald-950/60 border border-emerald-700/40 hover:border-emerald-500 text-left transition-all group flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-emerald-400 text-sm">초보 (Easy)</div>
+                  <div class="text-xs text-gray-400">여유로운 대응 / 기본 수읽기</div>
+                </div>
+                <i class="fa-solid fa-seedling text-emerald-400 group-hover:scale-125 transition-transform"></i>
+              </button>
+
+              <button onclick="app.startGame('${gameKey}', 'medium')" class="w-full p-4 rounded-xl bg-gray-800 hover:bg-amber-950/60 border border-amber-700/40 hover:border-amber-500 text-left transition-all group flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-amber-400 text-sm">보통 (Medium)</div>
+                  <div class="text-xs text-gray-400">균형 잡힌 공격 및 방어 수읽기</div>
+                </div>
+                <i class="fa-solid fa-user-ninja text-amber-400 group-hover:scale-125 transition-transform"></i>
+              </button>
+
+              <button onclick="app.startGame('${gameKey}', 'hard')" class="w-full p-4 rounded-xl bg-gray-800 hover:bg-red-950/60 border border-red-700/40 hover:border-red-500 text-left transition-all group flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-red-400 text-sm">어려움 (Hard)</div>
+                  <div class="text-xs text-gray-400">정교한 수읽기 및 이중 위협 탐색</div>
+                </div>
+                <i class="fa-solid fa-crown text-red-400 group-hover:scale-125 transition-transform"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      }
+
+      closeModal() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+      }
+
+      openStatsModal() {
+        sound.playClick();
+        const stats = StatsManager.get();
+        const modal = document.getElementById('modal-overlay');
+        const content = document.getElementById('modal-content');
+        const calcRate = (w, l) => (w + l === 0 ? 0 : Math.round((w / (w + l)) * 100));
+
+        content.innerHTML = `
+          <div class="space-y-6">
+            <div class="flex items-center justify-between border-b border-gray-700 pb-3">
+              <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+                <i class="fa-solid fa-trophy text-amber-400"></i> 누적 전적 기록
+              </h3>
+              <button onclick="app.closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-4">
+              <div class="bg-gray-800/80 p-4 rounded-xl border border-gray-700 flex justify-between items-center">
+                <div>
+                  <div class="font-bold text-red-300 text-sm">할리갈리</div>
+                  <div class="text-xs text-gray-400">${stats.halligalli.w}승 ${stats.halligalli.l}패</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-black text-amber-400">${calcRate(stats.halligalli.w, stats.halligalli.l)}%</div>
+                  <div class="text-[10px] text-gray-400">승률</div>
+                </div>
+              </div>
+
+              <div class="bg-gray-800/80 p-4 rounded-xl border border-gray-700 flex justify-between items-center">
+                <div>
+                  <div class="font-bold text-amber-300 text-sm">오목</div>
+                  <div class="text-xs text-gray-400">${stats.omok.w}승 ${stats.omok.l}패</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-black text-amber-400">${calcRate(stats.omok.w, stats.omok.l)}%</div>
+                  <div class="text-[10px] text-gray-400">승률</div>
+                </div>
+              </div>
+
+              <div class="bg-gray-800/80 p-4 rounded-xl border border-gray-700 flex justify-between items-center">
+                <div>
+                  <div class="font-bold text-blue-300 text-sm">루미큐브</div>
+                  <div class="text-xs text-gray-400">${stats.rummikub.w}승 ${stats.rummikub.l}패</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-lg font-black text-amber-400">${calcRate(stats.rummikub.w, stats.rummikub.l)}%</div>
+                  <div class="text-[10px] text-gray-400">승률</div>
+                </div>
+              </div>
+            </div>
+
+            <button onclick="app.closeModal()" class="w-full py-2.5 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-all">
+              닫기
+            </button>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      }
+
+      startGame(gameKey, diff) {
+        this.closeModal();
+        this.difficulty = diff;
+        document.getElementById('back-to-lounge-btn').classList.remove('hidden');
+
+        if (this.activeGame && this.activeGame.cleanup) {
+          this.activeGame.cleanup();
+        }
+
+        if (gameKey === 'halligalli') {
+          this.activeGame = new HalliGalliGame(diff);
+        } else if (gameKey === 'omok') {
+          this.activeGame = new OmokGame(diff);
+        } else if (gameKey === 'rummikub') {
+          this.activeGame = new RummikubGame(diff);
+        }
+        this.activeGame.mount(document.getElementById('main-container'));
+      }
+    }
+
+    const app = new BoardGameLounge();
+    window.onload = () => app.init();
+
+    // Spacebar Bell Control for Halli Galli
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        // Ignore if user is typing in an input element or modal overlay is visible
+        const activeElem = document.activeElement;
+        const isInput = activeElem && (activeElem.tagName === 'INPUT' || activeElem.tagName === 'TEXTAREA' || activeElem.isContentEditable);
+        const isModalOpen = !document.getElementById('modal-overlay').classList.contains('hidden');
+
+        if (app.activeGame && app.activeGame instanceof HalliGalliGame && !isInput && !isModalOpen) {
+          e.preventDefault();
+          if (!e.repeat) {
+            app.activeGame.ringBell('player');
+          }
+        }
+      }
+    });
+  </script>
+
+  <!-- ================================================================= -->
+  <!-- GAME 1: HALLI GALLI (SVG Graphics & Fixed 300ms AI Reaction) -->
+  <!-- ================================================================= -->
+  <script>
+    class HalliGalliGame {
+      constructor(difficulty) {
+        this.difficulty = difficulty;
+        this.playerDeck = [];
+        this.aiDeck = [];
+        this.playerOpenStack = [];
+        this.aiOpenStack = [];
+        this.currentTurn = 'player';
+        this.isGameOver = false;
+        this.aiTurnTimeout = null;
+        this.aiBellTimeout = null;
+        this.roundBellLock = false; // Prevents race condition / duplicate bell triggers
+
+        this.fruits = [
+          { name: 'strawberry', label: '딸기', svg: SVGFruits.strawberry },
+          { name: 'banana', label: '바나나', svg: SVGFruits.banana },
+          { name: 'lime', label: '라임', svg: SVGFruits.lime },
+          { name: 'plum', label: '자두', svg: SVGFruits.plum }
+        ];
+
+        this.initDeck();
+      }
+
+      initDeck() {
+        let deck = [];
+        this.fruits.forEach(f => {
+          const counts = [1,1,1,1,1, 2,2,3, 3,3, 4,4, 5];
+          counts.forEach(count => {
+            deck.push({ fruit: f, count: count });
+          });
+        });
+
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+
+        this.playerDeck = deck.slice(0, 28);
+        this.aiDeck = deck.slice(28, 56);
+      }
+
+      mount(container) {
+        container.innerHTML = `
+          <div class="w-full max-w-2xl bg-lounge-card border border-red-900/40 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between min-h-[620px] felt-texture relative overflow-hidden">
+            
+            <!-- AI Opponent Header -->
+            <div class="flex items-center justify-between bg-black/50 backdrop-blur p-3 rounded-2xl border border-gray-700/50">
+              <div class="flex items-center space-x-3">
+                <div class="relative">
+                  <div class="w-12 h-12 rounded-full bg-red-950 border-2 border-red-500 flex items-center justify-center text-red-300 font-bold text-lg shadow">
+                    <i class="fa-solid fa-robot"></i>
+                  </div>
+                  <div id="ai-thinking-pulse" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full animate-ping"></div>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-gray-200 flex items-center gap-2">
+                    <span>컴퓨터 AI</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-red-950 border border-red-800 text-red-300">정확히 300ms 종 반응</span>
+                  </div>
+                  <div id="ai-status" class="text-xs text-gray-400">대기 중...</div>
+                </div>
+              </div>
+
+              <!-- AI Deck Count Stack -->
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-14 bg-gradient-to-br from-red-800 to-red-950 rounded-lg border-2 border-red-600/60 flex items-center justify-center text-red-200 shadow-lg font-black text-xs relative">
+                  <span class="text-lg">🂠</span>
+                  <div class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                </div>
+                <div class="text-right">
+                  <div id="ai-deck-count" class="text-xl font-black text-amber-400">${this.aiDeck.length}</div>
+                  <div class="text-[10px] text-gray-400">남은 카드</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Central Playing Field & Bell -->
+            <div class="my-6 flex flex-col items-center justify-center space-y-6 relative flex-1">
+              
+              <!-- Revealed Card Stacks -->
+              <div class="grid grid-cols-2 gap-8 w-full max-w-sm items-center justify-items-center">
+                
+                <!-- AI Stack -->
+                <div class="flex flex-col items-center space-y-2">
+                  <span class="text-xs text-gray-400 font-semibold">AI 공개 카드</span>
+                  <div id="ai-open-card" class="w-28 h-40 bg-gray-900/90 rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center shadow-inner relative overflow-hidden">
+                    <span class="text-xs text-gray-600">비어있음</span>
+                  </div>
+                </div>
+
+                <!-- Player Stack -->
+                <div class="flex flex-col items-center space-y-2">
+                  <span class="text-xs text-gray-400 font-semibold">내 공개 카드</span>
+                  <div id="player-open-card" class="w-28 h-40 bg-gray-900/90 rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center shadow-inner relative overflow-hidden">
+                    <span class="text-xs text-gray-600">비어있음</span>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Central Interactive Bell Button -->
+              <div class="relative py-2">
+                <button id="halli-bell" onclick="app.activeGame.ringBell('player')" class="w-24 h-24 rounded-full bg-gradient-to-t from-amber-600 via-amber-400 to-amber-200 text-amber-950 font-black shadow-2xl border-4 border-amber-300 hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center group">
+                  <i class="fa-solid fa-bell text-3xl mb-1 group-hover:animate-ring-bell"></i>
+                  <span class="text-xs tracking-wider">종 치기!</span>
+                </button>
+              </div>
+
+              <div id="halli-prompt" class="text-center bg-black/60 px-5 py-2 rounded-full border border-gray-700/60 text-xs text-amber-300 font-medium">
+                공개된 과일의 총 합이 <span class="font-bold text-amber-400">정확히 5개</span>일 때 종을 누르세요!
+              </div>
+
+            </div>
+
+            <!-- Bottom Human Player Section -->
+            <div class="flex items-center justify-between bg-black/50 backdrop-blur p-3 rounded-2xl border border-amber-500/40">
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-full bg-amber-950 border-2 border-amber-500 flex items-center justify-center text-amber-300 font-bold text-lg shadow">
+                  <i class="fa-solid fa-user"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-gray-200">나 (플레이어)</div>
+                  <div id="player-status" class="text-xs text-amber-400 font-semibold">카드 뒤집기 가능</div>
+                </div>
+              </div>
+
+              <div class="flex items-center space-x-4">
+                <div class="text-right">
+                  <div id="player-deck-count" class="text-xl font-black text-amber-400">${this.playerDeck.length}</div>
+                  <div class="text-[10px] text-gray-400">남은 카드</div>
+                </div>
+
+                <button id="flip-btn" onclick="app.activeGame.flipCard()" class="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-extrabold text-sm shadow-lg active:scale-95 transition-all flex items-center gap-2 border border-amber-400/40">
+                  <i class="fa-solid fa-hand"></i> 카드 내기
+                </button>
+              </div>
+            </div>
+
+          </div>
+        `;
+        this.updateUI();
+      }
+
+      cleanup() {
+        clearTimeout(this.aiTurnTimeout);
+        clearTimeout(this.aiBellTimeout);
+      }
+
+      updateUI() {
+        document.getElementById('player-deck-count').textContent = this.playerDeck.length;
+        document.getElementById('ai-deck-count').textContent = this.aiDeck.length;
+
+        // Render AI Open Stack
+        const aiOpenEl = document.getElementById('ai-open-card');
+        if (this.aiOpenStack.length > 0) {
+          const topCard = this.aiOpenStack[this.aiOpenStack.length - 1];
+          aiOpenEl.className = "w-28 h-40 bg-amber-50 rounded-2xl border-2 border-red-500 shadow-2xl flex flex-col items-center justify-between p-2.5 relative card-flip-anim";
+          aiOpenEl.innerHTML = this.renderCardSVG(topCard);
+        } else {
+          aiOpenEl.className = "w-28 h-40 bg-gray-900/90 rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center shadow-inner relative";
+          aiOpenEl.innerHTML = `<span class="text-xs text-gray-600">비어있음</span>`;
+        }
+
+        // Render Player Open Stack
+        const playerOpenEl = document.getElementById('player-open-card');
+        if (this.playerOpenStack.length > 0) {
+          const topCard = this.playerOpenStack[this.playerOpenStack.length - 1];
+          playerOpenEl.className = "w-28 h-40 bg-amber-50 rounded-2xl border-2 border-amber-500 shadow-2xl flex flex-col items-center justify-between p-2.5 relative card-flip-anim";
+          playerOpenEl.innerHTML = this.renderCardSVG(topCard);
+        } else {
+          playerOpenEl.className = "w-28 h-40 bg-gray-900/90 rounded-2xl border-2 border-dashed border-gray-700 flex items-center justify-center shadow-inner relative";
+          playerOpenEl.innerHTML = `<span class="text-xs text-gray-600">비어있음</span>`;
+        }
+
+        const flipBtn = document.getElementById('flip-btn');
+        const pStatus = document.getElementById('player-status');
+        const aiStatus = document.getElementById('ai-status');
+
+        if (this.currentTurn === 'player' && !this.isGameOver) {
+          flipBtn.disabled = false;
+          flipBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          pStatus.textContent = '내 차례: 카드를 뒤집으세요!';
+          pStatus.className = 'text-xs text-amber-400 font-bold animate-pulse';
+          aiStatus.textContent = '상대 차례 기다리는 중...';
+        } else {
+          flipBtn.disabled = true;
+          flipBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          pStatus.textContent = '컴퓨터 차례 진행 중...';
+          pStatus.className = 'text-xs text-gray-400';
+          aiStatus.textContent = '생각하는 중...';
+        }
+      }
+
+      // Render crisp inline SVG Fruit Cards with Die-Pattern Positioning
+      renderCardSVG(card) {
+        const count = card.count;
+        const svg = card.fruit.svg;
+
+        let gridLayout = '';
+        if (count === 1) {
+          gridLayout = `<div class="w-16 h-16 flex items-center justify-center my-auto">${svg}</div>`;
+        } else if (count === 2) {
+          gridLayout = `
+            <div class="w-full flex justify-around my-auto">
+              <div class="w-10 h-10">${svg}</div>
+              <div class="w-10 h-10">${svg}</div>
+            </div>`;
+        } else if (count === 3) {
+          gridLayout = `
+            <div class="w-full flex flex-col items-center justify-between h-full py-1">
+              <div class="w-9 h-9">${svg}</div>
+              <div class="w-9 h-9">${svg}</div>
+              <div class="w-9 h-9">${svg}</div>
+            </div>`;
+        } else if (count === 4) {
+          gridLayout = `
+            <div class="w-full grid grid-cols-2 gap-2 my-auto justify-items-center">
+              <div class="w-9 h-9">${svg}</div>
+              <div class="w-9 h-9">${svg}</div>
+              <div class="w-9 h-9">${svg}</div>
+              <div class="w-9 h-9">${svg}</div>
+            </div>`;
+        } else if (count === 5) {
+          gridLayout = `
+            <div class="w-full h-full relative flex items-center justify-center">
+              <div class="absolute top-0 left-0 w-8 h-8">${svg}</div>
+              <div class="absolute top-0 right-0 w-8 h-8">${svg}</div>
+              <div class="w-8 h-8">${svg}</div>
+              <div class="absolute bottom-0 left-0 w-8 h-8">${svg}</div>
+              <div class="absolute bottom-0 right-0 w-8 h-8">${svg}</div>
+            </div>`;
+        }
+
+        return `
+          <div class="w-full flex justify-between items-center text-xs font-black text-gray-700 border-b border-gray-200 pb-1">
+            <span>${card.fruit.label}</span>
+            <span class="bg-amber-200 text-amber-900 px-1.5 py-0.2 rounded font-bold">${count}</span>
+          </div>
+          <div class="w-full flex-1 flex items-center justify-center py-1">
+            ${gridLayout}
+          </div>
+        `;
+      }
+
+      flipCard() {
+        if (this.currentTurn !== 'player' || this.isGameOver) return;
+        if (this.playerDeck.length === 0) {
+          this.checkGameOver();
+          return;
+        }
+
+        sound.playFlip();
+        const card = this.playerDeck.pop();
+        this.playerOpenStack.push(card);
+
+        this.currentTurn = 'ai';
+        this.updateUI();
+
+        // Evaluate Bell Condition & Schedule AI reaction
+        this.evaluateBellCondition();
+
+        if (!this.isGameOver) {
+          this.scheduleAIFlip();
+        }
+      }
+
+      scheduleAIFlip() {
+        clearTimeout(this.aiTurnTimeout);
+        document.getElementById('ai-thinking-pulse').classList.remove('hidden');
+
+        const delay = Math.random() * 600 + 700;
+        this.aiTurnTimeout = setTimeout(() => {
+          if (this.isGameOver || this.currentTurn !== 'ai') return;
+
+          if (this.aiDeck.length > 0) {
+            sound.playFlip();
+            const card = this.aiDeck.pop();
+            this.aiOpenStack.push(card);
+            this.currentTurn = 'player';
+            document.getElementById('ai-thinking-pulse').classList.add('hidden');
+            this.updateUI();
+
+            this.evaluateBellCondition();
+          } else {
+            this.checkGameOver();
+          }
+        }, delay);
+      }
+
+      evaluateBellCondition() {
+        clearTimeout(this.aiBellTimeout);
+        this.roundBellLock = false;
+
+        const counts = { strawberry: 0, banana: 0, lime: 0, plum: 0 };
+
+        if (this.playerOpenStack.length > 0) {
+          const top = this.playerOpenStack[this.playerOpenStack.length - 1];
+          counts[top.fruit.name] += top.count;
+        }
+        if (this.aiOpenStack.length > 0) {
+          const top = this.aiOpenStack[this.aiOpenStack.length - 1];
+          counts[top.fruit.name] += top.count;
+        }
+
+        const isExactFive = Object.values(counts).some(c => c === 5);
+
+        // AI reaction randomized strictly between 500ms and 1000ms (0.5 - 1.0s)
+        if (isExactFive) {
+          const delay = Math.floor(Math.random() * 500) + 500;
+          this.aiBellTimeout = setTimeout(() => {
+            if (!this.isGameOver && !this.roundBellLock) {
+              this.ringBell('ai');
+            }
+          }, delay);
+        }
+      }
+
+      ringBell(who) {
+        if (this.isGameOver || this.roundBellLock) return;
+        this.roundBellLock = true; // Lock round to prevent race condition/duplicate ringing
+        clearTimeout(this.aiBellTimeout);
+        sound.playBell();
+
+        const bellBtn = document.getElementById('halli-bell');
+        if (bellBtn) {
+          bellBtn.classList.add('animate-bounce-short');
+          setTimeout(() => bellBtn.classList.remove('animate-bounce-short'), 400);
+        }
+
+        const counts = { strawberry: 0, banana: 0, lime: 0, plum: 0 };
+        if (this.playerOpenStack.length > 0) {
+          const top = this.playerOpenStack[this.playerOpenStack.length - 1];
+          counts[top.fruit.name] += top.count;
+        }
+        if (this.aiOpenStack.length > 0) {
+          const top = this.aiOpenStack[this.aiOpenStack.length - 1];
+          counts[top.fruit.name] += top.count;
+        }
+
+        const isExactFive = Object.values(counts).some(c => c === 5);
+
+        if (isExactFive) {
+          const claimedCards = [...this.playerOpenStack, ...this.aiOpenStack];
+          this.playerOpenStack = [];
+          this.aiOpenStack = [];
+
+          if (who === 'player') {
+            app.toast('정확하게 5개! 공개된 모든 카드를 획득했습니다! 🎉', 'fa-trophy');
+            this.playerDeck.unshift(...claimedCards);
+          } else {
+            app.toast('컴퓨터가 먼저 종을 쳤습니다! ⚡', 'fa-robot');
+            this.aiDeck.unshift(...claimedCards);
+          }
+        } else {
+          // Penalty Ring
+          if (who === 'player') {
+            app.toast('실수! 과일 합이 5개가 아닙니다. 상대에게 벌칙 카드 1장을 줍니다.', 'fa-circle-exclamation');
+            if (this.playerDeck.length > 0) {
+              this.aiDeck.unshift(this.playerDeck.pop());
+            }
+          }
+        }
+
+        this.updateUI();
+        this.checkGameOver();
+      }
+
+      checkGameOver() {
+        if (this.playerDeck.length === 0 && this.playerOpenStack.length === 0) {
+          this.finishGame('ai');
+        } else if (this.aiDeck.length === 0 && this.aiOpenStack.length === 0) {
+          this.finishGame('player');
+        }
+      }
+
+      finishGame(winner) {
+        this.isGameOver = true;
+        this.cleanup();
+
+        if (winner === 'player') {
+          sound.playWin();
+          StatsManager.addWin('halligalli');
+        } else {
+          sound.playLose();
+          StatsManager.addLoss('halligalli');
+        }
+
+        const modal = document.getElementById('modal-overlay');
+        const content = document.getElementById('modal-content');
+
+        content.innerHTML = `
+          <div class="text-center space-y-5">
+            <div class="w-16 h-16 mx-auto rounded-full ${winner === 'player' ? 'bg-amber-500/20 text-amber-400 border-amber-500' : 'bg-red-500/20 text-red-400 border-red-500'} border-2 flex items-center justify-center text-3xl">
+              <i class="fa-solid ${winner === 'player' ? 'fa-trophy' : 'fa-skull'}"></i>
+            </div>
+            <div>
+              <h3 class="text-2xl font-black ${winner === 'player' ? 'text-amber-300' : 'text-red-300'}">
+                ${winner === 'player' ? '할리갈리 승리!' : '할리갈리 패배!'}
+              </h3>
+              <p class="text-xs text-gray-300 mt-2">
+                ${winner === 'player' ? '빛나는 반응 속도로 컴퓨터의 모든 카드를 획득했습니다.' : '컴퓨터에게 모든 카드를 내주었습니다.'}
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="app.showLounge(); app.closeModal();" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700">
+                로비로
+              </button>
+              <button onclick="app.startGame('halligalli', '${this.difficulty}');" class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg">
+                다시 하기
+              </button>
+            </div>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      }
+    }
+  </script>
+
+  <!-- ================================================================= -->
+  <!-- GAME 2: OMOK (15x15 Strategic AI Engine) -->
+  <!-- ================================================================= -->
+  <script>
+    class OmokGame {
+      constructor(difficulty) {
+        this.difficulty = difficulty;
+        this.size = 15;
+        this.board = Array(15).fill(null).map(() => Array(15).fill(0));
+        this.history = [];
+        this.currentTurn = 1;
+        this.isGameOver = false;
+      }
+
+      mount(container) {
+        container.innerHTML = `
+          <div class="w-full max-w-2xl bg-lounge-card border border-amber-900/40 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between items-center min-h-[620px] wood-texture relative">
+            
+            <div class="w-full flex items-center justify-between bg-black/50 backdrop-blur p-3 rounded-2xl border border-amber-900/40">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gray-100 border-2 border-gray-400 flex items-center justify-center text-gray-900 font-bold shadow stone-shadow">
+                  ⚪
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-gray-200 flex items-center gap-2">
+                    <span>컴퓨터 AI (백돌)</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-amber-950 border border-amber-800 text-amber-300">${this.getDiffLabel()}</span>
+                  </div>
+                  <div id="omok-ai-status" class="text-xs text-gray-400">당신의 수를 기다리는 중...</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button onclick="app.activeGame.undo()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 text-xs font-bold rounded-lg border border-gray-700 flex items-center gap-1">
+                  <i class="fa-solid fa-rotate-left"></i> 무르기
+                </button>
+              </div>
+            </div>
+
+            <div class="my-4 relative bg-[#e3a857] p-3 sm:p-4 rounded-xl shadow-2xl border-4 border-[#8b5a2b] flex items-center justify-center">
+              <div id="omok-board-grid" class="grid grid-cols-15 gap-0 relative bg-[#e3a857]" style="grid-template-columns: repeat(15, minmax(0, 1fr));">
+              </div>
+            </div>
+
+            <div class="w-full flex items-center justify-between bg-black/50 backdrop-blur p-3 rounded-2xl border border-amber-500/40">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gray-900 border-2 border-gray-600 flex items-center justify-center text-gray-100 font-bold shadow stone-shadow">
+                  ⚫
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-gray-200">나 (흑돌 - 선공)</div>
+                  <div id="omok-player-status" class="text-xs text-amber-400 font-bold">내 차례: 바둑판을 클릭하여 착수하세요</div>
+                </div>
+              </div>
+
+              <div class="text-xs text-gray-400 bg-gray-900/60 px-3 py-1.5 rounded-lg border border-gray-800">
+                연속 5개 연결 시 승리
+              </div>
+            </div>
+
+          </div>
+        `;
+        this.renderBoard();
+      }
+
+      getDiffLabel() {
+        if (this.difficulty === 'easy') return '초보';
+        if (this.difficulty === 'medium') return '보통';
+        return '어려움';
+      }
+
+      renderBoard() {
+        const gridEl = document.getElementById('omok-board-grid');
+        gridEl.innerHTML = '';
+        const lastMove = this.history.length > 0 ? this.history[this.history.length - 1] : null;
+
+        for (let r = 0; r < 15; r++) {
+          for (let c = 0; c < 15; c++) {
+            const cell = document.createElement('div');
+            cell.className = `w-5 h-5 sm:w-8 sm:h-8 md:w-9 md:h-9 relative flex items-center justify-center cursor-pointer select-none`;
+            cell.onclick = () => this.handleCellClick(r, c);
+
+            const lineH = document.createElement('div');
+            lineH.className = `absolute left-0 right-0 h-[1px] bg-[#663b12] ${c === 0 ? 'left-1/2' : ''} ${c === 14 ? 'right-1/2' : ''}`;
+            const lineV = document.createElement('div');
+            lineV.className = `absolute top-0 bottom-0 w-[1px] bg-[#663b12] ${r === 0 ? 'top-1/2' : ''} ${r === 14 ? 'bottom-1/2' : ''}`;
+            cell.appendChild(lineH);
+            cell.appendChild(lineV);
+
+            if ((r === 3 || r === 7 || r === 11) && (c === 3 || c === 7 || c === 11)) {
+              const star = document.createElement('div');
+              star.className = 'w-1.5 h-1.5 bg-[#4a2800] rounded-full z-0';
+              cell.appendChild(star);
+            }
+
+            const val = this.board[r][c];
+            if (val !== 0) {
+              const stone = document.createElement('div');
+              const isLast = lastMove && lastMove.r === r && lastMove.c === c;
+              
+              if (val === 1) {
+                stone.className = `w-4 h-4 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-gray-700 via-gray-900 to-black stone-shadow z-10 flex items-center justify-center border border-gray-700 ${isLast ? 'ring-2 ring-amber-400' : ''}`;
+              } else {
+                stone.className = `w-4 h-4 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-white via-gray-100 to-gray-300 stone-shadow z-10 flex items-center justify-center border border-gray-300 ${isLast ? 'ring-2 ring-red-500' : ''}`;
+              }
+
+              if (isLast) {
+                const mark = document.createElement('div');
+                mark.className = `w-2 h-2 rounded-full ${val === 1 ? 'bg-amber-400' : 'bg-red-500'}`;
+                stone.appendChild(mark);
+              }
+
+              cell.appendChild(stone);
+            }
+
+            gridEl.appendChild(cell);
+          }
+        }
+      }
+
+      handleCellClick(r, c) {
+        if (this.currentTurn !== 1 || this.isGameOver) return;
+        if (this.board[r][c] !== 0) {
+          app.toast('이미 돌이 놓인 교차점입니다.', 'fa-circle-xmark');
+          return;
+        }
+
+        this.placeStone(r, c, 1);
+
+        if (!this.checkWin(r, c, 1)) {
+          this.currentTurn = 2;
+          this.updateTurnUI();
+          setTimeout(() => this.triggerAIMove(), 400);
+        }
+      }
+
+      placeStone(r, c, player) {
+        sound.playDrop();
+        this.board[r][c] = player;
+        this.history.push({ r, c, player });
+        this.renderBoard();
+      }
+
+      undo() {
+        if (this.history.length < 2 || this.isGameOver || this.currentTurn !== 1) {
+          app.toast('지금은 무르기를 사용할 수 없습니다.');
+          return;
+        }
+        sound.playClick();
+        const aiMove = this.history.pop();
+        const playerMove = this.history.pop();
+
+        this.board[aiMove.r][aiMove.c] = 0;
+        this.board[playerMove.r][playerMove.c] = 0;
+
+        this.currentTurn = 1;
+        this.renderBoard();
+        this.updateTurnUI();
+        app.toast('한 수 되돌렸습니다.');
+      }
+
+      updateTurnUI() {
+        const pStatus = document.getElementById('omok-player-status');
+        const aiStatus = document.getElementById('omok-ai-status');
+
+        if (this.currentTurn === 1) {
+          pStatus.textContent = '내 차례: 바둑판을 클릭하여 착수하세요';
+          pStatus.className = 'text-xs text-amber-400 font-bold animate-pulse';
+          aiStatus.textContent = '당신의 수를 기다리는 중...';
+        } else {
+          pStatus.textContent = '컴퓨터 착수 대기 중...';
+          pStatus.className = 'text-xs text-gray-400';
+          aiStatus.textContent = '컴퓨터가 최적의 수를 수읽기 중입니다...';
+        }
+      }
+
+      triggerAIMove() {
+        if (this.isGameOver) return;
+
+        const move = this.getBestAIMove();
+        this.placeStone(move.r, move.c, 2);
+
+        if (!this.checkWin(move.r, move.c, 2)) {
+          this.currentTurn = 1;
+          this.updateTurnUI();
+        }
+      }
+
+      getBestAIMove() {
+        const candidateMoves = [];
+
+        for (let r = 0; r < 15; r++) {
+          for (let c = 0; c < 15; c++) {
+            if (this.board[r][c] === 0 && this.hasNeighbor(r, c)) {
+              const score = this.evaluateSpot(r, c);
+              candidateMoves.push({ r, c, score });
+            }
+          }
+        }
+
+        if (candidateMoves.length === 0) return { r: 7, c: 7 };
+
+        candidateMoves.sort((a, b) => b.score - a.score);
+
+        if (this.difficulty === 'easy' && candidateMoves.length > 2) {
+          const topIndex = Math.floor(Math.random() * Math.min(3, candidateMoves.length));
+          return candidateMoves[topIndex];
+        }
+
+        return candidateMoves[0];
+      }
+
+      hasNeighbor(r, c) {
+        for (let dr = -2; dr <= 2; dr++) {
+          for (let dc = -2; dc <= 2; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] !== 0) {
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      evaluateSpot(r, c) {
+        let aiScore = this.getLineScore(r, c, 2);
+        let playerScore = this.getLineScore(r, c, 1);
+
+        if (aiScore >= 100000) return 100000;
+        if (playerScore >= 100000) return 90000;
+
+        return aiScore * 1.1 + playerScore;
+      }
+
+      getLineScore(r, c, player) {
+        const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+        let totalScore = 0;
+
+        directions.forEach(([dr, dc]) => {
+          let count = 1;
+          let openEnds = 0;
+
+          let step = 1;
+          while (true) {
+            const nr = r + dr * step, nc = c + dc * step;
+            if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === player) {
+              count++;
+              step++;
+            } else {
+              if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === 0) openEnds++;
+              break;
+            }
+          }
+
+          step = 1;
+          while (true) {
+            const nr = r - dr * step, nc = c - dc * step;
+            if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === player) {
+              count++;
+              step++;
+            } else {
+              if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === 0) openEnds++;
+              break;
+            }
+          }
+
+          if (count >= 5) totalScore += 100000;
+          else if (count === 4 && openEnds === 2) totalScore += 10000;
+          else if (count === 4 && openEnds === 1) totalScore += 2500;
+          else if (count === 3 && openEnds === 2) totalScore += 1000;
+          else if (count === 3 && openEnds === 1) totalScore += 200;
+          else if (count === 2 && openEnds === 2) totalScore += 50;
+        });
+
+        return totalScore;
+      }
+
+      checkWin(r, c, player) {
+        const directions = [[1, 0], [0, 1], [1, 1], [1, -1]];
+
+        for (let [dr, dc] of directions) {
+          let count = 1;
+
+          let step = 1;
+          while (true) {
+            const nr = r + dr * step, nc = c + dc * step;
+            if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === player) {
+              count++;
+              step++;
+            } else break;
+          }
+
+          step = 1;
+          while (true) {
+            const nr = r - dr * step, nc = c - dc * step;
+            if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && this.board[nr][nc] === player) {
+              count++;
+              step++;
+            } else break;
+          }
+
+          if (count >= 5) {
+            this.finishGame(player === 1 ? 'player' : 'ai');
+            return true;
+          }
+        }
+
+        let isFull = true;
+        for (let i = 0; i < 15; i++) {
+          for (let j = 0; j < 15; j++) {
+            if (this.board[i][j] === 0) { isFull = false; break; }
+          }
+        }
+        if (isFull) {
+          this.finishGame('draw');
+          return true;
+        }
+
+        return false;
+      }
+
+      finishGame(winner) {
+        this.isGameOver = true;
+        if (winner === 'player') {
+          sound.playWin();
+          StatsManager.addWin('omok');
+        } else if (winner === 'ai') {
+          sound.playLose();
+          StatsManager.addLoss('omok');
+        }
+
+        const modal = document.getElementById('modal-overlay');
+        const content = document.getElementById('modal-content');
+
+        content.innerHTML = `
+          <div class="text-center space-y-5">
+            <div class="w-16 h-16 mx-auto rounded-full ${winner === 'player' ? 'bg-amber-500/20 text-amber-400 border-amber-500' : 'bg-red-500/20 text-red-400 border-red-500'} border-2 flex items-center justify-center text-3xl">
+              <i class="fa-solid ${winner === 'player' ? 'fa-crown' : 'fa-skull'}"></i>
+            </div>
+            <div>
+              <h3 class="text-2xl font-black ${winner === 'player' ? 'text-amber-300' : 'text-red-300'}">
+                ${winner === 'player' ? '오목 승리!' : (winner === 'draw' ? '무승부!' : '오목 패배!')}
+              </h3>
+              <p class="text-xs text-gray-300 mt-2">
+                ${winner === 'player' ? '연속 5개의 돌을 놓아 컴퓨터를 꺾었습니다!' : '컴퓨터의 오목 공격을 막지 못했습니다.'}
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="app.showLounge(); app.closeModal();" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700">
+                로비로
+              </button>
+              <button onclick="app.startGame('omok', '${this.difficulty}');" class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg">
+                다시 하기
+              </button>
+            </div>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      }
+    }
+  </script>
+
+  <!-- ================================================================= -->
+  <!-- GAME 3: RUMMIKUB (Drag&Drop, Multi-Selection, 3-Tile Rule Button) -->
+  <!-- ================================================================= -->
+  <script>
+    class RummikubGame {
+      constructor(difficulty) {
+        this.difficulty = difficulty;
+        this.pool = [];
+        this.playerRack = [];
+        this.aiRack = [];
+        this.tableSets = [];
+
+        this.selectedTileIds = new Set();
+        this.backupState = null;
+        this.currentTurn = 'player';
+        this.isGameOver = false;
+
+        // Mouse Drag States
+        this.dragState = null;
+
+        this.colors = ['red', 'blue', 'black', 'orange'];
+        this.colorClasses = {
+          red: 'text-red-600 border-red-300 bg-red-50',
+          blue: 'text-blue-600 border-blue-300 bg-blue-50',
+          black: 'text-gray-900 border-gray-400 bg-gray-100',
+          orange: 'text-amber-600 border-amber-300 bg-amber-50'
+        };
+
+        this.initPool();
+      }
+
+      initPool() {
+        let idCounter = 1;
+        for (let set = 0; set < 2; set++) {
+          this.colors.forEach(color => {
+            for (let num = 1; num <= 13; num++) {
+              this.pool.push({ id: idCounter++, color, num, isJoker: false });
+            }
+          });
+        }
+        this.pool.push({ id: idCounter++, color: 'red', num: 0, isJoker: true });
+        this.pool.push({ id: idCounter++, color: 'black', num: 0, isJoker: true });
+
+        for (let i = this.pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [this.pool[i], this.pool[j]] = [this.pool[j], this.pool[i]];
+        }
+
+        this.playerRack = this.pool.splice(0, 14);
+        this.aiRack = this.pool.splice(0, 14);
+      }
+
+      mount(container) {
+        container.innerHTML = `
+          <div class="w-full max-w-4xl bg-lounge-card border border-blue-900/40 rounded-3xl p-3 sm:p-5 shadow-2xl flex flex-col justify-between min-h-[680px] felt-texture relative">
+            
+            <!-- AI Header -->
+            <div class="flex items-center justify-between bg-black/50 backdrop-blur p-2.5 rounded-2xl border border-blue-900/40">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-blue-950 border-2 border-blue-500 flex items-center justify-center text-blue-300 font-bold text-lg shadow">
+                  <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-sm text-gray-200 flex items-center gap-2">
+                    <span>컴퓨터 AI</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-blue-950 border border-blue-800 text-blue-300">${this.getDiffLabel()}</span>
+                  </div>
+                  <div id="rummi-ai-status" class="text-xs text-gray-400">대기 중...</div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-4">
+                <div class="text-right">
+                  <div id="pool-count" class="text-base font-black text-amber-400">${this.pool.length}</div>
+                  <div class="text-[10px] text-gray-400">타일 더미</div>
+                </div>
+                <div class="text-right">
+                  <div id="ai-rack-count" class="text-base font-black text-blue-400">${this.aiRack.length}</div>
+                  <div class="text-[10px] text-gray-400">AI 타일</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Central Table Field (Drop Zone Target) -->
+            <div id="table-drop-zone" class="my-3 flex-1 bg-black/30 rounded-2xl p-3 border border-gray-700/50 flex flex-col justify-between overflow-y-auto min-h-[260px] transition-colors">
+              <div class="flex justify-between items-center pb-2 border-b border-gray-800 text-xs text-gray-400">
+                <span>테이블 (타일을 여기로 드래그하여 자유 배치 가능)</span>
+                <button onclick="app.activeGame.createNewSetOnTable()" class="px-2.5 py-1 bg-blue-900/60 hover:bg-blue-800 text-blue-200 rounded border border-blue-700 flex items-center gap-1 text-[11px]">
+                  <i class="fa-solid fa-plus"></i> 선택 타일로 새 세트 만들기
+                </button>
+              </div>
+
+              <!-- Table Sets Grid -->
+              <div id="table-sets-container" class="flex flex-wrap gap-3 p-2 min-h-[180px] items-start content-start">
+              </div>
+            </div>
+
+            <!-- Bottom Rack & Action Bar -->
+            <div class="bg-black/60 backdrop-blur p-3 rounded-2xl border border-amber-500/40 space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                  <div class="w-9 h-9 rounded-full bg-amber-950 border-2 border-amber-500 flex items-center justify-center text-amber-300 font-bold text-sm shadow">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div>
+                    <div class="font-bold text-sm text-gray-200 flex items-center gap-2">
+                      <span>내 받침대</span>
+                      <span id="selected-count-badge" class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-amber-400 border border-gray-700">
+                        선택: 0개
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <!-- Dedicated 3-Tile Meld Button -->
+                  <button id="register-3-btn" disabled onclick="app.activeGame.registerSelected3Tiles()" class="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold text-xs rounded-lg border border-amber-400/40 opacity-50 cursor-not-allowed shadow transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> 선택 3장 등록
+                  </button>
+
+                  <button onclick="app.activeGame.sortRack('num')" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-amber-300 text-xs rounded border border-gray-700">
+                    숫자 정렬
+                  </button>
+                  <button onclick="app.activeGame.sortRack('color')" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 text-amber-300 text-xs rounded border border-gray-700">
+                    색상 정렬
+                  </button>
+                </div>
+              </div>
+
+              <!-- Rack Drop Target -->
+              <div id="player-rack-container" class="flex flex-wrap gap-1.5 p-2.5 bg-lounge-wood rounded-xl min-h-[76px] border border-amber-900/60 shadow-inner items-center">
+              </div>
+
+              <!-- Turn Action Bar -->
+              <div class="flex items-center justify-between pt-1">
+                <button onclick="app.activeGame.drawTile()" id="draw-btn" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-amber-300 text-xs font-bold rounded-xl border border-gray-700 flex items-center gap-1.5">
+                  <i class="fa-solid fa-plus-circle"></i> 타일 1장 가져오기 (턴 넘김)
+                </button>
+
+                <button onclick="app.activeGame.finishTurn()" id="end-turn-btn" class="px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-black rounded-xl shadow-lg border border-emerald-400/40 flex items-center gap-1.5">
+                  <i class="fa-solid fa-check"></i> 턴 완료 (검증 확정)
+                </button>
+              </div>
+
+            </div>
+
+          </div>
+        `;
+
+        this.attachGlobalDragListeners();
+        this.saveBackupState();
+        this.render();
+      }
+
+      getDiffLabel() {
+        if (this.difficulty === 'easy') return '초보';
+        if (this.difficulty === 'medium') return '보통';
+        return '어려움';
+      }
+
+      saveBackupState() {
+        this.backupState = {
+          tableSets: JSON.parse(JSON.stringify(this.tableSets)),
+          playerRack: JSON.parse(JSON.stringify(this.playerRack)),
+          aiRack: JSON.parse(JSON.stringify(this.aiRack)),
+          pool: JSON.parse(JSON.stringify(this.pool))
+        };
+      }
+
+      restoreBackupState() {
+        if (this.backupState) {
+          this.tableSets = JSON.parse(JSON.stringify(this.backupState.tableSets));
+          this.playerRack = JSON.parse(JSON.stringify(this.backupState.playerRack));
+          this.aiRack = JSON.parse(JSON.stringify(this.backupState.aiRack));
+          this.pool = JSON.parse(JSON.stringify(this.backupState.pool));
+          this.selectedTileIds.clear();
+          this.render();
+        }
+      }
+
+      render() {
+        document.getElementById('pool-count').textContent = this.pool.length;
+        document.getElementById('ai-rack-count').textContent = this.aiRack.length;
+
+        // Render Player Rack Tiles
+        const rackEl = document.getElementById('player-rack-container');
+        rackEl.innerHTML = '';
+        this.playerRack.forEach(tile => {
+          const isSelected = this.selectedTileIds.has(tile.id);
+          const tileDOM = this.createTileDOM(tile, isSelected);
+          this.bindTileInteractions(tileDOM, tile, 'rack');
+          rackEl.appendChild(tileDOM);
+        });
+
+        // Render Table Sets
+        const tableEl = document.getElementById('table-sets-container');
+        tableEl.innerHTML = '';
+
+        if (this.tableSets.length === 0) {
+          tableEl.innerHTML = `<div class="text-xs text-gray-500 italic p-4">테이블에 놓인 타일이 없습니다. 받침대에서 드래그하여 옮겨보세요.</div>`;
+        } else {
+          this.tableSets.forEach((set, sIdx) => {
+            const setWrapper = document.createElement('div');
+            const isValid = this.isValidSet(set);
+            setWrapper.className = `flex items-center gap-1 p-1.5 rounded-lg bg-gray-900/80 border ${isValid ? 'border-gray-700' : 'border-red-500/80'} relative`;
+            setWrapper.dataset.setIndex = sIdx;
+
+            set.forEach((tile, tIdx) => {
+              const isSelected = this.selectedTileIds.has(tile.id);
+              const tileDOM = this.createTileDOM(tile, isSelected);
+              this.bindTileInteractions(tileDOM, tile, { setIndex: sIdx, tileIndex: tIdx });
+              setWrapper.appendChild(tileDOM);
+            });
+
+            tableEl.appendChild(setWrapper);
+          });
+        }
+
+        // Update Selected Badge & 3-Tile Meld Button State
+        const countBadge = document.getElementById('selected-count-badge');
+        const regBtn = document.getElementById('register-3-btn');
+        const selCount = this.selectedTileIds.size;
+
+        countBadge.textContent = `선택: ${selCount}개`;
+
+        if (selCount === 3) {
+          regBtn.disabled = false;
+          regBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          regBtn.classList.add('animate-pulse');
+        } else {
+          regBtn.disabled = true;
+          regBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          regBtn.classList.remove('animate-pulse');
+        }
+      }
+
+      createTileDOM(tile, isSelected) {
+        const div = document.createElement('div');
+        const colorStyle = tile.isJoker ? 'text-amber-500 border-amber-400 bg-amber-950' : this.colorClasses[tile.color];
+        div.className = `w-8 h-12 sm:w-10 sm:h-14 rounded-lg border-2 flex flex-col items-center justify-center font-black text-sm sm:text-base cursor-grab select-none transition-transform shadow-md tile-shadow ${colorStyle} ${isSelected ? 'ring-4 ring-amber-400 scale-105 -translate-y-1.5 shadow-2xl' : 'hover:-translate-y-0.5'}`;
+        div.dataset.tileId = tile.id;
+
+        if (tile.isJoker) {
+          div.innerHTML = `<i class="fa-solid fa-face-smile text-lg"></i>`;
+        } else {
+          div.innerHTML = `<span>${tile.num}</span>`;
+        }
+        return div;
+      }
+
+      // Attach Click (Toggle Select) and Drag & Drop Listeners with Movement Threshold
+      bindTileInteractions(domEl, tile, source) {
+        let startX = 0, startY = 0;
+        let isDragging = false;
+
+        const onMouseDown = (e) => {
+          if (this.currentTurn !== 'player') return;
+          if (e.button !== 0) return; // Only Left Click
+
+          startX = e.clientX;
+          startY = e.clientY;
+
+          const onMouseMove = (moveEvt) => {
+            const dist = Math.hypot(moveEvt.clientX - startX, moveEvt.clientY - startY);
+            if (!isDragging && dist > 5) {
+              isDragging = true;
+              this.startDrag(tile, source, domEl, moveEvt);
+            }
+          };
+
+          const onMouseUp = (upEvt) => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+
+            if (!isDragging) {
+              // Simple Click: Toggle Selection
+              sound.playTile();
+              if (this.selectedTileIds.has(tile.id)) {
+                this.selectedTileIds.delete(tile.id);
+              } else {
+                this.selectedTileIds.add(tile.id);
+              }
+              this.render();
+            }
+          };
+
+          window.addEventListener('mousemove', onMouseMove);
+          window.addEventListener('mouseup', onMouseUp);
+        };
+
+        domEl.addEventListener('mousedown', onMouseDown);
+      }
+
+      startDrag(tile, source, originalDOM, evt) {
+        sound.playTile();
+
+        // Create floating clone
+        const clone = originalDOM.cloneNode(true);
+        clone.classList.add('tile-dragging');
+        document.body.appendChild(clone);
+
+        this.dragState = {
+          tile,
+          source,
+          cloneEl: clone,
+          originalDOM
+        };
+
+        this.updateDragPosition(evt.clientX, evt.clientY);
+        originalDOM.style.opacity = '0.3';
+      }
+
+      updateDragPosition(x, y) {
+        if (!this.dragState) return;
+        this.dragState.cloneEl.style.left = `${x - 20}px`;
+        this.dragState.cloneEl.style.top = `${y - 25}px`;
+
+        // Highlight drop targets
+        const tableZone = document.getElementById('table-drop-zone');
+        const rackZone = document.getElementById('player-rack-container');
+        const elemBelow = document.elementFromPoint(x, y);
+
+        tableZone.classList.remove('drop-zone-highlight');
+        rackZone.classList.remove('drop-zone-highlight');
+
+        if (elemBelow && tableZone.contains(elemBelow)) {
+          tableZone.classList.add('drop-zone-highlight');
+        } else if (elemBelow && rackZone.contains(elemBelow)) {
+          rackZone.classList.add('drop-zone-highlight');
+        }
+      }
+
+      attachGlobalDragListeners() {
+        window.onmousemove = (e) => {
+          if (this.dragState) {
+            this.updateDragPosition(e.clientX, e.clientY);
+          }
+        };
+
+        window.onmouseup = (e) => {
+          if (!this.dragState) return;
+          
+          const { tile, source, cloneEl, originalDOM } = this.dragState;
+          const tableZone = document.getElementById('table-drop-zone');
+          const rackZone = document.getElementById('player-rack-container');
+
+          tableZone.classList.remove('drop-zone-highlight');
+          rackZone.classList.remove('drop-zone-highlight');
+
+          const elemBelow = document.elementFromPoint(e.clientX, e.clientY);
+          let droppedSuccess = false;
+
+          if (elemBelow && tableZone.contains(elemBelow)) {
+            // Dropped onto Table
+            droppedSuccess = true;
+            this.moveTileToTable(tile, source);
+          } else if (elemBelow && rackZone.contains(elemBelow)) {
+            // Dropped onto Rack
+            droppedSuccess = true;
+            this.moveTileToRack(tile, source);
+          }
+
+          cloneEl.remove();
+          originalDOM.style.opacity = '1';
+          this.dragState = null;
+
+          if (!droppedSuccess) {
+            sound.playClick();
+            app.toast('유효한 위치(테이블 또는 받침대)에 놓아주세요.');
+          }
+          this.render();
+        };
+      }
+
+      moveTileToTable(tile, source) {
+        sound.playDrop();
+        // Remove from source
+        this.removeTileFromSource(tile, source);
+
+        // Add as a new set or append to table
+        this.tableSets.push([tile]);
+        this.selectedTileIds.delete(tile.id);
+      }
+
+      moveTileToRack(tile, source) {
+        sound.playDrop();
+        if (source === 'rack') return; // already in rack
+        this.removeTileFromSource(tile, source);
+        this.playerRack.push(tile);
+        this.selectedTileIds.delete(tile.id);
+      }
+
+      removeTileFromSource(tile, source) {
+        if (source === 'rack') {
+          const idx = this.playerRack.findIndex(t => t.id === tile.id);
+          if (idx !== -1) this.playerRack.splice(idx, 1);
+        } else if (typeof source === 'object') {
+          const { setIndex, tileIndex } = source;
+          if (this.tableSets[setIndex]) {
+            this.tableSets[setIndex].splice(tileIndex, 1);
+            if (this.tableSets[setIndex].length === 0) {
+              this.tableSets.splice(setIndex, 1);
+            }
+          }
+        }
+      }
+
+      registerSelected3Tiles() {
+        if (this.selectedTileIds.size !== 3) {
+          app.toast('반드시 3장의 타일을 선택해야 합니다.', 'fa-circle-xmark');
+          return;
+        }
+
+        const selectedTiles = this.playerRack.filter(t => this.selectedTileIds.has(t.id));
+        if (selectedTiles.length !== 3) {
+          app.toast('선택한 타일은 내 받침대에 있어야 합니다.', 'fa-circle-xmark');
+          return;
+        }
+
+        const isValid = this.isValidSet(selectedTiles);
+
+        if (!isValid) {
+          app.toast('유효하지 않은 조합입니다! (같은 숫자 3개 & 다른 색상 OR 같은 색상 연속 숫자 3개만 가능)', 'fa-triangle-exclamation');
+          return;
+        }
+
+        sound.playWin();
+        // Move selected 3 tiles to table set
+        this.playerRack = this.playerRack.filter(t => !this.selectedTileIds.has(t.id));
+        this.tableSets.push(selectedTiles);
+        this.selectedTileIds.clear();
+
+        app.toast('유효한 3장 조합 등록 성공! 🎉', 'fa-award');
+        this.render();
+      }
+
+      createNewSetOnTable() {
+        if (this.selectedTileIds.size === 0) {
+          app.toast('먼저 받침대에서 이동할 타일(들)을 클릭하여 선택하세요.');
+          return;
+        }
+
+        const selectedTiles = this.playerRack.filter(t => this.selectedTileIds.has(t.id));
+        this.playerRack = this.playerRack.filter(t => !this.selectedTileIds.has(t.id));
+
+        this.tableSets.push(selectedTiles);
+        this.selectedTileIds.clear();
+        sound.playDrop();
+        this.render();
+      }
+
+      sortRack(type) {
+        sound.playClick();
+        if (type === 'num') {
+          this.playerRack.sort((a, b) => a.num - b.num);
+        } else if (type === 'color') {
+          this.playerRack.sort((a, b) => a.color.localeCompare(b.color) || a.num - b.num);
+        }
+        this.render();
+      }
+
+      isValidSet(set) {
+        if (set.length < 3) return false;
+        return this.checkIsGroup(set) || this.checkIsRun(set);
+      }
+
+      checkIsGroup(set) {
+        if (set.length < 3 || set.length > 4) return false;
+        const nonJokers = set.filter(t => !t.isJoker);
+        if (nonJokers.length === 0) return true;
+
+        const targetNum = nonJokers[0].num;
+        if (!nonJokers.every(t => t.num === targetNum)) return false;
+
+        const colors = nonJokers.map(t => t.color);
+        const uniqueColors = new Set(colors);
+        return uniqueColors.size === colors.length;
+      }
+
+      checkIsRun(set) {
+        if (set.length < 3) return false;
+
+        const nonJokers = set.filter(t => !t.isJoker);
+        if (nonJokers.length === 0) return true;
+
+        const targetColor = nonJokers[0].color;
+        if (!nonJokers.every(t => t.color === targetColor)) return false;
+
+        let jokersAvailable = set.length - nonJokers.length;
+        const sorted = [...nonJokers].sort((a, b) => a.num - b.num);
+
+        for (let i = 0; i < sorted.length - 1; i++) {
+          const diff = sorted[i + 1].num - sorted[i].num;
+          if (diff === 1) continue;
+          if (diff > 1 && (diff - 1) <= jokersAvailable) {
+            jokersAvailable -= (diff - 1);
+          } else {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      drawTile() {
+        if (this.currentTurn !== 'player') return;
+        sound.playTile();
+        this.restoreBackupState();
+
+        if (this.pool.length > 0) {
+          const drawn = this.pool.pop();
+          this.playerRack.push(drawn);
+          app.toast(`타일 1장(${drawn.isJoker ? '조커' : drawn.num})을 가져왔습니다.`);
+        } else {
+          app.toast('더 이상 가져올 타일이 없습니다.');
+        }
+
+        this.currentTurn = 'ai';
+        this.saveBackupState();
+        this.render();
+        this.triggerAITurn();
+      }
+
+      finishTurn() {
+        if (this.currentTurn !== 'player') return;
+        sound.playClick();
+
+        const allValid = this.tableSets.every(set => this.isValidSet(set));
+        if (!allValid) {
+          app.toast('테이블에 유효하지 않은 타일 조합이 있습니다! 이전 상태로 복구합니다.', 'fa-triangle-exclamation');
+          this.restoreBackupState();
+          return;
+        }
+
+        if (this.playerRack.length === 0) {
+          this.finishGame('player');
+          return;
+        }
+
+        app.toast('턴을 종료했습니다.');
+        this.currentTurn = 'ai';
+        this.saveBackupState();
+        this.render();
+
+        this.triggerAITurn();
+      }
+
+      triggerAITurn() {
+        if (this.isGameOver) return;
+        document.getElementById('rummi-ai-status').textContent = 'AI 수 계산 중...';
+
+        setTimeout(() => {
+          let aiPlayed = false;
+          const possibleMeld = this.findAIMeld();
+
+          if (possibleMeld) {
+            this.tableSets.push(possibleMeld.set);
+            possibleMeld.tileIds.forEach(id => {
+              const idx = this.aiRack.findIndex(t => t.id === id);
+              if (idx !== -1) this.aiRack.splice(idx, 1);
+            });
+            aiPlayed = true;
+          }
+
+          if (!aiPlayed) {
+            if (this.pool.length > 0) {
+              this.aiRack.push(this.pool.pop());
+            }
+            app.toast('컴퓨터가 타일 1장을 가져가고 턴을 종료했습니다.');
+          } else {
+            app.toast('컴퓨터가 유효한 3장 이상의 조합을 내려놓았습니다!');
+          }
+
+          if (this.aiRack.length === 0) {
+            this.finishGame('ai');
+            return;
+          }
+
+          this.currentTurn = 'player';
+          document.getElementById('rummi-ai-status').textContent = '대기 중...';
+          this.saveBackupState();
+          this.render();
+        }, 1000);
+      }
+
+      findAIMeld() {
+        const byNum = {};
+        this.aiRack.forEach(t => {
+          if (!t.isJoker) {
+            if (!byNum[t.num]) byNum[t.num] = [];
+            byNum[t.num].push(t);
+          }
+        });
+
+        for (let num in byNum) {
+          const tiles = byNum[num];
+          const uniqueColors = [];
+          const meld = [];
+          tiles.forEach(t => {
+            if (!uniqueColors.includes(t.color)) {
+              uniqueColors.push(t.color);
+              meld.push(t);
+            }
+          });
+
+          if (meld.length >= 3) {
+            return { set: meld.slice(0, 3), tileIds: meld.slice(0, 3).map(t => t.id) };
+          }
+        }
+        return null;
+      }
+
+      finishGame(winner) {
+        this.isGameOver = true;
+        if (winner === 'player') {
+          sound.playWin();
+          StatsManager.addWin('rummikub');
+        } else {
+          sound.playLose();
+          StatsManager.addLoss('rummikub');
+        }
+
+        const modal = document.getElementById('modal-overlay');
+        const content = document.getElementById('modal-content');
+
+        content.innerHTML = `
+          <div class="text-center space-y-5">
+            <div class="w-16 h-16 mx-auto rounded-full ${winner === 'player' ? 'bg-amber-500/20 text-amber-400 border-amber-500' : 'bg-red-500/20 text-red-400 border-red-500'} border-2 flex items-center justify-center text-3xl">
+              <i class="fa-solid ${winner === 'player' ? 'fa-cubes-stacked' : 'fa-skull'}"></i>
+            </div>
+            <div>
+              <h3 class="text-2xl font-black ${winner === 'player' ? 'text-amber-300' : 'text-red-300'}">
+                ${winner === 'player' ? '루미큐브 승리!' : '루미큐브 패배!'}
+              </h3>
+              <p class="text-xs text-gray-300 mt-2">
+                ${winner === 'player' ? '받침대의 모든 타일을 내려놓아 게임에서 승리했습니다!' : '컴퓨터가 먼저 모든 타일을 소진했습니다.'}
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="app.showLounge(); app.closeModal();" class="flex-1 py-3 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700">
+                로비로
+              </button>
+              <button onclick="app.startGame('rummikub', '${this.difficulty}');" class="flex-1 py-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg">
+                다시 하기
+              </button>
+            </div>
+          </div>
+        `;
+        modal.classList.remove('hidden');
+      }
+    }
+  </script>
+</body>
+</html>

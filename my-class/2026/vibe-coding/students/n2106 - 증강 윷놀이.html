@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>PUBG Zone Control 5v5 - 3D Prototype</title>
+<style>
+body { margin: 0; overflow: hidden; background: #111; font-family: Arial, sans-serif; }
+#info {
+  position: absolute;
+  top: 10px; left: 10px;
+  color: white;
+  background: rgba(0,0,0,0.6);
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 100;
+}
+#crosshair {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 20px; height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid white;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.7;
+}
+#zoneInfo {
+  position: absolute;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  background: rgba(0,0,0,0.7);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 16px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+<div id="info">
+  <b>PUBG Zone Control 5v5 Prototype</b><br>
+  WASD : 이동 | 마우스 : 시점<br>
+  Space : 점프 | Esc : 마우스 잠금 해제
+</div>
+<div id="crosshair"></div>
+<div id="zoneInfo">거점을 점령하세요!</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+
+<script>
+let camera, scene, renderer, controls;
+let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+let canJump = false;
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+const objects = [];
+
+const zones = {
+  A: { pos: new THREE.Vector3(0, 0, 0), radius: 12, name: "A - 중앙 광장", color: 0x4fc3f7 },
+  B: { pos: new THREE.Vector3(0, 0, -25), radius: 10, name: "B - 공장", color: 0x81c784 },
+  C: { pos: new THREE.Vector3(28, 0, 5), radius: 11, name: "C - 컨테이너 야드", color: 0xffb74d }
+};
+
+init();
+animate();
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+  scene.fog = new THREE.Fog(0x87ceeb, 0, 120);
+
+  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 2, 40);
+
+  // Lights
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+  hemiLight.position.set(0, 50, 0);
+  scene.add(hemiLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(-20, 40, 20);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(200, 200);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x3a5f3a });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // ===== Map Structures =====
+
+  // A Zone - Central Plaza (fountain + low walls)
+  createCylinder(0, 1.5, 0, 4, 0x888888); // Fountain base
+  createBox(0, 1, 0, 1.5, 2, 1.5, 0x666666); // Fountain
+
+  // Low walls around A
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const x = Math.cos(angle) * 10;
+    const z = Math.sin(angle) * 10;
+    createBox(x, 0.6, z, 2, 1.2, 0.4, 0x555555);
+  }
+
+  // B Zone - Factory (north)
+  createBox(0, 4, -25, 18, 8, 12, 0x5d5d5d); // Main building
+  createBox(-6, 2.5, -25, 4, 5, 4, 0x4a4a4a); // Side part
+  // Windows
+  createBox(0, 5, -19, 8, 3, 0.3, 0x87ceeb);
+
+  // C Zone - Container Yard (east)
+  const colors = [0xc62828, 0x1565c0, 0xf9a825, 0x2e7d32, 0x6a1b9a];
+  for (let i = 0; i < 6; i++) {
+    for (let j = 0; j < 2; j++) {
+      const x = 22 + i * 3.5;
+      const z = 0 + j * 4;
+      const h = 2.5 + Math.random() * 2;
+      createBox(x, h/2, z, 3, h, 2.2, colors[i % colors.length]);
+    }
+  }
+
+  // Some trucks as cover
+  createBox(-8, 1, 5, 4, 2, 2, 0x333333);
+  createBox(8, 1, -5, 4, 2, 2, 0x222222);
+
+  // Zone markers (glowing circles)
+  Object.values(zones).forEach(zone => {
+    const geo = new THREE.RingGeometry(zone.radius - 0.5, zone.radius, 32);
+    const mat = new THREE.MeshBasicMaterial({ color: zone.color, side: THREE.DoubleSide, transparent: true, opacity: 0.6 });
+    const ring = new THREE.Mesh(geo, mat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(zone.pos);
+    ring.position.y = 0.1;
+    scene.add(ring);
+  });
+
+  // Controls
+  controls = new THREE.PointerLockControls(camera, document.body);
+  scene.add(controls.getObject());
+
+  const blocker = document.getElementById('blocker') || document.body;
+  document.addEventListener('click', () => {
+    controls.lock();
+  });
+
+  controls.addEventListener('lock', () => {
+    document.getElementById('info').style.opacity = '0.3';
+  });
+  controls.addEventListener('unlock', () => {
+    document.getElementById('info').style.opacity = '1';
+  });
+
+  // Input
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  window.addEventListener('resize', onWindowResize);
+}
+
+function createBox(x, y, z, w, h, d, color) {
+  const geo = new THREE.BoxGeometry(w, h, d);
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  objects.push(mesh);
+  return mesh;
+}
+
+function createCylinder(x, y, z, r, color) {
+  const geo = new THREE.CylinderGeometry(r, r, 1, 16);
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  scene.add(mesh);
+}
+
+function onKeyDown(event) {
+  switch (event.code) {
+    case 'ArrowUp': case 'KeyW': moveForward = true; break;
+    case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+    case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+    case 'ArrowRight': case 'KeyD': moveRight = true; break;
+    case 'Space':
+      if (canJump) velocity.y += 8;
+      canJump = false;
+      break;
+  }
+}
+
+function onKeyUp(event) {
+  switch (event.code) {
+    case 'ArrowUp': case 'KeyW': moveForward = false; break;
+    case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+    case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+    case 'ArrowRight': case 'KeyD': moveRight = false; break;
+  }
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (controls.isLocked) {
+    const delta = 0.016;
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z -= velocity.z * 10.0 * delta;
+    velocity.y -= 20 * delta; // gravity
+
+    direction.z = Number(moveForward) - Number(moveBackward);
+    direction.x = Number(moveRight) - Number(moveLeft);
+    direction.normalize();
+
+    if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
+    if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
+
+    controls.moveRight(-velocity.x * delta);
+    controls.moveForward(-velocity.z * delta);
+    controls.getObject().position.y += velocity.y * delta;
+
+    if (controls.getObject().position.y < 2) {
+      velocity.y = 0;
+      controls.getObject().position.y = 2;
+      canJump = true;
+    }
+
+    // Zone check
+    const pos = controls.getObject().position;
+    let currentZone = null;
+    for (const [key, zone] of Object.entries(zones)) {
+      const dist = Math.sqrt(Math.pow(pos.x - zone.pos.x, 2) + Math.pow(pos.z - zone.pos.z, 2));
+      if (dist < zone.radius) {
+        currentZone = zone;
+        break;
+      }
+    }
+    const zoneEl = document.getElementById('zoneInfo');
+    if (currentZone) {
+      zoneEl.innerHTML = `<b style="color:#
+currentZone.color.toString(16)">{currentZone.name}</b> 점령 중`;
+    } else {
+      zoneEl.innerHTML = "거점을 점령하세요!";
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>

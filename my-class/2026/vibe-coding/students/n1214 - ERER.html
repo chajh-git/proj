@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2D Anime Style Battle Engine</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;800&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: #eef2f7;
+      color: #2c3e50;
+      font-family: 'Noto Sans KR', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding-bottom: 20px;
+    }
+
+    header {
+      width: 1000px;
+      padding: 16px 28px;
+      background: #ffffff;
+      border-bottom: 4px solid #4a90e2;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+      margin-top: 12px;
+      border-radius: 12px 12px 0 0;
+    }
+    h1 {
+      font-family: 'Jua', sans-serif;
+      font-size: 1.6rem;
+      color: #357abd;
+      letter-spacing: 1px;
+    }
+    .hud-bar { display: flex; gap: 25px; font-weight: 800; font-size: 1.05rem; }
+    .badge-light { color: #f39c12; }
+    .badge-emotion { color: #e74c3c; }
+
+    #stage-wrapper {
+      position: relative;
+      width: 1000px;
+      height: 520px;
+      border: 4px solid #ffffff;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+      border-radius: 0 0 12px 12px;
+      overflow: hidden;
+      background: #87ceeb;
+    }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #ui-container {
+      width: 1000px;
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .slots-panel {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .slot-group { display: flex; align-items: center; gap: 15px; }
+    .slot-title { font-family: 'Jua', sans-serif; font-size: 1.1rem; }
+    .slot-box {
+      width: 150px;
+      height: 60px;
+      border: 3px dashed #cbd5e1;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .slot-box.filled {
+      border-style: solid;
+      border-color: #3b82f6;
+      background: #eff6ff;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+    }
+    .slot-speed { font-size: 0.8rem; color: #64748b; font-weight: bold; }
+    .slot-card-title { font-size: 0.9rem; font-weight: 800; color: #1e293b; margin-top: 2px; }
+
+    .hand-cards {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      padding: 6px;
+      min-height: 175px;
+    }
+    .bright-card {
+      width: 130px;
+      height: 170px;
+      background: #ffffff;
+      border: 3px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      position: relative;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+    .bright-card:hover {
+      transform: translateY(-10px);
+      border-color: #3b82f6;
+      box-shadow: 0 10px 20px rgba(59, 130, 246, 0.2);
+    }
+    .bright-card.selected {
+      border-color: #ef4444;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+      transform: translateY(-14px);
+    }
+    .bright-card.disabled {
+      opacity: 0.4;
+      filter: grayscale(1);
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    .card-cost-gem {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 28px;
+      height: 28px;
+      background: #fbbf24;
+      color: #ffffff;
+      font-weight: 900;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.95rem;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .card-header { font-family: 'Jua', sans-serif; font-size: 1rem; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px; }
+    .card-dice-container { display: flex; flex-direction: column; gap: 4px; }
+    .dice-badge {
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+    }
+    .dice-Slash { background: #fee2e2; color: #dc2626; }
+    .dice-Pierce { background: #e0f2fe; color: #0284c7; }
+    .dice-Blunt { background: #fef3c7; color: #d97706; }
+    .dice-Block { background: #f1f5f9; color: #475569; }
+    .dice-Evade { background: #dcfce7; color: #16a34a; }
+
+    .btn-row { display: flex; justify-content: center; gap: 16px; margin-top: 4px; }
+    .act-btn {
+      padding: 12px 40px;
+      font-family: 'Jua', sans-serif;
+      font-size: 1.2rem;
+      color: #ffffff;
+      background: #3b82f6;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      transition: all 0.2s;
+    }
+    .act-btn:hover { background: #2563eb; transform: translateY(-2px); }
+    .act-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .act-btn-reset { background: #64748b; box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3); }
+
+    #battle-log {
+      width: 1000px;
+      height: 90px;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 10px 16px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      color: #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      margin-top: 8px;
+    }
+    .log-entry { margin-bottom: 3px; font-weight: 500; }
+    .log-win { color: #2563eb; font-weight: bold; }
+    .log-lose { color: #dc2626; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>2D BRIGHT ARENA : 합 배틀</h1>
+    <div class="hud-bar">
+      <div>빛: <span id="hud-light" class="badge-light">3 / 3</span></div>
+      <div>감정 단계: <span id="hud-emotion" class="badge-emotion">Lv. 0</span></div>
+    </div>
+  </header>
+
+  <div id="stage-wrapper">
+    <canvas id="stage" width="1000" height="520"></canvas>
+  </div>
+
+  <div id="ui-container">
+    <div class="slots-panel">
+      <div class="slot-group">
+        <span class="slot-title" style="color: #3b82f6;">[플레이어: 빛의 신관]</span>
+        <div id="player-slot" class="slot-box" onclick="deselectCard()">
+          <div class="slot-speed">속도: <span id="p-speed-num">0</span></div>
+          <div id="p-slot-card-name" class="slot-card-title">카드 선택</div>
+        </div>
+      </div>
+      <div class="slot-group">
+        <span class="slot-title" style="color: #ef4444;">[적: 유적 거인]</span>
+        <div class="slot-box filled" style="cursor: default;">
+          <div class="slot-speed">속도: <span id="e-speed-num">0</span></div>
+          <div id="e-slot-card-name" class="slot-card-title">대기 중</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="hand-cards" class="hand-cards"></div>
+
+    <div class="btn-row">
+      <button id="btn-start" class="act-btn" onclick="executeClashPhase()">합 개시</button>
+      <button class="act-btn act-btn-reset" onclick="resetGame()">재시작</button>
+    </div>
+  </div>
+
+  <div id="battle-log"></div>
+
+  <script>
+    // Audio Synthesizer
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'slash') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      } else if (type === 'clash') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.setValueAtTime(500, now + 0.05);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      }
+    }
+
+    const PLAYER_DECK = [
+      { id: 1, name: '빛의 강타', cost: 1, dice: [{ type: 'Slash', min: 4, max: 8 }, { type: 'Slash', min: 3, max: 7 }] },
+      { id: 2, name: '성광 찌르기', cost: 2, dice: [{ type: 'Pierce', min: 6, max: 11 }, { type: 'Evade', min: 4, max: 9 }] },
+      { id: 3, name: '수호의 방패', cost: 1, dice: [{ type: 'Block', min: 6, max: 10 }, { type: 'Blunt', min: 2, max: 6 }] },
+      { id: 4, name: '신속의 스텝', cost: 0, dice: [{ type: 'Slash', min: 2, max: 6 }, { type: 'Evade', min: 4, max: 8 }] }
+    ];
+
+    const ENEMY_DECK = [
+      { name: '바위 주먹', cost: 1, dice: [{ type: 'Blunt', min: 4, max: 9 }, { type: 'Blunt', min: 3, max: 7 }] },
+      { name: '유적 방어', cost: 1, dice: [{ type: 'Block', min: 6, max: 10 }, { type: 'Pierce', min: 3, max: 7 }] },
+      { name: '지진 충격', cost: 2, dice: [{ type: 'Blunt', min: 7, max: 12 }] }
+    ];
+
+    let player = {
+      name: '빛의 신관',
+      hp: 100, maxHp: 100,
+      stagger: 50, maxStagger: 50,
+      light: 3, maxLight: 3,
+      emotion: 0, emotionLv: 0,
+      speed: 0,
+      x: 250, y: 380, dx: 0,
+      isStaggered: false
+    };
+
+    let enemy = {
+      name: '유적 거인',
+      hp: 140, maxHp: 140,
+      stagger: 70, maxStagger: 70,
+      speed: 0,
+      x: 750, y: 380, dx: 0,
+      isStaggered: false,
+      card: null
+    };
+
+    let selectedCard = null;
+    let isAnimating = false;
+    let floatingTexts = [];
+
+    const canvas = document.getElementById('stage');
+    const ctx = canvas.getContext('2d');
+
+    function renderStage() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Bright 2D Sky & Ground Background
+      drawBrightBackground();
+
+      // 2. Characters
+      drawPlayerCharacter(player.x + player.dx, player.y);
+      drawEnemyCharacter(enemy.x + enemy.dx, enemy.y);
+
+      // 3. Target Arrow
+      if (selectedCard && enemy.card && !isAnimating) {
+        drawClashArrow(player.x + 30, player.y - 80, enemy.x - 30, enemy.y - 100);
+      }
+
+      // 4. Floating Text
+      drawFloatingTexts();
+
+      requestAnimationFrame(renderStage);
+    }
+
+    function drawBrightBackground() {
+      // Sky Gradient
+      let skyGrad = ctx.createLinearGradient(0, 0, 0, 360);
+      skyGrad.addColorStop(0, '#bae6fd');
+      skyGrad.addColorStop(1, '#e0f2fe');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, canvas.width, 360);
+
+      // Sun
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.arc(850, 80, 45, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Clouds
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(200, 100, 30, 0, Math.PI * 2);
+      ctx.arc(230, 90, 40, 0, Math.PI * 2);
+      ctx.arc(260, 100, 30, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Green Flat 2D Ground
+      ctx.fillStyle = '#4ade80';
+      ctx.fillRect(0, 360, canvas.width, 160);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(0, 360, canvas.width, 12);
+    }
+
+    // 2D Anime Character: Priest of Light
+    function drawPlayerCharacter(x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      const idle = Math.sin(Date.now() * 0.005) * 3;
+      if (player.isStaggered) ctx.rotate(0.2);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 30, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Robe (White & Blue)
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(-18, -75 + idle);
+      ctx.lineTo(18, -75 + idle);
+      ctx.lineTo(25, 0);
+      ctx.lineTo(-25, 0);
+      ctx.fill();
+
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(-8, -75 + idle, 16, 75);
+
+      // Head / Hair
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(0, -90 + idle, 16, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Face
+      ctx.fillStyle = '#fed7aa';
+      ctx.beginPath();
+      ctx.arc(0, -88 + idle, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eyes
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(3, -90 + idle, 3, 5);
+
+      // Light Staff
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(18, 0);
+      ctx.lineTo(18, -110 + idle);
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(18, -114 + idle, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+
+      drawHUD(player, x, y - 130);
+    }
+
+    // 2D Anime Character: Ruins Golem
+    function drawEnemyCharacter(x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      const idle = Math.cos(Date.now() * 0.004) * 2;
+      if (enemy.isStaggered) ctx.rotate(-0.2);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 45, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Golem Stone Body
+      ctx.fillStyle = '#64748b';
+      ctx.fillRect(-35, -110 + idle, 70, 105);
+
+      ctx.fillStyle = '#475569';
+      ctx.fillRect(-25, -95 + idle, 50, 80);
+
+      // Core Eye
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(0, -85 + idle, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Shoulder Plates
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(-45, -115 + idle, 20, 25);
+      ctx.fillRect(25, -115 + idle, 20, 25);
+
+      ctx.restore();
+
+      drawHUD(enemy, x, y - 145);
+    }
+
+    function drawHUD(unit, x, y) {
+      const w = 90;
+      ctx.save();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(x - w/2, y, w, 8);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(x - w/2, y, w * (Math.max(0, unit.hp) / unit.maxHp), 8);
+
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(x - w/2, y + 10, w, 5);
+      ctx.fillStyle = '#a855f7';
+      ctx.fillRect(x - w/2, y + 10, w * (Math.max(0, unit.stagger) / unit.maxStagger), 5);
+
+      ctx.fillStyle = '#1e293b';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${unit.name} (속도: ${unit.speed})`, x, y - 6);
+
+      ctx.restore();
+    }
+
+    function drawClashArrow(x1, y1, x2, y2) {
+      ctx.save();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      const cpX = (x1 + x2) / 2;
+      const cpY = Math.min(y1, y2) - 40;
+      ctx.quadraticCurveTo(cpX, cpY, x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function addFloatingText(text, x, y, color) {
+      floatingTexts.push({ text, x, y, color, opacity: 1.0, dy: -1.2 });
+    }
+
+    function drawFloatingTexts() {
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        const ft = floatingTexts[i];
+        ctx.save();
+        ctx.globalAlpha = ft.opacity;
+        ctx.fillStyle = ft.color;
+        ctx.font = 'bold 20px "Jua", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+
+        ft.y += ft.dy;
+        ft.opacity -= 0.025;
+        if (ft.opacity <= 0) floatingTexts.splice(i, 1);
+      }
+    }
+
+    function initRound() {
+      player.speed = Math.floor(Math.random() * 4) + 2;
+      enemy.speed = Math.floor(Math.random() * 4) + 1;
+
+      enemy.card = ENEMY_DECK[Math.floor(Math.random() * ENEMY_DECK.length)];
+
+      document.getElementById('p-speed-num').innerText = player.speed;
+      document.getElementById('e-speed-num').innerText = enemy.speed;
+      document.getElementById('e-slot-card-name').innerText = enemy.card.name;
+
+      deselectCard();
+      renderHandUI();
+      updateHUD();
+    }
+
+    function renderHandUI() {
+      const hand = document.getElementById('hand-cards');
+      hand.innerHTML = '';
+
+      PLAYER_DECK.forEach(card => {
+        const el = document.createElement('div');
+        el.className = `bright-card ${player.light < card.cost ? 'disabled' : ''}`;
+        el.onclick = () => selectCard(card, el);
+
+        let diceHtml = card.dice.map(d => 
+          `<div class="dice-badge dice-${d.type}"><span>${d.type}</span><span>${d.min}~${d.max}</span></div>`
+        ).join('');
+
+        el.innerHTML = `
+          <div class="card-cost-gem">${card.cost}</div>
+          <div class="card-header">${card.name}</div>
+          <div class="card-dice-container">${diceHtml}</div>
+        `;
+        hand.appendChild(el);
+      });
+    }
+
+    function selectCard(card, el) {
+      if (player.light < card.cost || isAnimating) return;
+
+      document.querySelectorAll('.bright-card').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+
+      selectedCard = card;
+      document.getElementById('player-slot').classList.add('filled');
+      document.getElementById('p-slot-card-name').innerText = card.name;
+    }
+
+    function deselectCard() {
+      if (isAnimating) return;
+      selectedCard = null;
+      document.getElementById('player-slot').classList.remove('filled');
+      document.getElementById('p-slot-card-name').innerText = '카드 선택';
+      document.querySelectorAll('.bright-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    function writeLog(msg, type = '') {
+      const panel = document.getElementById('battle-log');
+      const item = document.createElement('div');
+      item.className = `log-entry ${type}`;
+      item.innerText = msg;
+      panel.appendChild(item);
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    async function executeClashPhase() {
+      if (!selectedCard || isAnimating) {
+        alert('사용할 카드를 선택해 주세요!');
+        return;
+      }
+
+      isAnimating = true;
+      document.getElementById('btn-start').disabled = true;
+      player.light -= selectedCard.cost;
+      updateHUD();
+
+      writeLog(`▶ 합 시작: [${selectedCard.name}] vs [${enemy.card.name}]`, 'log-win');
+
+      player.dx = 180;
+      enemy.dx = -180;
+      await sleep(350);
+
+      const maxDiceCount = Math.max(selectedCard.dice.length, enemy.card.dice.length);
+
+      for (let i = 0; i < maxDiceCount; i++) {
+        const pDice = selectedCard.dice[i];
+        const eDice = enemy.card.dice[i];
+
+        if (pDice && eDice) {
+          const pVal = Math.floor(Math.random() * (pDice.max - pDice.min + 1)) + pDice.min;
+          const eVal = Math.floor(Math.random() * (eDice.max - eDice.min + 1)) + eDice.min;
+
+          playSound('clash');
+
+          if (pVal > eVal) {
+            const dmg = pVal;
+            enemy.hp -= dmg;
+            enemy.stagger -= Math.floor(dmg * 0.7);
+            addFloatingText(`합 승리! -${dmg}`, enemy.x - 180, enemy.y - 100, '#2563eb');
+            playSound('slash');
+            writeLog(`[합 승리] 플레이어 (${pVal}) vs 적 (${eVal}) ➔ 적에게 ${dmg} 피해!`, 'log-win');
+          } else if (eVal > pVal) {
+            const dmg = eVal;
+            player.hp -= dmg;
+            player.stagger -= Math.floor(dmg * 0.7);
+            addFloatingText(`합 패배! -${dmg}`, player.x + 180, player.y - 100, '#dc2626');
+            writeLog(`[합 패배] 플레이어 (${pVal}) vs 적 (${eVal}) ➔ 플레이어 ${dmg} 피해!`, 'log-lose');
+          } else {
+            addFloatingText('무승부', 500, 200, '#d97706');
+            writeLog(`[무승부] 동일한 주사위 수치 (${pVal})`);
+          }
+        } else if (pDice) {
+          const pVal = Math.floor(Math.random() * (pDice.max - pDice.min + 1)) + pDice.min;
+          enemy.hp -= pVal;
+          addFloatingText(`일방 공격! -${pVal}`, enemy.x - 180, enemy.y - 100, '#2563eb');
+          playSound('slash');
+          writeLog(`[일방 공격] 적에게 ${pVal} 피해!`, 'log-win');
+        } else if (eDice) {
+          const eVal = Math.floor(Math.random() * (eDice.max - eDice.min + 1)) + eDice.min;
+          player.hp -= eVal;
+          addFloatingText(`일방 피격! -${eVal}`, player.x + 180, player.y - 100, '#dc2626');
+          writeLog(`[일방 피격] 플레이어 ${eVal} 피해!`, 'log-lose');
+        }
+
+        if (enemy.stagger <= 0) enemy.isStaggered = true;
+        if (player.stagger <= 0) player.isStaggered = true;
+
+        updateHUD();
+        await sleep(650);
+      }
+
+      player.dx = 0;
+      enemy.dx = 0;
+      await sleep(350);
+
+      player.emotion += 1;
+      if (player.emotion >= 3) {
+        player.emotionLv++;
+        player.emotion = 0;
+        player.maxLight = Math.min(5, player.maxLight + 1);
+        writeLog(`★ 감정 레벨 상승! (Lv. ${player.emotionLv}) - 최대 빛 증가!`);
+      }
+
+      player.light = Math.min(player.maxLight, player.light + 1);
+
+      isAnimating = false;
+      document.getElementById('btn-start').disabled = false;
+
+      initRound();
+    }
+
+    function sleep(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+    function updateHUD() {
+      document.getElementById('hud-light').innerText = `${player.light} / ${player.maxLight}`;
+      document.getElementById('hud-emotion').innerText = `Lv. ${player.emotionLv}`;
+    }
+
+    function resetGame() {
+      player.hp = player.maxHp;
+      player.stagger = player.maxStagger;
+      player.light = 3;
+      player.maxLight = 3;
+      player.emotion = 0;
+      player.emotionLv = 0;
+
+      enemy.hp = enemy.maxHp;
+      enemy.stagger = enemy.maxStagger;
+
+      document.getElementById('battle-log').innerHTML = '';
+      writeLog('--- 게임 재시작 ---');
+      initRound();
+    }
+
+    renderStage();
+    initRound();
+  </script>
+</body>
+</html>

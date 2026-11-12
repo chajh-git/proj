@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100,000 클릭 챌린지</title>
+<style>
+body {
+  background: #17172b;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding: 20px;
+}
+.panel {
+  background: #292943;
+  border-radius: 15px;
+  padding: 18px;
+  margin: 15px auto;
+  max-width: 500px;
+}
+h1 { color: #a78bfa; }
+#total {
+  font-size: 45px;
+  font-weight: bold;
+}
+#clickbtn {
+  background: linear-gradient(135deg,#9333ea,#2563eb);
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  padding: 30px;
+  width: 100%;
+  max-width: 500px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+}
+button:active { transform: scale(.96); }
+.upgrade {
+  background: #414166;
+  color: white;
+  padding: 15px;
+  margin: 10px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+.upgrade:disabled { opacity: .4; }
+#bar {
+  background: #444;
+  height: 18px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+#progress {
+  height: 100%;
+  width: 0%;
+  background: #a855f7;
+}
+.stat {
+  display: inline-block;
+  margin: 8px;
+}
+#victory { color: gold; font-size: 28px; }
+</style>
+</head>
+<body>
+
+<h1>💥 100,000 클릭 챌린지</h1>
+<div class="panel">
+  <h2>🏆 목표: 100,000</h2>
+  <div id="bar"><div id="progress"></div></div>
+  <p id="percent">0%</p>
+  <div id="total">0</div>
+  <p>누적 클릭 수</p>
+</div>
+
+<button id="clickbtn">👆 클릭!!</button>
+
+<div class="panel">
+  <div class="stat">⚡ 클릭 파워<br><b id="power">1</b></div>
+  <div class="stat">💰 코인<br><b id="coins">0</b></div>
+  <div class="stat">🤖 자동 클릭<br><b id="auto">0</b>/초</div>
+</div>
+
+<div class="panel">
+  <h2>🛠️ 업그레이드 상점</h2>
+  <button class="upgrade" id="buy1">
+    ⚡ 강력한 손가락<br>클릭 파워 +1<br>가격: 50
+  </button>
+  <button class="upgrade" id="buy2">
+    🤖 자동 클릭 로봇<br>자동 클릭 +1/초<br>가격: 250
+  </button>
+  <button class="upgrade" id="buy3">
+    🔥 초강력 클릭<br>클릭 파워 +10<br>가격: 1,000
+  </button>
+</div>
+
+<div class="panel" id="victory" hidden>
+  🏆 GAME CLEAR!<br>
+  100,000 클릭 달성!
+</div>
+
+<p id="message">클릭해서 게임을 시작하세요!</p>
+<button class="upgrade" id="reset">🔄 게임 초기화</button>
+
+<script>
+let total = 0;
+let coins = 0;
+let power = 1;
+let auto = 0;
+
+let costs = [50, 250, 1000];
+let won = false;
+
+const $ = id => document.getElementById(id);
+
+function render() {
+  $("total").textContent = total.toLocaleString();
+  $("coins").textContent = coins.toLocaleString();
+  $("power").textContent = power;
+  $("auto").textContent = auto;
+
+  $("progress").style.width =
+    (total / 100000 * 100) + "%";
+
+  $("percent").textContent =
+    (total / 1000).toFixed(2) + "%";
+
+  $("buy1").disabled = coins < costs[0] || won;
+  $("buy2").disabled = coins < costs[1] || won;
+  $("buy3").disabled = coins < costs[2] || won;
+  $("clickbtn").disabled = won;
+
+  $("buy1").innerHTML =
+    `⚡ 강력한 손가락<br>클릭 파워 +1<br>가격: ${costs[0].toLocaleString()}`;
+
+  $("buy2").innerHTML =
+    `🤖 자동 클릭 로봇<br>자동 클릭 +1/초<br>가격: ${costs[1].toLocaleString()}`;
+
+  $("buy3").innerHTML =
+    `🔥 초강력 클릭<br>클릭 파워 +10<br>가격: ${costs[2].toLocaleString()}`;
+}
+
+function gain(amount) {
+  if (won) return;
+
+  let earned = Math.min(amount, 100000 - total);
+  total += earned;
+  coins += earned;
+
+  if (total >= 100000) {
+    total = 100000;
+    won = true;
+    $("victory").hidden = false;
+    $("message").textContent = "🎉 축하합니다! 게임 클리어!";
+  }
+
+  render();
+}
+
+$("clickbtn").onclick = () => gain(power);
+
+$("buy1").onclick = () => {
+  if (coins < costs[0] || won) return;
+  coins -= costs[0];
+  power += 1;
+  costs[0] = Math.ceil(costs[0] * 1.65);
+  $("message").textContent = "⚡ 클릭 파워 증가!";
+  render();
+};
+
+$("buy2").onclick = () => {
+  if (coins < costs[1] || won) return;
+  coins -= costs[1];
+  auto += 1;
+  costs[1] = Math.ceil(costs[1] * 1.8);
+  $("message").textContent = "🤖 자동 클릭 로봇 작동!";
+  render();
+};
+
+$("buy3").onclick = () => {
+  if (coins < costs[2] || won) return;
+  coins -= costs[2];
+  power += 10;
+  costs[2] = Math.ceil(costs[2] * 1.9);
+  $("message").textContent = "🔥 초강력 클릭 획득!";
+  render();
+};
+
+setInterval(() => {
+  if (auto > 0 && !won) gain(auto);
+}, 1000);
+
+$("reset").onclick = () => {
+  if (!confirm("정말 초기화할까요?")) return;
+
+  total = 0;
+  coins = 0;
+  power = 1;
+  auto = 0;
+  costs = [50, 250, 1000];
+  won = false;
+
+  $("victory").hidden = true;
+  $("message").textContent = "새로운 도전 시작!";
+  render();
+};
+
+render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIAMOND PRO · KBO CLUB</title>
+<style>
+:root{--bg:#07111d;--line:#ffffff20;--gold:#ffd166;--red:#d71920;--muted:#91a5ba}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f8fc;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+header{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#0b1725;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+.brand{font-weight:1000;letter-spacing:2px;font-size:20px}.brand span{color:var(--red)}
+.money{font-weight:900;color:var(--gold);padding:8px 12px;background:#17283a;border-radius:8px}
+nav{display:flex;gap:7px;flex-wrap:wrap;padding:12px 20px;background:#0a1522;border-bottom:1px solid var(--line)}
+nav button,.btn{border:1px solid var(--line);background:#17283a;color:#eaf2fa;padding:10px 14px;border-radius:8px;font-weight:800}
+nav button.active,.btn.primary{background:var(--red);border-color:var(--red);color:white}
+main{max-width:1200px;margin:auto;padding:18px}
+.view{display:none}.view.active{display:block}
+h1{font-size:clamp(26px,4vw,42px);margin:4px 0 8px}
+.sub{color:var(--muted);line-height:1.6;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.fifa-card{background:linear-gradient(145deg,#1a2a3d,#0d1826);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fifa-top{background:linear-gradient(90deg,#0f1c2b,#1a2f45);padding:12px 14px 8px;display:flex;justify-content:space-between}
+.ovr-badge{width:52px;height:52px;border-radius:10px;display:grid;place-items:center;font-weight:1000;font-size:22px;color:#0a0a0a;background:var(--gold)}
+.ovr-badge.gold{background:linear-gradient(135deg,#ffd166,#f0a500)}
+.ovr-badge.silver{background:linear-gradient(135deg,#c0c0c0,#a0a0a0)}
+.ovr-badge.bronze{background:linear-gradient(135deg,#cd7f32,#a05a2c);color:#fff}
+.pos-badge{font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:#263b51;color:#a7bacd}
+.player-face{width:70px;height:70px;border-radius:50%;background:#263b51;display:grid;place-items:center;font-size:28px;font-weight:1000;color:var(--gold);margin:0 auto 6px;border:3px solid #ffffff25}
+.player-info{padding:0 14px 14px;text-align:center}
+.player-name{font-size:17px;font-weight:900;margin:4px 0 2px}
+.player-team{font-size:12px;color:var(--muted);margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.stat-item{background:#142437;border-radius:8px;padding:6px 8px;font-size:12px}
+.stat-item b{display:block;font-size:15px;color:var(--gold)}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.price{font-weight:900;color:var(--gold)}
+.card-actions{display:flex;gap:6px;padding:0 14px 14px}
+.card-actions button{flex:1;padding:10px 6px;font-size:12px}
+input,select{background:#142437;color:white;border:1px solid var(--line);padding:10px;border-radius:8px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar input{flex:1;min-width:160px}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.team{background:#122236;border:1px solid var(--line);border-radius:10px;padding:14px;color:white}
+.team.selected{border-color:var(--gold)}
+.team strong{display:block;font-size:15px}.team small{color:var(--muted)}
+.lineup{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.slot{background:#101f30;border:1px dashed #ffffff35;border-radius:10px;padding:12px;min-height:90px}
+.slot.filled{border-style:solid}
+.slot-head{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-bottom:8px}
+.slot-name{font-weight:900;font-size:16px}
+.empty{color:#71869c;font-size:12px}
+#gameWrap{position:relative;height:min(62vh,620px);min-height:360px;border-radius:14px;overflow:hidden;background:#091522;border:1px solid var(--line)}
+#gameCanvas{width:100%;height:100%;display:block;cursor:crosshair}
+.gamehud{position:absolute;inset:12px 12px auto;display:flex;justify-content:space-between;gap:8px;pointer-events:none;flex-wrap:wrap}
+.glass{background:#071321ee;border:1px solid #ffffff25;border-radius:9px;padding:10px 12px}
+#gameMsg{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,4vw,36px);font-weight:1000;text-shadow:0 3px 16px #000;text-align:center;pointer-events:none;z-index:5}
+#gameMsg small{display:block;font-size:13px;color:var(--gold);margin-top:8px}
+.base-hud{display:flex;align-items:center;gap:8px}
+.base-diamond{width:48px;height:44px;position:relative}
+.base-diamond i{position:absolute;width:10px;height:10px;background:#71869c;border:1px solid #dce7f1;transform:rotate(45deg)}
+#base1{right:2px;top:16px}#base2{left:18px;top:1px}#base3{left:2px;top:16px}
+.base-diamond i.occupied{background:var(--gold);box-shadow:0 0 8px #ffd166}
+.base-diamond .home-base{left:18px;bottom:0;background:#f5f8fc;clip-path:polygon(50% 0,100% 35%,100% 75%,50% 100%,0 75%,0 35%);transform:none}
+.base-label{font-size:10px;color:#c6d4e2}
+.game-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.game-controls .btn{flex:1}
+#aimHelp{font-size:12px;color:var(--muted);margin-top:8px}
+.notice{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17283a;border:1px solid var(--line);border-radius:9px;padding:12px 16px;z-index:20;display:none}
+.home-away{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}
+.home-away button{flex:1;min-width:140px;padding:16px;font-size:16px;font-weight:900}
+.home-away button.selected{background:var(--red);border-color:var(--red)}
+#modeLabel{font-size:13px;color:var(--gold);margin:6px 0 10px}
+.pitch-types{display:none;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pitch-types button{padding:8px 12px;font-size:12px;font-weight:800;border-radius:8px;border:1px solid var(--line);background:#142437;color:#cde}
+.pitch-types button.active{background:var(--red);border-color:var(--red);color:#fff}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand">DIAMOND<span>.</span>PRO <span style="color:#8da3b9;font-size:10px">KBO CLUB</span></div>
+ <div class="money">보유 자금 <span id="money">₩5조</span></div>
+</header>
+<nav>
+ <button class="active" data-view="home">구단 홈</button>
+ <button data-view="market">선수 시장</button>
+ <button data-view="locker">라커룸</button>
+ <button data-view="game">경기</button>
+</nav>
+<main>
+<section id="home" class="view active">
+ <h1>구단 운영 센터</h1>
+ <p class="sub">선수를 영입하고 라인업을 구성하세요.</p>
+ <div class="team-grid" id="teamPicker"></div>
+ <div class="fifa-card" style="margin-top:16px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>내 구단 요약</strong><span class="pos-badge" id="clubName">롯데 자이언츠</span></div>
+  <p class="sub" style="margin:10px 0 0">보유 <b id="ownedCount">0</b>명 · 라인업 <b id="lineupCount">0</b>명</p>
+  <button class="btn primary" onclick="showView('locker')" style="margin-top:12px">라커룸 관리</button>
+ </div>
+</section>
+
+<section id="market" class="view">
+ <h1>선수 시장</h1>
+ <div class="toolbar">
+  <input id="search" placeholder="선수 이름 검색">
+  <select id="filterTeam"><option value="">전체 구단</option></select>
+  <select id="filterPos"><option value="">전체 포지션</option><option>투수</option><option>포수</option><option>내야수</option><option>외야수</option></select>
+  <select id="sort"><option value="rating">능력치순</option><option value="price">가격순</option><option value="name">이름순</option></select>
+ </div>
+ <div class="cards" id="marketCards"></div>
+</section>
+
+<section id="locker" class="view">
+ <h1>라커룸</h1>
+ <div class="fifa-card" style="margin-bottom:14px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>선발 라인업</strong><span class="pos-badge" id="lineupStatus">0 / 9</span></div>
+  <div class="lineup" id="lineup" style="margin-top:12px"></div>
+ </div>
+ <div class="cards" id="ownedCards"></div>
+</section>
+
+<section id="game" class="view">
+ <h1>사직야구장</h1>
+ <p class="sub">홈 = 1회초 투수 / 원정 = 1회초 타격. 투수 때 상대 타자가 스윙하는 모션이 나옵니다.</p>
+
+ <div class="home-away">
+  <button class="btn" id="btnAway">원정 (1회초 공격)</button>
+  <button class="btn" id="btnHome">홈 (1회초 수비)</button>
+ </div>
+ <div id="modeLabel">홈/원정을 선택해주세요</div>
+
+ <div class="pitch-types" id="pitchTypes">
+  <button data-pitch="four" class="active">포심</button>
+  <button data-pitch="two">투심</button>
+  <button data-pitch="curve">커브</button>
+  <button data-pitch="slider">슬라이더</button>
+  <button data-pitch="splitter">스플리터</button>
+  <button data-pitch="fork">포크</button>
+ </div>
+
+ <div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+  <div class="gamehud">
+   <div class="glass"><div style="font-size:10px;color:#a5b7ca"><span id="halfLabel">-</span></div><b><span id="scoreUs">0</span> : <span id="scoreA">0</span></b></div>
+   <div class="glass">B <b id="balls">0</b> · S <b id="strikes">0</b> · O <b id="outs">0</b></div>
+   <div class="glass base-hud">
+    <div class="base-diamond"><i id="base2"></i><i id="base3"></i><i id="base1"></i><i class="home-base"></i></div>
+    <div class="base-label"><b>주자</b><br><span id="baseText">없음</span></div>
+   </div>
+  </div>
+  <div id="gameMsg">홈 / 원정을 선택하세요</div>
+ </div>
+
+ <div class="game-controls">
+  <button class="btn primary" id="actionBtn">투구 / 스윙</button>
+  <button class="btn" id="resetGame">초기화</button>
+ </div>
+ <div id="aimHelp">투수: 초록 원 조준 → 투구 · 타격: 노란 원에 맞추고 스윙</div>
+</section>
+</main>
+<div class="notice" id="notice"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const teams = ['롯데 자이언츠','KIA 타이거즈','삼성 라이온즈','LG 트윈스','두산 베어스','SSG 랜더스','NC 다이노스','KT 위즈','한화 이글스','키움 히어로즈'];
+const colors = ['#d71920','#ea0029','#074ca1','#c30452','#202034','#ce0e2d','#1d467f','#222','#f37321','#820024'];
+const realPlayers = [
+  {name:'빅터 레이예스',team:0,pos:'외야수',rating:88,bat:90,spd:78,price:18500000000},
+  {name:'전민재',team:0,pos:'내야수',rating:79,bat:78,spd:82,price:8200000000},
+  {name:'한동희',team:0,pos:'내야수',rating:81,bat:83,spd:68,price:9800000000},
+  {name:'유강남',team:0,pos:'포수',rating:76,bat:74,spd:55,price:6200000000},
+  {name:'박세웅',team:0,pos:'투수',rating:82,bat:35,spd:40,price:11200000000},
+  {name:'김도영',team:1,pos:'내야수',rating:92,bat:91,spd:88,price:32000000000},
+  {name:'구자욱',team:2,pos:'외야수',rating:90,bat:92,spd:78,price:28000000000},
+  {name:'원태인',team:2,pos:'투수',rating:88,bat:28,spd:45,price:22500000000},
+  {name:'오스틴 딘',team:3,pos:'내야수',rating:89,bat:90,spd:68,price:24500000000},
+  {name:'양의지',team:4,pos:'포수',rating:87,bat:88,spd:48,price:20500000000},
+  {name:'곽빈',team:4,pos:'투수',rating:89,bat:28,spd:45,price:25500000000},
+  {name:'샘 힐리어드',team:7,pos:'외야수',rating:90,bat:91,spd:78,price:27500000000},
+  {name:'고영표',team:7,pos:'투수',rating:88,bat:30,spd:40,price:22500000000},
+  {name:'노시환',team:8,pos:'내야수',rating:88,bat:89,spd:72,price:22500000000},
+  {name:'이정후',team:9,pos:'외야수',rating:91,bat:90,spd:85,price:30000000000}
+];
+let players = realPlayers.map((p,i)=>({...p,id:i+1}));
+let selectedTeam=0, money=5000000000000, owned=[], lineup=Array(9).fill(null);
+const lineupPositions=['투수','포수','내야수','내야수','내야수','내야수','외야수','외야수','외야수'];
+
+function fmt(n){return '₩'+Math.round(n/1e8*10)/10+'억'}
+function notify(s){const n=$('notice');n.textContent=s;n.style.display='block';clearTimeout(notify.t);notify.t=setTimeout(()=>n.style.display='none',2000)}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+  if(id==='market')renderMarket(); if(id==='locker')renderLocker(); if(id==='game')resizeGame();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function renderTeams(){
+  $('teamPicker').innerHTML='';
+  teams.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='team'+(i===selectedTeam?' selected':'');
+    b.innerHTML=`<strong style="color:
+colors[i]">{t}</strong><small>${i===selectedTeam?'내 구단':'선택'}</small>`;
+    b.onclick=()=>{selectedTeam=i;$('clubName').textContent=t;renderTeams()};
+    $('teamPicker').appendChild(b);
+  });
+}
+function getOvrClass(r){return r>=85?'gold':r>=75?'silver':'bronze'}
+function playerCard(p,market){
+  const el=document.createElement('article'); el.className='fifa-card';
+  el.innerHTML=`<div class="fifa-top"><div class="ovr-badge getOvrClass(p.rating)">{p.rating}</div><span class="pos-badge">${p.pos}</span></div>
+  <div class="player-info"><div class="player-face">p.name[0]</div><divclass="player-name">{p.name}</div><div class="player-team">${teams[p.team]}</div>
+  <div class="stat-grid"><div class="stat-item"><b>p.bat</b>타격</div><divclass="stat-item"><b>{p.spd}</b>주력</div></div>
+  <div class="price-row"><span class="price">fmt(p.price)</span><spanclass="pos-badge">{market?'이적':'내 선수'}</span></div></div>
+  <div class="card-actions">${market?'<button class="btn primary">영입</button>':'<button class="btn">라인업</button><button class="btn">방출</button>'}</div>`;
+  const btns=el.querySelectorAll('button');
+  if(market) btns[0].onclick=()=>buy(p.id); else{btns[0].onclick=()=>assign(p.id);btns[1].onclick=()=>sell(p.id)}
+  return el;
+}
+function renderMarket(){
+  const q=('search').value.trim().toLowerCase(),tf=('filterTeam').value,pf=('filterPos').value,sort=('sort').value;
+  let list=players.filter(p=>!owned.some(o=>o.id===p.id)&&(!q||p.name.toLowerCase().includes(q))&&(tf===''||String(p.team)===tf)&&(!pf||p.pos===pf));
+  list.sort((a,b)=>sort==='price'?a.price-b.price:sort==='name'?a.name.localeCompare(b.name):b.rating-a.rating);
+  ('marketCards').innerHTML='';list.forEach(p=>('marketCards').appendChild(playerCard(p,true)));
+  if(!list.length)$('marketCards').innerHTML='<p class="sub">선수 없음</p>';
+}
+function buy(id){const p=players.find(p=>p.id===id);if(!p||money<p.price){notify('자금 부족');return}money-=p.price;owned.push(p);renderAll();notify(p.name+' 영입')}
+function sell(id){const p=owned.find(p=>p.id===id);if(!p||!confirm(p.name+' 방출?'))return;money+=Math.round(p.price*.7);owned=owned.filter(o=>o.id!==id);lineup=lineup.map(x=>x===id?null:x);renderAll()}
+function assign(id){const p=owned.find(p=>p.id===id);if(!p)return;let s=lineup.findIndex((x,i)=>x===null&&lineupPositions[i]===p.pos);if(s<0)s=lineup.findIndex(x=>x===null);if(s<0){notify('라인업 가득');return}lineup[s]=id;renderAll()}
+function removeSlot(i){lineup[i]=null;renderAll()}
+function renderLocker(){
+  $('lineup').innerHTML='';
+  lineup.forEach((id,i)=>{
+    const p=owned.find(p=>p.id===id); const el=document.createElement('div');
+    el.className='slot'+(p?' filled':'');
+    el.innerHTML=`<div class="slot-head"><span>${i+1} · lineupPositions[i]</span></div>`+(p?`<divclass="slot-name">{p.name}</div><button class="btn" style="margin-top:6px;padding:5px 8px" data-r>해제</button>`:'<div class="empty">빈 슬롯</div>');
+    if(p)el.querySelector('[data-r]').onclick=()=>removeSlot(i);
+    $('lineup').appendChild(el);
+  });
+  ('ownedCards').innerHTML='';owned.forEach(p=>('ownedCards').appendChild(playerCard(p,false)));
+  if(!owned.length)$('ownedCards').innerHTML='<p class="sub">영입한 선수 없음</p>';
+  $('lineupStatus').textContent=lineup.filter(Boolean).length+' / 9';
+}
+function renderAll(){('money').textContent=fmt(money);('ownedCount').textContent=owned.length;$('lineupCount').textContent=lineup.filter(Boolean).length;renderMarket();renderLocker()}
+$('filterTeam').innerHTML+=''; teams.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t;$('filterTeam').appendChild(o)});
+['search','filterTeam','filterPos','sort'].forEach(id=>$(id).addEventListener('input',renderMarket));
+renderTeams(); renderAll();
+
+// ========== 게임 ==========
+const PITCHES = {
+  four:     {name:'포심',   speed:1.00, bx:0.00, by:0.00, late:0.00, curve:0.0},
+  two:      {name:'투심',   speed:0.93, bx:0.38, by:-0.08, late:0.18, curve:0.15},
+  curve:    {name:'커브',   speed:0.70, bx:0.18, by:-0.72, late:0.48, curve:0.55},
+  slider:   {name:'슬라이더',speed:0.84, bx:0.62, by:-0.18, late:0.38, curve:0.35},
+  splitter: {name:'스플리터',speed:0.86, bx:0.06, by:-0.58, late:0.55, curve:0.40},
+  fork:     {name:'포크',   speed:0.76, bx:0.10, by:-0.68, late:0.52, curve:0.45}
+};
+
+let scene,camera,renderer,ball,aimRing,arrivalRing,zoneMesh,batMesh;
+let batterGroup, batterBat; // 타자 + 방망이
+let mode='select', isHome=null, isOffense=true, half='top', inning=1;
+let scoreUs=0, scoreThem=0, balls=0, strikes=0, outs=0, bases=[false,false,false];
+let selectedPitch='four', pitchAt=0, pitchMs=1000, pFrom, pTo, pitchBreak;
+let hitAt=0, hitFrom, hitTo, swung=false;
+let aimX=0, aimY=1.1, pitchAimX=0, pitchAimY=1.15;
+let autoTimer=null;
+let swingAnim = null; // {start, duration, from, to}
+const ZONE_Z = 5.0;
+
+function initThree(){
+  if(!window.THREE){ $('gameMsg').textContent='Three.js 로드 실패'; return; }
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x071522);
+  scene.fog = new THREE.Fog(0x071522, 20, 70);
+
+  camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  renderer = new THREE.WebGLRenderer({canvas:$('gameCanvas'), antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+
+  scene.add(new THREE.HemisphereLight(0xc5e1ff, 0x26351f, 1.8));
+  const sun = new THREE.DirectionalLight(0xffe8cf, 2.0);
+  sun.position.set(-6, 14, 5); scene.add(sun);
+
+  const mat = c => new THREE.MeshStandardMaterial({color:c});
+  const box = (w,h,d,m,x,y,z) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+    o.position.set(x,y,z); scene.add(o); return o;
+  };
+
+  box(100, 0.3, 80, mat(0x286a35), 0, -0.3, -5);
+  box(55, 4, 1, mat(0x172334), 0, 2, -28);
+
+  // ===== 타자 그룹 (몸 + 방망이) =====
+  batterGroup = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0xd71920));
+  body.position.y = 0.9; batterGroup.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  head.position.y = 1.38; batterGroup.add(head);
+  const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.45, 6), mat(0x1a1a2e));
+  legs.position.y = 0.25; batterGroup.add(legs);
+
+  // 방망이 (오른손 타자 기준, 어깨 위에 대기)
+  batterBat = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.045, 1.15, 8),
+    mat(0xb77a3d)
+  );
+  batterBat.position.set(0.15, 1.25, 0.05);
+  batterBat.rotation.z = -0.9;   // 대기 자세
+  batterBat.rotation.y = 0.3;
+  batterGroup.add(batterBat);
+
+  // 타석 위치 (존 왼쪽)
+  batterGroup.position.set(-0.85, 0, 0.55);
+  scene.add(batterGroup);
+
+  // 투수
+  const pitcher = new THREE.Group();
+  const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0x1e3a5f));
+  pBody.position.y = 0.9; pitcher.add(pBody);
+  const pHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  pHead.position.y = 1.38; pitcher.add(pHead);
+  pitcher.position.set(0, 0, -10.5);
+  scene.add(pitcher);
+
+  // 베이스
+  [[0,0],[3.8,-3.8],[0,-7.6],[-3.8,-3.8]].forEach(([x,z])=>{
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.07,0.45), mat(0xf0f4f8));
+    b.position.set(x,0.02,z); b.rotation.y = Math.PI/4; scene.add(b);
+  });
+
+  zoneMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.45, 0.04),
+    new THREE.MeshBasicMaterial({color:0xffd166, wireframe:true})
+  );
+  zoneMesh.position.set(0, 1.12, ZONE_Z);
+  scene.add(zoneMesh);
+
+  ball = new THREE.Mesh(new THREE.SphereGeometry(0.11,12,10), mat(0xffffff));
+  ball.visible = false; scene.add(ball);
+
+  function makeRing(col, inner, outer){
+    const g = new THREE.Group();
+    const m = new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.95});
+    g.add(new THREE.Mesh(new THREE.RingGeometry(inner, outer, 40), m));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), m));
+    scene.add(g); return g;
+  }
+  aimRing = makeRing(0x22ff88, 0.25, 0.38);
+  arrivalRing = makeRing(0xffd166, 0.20, 0.32);
+  aimRing.visible = false;
+  arrivalRing.visible = false;
+
+  // 1인칭 배트 (타격 시점용)
+  batMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.055,1.05,8), mat(0xb77a3d));
+  batMesh.position.set(0.35,-0.25,-0.75); batMesh.rotation.z = -0.5;
+  camera.add(batMesh);
+
+  setCameraBatting();
+  renderer.setAnimationLoop(loop);
+  resizeGame();
+  gameMessage('홈 / 원정을 선택하세요');
+}
+
+function setCameraBatting(){
+  camera.position.set(0.3, 1.9, 8.6);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = true;
+}
+function setCameraPitching(){
+  camera.position.set(0, 2.2, -11.5);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = false;
+}
+
+function resizeGame(){
+  if(!renderer||!camera) return;
+  const w=('gameCanvas').clientWidth,h=('gameCanvas').clientHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+
+function gameMessage(t,s=''){ ('gameMsg').innerHTML=t+(s?`<small>{s}</small>`:''); }
+
+function updateUI(){
+  $('scoreUs').textContent=scoreUs; $('scoreA').textContent=scoreThem;
+  $('balls').textContent=balls; $('strikes').textContent=strikes; $('outs').textContent=outs;
+  ('halfLabel').textContent=mode==='select'?'-':`{inning}회${half==='top'?'초':'말'}`;
+  ['base1','base2','base3'].forEach((id,i)=>$(id).classList.toggle('occupied',!!bases[i]));
+  const r = bases.map((v,i)=>v?['1루','2루','3루'][i]:null).filter(Boolean);
+  $('baseText').textContent = r.length ? r.join(' · ') : '없음';
+
+  if(mode==='select'){
+    $('modeLabel').textContent='홈/원정을 선택해주세요';
+    $('actionBtn').textContent='시작하기';
+    $('pitchTypes').style.display='none';
+  } else {
+    ('modeLabel').textContent=`{isHome?'홈':'원정'} · ${isOffense?'타격':'투수'} 시점` + (!isOffense?` · ${PITCHES[selectedPitch].name}`:'');
+    $('actionBtn').textContent = isOffense ? 'BAT · 스윙' : 'PITCH · 투구';
+    $('pitchTypes').style.display = isOffense ? 'none' : 'flex';
+  }
+}
+
+function resetCount(){ balls=0; strikes=0; }
+function isStrike(x,y){ return Math.abs(x)<0.58 && y>0.42 && y<1.85; }
+
+function advance(n, forUs){
+  const next=[false,false,false]; let runs=0;
+  for(let i=2;i>=0;i--) if(bases[i]){ const d=i+n; if(d>=3) runs++; else next[d]=true; }
+  if(n>=1) next[n-1]=true;
+  bases=next; if(forUs) scoreUs+=runs; else scoreThem+=runs;
+}
+function walk(forUs){
+  const next=[false,false,false];
+  if(bases[0]){ if(bases[1]){ if(bases[2]){ if(forUs)scoreUs++; else scoreThem++; } next[2]=true; } else next[1]=true; }
+  if(bases[0]||bases[1]) next[1]=true;
+  next[0]=true; bases=next;
+}
+
+function schedule(ms=1100){
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{
+    if(mode==='result' || mode==='idle' || mode==='batting'){
+      if(isOffense) startBatterPitch();
+      else readyPitch();
+    }
+  }, ms);
+}
+
+// ★ 타자 스윙 애니메이션 시작
+function triggerBatterSwing(){
+  if(!batterBat) return;
+  swingAnim = {
+    start: performance.now(),
+    duration: 320,
+    fromZ: -0.9,
+    toZ: 1.4,      // 크게 휘두름
+    fromY: 0.3,
+    toY: -0.6
+  };
+}
+
+function resetBatterBat(){
+  if(!batterBat) return;
+  batterBat.rotation.z = -0.9;
+  batterBat.rotation.y = 0.3;
+  swingAnim = null;
+}
+
+$('btnAway').onclick=()=>{
+  isHome=false; isOffense=true; half='top'; inning=1;
+  $('btnAway').classList.add('selected'); $('btnHome').classList.remove('selected');
+  beginGame();
+};
+$('btnHome').onclick=()=>{
+  isHome=true; isOffense=false; half='top'; inning=1;
+  $('btnHome').classList.add('selected'); $('btnAway').classList.remove('selected');
+  beginGame();
+};
+
+function beginGame(){
+  scoreUs=0; scoreThem=0; outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(isOffense){
+    mode='batting';
+    setCameraBatting();
+    gameMessage('PLAY BALL', '타격 · 1회초');
+    schedule(700);
+  } else {
+    mode='pitching';
+    setCameraPitching();
+    readyPitch();
+  }
+  updateUI();
+}
+
+document.querySelectorAll('#pitchTypes button').forEach(btn=>{
+  btn.onclick=()=>{
+    selectedPitch=btn.dataset.pitch;
+    document.querySelectorAll('#pitchTypes button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    updateUI();
+  };
+});
+
+// ===== 타격 =====
+function startBatterPitch(){
+  if(mode==='pitch'||mode==='hit') return;
+  mode='pitch'; swung=false;
+  pitchAt=performance.now(); pitchMs=920+Math.random()*160;
+  const inZ=Math.random()<0.62;
+  let x,y;
+  if(inZ){ x=(Math.random()-0.5)*0.95; y=0.5+Math.random()*1.1; }
+  else{ x=(Math.random()-0.5)*1.5; y=0.2+Math.random()*2.0; if(Math.abs(x)<0.5&&y>0.5&&y<1.7) x+=x>0?0.5:-0.5; }
+  pFrom=new THREE.Vector3((Math.random()-0.5)*0.12, 1.95, -0.1);
+  pTo=new THREE.Vector3(x,y,ZONE_Z+0.55);
+  pitchBreak = {bx:0, by:0, late:0, curve:0};
+  ball.position.copy(pFrom); ball.visible=true;
+  arrivalRing.position.set(x,y,ZONE_Z); arrivalRing.visible=true;
+  gameMessage('PITCHING', '노란 원에 맞추고 스윙!');
+}
+
+function noSwing(){
+  if(isStrike(pTo.x,pTo.y)){
+    strikes++; gameMessage('STRIKE!', '스윙 안 함');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+  } else {
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(true); gameMessage('볼넷', '출루'); }
+  }
+  updateUI(); mode='result'; schedule(1000);
+}
+
+function doSwing(){
+  if(mode!=='pitch'||swung||!isOffense) return;
+  swung=true;
+  const p=Math.min(1,(performance.now()-pitchAt)/pitchMs);
+  const timing=Math.max(0,1-Math.abs(p-0.82)/0.24);
+  const space=Math.max(0,1-Math.hypot(pTo.x-aimX,pTo.y-aimY)/0.95);
+  const acc=timing*space;
+  arrivalRing.visible=false;
+
+  if(acc<0.26){
+    strikes++; gameMessage('WHIFF!', '헛스윙');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; ball.visible=false; updateUI(); schedule(900); return;
+  }
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  let n=1, msg, sub;
+  if(acc<0.48){ const f=Math.random()<0.55; msg=f?'FLY OUT':'GROUND OUT'; sub=f?'뜬공':'땅볼'; n=0; outs++; resetCount(); }
+  else if(acc<0.70){ msg='SINGLE'; sub='1루타'; n=1; resetCount(); }
+  else if(acc<0.87){ const t=Math.random()<0.2; msg=t?'TRIPLE':'DOUBLE'; sub=t?'3루타':'2루타'; n=t?3:2; resetCount(); }
+  else{ msg='HOME RUN!!'; sub='홈런'; n=4; resetCount(); }
+
+  if(n===4) hitTo=new THREE.Vector3((Math.random()-0.5)*7,8,-24);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*10,4,-16);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*7,1.6,-9);
+
+  if(n>0) advance(n,true); else sideChange();
+  gameMessage(msg,sub); updateUI();
+}
+
+// ===== 투수 =====
+function readyPitch(){
+  mode = 'pitching';
+  setCameraPitching();
+  ball.visible = false;
+  arrivalRing.visible = false;
+  resetBatterBat();
+  pitchAimX = 0;
+  pitchAimY = 1.15;
+  aimRing.position.set(0, 1.15, ZONE_Z);
+  aimRing.visible = true;
+  gameMessage('YOUR PITCH', PITCHES[selectedPitch].name + ' · 초록 원 조준 후 투구!');
+  updateUI();
+}
+
+function doThrow(){
+  if(mode !== 'pitching') return;
+  mode = 'pitch';
+  const pitch = PITCHES[selectedPitch];
+  pitchAt = performance.now();
+  pitchMs = 720 + (1-pitch.speed)*380;
+
+  const dir = Math.random() > 0.5 ? 1 : -1;
+  const bx = pitch.bx * dir;
+  const by = pitch.by;
+  const tx = pitchAimX + bx * 0.9;
+  const ty = pitchAimY + by;
+
+  pFrom = new THREE.Vector3(0, 1.9, -10.8);
+  pTo = new THREE.Vector3(tx, ty, ZONE_Z + 0.45);
+  pitchBreak = { bx, by, late: pitch.late, curve: pitch.curve };
+
+  ball.position.copy(pFrom);
+  ball.visible = true;
+  arrivalRing.position.set(tx, ty, ZONE_Z);
+  arrivalRing.visible = true;
+  aimRing.visible = false;
+  gameMessage('PITCHING', pitch.name);
+}
+
+function resolvePitch(){
+  const pitch = PITCHES[selectedPitch];
+  const inZone = isStrike(pTo.x, pTo.y);
+  const hard = 0.62 - (1 - pitch.speed) * 0.10;
+
+  // 볼 (스윙 안 함)
+  if(!inZone && Math.random() < 0.50){
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(false); gameMessage('WALK', '볼넷'); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // ★ 스윙하는 경우 → 애니메이션 실행
+  triggerBatterSwing();
+
+  // 헛스윙/콜
+  if(Math.random() > hard * 0.85){
+    strikes++; gameMessage('STRIKE!', '헛스윙/콜');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // 컨택
+  const r = Math.random();
+  let n=0, msg, sub;
+  if(r < 0.58){
+    msg = Math.random()<0.55 ? 'FLY OUT' : 'GROUND OUT';
+    sub = '상대 아웃';
+    n = 0; outs++; resetCount();
+  } else if(r < 0.82){
+    msg = 'SINGLE'; sub = '상대 안타'; n = 1; resetCount();
+  } else if(r < 0.95){
+    msg = 'DOUBLE'; sub = '상대 2루타'; n = 2; resetCount();
+  } else {
+    msg = 'HOME RUN'; sub = '상대 홈런'; n = 4; resetCount();
+  }
+
+  if(n>0) advance(n,false); else sideChange();
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  if(n>=4) hitTo=new THREE.Vector3((Math.random()-0.5)*8,9,-26);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*9,4,-15);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*6,1.7,-10);
+  gameMessage(msg,sub); updateUI();
+}
+
+function sideChange(){
+  if(outs<3) return;
+  outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(half==='top'){ half='bottom'; isOffense=!isOffense; }
+  else{
+    half='top'; inning++; isOffense=!isOffense;
+    if(inning>3){ mode='over'; gameMessage('GAME OVER', `${scoreUs} : ${scoreThem}`); clearTimeout(autoTimer); updateUI(); return; }
+  }
+  if(isOffense){
+    setCameraBatting(); mode='batting';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 타격`);
+    schedule(1200);
+  } else {
+    setCameraPitching(); mode='pitching';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 투수`);
+    setTimeout(readyPitch, 900);
+  }
+  updateUI();
+}
+
+function loop(){
+  if(!renderer) return;
+  const now = performance.now();
+
+  // ★ 타자 스윙 애니메이션
+  if(swingAnim && batterBat){
+    const t = Math.min(1, (now - swingAnim.start) / swingAnim.duration);
+    // ease-out
+    const ease = 1 - Math.pow(1 - t, 2);
+    batterBat.rotation.z = swingAnim.fromZ + (swingAnim.toZ - swingAnim.fromZ) * ease;
+    batterBat.rotation.y = swingAnim.fromY + (swingAnim.toY - swingAnim.fromY) * ease;
+
+    if(t >= 1){
+      // 잠시 후 원위치
+      setTimeout(() => {
+        if(batterBat){
+          batterBat.rotation.z = -0.9;
+          batterBat.rotation.y = 0.3;
+        }
+      }, 400);
+      swingAnim = null;
+    }
+  }
+
+  if(mode==='pitching' && aimRing){
+    aimRing.visible = true;
+    aimRing.position.set(pitchAimX, pitchAimY, ZONE_Z);
+  }
+
+  if(mode==='pitch'){
+    const p = Math.min(1, (now - pitchAt) / pitchMs);
+    const br = pitchBreak || {bx:0,by:0,late:0,curve:0};
+
+    let pos = new THREE.Vector3().lerpVectors(pFrom, pTo, p);
+
+    let breakFactor = 0;
+    if(br.late > 0){
+      const lateStart = 1 - br.late;
+      if(p > lateStart){
+        breakFactor = (p - lateStart) / br.late;
+        breakFactor = breakFactor * breakFactor;
+      }
+    } else {
+      breakFactor = p;
+    }
+
+    const curveAmt = br.curve || 0;
+    const sideSwing = Math.sin(p * Math.PI) * br.bx * 0.35 * (1 + curveAmt);
+    const dropSwing = Math.sin(p * Math.PI * 0.9) * Math.abs(br.by) * 0.4 * (1 + curveAmt);
+
+    pos.x += sideSwing * breakFactor;
+    pos.y -= dropSwing * breakFactor;
+    pos.y += Math.sin(p * Math.PI) * 0.10;
+
+    ball.position.copy(pos);
+
+    if(p >= 1){
+      ball.visible = false;
+      arrivalRing.visible = false;
+      if(isOffense){ if(!swung) noSwing(); }
+      else resolvePitch();
+    }
+  }
+
+  if(mode==='hit'){
+    const p = Math.min(1, (now - hitAt) / 880);
+    ball.visible = true;
+    ball.position.lerpVectors(hitFrom, hitTo, p);
+    ball.position.y += Math.sin(p * Math.PI) * (hitTo.y > 5 ? 4.5 : 1.8);
+    if(p >= 1){ ball.visible = false; mode = 'result'; schedule(900); }
+  }
+
+  renderer.render(scene, camera);
+}
+
+$('gameCanvas').addEventListener('mousemove', e => {
+  if(!camera || !renderer) return;
+  const r = $('gameCanvas').getBoundingClientRect();
+  const ndc = new THREE.Vector2((e.clientX-r.left)/r.width*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(ndc, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,0,1), -ZONE_Z);
+  const pt = new THREE.Vector3();
+  if(ray.ray.intersectPlane(plane, pt)){
+    const x = Math.max(-1.2, Math.min(1.2, pt.x));
+    const y = Math.max(0.25, Math.min(2.1, pt.y));
+    if(isOffense){
+      aimX = x; aimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    } else {
+      pitchAimX = x; pitchAimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    }
+  }
+});
+
+$('actionBtn').onclick = () => {
+  if(mode === 'select') return;
+  if(isOffense) doSwing();
+  else doThrow();
+};
+$('resetGame').onclick = () => {
+  clearTimeout(autoTimer);
+  mode = 'select'; isHome = null; isOffense = true; half = 'top'; inning = 1;
+  scoreUs = 0; scoreThem = 0; outs = 0; bases = [false,false,false]; resetCount();
+  ball.visible = false; aimRing.visible = false; arrivalRing.visible = false;
+  resetBatterBat();
+  $('btnAway').classList.remove('selected'); $('btnHome').classList.remove('selected');
+  setCameraBatting(); gameMessage('홈 / 원정을 선택하세요'); updateUI();
+};
+window.addEventListener('keydown', e => {
+  if(e.code === 'Space' && $('game').classList.contains('active')){
+    e.preventDefault();
+    if(isOffense) doSwing(); else doThrow();
+  }
+});
+window.addEventListener('resize', resizeGame);
+
+initThree();
+updateUI();
+})();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIAMOND PRO · KBO CLUB</title>
+<style>
+:root{--bg:#07111d;--line:#ffffff20;--gold:#ffd166;--red:#d71920;--muted:#91a5ba}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f8fc;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+header{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#0b1725;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+.brand{font-weight:1000;letter-spacing:2px;font-size:20px}.brand span{color:var(--red)}
+.money{font-weight:900;color:var(--gold);padding:8px 12px;background:#17283a;border-radius:8px}
+nav{display:flex;gap:7px;flex-wrap:wrap;padding:12px 20px;background:#0a1522;border-bottom:1px solid var(--line)}
+nav button,.btn{border:1px solid var(--line);background:#17283a;color:#eaf2fa;padding:10px 14px;border-radius:8px;font-weight:800}
+nav button.active,.btn.primary{background:var(--red);border-color:var(--red);color:white}
+main{max-width:1200px;margin:auto;padding:18px}
+.view{display:none}.view.active{display:block}
+h1{font-size:clamp(26px,4vw,42px);margin:4px 0 8px}
+.sub{color:var(--muted);line-height:1.6;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.fifa-card{background:linear-gradient(145deg,#1a2a3d,#0d1826);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fifa-top{background:linear-gradient(90deg,#0f1c2b,#1a2f45);padding:12px 14px 8px;display:flex;justify-content:space-between}
+.ovr-badge{width:52px;height:52px;border-radius:10px;display:grid;place-items:center;font-weight:1000;font-size:22px;color:#0a0a0a;background:var(--gold)}
+.ovr-badge.gold{background:linear-gradient(135deg,#ffd166,#f0a500)}
+.ovr-badge.silver{background:linear-gradient(135deg,#c0c0c0,#a0a0a0)}
+.ovr-badge.bronze{background:linear-gradient(135deg,#cd7f32,#a05a2c);color:#fff}
+.pos-badge{font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:#263b51;color:#a7bacd}
+.player-face{width:70px;height:70px;border-radius:50%;background:#263b51;display:grid;place-items:center;font-size:28px;font-weight:1000;color:var(--gold);margin:0 auto 6px;border:3px solid #ffffff25}
+.player-info{padding:0 14px 14px;text-align:center}
+.player-name{font-size:17px;font-weight:900;margin:4px 0 2px}
+.player-team{font-size:12px;color:var(--muted);margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.stat-item{background:#142437;border-radius:8px;padding:6px 8px;font-size:12px}
+.stat-item b{display:block;font-size:15px;color:var(--gold)}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.price{font-weight:900;color:var(--gold)}
+.card-actions{display:flex;gap:6px;padding:0 14px 14px}
+.card-actions button{flex:1;padding:10px 6px;font-size:12px}
+input,select{background:#142437;color:white;border:1px solid var(--line);padding:10px;border-radius:8px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar input{flex:1;min-width:160px}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.team{background:#122236;border:1px solid var(--line);border-radius:10px;padding:14px;color:white}
+.team.selected{border-color:var(--gold)}
+.team strong{display:block;font-size:15px}.team small{color:var(--muted)}
+.lineup{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.slot{background:#101f30;border:1px dashed #ffffff35;border-radius:10px;padding:12px;min-height:90px}
+.slot.filled{border-style:solid}
+.slot-head{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-bottom:8px}
+.slot-name{font-weight:900;font-size:16px}
+.empty{color:#71869c;font-size:12px}
+#gameWrap{position:relative;height:min(62vh,620px);min-height:360px;border-radius:14px;overflow:hidden;background:#091522;border:1px solid var(--line)}
+#gameCanvas{width:100%;height:100%;display:block;cursor:crosshair}
+.gamehud{position:absolute;inset:12px 12px auto;display:flex;justify-content:space-between;gap:8px;pointer-events:none;flex-wrap:wrap}
+.glass{background:#071321ee;border:1px solid #ffffff25;border-radius:9px;padding:10px 12px}
+#gameMsg{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,4vw,36px);font-weight:1000;text-shadow:0 3px 16px #000;text-align:center;pointer-events:none;z-index:5}
+#gameMsg small{display:block;font-size:13px;color:var(--gold);margin-top:8px}
+.base-hud{display:flex;align-items:center;gap:8px}
+.base-diamond{width:48px;height:44px;position:relative}
+.base-diamond i{position:absolute;width:10px;height:10px;background:#71869c;border:1px solid #dce7f1;transform:rotate(45deg)}
+#base1{right:2px;top:16px}#base2{left:18px;top:1px}#base3{left:2px;top:16px}
+.base-diamond i.occupied{background:var(--gold);box-shadow:0 0 8px #ffd166}
+.base-diamond .home-base{left:18px;bottom:0;background:#f5f8fc;clip-path:polygon(50% 0,100% 35%,100% 75%,50% 100%,0 75%,0 35%);transform:none}
+.base-label{font-size:10px;color:#c6d4e2}
+.game-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.game-controls .btn{flex:1}
+#aimHelp{font-size:12px;color:var(--muted);margin-top:8px}
+.notice{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17283a;border:1px solid var(--line);border-radius:9px;padding:12px 16px;z-index:20;display:none}
+.home-away{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}
+.home-away button{flex:1;min-width:140px;padding:16px;font-size:16px;font-weight:900}
+.home-away button.selected{background:var(--red);border-color:var(--red)}
+#modeLabel{font-size:13px;color:var(--gold);margin:6px 0 10px}
+.pitch-types{display:none;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pitch-types button{padding:8px 12px;font-size:12px;font-weight:800;border-radius:8px;border:1px solid var(--line);background:#142437;color:#cde}
+.pitch-types button.active{background:var(--red);border-color:var(--red);color:#fff}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand">DIAMOND<span>.</span>PRO <span style="color:#8da3b9;font-size:10px">KBO CLUB</span></div>
+ <div class="money">보유 자금 <span id="money">₩5조</span></div>
+</header>
+<nav>
+ <button class="active" data-view="home">구단 홈</button>
+ <button data-view="market">선수 시장</button>
+ <button data-view="locker">라커룸</button>
+ <button data-view="game">경기</button>
+</nav>
+<main>
+<section id="home" class="view active">
+ <h1>구단 운영 센터</h1>
+ <p class="sub">선수를 영입하고 라인업을 구성하세요.</p>
+ <div class="team-grid" id="teamPicker"></div>
+ <div class="fifa-card" style="margin-top:16px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>내 구단 요약</strong><span class="pos-badge" id="clubName">롯데 자이언츠</span></div>
+  <p class="sub" style="margin:10px 0 0">보유 <b id="ownedCount">0</b>명 · 라인업 <b id="lineupCount">0</b>명</p>
+  <button class="btn primary" onclick="showView('locker')" style="margin-top:12px">라커룸 관리</button>
+ </div>
+</section>
+
+<section id="market" class="view">
+ <h1>선수 시장</h1>
+ <div class="toolbar">
+  <input id="search" placeholder="선수 이름 검색">
+  <select id="filterTeam"><option value="">전체 구단</option></select>
+  <select id="filterPos"><option value="">전체 포지션</option><option>투수</option><option>포수</option><option>내야수</option><option>외야수</option></select>
+  <select id="sort"><option value="rating">능력치순</option><option value="price">가격순</option><option value="name">이름순</option></select>
+ </div>
+ <div class="cards" id="marketCards"></div>
+</section>
+
+<section id="locker" class="view">
+ <h1>라커룸</h1>
+ <div class="fifa-card" style="margin-bottom:14px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>선발 라인업</strong><span class="pos-badge" id="lineupStatus">0 / 9</span></div>
+  <div class="lineup" id="lineup" style="margin-top:12px"></div>
+ </div>
+ <div class="cards" id="ownedCards"></div>
+</section>
+
+<section id="game" class="view">
+ <h1>사직야구장</h1>
+ <p class="sub">홈 = 1회초 투수 / 원정 = 1회초 타격. 투수 때 상대 타자가 스윙하는 모션이 나옵니다.</p>
+
+ <div class="home-away">
+  <button class="btn" id="btnAway">원정 (1회초 공격)</button>
+  <button class="btn" id="btnHome">홈 (1회초 수비)</button>
+ </div>
+ <div id="modeLabel">홈/원정을 선택해주세요</div>
+
+ <div class="pitch-types" id="pitchTypes">
+  <button data-pitch="four" class="active">포심</button>
+  <button data-pitch="two">투심</button>
+  <button data-pitch="curve">커브</button>
+  <button data-pitch="slider">슬라이더</button>
+  <button data-pitch="splitter">스플리터</button>
+  <button data-pitch="fork">포크</button>
+ </div>
+
+ <div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+  <div class="gamehud">
+   <div class="glass"><div style="font-size:10px;color:#a5b7ca"><span id="halfLabel">-</span></div><b><span id="scoreUs">0</span> : <span id="scoreA">0</span></b></div>
+   <div class="glass">B <b id="balls">0</b> · S <b id="strikes">0</b> · O <b id="outs">0</b></div>
+   <div class="glass base-hud">
+    <div class="base-diamond"><i id="base2"></i><i id="base3"></i><i id="base1"></i><i class="home-base"></i></div>
+    <div class="base-label"><b>주자</b><br><span id="baseText">없음</span></div>
+   </div>
+  </div>
+  <div id="gameMsg">홈 / 원정을 선택하세요</div>
+ </div>
+
+ <div class="game-controls">
+  <button class="btn primary" id="actionBtn">투구 / 스윙</button>
+  <button class="btn" id="resetGame">초기화</button>
+ </div>
+ <div id="aimHelp">투수: 초록 원 조준 → 투구 · 타격: 노란 원에 맞추고 스윙</div>
+</section>
+</main>
+<div class="notice" id="notice"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const teams = ['롯데 자이언츠','KIA 타이거즈','삼성 라이온즈','LG 트윈스','두산 베어스','SSG 랜더스','NC 다이노스','KT 위즈','한화 이글스','키움 히어로즈'];
+const colors = ['#d71920','#ea0029','#074ca1','#c30452','#202034','#ce0e2d','#1d467f','#222','#f37321','#820024'];
+const realPlayers = [
+  {name:'빅터 레이예스',team:0,pos:'외야수',rating:88,bat:90,spd:78,price:18500000000},
+  {name:'전민재',team:0,pos:'내야수',rating:79,bat:78,spd:82,price:8200000000},
+  {name:'한동희',team:0,pos:'내야수',rating:81,bat:83,spd:68,price:9800000000},
+  {name:'유강남',team:0,pos:'포수',rating:76,bat:74,spd:55,price:6200000000},
+  {name:'박세웅',team:0,pos:'투수',rating:82,bat:35,spd:40,price:11200000000},
+  {name:'김도영',team:1,pos:'내야수',rating:92,bat:91,spd:88,price:32000000000},
+  {name:'구자욱',team:2,pos:'외야수',rating:90,bat:92,spd:78,price:28000000000},
+  {name:'원태인',team:2,pos:'투수',rating:88,bat:28,spd:45,price:22500000000},
+  {name:'오스틴 딘',team:3,pos:'내야수',rating:89,bat:90,spd:68,price:24500000000},
+  {name:'양의지',team:4,pos:'포수',rating:87,bat:88,spd:48,price:20500000000},
+  {name:'곽빈',team:4,pos:'투수',rating:89,bat:28,spd:45,price:25500000000},
+  {name:'샘 힐리어드',team:7,pos:'외야수',rating:90,bat:91,spd:78,price:27500000000},
+  {name:'고영표',team:7,pos:'투수',rating:88,bat:30,spd:40,price:22500000000},
+  {name:'노시환',team:8,pos:'내야수',rating:88,bat:89,spd:72,price:22500000000},
+  {name:'이정후',team:9,pos:'외야수',rating:91,bat:90,spd:85,price:30000000000}
+];
+let players = realPlayers.map((p,i)=>({...p,id:i+1}));
+let selectedTeam=0, money=5000000000000, owned=[], lineup=Array(9).fill(null);
+const lineupPositions=['투수','포수','내야수','내야수','내야수','내야수','외야수','외야수','외야수'];
+
+function fmt(n){return '₩'+Math.round(n/1e8*10)/10+'억'}
+function notify(s){const n=$('notice');n.textContent=s;n.style.display='block';clearTimeout(notify.t);notify.t=setTimeout(()=>n.style.display='none',2000)}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+  if(id==='market')renderMarket(); if(id==='locker')renderLocker(); if(id==='game')resizeGame();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function renderTeams(){
+  $('teamPicker').innerHTML='';
+  teams.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='team'+(i===selectedTeam?' selected':'');
+    b.innerHTML=`<strong style="color:colors[i]">{t}</strong><small>${i===selectedTeam?'내 구단':'선택'}</small>`;
+    b.onclick=()=>{selectedTeam=i;$('clubName').textContent=t;renderTeams()};
+    $('teamPicker').appendChild(b);
+  });
+}
+function getOvrClass(r){return r>=85?'gold':r>=75?'silver':'bronze'}
+function playerCard(p,market){
+  const el=document.createElement('article'); el.className='fifa-card';
+  el.innerHTML=`<div class="fifa-top"><div class="ovr-badge getOvrClass(p.rating)">{p.rating}</div><span class="pos-badge">${p.pos}</span></div>
+  <div class="player-info"><div class="player-face">p.name[0]</div><divclass="player-name">{p.name}</div><div class="player-team">${teams[p.team]}</div>
+  <div class="stat-grid"><div class="stat-item"><b>p.bat</b>타격</div><divclass="stat-item"><b>{p.spd}</b>주력</div></div>
+  <div class="price-row"><span class="price">fmt(p.price)</span><spanclass="pos-badge">{market?'이적':'내 선수'}</span></div></div>
+  <div class="card-actions">${market?'<button class="btn primary">영입</button>':'<button class="btn">라인업</button><button class="btn">방출</button>'}</div>`;
+  const btns=el.querySelectorAll('button');
+  if(market) btns[0].onclick=()=>buy(p.id); else{btns[0].onclick=()=>assign(p.id);btns[1].onclick=()=>sell(p.id)}
+  return el;
+}
+function renderMarket(){
+  const q=('search').value.trim().toLowerCase(),tf=('filterTeam').value,pf=('filterPos').value,sort=('sort').value;
+  let list=players.filter(p=>!owned.some(o=>o.id===p.id)&&(!q||p.name.toLowerCase().includes(q))&&(tf===''||String(p.team)===tf)&&(!pf||p.pos===pf));
+  list.sort((a,b)=>sort==='price'?a.price-b.price:sort==='name'?a.name.localeCompare(b.name):b.rating-a.rating);
+  ('marketCards').innerHTML='';list.forEach(p=>('marketCards').appendChild(playerCard(p,true)));
+  if(!list.length)$('marketCards').innerHTML='<p class="sub">선수 없음</p>';
+}
+function buy(id){const p=players.find(p=>p.id===id);if(!p||money<p.price){notify('자금 부족');return}money-=p.price;owned.push(p);renderAll();notify(p.name+' 영입')}
+function sell(id){const p=owned.find(p=>p.id===id);if(!p||!confirm(p.name+' 방출?'))return;money+=Math.round(p.price*.7);owned=owned.filter(o=>o.id!==id);lineup=lineup.map(x=>x===id?null:x);renderAll()}
+function assign(id){const p=owned.find(p=>p.id===id);if(!p)return;let s=lineup.findIndex((x,i)=>x===null&&lineupPositions[i]===p.pos);if(s<0)s=lineup.findIndex(x=>x===null);if(s<0){notify('라인업 가득');return}lineup[s]=id;renderAll()}
+function removeSlot(i){lineup[i]=null;renderAll()}
+function renderLocker(){
+  $('lineup').innerHTML='';
+  lineup.forEach((id,i)=>{
+    const p=owned.find(p=>p.id===id); const el=document.createElement('div');
+    el.className='slot'+(p?' filled':'');
+    el.innerHTML=`<div class="slot-head"><span>${i+1} · lineupPositions[i]</span></div>`+(p?`<divclass="slot-name">{p.name}</div><button class="btn" style="margin-top:6px;padding:5px 8px" data-r>해제</button>`:'<div class="empty">빈 슬롯</div>');
+    if(p)el.querySelector('[data-r]').onclick=()=>removeSlot(i);
+    $('lineup').appendChild(el);
+  });
+  ('ownedCards').innerHTML='';owned.forEach(p=>('ownedCards').appendChild(playerCard(p,false)));
+  if(!owned.length)$('ownedCards').innerHTML='<p class="sub">영입한 선수 없음</p>';
+  $('lineupStatus').textContent=lineup.filter(Boolean).length+' / 9';
+}
+function renderAll(){('money').textContent=fmt(money);('ownedCount').textContent=owned.length;$('lineupCount').textContent=lineup.filter(Boolean).length;renderMarket();renderLocker()}
+$('filterTeam').innerHTML+=''; teams.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t;$('filterTeam').appendChild(o)});
+['search','filterTeam','filterPos','sort'].forEach(id=>$(id).addEventListener('input',renderMarket));
+renderTeams(); renderAll();
+
+// ========== 게임 ==========
+const PITCHES = {
+  four:     {name:'포심',   speed:1.00, bx:0.00, by:0.00, late:0.00, curve:0.0},
+  two:      {name:'투심',   speed:0.93, bx:0.38, by:-0.08, late:0.18, curve:0.15},
+  curve:    {name:'커브',   speed:0.70, bx:0.18, by:-0.72, late:0.48, curve:0.55},
+  slider:   {name:'슬라이더',speed:0.84, bx:0.62, by:-0.18, late:0.38, curve:0.35},
+  splitter: {name:'스플리터',speed:0.86, bx:0.06, by:-0.58, late:0.55, curve:0.40},
+  fork:     {name:'포크',   speed:0.76, bx:0.10, by:-0.68, late:0.52, curve:0.45}
+};
+
+let scene,camera,renderer,ball,aimRing,arrivalRing,zoneMesh,batMesh;
+let batterGroup, batterBat; // 타자 + 방망이
+let mode='select', isHome=null, isOffense=true, half='top', inning=1;
+let scoreUs=0, scoreThem=0, balls=0, strikes=0, outs=0, bases=[false,false,false];
+let selectedPitch='four', pitchAt=0, pitchMs=1000, pFrom, pTo, pitchBreak;
+let hitAt=0, hitFrom, hitTo, swung=false;
+let aimX=0, aimY=1.1, pitchAimX=0, pitchAimY=1.15;
+let autoTimer=null;
+let swingAnim = null; // {start, duration, from, to}
+const ZONE_Z = 5.0;
+
+function initThree(){
+  if(!window.THREE){ $('gameMsg').textContent='Three.js 로드 실패'; return; }
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x071522);
+  scene.fog = new THREE.Fog(0x071522, 20, 70);
+
+  camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  renderer = new THREE.WebGLRenderer({canvas:$('gameCanvas'), antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+
+  scene.add(new THREE.HemisphereLight(0xc5e1ff, 0x26351f, 1.8));
+  const sun = new THREE.DirectionalLight(0xffe8cf, 2.0);
+  sun.position.set(-6, 14, 5); scene.add(sun);
+
+  const mat = c => new THREE.MeshStandardMaterial({color:c});
+  const box = (w,h,d,m,x,y,z) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+    o.position.set(x,y,z); scene.add(o); return o;
+  };
+
+  box(100, 0.3, 80, mat(0x286a35), 0, -0.3, -5);
+  box(55, 4, 1, mat(0x172334), 0, 2, -28);
+
+  // ===== 타자 그룹 (몸 + 방망이) =====
+  batterGroup = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0xd71920));
+  body.position.y = 0.9; batterGroup.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  head.position.y = 1.38; batterGroup.add(head);
+  const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.45, 6), mat(0x1a1a2e));
+  legs.position.y = 0.25; batterGroup.add(legs);
+
+  // 방망이 (오른손 타자 기준, 어깨 위에 대기)
+  batterBat = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.045, 1.15, 8),
+    mat(0xb77a3d)
+  );
+  batterBat.position.set(0.15, 1.25, 0.05);
+  batterBat.rotation.z = -0.9;   // 대기 자세
+  batterBat.rotation.y = 0.3;
+  batterGroup.add(batterBat);
+
+  // 타석 위치 (존 왼쪽)
+  batterGroup.position.set(-0.85, 0, 0.55);
+  scene.add(batterGroup);
+
+  // 투수
+  const pitcher = new THREE.Group();
+  const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0x1e3a5f));
+  pBody.position.y = 0.9; pitcher.add(pBody);
+  const pHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  pHead.position.y = 1.38; pitcher.add(pHead);
+  pitcher.position.set(0, 0, -10.5);
+  scene.add(pitcher);
+
+  // 베이스
+  [[0,0],[3.8,-3.8],[0,-7.6],[-3.8,-3.8]].forEach(([x,z])=>{
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.07,0.45), mat(0xf0f4f8));
+    b.position.set(x,0.02,z); b.rotation.y = Math.PI/4; scene.add(b);
+  });
+
+  zoneMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.45, 0.04),
+    new THREE.MeshBasicMaterial({color:0xffd166, wireframe:true})
+  );
+  zoneMesh.position.set(0, 1.12, ZONE_Z);
+  scene.add(zoneMesh);
+
+  ball = new THREE.Mesh(new THREE.SphereGeometry(0.11,12,10), mat(0xffffff));
+  ball.visible = false; scene.add(ball);
+
+  function makeRing(col, inner, outer){
+    const g = new THREE.Group();
+    const m = new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.95});
+    g.add(new THREE.Mesh(new THREE.RingGeometry(inner, outer, 40), m));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), m));
+    scene.add(g); return g;
+  }
+  aimRing = makeRing(0x22ff88, 0.25, 0.38);
+  arrivalRing = makeRing(0xffd166, 0.20, 0.32);
+  aimRing.visible = false;
+  arrivalRing.visible = false;
+
+  // 1인칭 배트 (타격 시점용)
+  batMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.055,1.05,8), mat(0xb77a3d));
+  batMesh.position.set(0.35,-0.25,-0.75); batMesh.rotation.z = -0.5;
+  camera.add(batMesh);
+
+  setCameraBatting();
+  renderer.setAnimationLoop(loop);
+  resizeGame();
+  gameMessage('홈 / 원정을 선택하세요');
+}
+
+function setCameraBatting(){
+  camera.position.set(0.3, 1.9, 8.6);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = true;
+}
+function setCameraPitching(){
+  camera.position.set(0, 2.2, -11.5);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = false;
+}
+
+function resizeGame(){
+  if(!renderer||!camera) return;
+  const w=('gameCanvas').clientWidth,h=('gameCanvas').clientHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+
+function gameMessage(t,s=''){ ('gameMsg').innerHTML=t+(s?`<small>{s}</small>`:''); }
+
+function updateUI(){
+  $('scoreUs').textContent=scoreUs; $('scoreA').textContent=scoreThem;
+  $('balls').textContent=balls; $('strikes').textContent=strikes; $('outs').textContent=outs;
+  ('halfLabel').textContent=mode==='select'?'-':`{inning}회${half==='top'?'초':'말'}`;
+  ['base1','base2','base3'].forEach((id,i)=>$(id).classList.toggle('occupied',!!bases[i]));
+  const r = bases.map((v,i)=>v?['1루','2루','3루'][i]:null).filter(Boolean);
+  $('baseText').textContent = r.length ? r.join(' · ') : '없음';
+
+  if(mode==='select'){
+    $('modeLabel').textContent='홈/원정을 선택해주세요';
+    $('actionBtn').textContent='시작하기';
+    $('pitchTypes').style.display='none';
+  } else {
+    ('modeLabel').textContent=`{isHome?'홈':'원정'} · ${isOffense?'타격':'투수'} 시점` + (!isOffense?` · ${PITCHES[selectedPitch].name}`:'');
+    $('actionBtn').textContent = isOffense ? 'BAT · 스윙' : 'PITCH · 투구';
+    $('pitchTypes').style.display = isOffense ? 'none' : 'flex';
+  }
+}
+
+function resetCount(){ balls=0; strikes=0; }
+function isStrike(x,y){ return Math.abs(x)<0.58 && y>0.42 && y<1.85; }
+
+function advance(n, forUs){
+  const next=[false,false,false]; let runs=0;
+  for(let i=2;i>=0;i--) if(bases[i]){ const d=i+n; if(d>=3) runs++; else next[d]=true; }
+  if(n>=1) next[n-1]=true;
+  bases=next; if(forUs) scoreUs+=runs; else scoreThem+=runs;
+}
+function walk(forUs){
+  const next=[false,false,false];
+  if(bases[0]){ if(bases[1]){ if(bases[2]){ if(forUs)scoreUs++; else scoreThem++; } next[2]=true; } else next[1]=true; }
+  if(bases[0]||bases[1]) next[1]=true;
+  next[0]=true; bases=next;
+}
+
+function schedule(ms=1100){
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{
+    if(mode==='result' || mode==='idle' || mode==='batting'){
+      if(isOffense) startBatterPitch();
+      else readyPitch();
+    }
+  }, ms);
+}
+
+// ★ 타자 스윙 애니메이션 시작
+function triggerBatterSwing(){
+  if(!batterBat) return;
+  swingAnim = {
+    start: performance.now(),
+    duration: 320,
+    fromZ: -0.9,
+    toZ: 1.4,      // 크게 휘두름
+    fromY: 0.3,
+    toY: -0.6
+  };
+}
+
+function resetBatterBat(){
+  if(!batterBat) return;
+  batterBat.rotation.z = -0.9;
+  batterBat.rotation.y = 0.3;
+  swingAnim = null;
+}
+
+$('btnAway').onclick=()=>{
+  isHome=false; isOffense=true; half='top'; inning=1;
+  $('btnAway').classList.add('selected'); $('btnHome').classList.remove('selected');
+  beginGame();
+};
+$('btnHome').onclick=()=>{
+  isHome=true; isOffense=false; half='top'; inning=1;
+  $('btnHome').classList.add('selected'); $('btnAway').classList.remove('selected');
+  beginGame();
+};
+
+function beginGame(){
+  scoreUs=0; scoreThem=0; outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(isOffense){
+    mode='batting';
+    setCameraBatting();
+    gameMessage('PLAY BALL', '타격 · 1회초');
+    schedule(700);
+  } else {
+    mode='pitching';
+    setCameraPitching();
+    readyPitch();
+  }
+  updateUI();
+}
+
+document.querySelectorAll('#pitchTypes button').forEach(btn=>{
+  btn.onclick=()=>{
+    selectedPitch=btn.dataset.pitch;
+    document.querySelectorAll('#pitchTypes button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    updateUI();
+  };
+});
+
+// ===== 타격 =====
+function startBatterPitch(){
+  if(mode==='pitch'||mode==='hit') return;
+  mode='pitch'; swung=false;
+  pitchAt=performance.now(); pitchMs=920+Math.random()*160;
+  const inZ=Math.random()<0.62;
+  let x,y;
+  if(inZ){ x=(Math.random()-0.5)*0.95; y=0.5+Math.random()*1.1; }
+  else{ x=(Math.random()-0.5)*1.5; y=0.2+Math.random()*2.0; if(Math.abs(x)<0.5&&y>0.5&&y<1.7) x+=x>0?0.5:-0.5; }
+  pFrom=new THREE.Vector3((Math.random()-0.5)*0.12, 1.95, -0.1);
+  pTo=new THREE.Vector3(x,y,ZONE_Z+0.55);
+  pitchBreak = {bx:0, by:0, late:0, curve:0};
+  ball.position.copy(pFrom); ball.visible=true;
+  arrivalRing.position.set(x,y,ZONE_Z); arrivalRing.visible=true;
+  gameMessage('PITCHING', '노란 원에 맞추고 스윙!');
+}
+
+function noSwing(){
+  if(isStrike(pTo.x,pTo.y)){
+    strikes++; gameMessage('STRIKE!', '스윙 안 함');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+  } else {
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(true); gameMessage('볼넷', '출루'); }
+  }
+  updateUI(); mode='result'; schedule(1000);
+}
+
+function doSwing(){
+  if(mode!=='pitch'||swung||!isOffense) return;
+  swung=true;
+  const p=Math.min(1,(performance.now()-pitchAt)/pitchMs);
+  const timing=Math.max(0,1-Math.abs(p-0.82)/0.24);
+  const space=Math.max(0,1-Math.hypot(pTo.x-aimX,pTo.y-aimY)/0.95);
+  const acc=timing*space;
+  arrivalRing.visible=false;
+
+  if(acc<0.26){
+    strikes++; gameMessage('WHIFF!', '헛스윙');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; ball.visible=false; updateUI(); schedule(900); return;
+  }
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  let n=1, msg, sub;
+  if(acc<0.48){ const f=Math.random()<0.55; msg=f?'FLY OUT':'GROUND OUT'; sub=f?'뜬공':'땅볼'; n=0; outs++; resetCount(); }
+  else if(acc<0.70){ msg='SINGLE'; sub='1루타'; n=1; resetCount(); }
+  else if(acc<0.87){ const t=Math.random()<0.2; msg=t?'TRIPLE':'DOUBLE'; sub=t?'3루타':'2루타'; n=t?3:2; resetCount(); }
+  else{ msg='HOME RUN!!'; sub='홈런'; n=4; resetCount(); }
+
+  if(n===4) hitTo=new THREE.Vector3((Math.random()-0.5)*7,8,-24);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*10,4,-16);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*7,1.6,-9);
+
+  if(n>0) advance(n,true); else sideChange();
+  gameMessage(msg,sub); updateUI();
+}
+
+// ===== 투수 =====
+function readyPitch(){
+  mode = 'pitching';
+  setCameraPitching();
+  ball.visible = false;
+  arrivalRing.visible = false;
+  resetBatterBat();
+  pitchAimX = 0;
+  pitchAimY = 1.15;
+  aimRing.position.set(0, 1.15, ZONE_Z);
+  aimRing.visible = true;
+  gameMessage('YOUR PITCH', PITCHES[selectedPitch].name + ' · 초록 원 조준 후 투구!');
+  updateUI();
+}
+
+function doThrow(){
+  if(mode !== 'pitching') return;
+  mode = 'pitch';
+  const pitch = PITCHES[selectedPitch];
+  pitchAt = performance.now();
+  pitchMs = 720 + (1-pitch.speed)*380;
+
+  const dir = Math.random() > 0.5 ? 1 : -1;
+  const bx = pitch.bx * dir;
+  const by = pitch.by;
+  const tx = pitchAimX + bx * 0.9;
+  const ty = pitchAimY + by;
+
+  pFrom = new THREE.Vector3(0, 1.9, -10.8);
+  pTo = new THREE.Vector3(tx, ty, ZONE_Z + 0.45);
+  pitchBreak = { bx, by, late: pitch.late, curve: pitch.curve };
+
+  ball.position.copy(pFrom);
+  ball.visible = true;
+  arrivalRing.position.set(tx, ty, ZONE_Z);
+  arrivalRing.visible = true;
+  aimRing.visible = false;
+  gameMessage('PITCHING', pitch.name);
+}
+
+function resolvePitch(){
+  const pitch = PITCHES[selectedPitch];
+  const inZone = isStrike(pTo.x, pTo.y);
+  const hard = 0.62 - (1 - pitch.speed) * 0.10;
+
+  // 볼 (스윙 안 함)
+  if(!inZone && Math.random() < 0.50){
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(false); gameMessage('WALK', '볼넷'); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // ★ 스윙하는 경우 → 애니메이션 실행
+  triggerBatterSwing();
+
+  // 헛스윙/콜
+  if(Math.random() > hard * 0.85){
+    strikes++; gameMessage('STRIKE!', '헛스윙/콜');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // 컨택
+  const r = Math.random();
+  let n=0, msg, sub;
+  if(r < 0.58){
+    msg = Math.random()<0.55 ? 'FLY OUT' : 'GROUND OUT';
+    sub = '상대 아웃';
+    n = 0; outs++; resetCount();
+  } else if(r < 0.82){
+    msg = 'SINGLE'; sub = '상대 안타'; n = 1; resetCount();
+  } else if(r < 0.95){
+    msg = 'DOUBLE'; sub = '상대 2루타'; n = 2; resetCount();
+  } else {
+    msg = 'HOME RUN'; sub = '상대 홈런'; n = 4; resetCount();
+  }
+
+  if(n>0) advance(n,false); else sideChange();
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  if(n>=4) hitTo=new THREE.Vector3((Math.random()-0.5)*8,9,-26);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*9,4,-15);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*6,1.7,-10);
+  gameMessage(msg,sub); updateUI();
+}
+
+function sideChange(){
+  if(outs<3) return;
+  outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(half==='top'){ half='bottom'; isOffense=!isOffense; }
+  else{
+    half='top'; inning++; isOffense=!isOffense;
+    if(inning>3){ mode='over'; gameMessage('GAME OVER', `${scoreUs} : ${scoreThem}`); clearTimeout(autoTimer); updateUI(); return; }
+  }
+  if(isOffense){
+    setCameraBatting(); mode='batting';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 타격`);
+    schedule(1200);
+  } else {
+    setCameraPitching(); mode='pitching';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 투수`);
+    setTimeout(readyPitch, 900);
+  }
+  updateUI();
+}
+
+function loop(){
+  if(!renderer) return;
+  const now = performance.now();
+
+  // ★ 타자 스윙 애니메이션
+  if(swingAnim && batterBat){
+    const t = Math.min(1, (now - swingAnim.start) / swingAnim.duration);
+    // ease-out
+    const ease = 1 - Math.pow(1 - t, 2);
+    batterBat.rotation.z = swingAnim.fromZ + (swingAnim.toZ - swingAnim.fromZ) * ease;
+    batterBat.rotation.y = swingAnim.fromY + (swingAnim.toY - swingAnim.fromY) * ease;
+
+    if(t >= 1){
+      // 잠시 후 원위치
+      setTimeout(() => {
+        if(batterBat){
+          batterBat.rotation.z = -0.9;
+          batterBat.rotation.y = 0.3;
+        }
+      }, 400);
+      swingAnim = null;
+    }
+  }
+
+  if(mode==='pitching' && aimRing){
+    aimRing.visible = true;
+    aimRing.position.set(pitchAimX, pitchAimY, ZONE_Z);
+  }
+
+  if(mode==='pitch'){
+    const p = Math.min(1, (now - pitchAt) / pitchMs);
+    const br = pitchBreak || {bx:0,by:0,late:0,curve:0};
+
+    let pos = new THREE.Vector3().lerpVectors(pFrom, pTo, p);
+
+    let breakFactor = 0;
+    if(br.late > 0){
+      const lateStart = 1 - br.late;
+      if(p > lateStart){
+        breakFactor = (p - lateStart) / br.late;
+        breakFactor = breakFactor * breakFactor;
+      }
+    } else {
+      breakFactor = p;
+    }
+
+    const curveAmt = br.curve || 0;
+    const sideSwing = Math.sin(p * Math.PI) * br.bx * 0.35 * (1 + curveAmt);
+    const dropSwing = Math.sin(p * Math.PI * 0.9) * Math.abs(br.by) * 0.4 * (1 + curveAmt);
+
+    pos.x += sideSwing * breakFactor;
+    pos.y -= dropSwing * breakFactor;
+    pos.y += Math.sin(p * Math.PI) * 0.10;
+
+    ball.position.copy(pos);
+
+    if(p >= 1){
+      ball.visible = false;
+      arrivalRing.visible = false;
+      if(isOffense){ if(!swung) noSwing(); }
+      else resolvePitch();
+    }
+  }
+
+  if(mode==='hit'){
+    const p = Math.min(1, (now - hitAt) / 880);
+    ball.visible = true;
+    ball.position.lerpVectors(hitFrom, hitTo, p);
+    ball.position.y += Math.sin(p * Math.PI) * (hitTo.y > 5 ? 4.5 : 1.8);
+    if(p >= 1){ ball.visible = false; mode = 'result'; schedule(900); }
+  }
+
+  renderer.render(scene, camera);
+}
+
+$('gameCanvas').addEventListener('mousemove', e => {
+  if(!camera || !renderer) return;
+  const r = $('gameCanvas').getBoundingClientRect();
+  const ndc = new THREE.Vector2((e.clientX-r.left)/r.width*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(ndc, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,0,1), -ZONE_Z);
+  const pt = new THREE.Vector3();
+  if(ray.ray.intersectPlane(plane, pt)){
+    const x = Math.max(-1.2, Math.min(1.2, pt.x));
+    const y = Math.max(0.25, Math.min(2.1, pt.y));
+    if(isOffense){
+      aimX = x; aimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    } else {
+      pitchAimX = x; pitchAimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    }
+  }
+});
+
+$('actionBtn').onclick = () => {
+  if(mode === 'select') return;
+  if(isOffense) doSwing();
+  else doThrow();
+};
+$('resetGame').onclick = () => {
+  clearTimeout(autoTimer);
+  mode = 'select'; isHome = null; isOffense = true; half = 'top'; inning = 1;
+  scoreUs = 0; scoreThem = 0; outs = 0; bases = [false,false,false]; resetCount();
+  ball.visible = false; aimRing.visible = false; arrivalRing.visible = false;
+  resetBatterBat();
+  $('btnAway').classList.remove('selected'); $('btnHome').classList.remove('selected');
+  setCameraBatting(); gameMessage('홈 / 원정을 선택하세요'); updateUI();
+};
+window.addEventListener('keydown', e => {
+  if(e.code === 'Space' && $('game').classList.contains('active')){
+    e.preventDefault();
+    if(isOffense) doSwing(); else doThrow();
+  }
+});
+window.addEventListener('resize', resizeGame);
+
+initThree();
+updateUI();
+})();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DIAMOND PRO · KBO CLUB</title>
+<style>
+:root{--bg:#07111d;--line:#ffffff20;--gold:#ffd166;--red:#d71920;--muted:#91a5ba}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f8fc;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}
+header{display:flex;justify-content:space-between;align-items:center;padding:15px 20px;background:#0b1725;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap}
+.brand{font-weight:1000;letter-spacing:2px;font-size:20px}.brand span{color:var(--red)}
+.money{font-weight:900;color:var(--gold);padding:8px 12px;background:#17283a;border-radius:8px}
+nav{display:flex;gap:7px;flex-wrap:wrap;padding:12px 20px;background:#0a1522;border-bottom:1px solid var(--line)}
+nav button,.btn{border:1px solid var(--line);background:#17283a;color:#eaf2fa;padding:10px 14px;border-radius:8px;font-weight:800}
+nav button.active,.btn.primary{background:var(--red);border-color:var(--red);color:white}
+main{max-width:1200px;margin:auto;padding:18px}
+.view{display:none}.view.active{display:block}
+h1{font-size:clamp(26px,4vw,42px);margin:4px 0 8px}
+.sub{color:var(--muted);line-height:1.6;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.fifa-card{background:linear-gradient(145deg,#1a2a3d,#0d1826);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fifa-top{background:linear-gradient(90deg,#0f1c2b,#1a2f45);padding:12px 14px 8px;display:flex;justify-content:space-between}
+.ovr-badge{width:52px;height:52px;border-radius:10px;display:grid;place-items:center;font-weight:1000;font-size:22px;color:#0a0a0a;background:var(--gold)}
+.ovr-badge.gold{background:linear-gradient(135deg,#ffd166,#f0a500)}
+.ovr-badge.silver{background:linear-gradient(135deg,#c0c0c0,#a0a0a0)}
+.ovr-badge.bronze{background:linear-gradient(135deg,#cd7f32,#a05a2c);color:#fff}
+.pos-badge{font-size:11px;font-weight:800;padding:4px 8px;border-radius:6px;background:#263b51;color:#a7bacd}
+.player-face{width:70px;height:70px;border-radius:50%;background:#263b51;display:grid;place-items:center;font-size:28px;font-weight:1000;color:var(--gold);margin:0 auto 6px;border:3px solid #ffffff25}
+.player-info{padding:0 14px 14px;text-align:center}
+.player-name{font-size:17px;font-weight:900;margin:4px 0 2px}
+.player-team{font-size:12px;color:var(--muted);margin-bottom:10px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.stat-item{background:#142437;border-radius:8px;padding:6px 8px;font-size:12px}
+.stat-item b{display:block;font-size:15px;color:var(--gold)}
+.price-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.price{font-weight:900;color:var(--gold)}
+.card-actions{display:flex;gap:6px;padding:0 14px 14px}
+.card-actions button{flex:1;padding:10px 6px;font-size:12px}
+input,select{background:#142437;color:white;border:1px solid var(--line);padding:10px;border-radius:8px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.toolbar input{flex:1;min-width:160px}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.team{background:#122236;border:1px solid var(--line);border-radius:10px;padding:14px;color:white}
+.team.selected{border-color:var(--gold)}
+.team strong{display:block;font-size:15px}.team small{color:var(--muted)}
+.lineup{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.slot{background:#101f30;border:1px dashed #ffffff35;border-radius:10px;padding:12px;min-height:90px}
+.slot.filled{border-style:solid}
+.slot-head{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-bottom:8px}
+.slot-name{font-weight:900;font-size:16px}
+.empty{color:#71869c;font-size:12px}
+#gameWrap{position:relative;height:min(62vh,620px);min-height:360px;border-radius:14px;overflow:hidden;background:#091522;border:1px solid var(--line)}
+#gameCanvas{width:100%;height:100%;display:block;cursor:crosshair}
+.gamehud{position:absolute;inset:12px 12px auto;display:flex;justify-content:space-between;gap:8px;pointer-events:none;flex-wrap:wrap}
+.glass{background:#071321ee;border:1px solid #ffffff25;border-radius:9px;padding:10px 12px}
+#gameMsg{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,4vw,36px);font-weight:1000;text-shadow:0 3px 16px #000;text-align:center;pointer-events:none;z-index:5}
+#gameMsg small{display:block;font-size:13px;color:var(--gold);margin-top:8px}
+.base-hud{display:flex;align-items:center;gap:8px}
+.base-diamond{width:48px;height:44px;position:relative}
+.base-diamond i{position:absolute;width:10px;height:10px;background:#71869c;border:1px solid #dce7f1;transform:rotate(45deg)}
+#base1{right:2px;top:16px}#base2{left:18px;top:1px}#base3{left:2px;top:16px}
+.base-diamond i.occupied{background:var(--gold);box-shadow:0 0 8px #ffd166}
+.base-diamond .home-base{left:18px;bottom:0;background:#f5f8fc;clip-path:polygon(50% 0,100% 35%,100% 75%,50% 100%,0 75%,0 35%);transform:none}
+.base-label{font-size:10px;color:#c6d4e2}
+.game-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.game-controls .btn{flex:1}
+#aimHelp{font-size:12px;color:var(--muted);margin-top:8px}
+.notice{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#17283a;border:1px solid var(--line);border-radius:9px;padding:12px 16px;z-index:20;display:none}
+.home-away{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}
+.home-away button{flex:1;min-width:140px;padding:16px;font-size:16px;font-weight:900}
+.home-away button.selected{background:var(--red);border-color:var(--red)}
+#modeLabel{font-size:13px;color:var(--gold);margin:6px 0 10px}
+.pitch-types{display:none;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pitch-types button{padding:8px 12px;font-size:12px;font-weight:800;border-radius:8px;border:1px solid var(--line);background:#142437;color:#cde}
+.pitch-types button.active{background:var(--red);border-color:var(--red);color:#fff}
+</style>
+</head>
+<body>
+<header>
+ <div class="brand">DIAMOND<span>.</span>PRO <span style="color:#8da3b9;font-size:10px">KBO CLUB</span></div>
+ <div class="money">보유 자금 <span id="money">₩5조</span></div>
+</header>
+<nav>
+ <button class="active" data-view="home">구단 홈</button>
+ <button data-view="market">선수 시장</button>
+ <button data-view="locker">라커룸</button>
+ <button data-view="game">경기</button>
+</nav>
+<main>
+<section id="home" class="view active">
+ <h1>구단 운영 센터</h1>
+ <p class="sub">선수를 영입하고 라인업을 구성하세요.</p>
+ <div class="team-grid" id="teamPicker"></div>
+ <div class="fifa-card" style="margin-top:16px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>내 구단 요약</strong><span class="pos-badge" id="clubName">롯데 자이언츠</span></div>
+  <p class="sub" style="margin:10px 0 0">보유 <b id="ownedCount">0</b>명 · 라인업 <b id="lineupCount">0</b>명</p>
+  <button class="btn primary" onclick="showView('locker')" style="margin-top:12px">라커룸 관리</button>
+ </div>
+</section>
+
+<section id="market" class="view">
+ <h1>선수 시장</h1>
+ <div class="toolbar">
+  <input id="search" placeholder="선수 이름 검색">
+  <select id="filterTeam"><option value="">전체 구단</option></select>
+  <select id="filterPos"><option value="">전체 포지션</option><option>투수</option><option>포수</option><option>내야수</option><option>외야수</option></select>
+  <select id="sort"><option value="rating">능력치순</option><option value="price">가격순</option><option value="name">이름순</option></select>
+ </div>
+ <div class="cards" id="marketCards"></div>
+</section>
+
+<section id="locker" class="view">
+ <h1>라커룸</h1>
+ <div class="fifa-card" style="margin-bottom:14px;padding:16px">
+  <div style="display:flex;justify-content:space-between"><strong>선발 라인업</strong><span class="pos-badge" id="lineupStatus">0 / 9</span></div>
+  <div class="lineup" id="lineup" style="margin-top:12px"></div>
+ </div>
+ <div class="cards" id="ownedCards"></div>
+</section>
+
+<section id="game" class="view">
+ <h1>사직야구장</h1>
+ <p class="sub">홈 = 1회초 투수 / 원정 = 1회초 타격. 투수 때 상대 타자가 스윙하는 모션이 나옵니다.</p>
+
+ <div class="home-away">
+  <button class="btn" id="btnAway">원정 (1회초 공격)</button>
+  <button class="btn" id="btnHome">홈 (1회초 수비)</button>
+ </div>
+ <div id="modeLabel">홈/원정을 선택해주세요</div>
+
+ <div class="pitch-types" id="pitchTypes">
+  <button data-pitch="four" class="active">포심</button>
+  <button data-pitch="two">투심</button>
+  <button data-pitch="curve">커브</button>
+  <button data-pitch="slider">슬라이더</button>
+  <button data-pitch="splitter">스플리터</button>
+  <button data-pitch="fork">포크</button>
+ </div>
+
+ <div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+  <div class="gamehud">
+   <div class="glass"><div style="font-size:10px;color:#a5b7ca"><span id="halfLabel">-</span></div><b><span id="scoreUs">0</span> : <span id="scoreA">0</span></b></div>
+   <div class="glass">B <b id="balls">0</b> · S <b id="strikes">0</b> · O <b id="outs">0</b></div>
+   <div class="glass base-hud">
+    <div class="base-diamond"><i id="base2"></i><i id="base3"></i><i id="base1"></i><i class="home-base"></i></div>
+    <div class="base-label"><b>주자</b><br><span id="baseText">없음</span></div>
+   </div>
+  </div>
+  <div id="gameMsg">홈 / 원정을 선택하세요</div>
+ </div>
+
+ <div class="game-controls">
+  <button class="btn primary" id="actionBtn">투구 / 스윙</button>
+  <button class="btn" id="resetGame">초기화</button>
+ </div>
+ <div id="aimHelp">투수: 초록 원 조준 → 투구 · 타격: 노란 원에 맞추고 스윙</div>
+</section>
+</main>
+<div class="notice" id="notice"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const teams = ['롯데 자이언츠','KIA 타이거즈','삼성 라이온즈','LG 트윈스','두산 베어스','SSG 랜더스','NC 다이노스','KT 위즈','한화 이글스','키움 히어로즈'];
+const colors = ['#d71920','#ea0029','#074ca1','#c30452','#202034','#ce0e2d','#1d467f','#222','#f37321','#820024'];
+const realPlayers = [
+  {name:'빅터 레이예스',team:0,pos:'외야수',rating:88,bat:90,spd:78,price:18500000000},
+  {name:'전민재',team:0,pos:'내야수',rating:79,bat:78,spd:82,price:8200000000},
+  {name:'한동희',team:0,pos:'내야수',rating:81,bat:83,spd:68,price:9800000000},
+  {name:'유강남',team:0,pos:'포수',rating:76,bat:74,spd:55,price:6200000000},
+  {name:'박세웅',team:0,pos:'투수',rating:82,bat:35,spd:40,price:11200000000},
+  {name:'김도영',team:1,pos:'내야수',rating:92,bat:91,spd:88,price:32000000000},
+  {name:'구자욱',team:2,pos:'외야수',rating:90,bat:92,spd:78,price:28000000000},
+  {name:'원태인',team:2,pos:'투수',rating:88,bat:28,spd:45,price:22500000000},
+  {name:'오스틴 딘',team:3,pos:'내야수',rating:89,bat:90,spd:68,price:24500000000},
+  {name:'양의지',team:4,pos:'포수',rating:87,bat:88,spd:48,price:20500000000},
+  {name:'곽빈',team:4,pos:'투수',rating:89,bat:28,spd:45,price:25500000000},
+  {name:'샘 힐리어드',team:7,pos:'외야수',rating:90,bat:91,spd:78,price:27500000000},
+  {name:'고영표',team:7,pos:'투수',rating:88,bat:30,spd:40,price:22500000000},
+  {name:'노시환',team:8,pos:'내야수',rating:88,bat:89,spd:72,price:22500000000},
+  {name:'이정후',team:9,pos:'외야수',rating:91,bat:90,spd:85,price:30000000000}
+];
+let players = realPlayers.map((p,i)=>({...p,id:i+1}));
+let selectedTeam=0, money=5000000000000, owned=[], lineup=Array(9).fill(null);
+const lineupPositions=['투수','포수','내야수','내야수','내야수','내야수','외야수','외야수','외야수'];
+
+function fmt(n){return '₩'+Math.round(n/1e8*10)/10+'억'}
+function notify(s){const n=$('notice');n.textContent=s;n.style.display='block';clearTimeout(notify.t);notify.t=setTimeout(()=>n.style.display='none',2000)}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+  if(id==='market')renderMarket(); if(id==='locker')renderLocker(); if(id==='game')resizeGame();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function renderTeams(){
+  $('teamPicker').innerHTML='';
+  teams.forEach((t,i)=>{
+    const b=document.createElement('button');
+    b.className='team'+(i===selectedTeam?' selected':'');
+    b.innerHTML=`<strong style="color:colors[i]">{t}</strong><small>${i===selectedTeam?'내 구단':'선택'}</small>`;
+    b.onclick=()=>{selectedTeam=i;$('clubName').textContent=t;renderTeams()};
+    $('teamPicker').appendChild(b);
+  });
+}
+function getOvrClass(r){return r>=85?'gold':r>=75?'silver':'bronze'}
+function playerCard(p,market){
+  const el=document.createElement('article'); el.className='fifa-card';
+  el.innerHTML=`<div class="fifa-top"><div class="ovr-badge getOvrClass(p.rating)">{p.rating}</div><span class="pos-badge">${p.pos}</span></div>
+  <div class="player-info"><div class="player-face">p.name[0]</div><divclass="player-name">{p.name}</div><div class="player-team">${teams[p.team]}</div>
+  <div class="stat-grid"><div class="stat-item"><b>p.bat</b>타격</div><divclass="stat-item"><b>{p.spd}</b>주력</div></div>
+  <div class="price-row"><span class="price">fmt(p.price)</span><spanclass="pos-badge">{market?'이적':'내 선수'}</span></div></div>
+  <div class="card-actions">${market?'<button class="btn primary">영입</button>':'<button class="btn">라인업</button><button class="btn">방출</button>'}</div>`;
+  const btns=el.querySelectorAll('button');
+  if(market) btns[0].onclick=()=>buy(p.id); else{btns[0].onclick=()=>assign(p.id);btns[1].onclick=()=>sell(p.id)}
+  return el;
+}
+function renderMarket(){
+  const q=('search').value.trim().toLowerCase(),tf=('filterTeam').value,pf=('filterPos').value,sort=('sort').value;
+  let list=players.filter(p=>!owned.some(o=>o.id===p.id)&&(!q||p.name.toLowerCase().includes(q))&&(tf===''||String(p.team)===tf)&&(!pf||p.pos===pf));
+  list.sort((a,b)=>sort==='price'?a.price-b.price:sort==='name'?a.name.localeCompare(b.name):b.rating-a.rating);
+  ('marketCards').innerHTML='';list.forEach(p=>('marketCards').appendChild(playerCard(p,true)));
+  if(!list.length)$('marketCards').innerHTML='<p class="sub">선수 없음</p>';
+}
+function buy(id){const p=players.find(p=>p.id===id);if(!p||money<p.price){notify('자금 부족');return}money-=p.price;owned.push(p);renderAll();notify(p.name+' 영입')}
+function sell(id){const p=owned.find(p=>p.id===id);if(!p||!confirm(p.name+' 방출?'))return;money+=Math.round(p.price*.7);owned=owned.filter(o=>o.id!==id);lineup=lineup.map(x=>x===id?null:x);renderAll()}
+function assign(id){const p=owned.find(p=>p.id===id);if(!p)return;let s=lineup.findIndex((x,i)=>x===null&&lineupPositions[i]===p.pos);if(s<0)s=lineup.findIndex(x=>x===null);if(s<0){notify('라인업 가득');return}lineup[s]=id;renderAll()}
+function removeSlot(i){lineup[i]=null;renderAll()}
+function renderLocker(){
+  $('lineup').innerHTML='';
+  lineup.forEach((id,i)=>{
+    const p=owned.find(p=>p.id===id); const el=document.createElement('div');
+    el.className='slot'+(p?' filled':'');
+    el.innerHTML=`<div class="slot-head"><span>${i+1} · lineupPositions[i]</span></div>`+(p?`<divclass="slot-name">{p.name}</div><button class="btn" style="margin-top:6px;padding:5px 8px" data-r>해제</button>`:'<div class="empty">빈 슬롯</div>');
+    if(p)el.querySelector('[data-r]').onclick=()=>removeSlot(i);
+    $('lineup').appendChild(el);
+  });
+  ('ownedCards').innerHTML='';owned.forEach(p=>('ownedCards').appendChild(playerCard(p,false)));
+  if(!owned.length)$('ownedCards').innerHTML='<p class="sub">영입한 선수 없음</p>';
+  $('lineupStatus').textContent=lineup.filter(Boolean).length+' / 9';
+}
+function renderAll(){('money').textContent=fmt(money);('ownedCount').textContent=owned.length;$('lineupCount').textContent=lineup.filter(Boolean).length;renderMarket();renderLocker()}
+$('filterTeam').innerHTML+=''; teams.forEach((t,i)=>{const o=document.createElement('option');o.value=i;o.textContent=t;$('filterTeam').appendChild(o)});
+['search','filterTeam','filterPos','sort'].forEach(id=>$(id).addEventListener('input',renderMarket));
+renderTeams(); renderAll();
+
+// ========== 게임 ==========
+const PITCHES = {
+  four:     {name:'포심',   speed:1.00, bx:0.00, by:0.00, late:0.00, curve:0.0},
+  two:      {name:'투심',   speed:0.93, bx:0.38, by:-0.08, late:0.18, curve:0.15},
+  curve:    {name:'커브',   speed:0.70, bx:0.18, by:-0.72, late:0.48, curve:0.55},
+  slider:   {name:'슬라이더',speed:0.84, bx:0.62, by:-0.18, late:0.38, curve:0.35},
+  splitter: {name:'스플리터',speed:0.86, bx:0.06, by:-0.58, late:0.55, curve:0.40},
+  fork:     {name:'포크',   speed:0.76, bx:0.10, by:-0.68, late:0.52, curve:0.45}
+};
+
+let scene,camera,renderer,ball,aimRing,arrivalRing,zoneMesh,batMesh;
+let batterGroup, batterBat; // 타자 + 방망이
+let mode='select', isHome=null, isOffense=true, half='top', inning=1;
+let scoreUs=0, scoreThem=0, balls=0, strikes=0, outs=0, bases=[false,false,false];
+let selectedPitch='four', pitchAt=0, pitchMs=1000, pFrom, pTo, pitchBreak;
+let hitAt=0, hitFrom, hitTo, swung=false;
+let aimX=0, aimY=1.1, pitchAimX=0, pitchAimY=1.15;
+let autoTimer=null;
+let swingAnim = null; // {start, duration, from, to}
+const ZONE_Z = 5.0;
+
+function initThree(){
+  if(!window.THREE){ $('gameMsg').textContent='Three.js 로드 실패'; return; }
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x071522);
+  scene.fog = new THREE.Fog(0x071522, 20, 70);
+
+  camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  renderer = new THREE.WebGLRenderer({canvas:$('gameCanvas'), antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+
+  scene.add(new THREE.HemisphereLight(0xc5e1ff, 0x26351f, 1.8));
+  const sun = new THREE.DirectionalLight(0xffe8cf, 2.0);
+  sun.position.set(-6, 14, 5); scene.add(sun);
+
+  const mat = c => new THREE.MeshStandardMaterial({color:c});
+  const box = (w,h,d,m,x,y,z) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m);
+    o.position.set(x,y,z); scene.add(o); return o;
+  };
+
+  box(100, 0.3, 80, mat(0x286a35), 0, -0.3, -5);
+  box(55, 4, 1, mat(0x172334), 0, 2, -28);
+
+  // ===== 타자 그룹 (몸 + 방망이) =====
+  batterGroup = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0xd71920));
+  body.position.y = 0.9; batterGroup.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  head.position.y = 1.38; batterGroup.add(head);
+  const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.45, 6), mat(0x1a1a2e));
+  legs.position.y = 0.25; batterGroup.add(legs);
+
+  // 방망이 (오른손 타자 기준, 어깨 위에 대기)
+  batterBat = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.025, 0.045, 1.15, 8),
+    mat(0xb77a3d)
+  );
+  batterBat.position.set(0.15, 1.25, 0.05);
+  batterBat.rotation.z = -0.9;   // 대기 자세
+  batterBat.rotation.y = 0.3;
+  batterGroup.add(batterBat);
+
+  // 타석 위치 (존 왼쪽)
+  batterGroup.position.set(-0.85, 0, 0.55);
+  scene.add(batterGroup);
+
+  // 투수
+  const pitcher = new THREE.Group();
+  const pBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 0.65, 8), mat(0x1e3a5f));
+  pBody.position.y = 0.9; pitcher.add(pBody);
+  const pHead = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xd8a078));
+  pHead.position.y = 1.38; pitcher.add(pHead);
+  pitcher.position.set(0, 0, -10.5);
+  scene.add(pitcher);
+
+  // 베이스
+  [[0,0],[3.8,-3.8],[0,-7.6],[-3.8,-3.8]].forEach(([x,z])=>{
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.45,0.07,0.45), mat(0xf0f4f8));
+    b.position.set(x,0.02,z); b.rotation.y = Math.PI/4; scene.add(b);
+  });
+
+  zoneMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.2, 1.45, 0.04),
+    new THREE.MeshBasicMaterial({color:0xffd166, wireframe:true})
+  );
+  zoneMesh.position.set(0, 1.12, ZONE_Z);
+  scene.add(zoneMesh);
+
+  ball = new THREE.Mesh(new THREE.SphereGeometry(0.11,12,10), mat(0xffffff));
+  ball.visible = false; scene.add(ball);
+
+  function makeRing(col, inner, outer){
+    const g = new THREE.Group();
+    const m = new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.95});
+    g.add(new THREE.Mesh(new THREE.RingGeometry(inner, outer, 40), m));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(0.05, 16), m));
+    scene.add(g); return g;
+  }
+  aimRing = makeRing(0x22ff88, 0.25, 0.38);
+  arrivalRing = makeRing(0xffd166, 0.20, 0.32);
+  aimRing.visible = false;
+  arrivalRing.visible = false;
+
+  // 1인칭 배트 (타격 시점용)
+  batMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.055,1.05,8), mat(0xb77a3d));
+  batMesh.position.set(0.35,-0.25,-0.75); batMesh.rotation.z = -0.5;
+  camera.add(batMesh);
+
+  setCameraBatting();
+  renderer.setAnimationLoop(loop);
+  resizeGame();
+  gameMessage('홈 / 원정을 선택하세요');
+}
+
+function setCameraBatting(){
+  camera.position.set(0.3, 1.9, 8.6);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = true;
+}
+function setCameraPitching(){
+  camera.position.set(0, 2.2, -11.5);
+  camera.lookAt(0, 1.15, ZONE_Z);
+  if(batMesh) batMesh.visible = false;
+}
+
+function resizeGame(){
+  if(!renderer||!camera) return;
+  const w=('gameCanvas').clientWidth,h=('gameCanvas').clientHeight;
+  if(!w||!h) return;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+
+function gameMessage(t,s=''){ ('gameMsg').innerHTML=t+(s?`<small>{s}</small>`:''); }
+
+function updateUI(){
+  $('scoreUs').textContent=scoreUs; $('scoreA').textContent=scoreThem;
+  $('balls').textContent=balls; $('strikes').textContent=strikes; $('outs').textContent=outs;
+  ('halfLabel').textContent=mode==='select'?'-':`{inning}회${half==='top'?'초':'말'}`;
+  ['base1','base2','base3'].forEach((id,i)=>$(id).classList.toggle('occupied',!!bases[i]));
+  const r = bases.map((v,i)=>v?['1루','2루','3루'][i]:null).filter(Boolean);
+  $('baseText').textContent = r.length ? r.join(' · ') : '없음';
+
+  if(mode==='select'){
+    $('modeLabel').textContent='홈/원정을 선택해주세요';
+    $('actionBtn').textContent='시작하기';
+    $('pitchTypes').style.display='none';
+  } else {
+    ('modeLabel').textContent=`{isHome?'홈':'원정'} · ${isOffense?'타격':'투수'} 시점` + (!isOffense?` · ${PITCHES[selectedPitch].name}`:'');
+    $('actionBtn').textContent = isOffense ? 'BAT · 스윙' : 'PITCH · 투구';
+    $('pitchTypes').style.display = isOffense ? 'none' : 'flex';
+  }
+}
+
+function resetCount(){ balls=0; strikes=0; }
+function isStrike(x,y){ return Math.abs(x)<0.58 && y>0.42 && y<1.85; }
+
+function advance(n, forUs){
+  const next=[false,false,false]; let runs=0;
+  for(let i=2;i>=0;i--) if(bases[i]){ const d=i+n; if(d>=3) runs++; else next[d]=true; }
+  if(n>=1) next[n-1]=true;
+  bases=next; if(forUs) scoreUs+=runs; else scoreThem+=runs;
+}
+function walk(forUs){
+  const next=[false,false,false];
+  if(bases[0]){ if(bases[1]){ if(bases[2]){ if(forUs)scoreUs++; else scoreThem++; } next[2]=true; } else next[1]=true; }
+  if(bases[0]||bases[1]) next[1]=true;
+  next[0]=true; bases=next;
+}
+
+function schedule(ms=1100){
+  clearTimeout(autoTimer);
+  autoTimer=setTimeout(()=>{
+    if(mode==='result' || mode==='idle' || mode==='batting'){
+      if(isOffense) startBatterPitch();
+      else readyPitch();
+    }
+  }, ms);
+}
+
+// ★ 타자 스윙 애니메이션 시작
+function triggerBatterSwing(){
+  if(!batterBat) return;
+  swingAnim = {
+    start: performance.now(),
+    duration: 320,
+    fromZ: -0.9,
+    toZ: 1.4,      // 크게 휘두름
+    fromY: 0.3,
+    toY: -0.6
+  };
+}
+
+function resetBatterBat(){
+  if(!batterBat) return;
+  batterBat.rotation.z = -0.9;
+  batterBat.rotation.y = 0.3;
+  swingAnim = null;
+}
+
+$('btnAway').onclick=()=>{
+  isHome=false; isOffense=true; half='top'; inning=1;
+  $('btnAway').classList.add('selected'); $('btnHome').classList.remove('selected');
+  beginGame();
+};
+$('btnHome').onclick=()=>{
+  isHome=true; isOffense=false; half='top'; inning=1;
+  $('btnHome').classList.add('selected'); $('btnAway').classList.remove('selected');
+  beginGame();
+};
+
+function beginGame(){
+  scoreUs=0; scoreThem=0; outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(isOffense){
+    mode='batting';
+    setCameraBatting();
+    gameMessage('PLAY BALL', '타격 · 1회초');
+    schedule(700);
+  } else {
+    mode='pitching';
+    setCameraPitching();
+    readyPitch();
+  }
+  updateUI();
+}
+
+document.querySelectorAll('#pitchTypes button').forEach(btn=>{
+  btn.onclick=()=>{
+    selectedPitch=btn.dataset.pitch;
+    document.querySelectorAll('#pitchTypes button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    updateUI();
+  };
+});
+
+// ===== 타격 =====
+function startBatterPitch(){
+  if(mode==='pitch'||mode==='hit') return;
+  mode='pitch'; swung=false;
+  pitchAt=performance.now(); pitchMs=920+Math.random()*160;
+  const inZ=Math.random()<0.62;
+  let x,y;
+  if(inZ){ x=(Math.random()-0.5)*0.95; y=0.5+Math.random()*1.1; }
+  else{ x=(Math.random()-0.5)*1.5; y=0.2+Math.random()*2.0; if(Math.abs(x)<0.5&&y>0.5&&y<1.7) x+=x>0?0.5:-0.5; }
+  pFrom=new THREE.Vector3((Math.random()-0.5)*0.12, 1.95, -0.1);
+  pTo=new THREE.Vector3(x,y,ZONE_Z+0.55);
+  pitchBreak = {bx:0, by:0, late:0, curve:0};
+  ball.position.copy(pFrom); ball.visible=true;
+  arrivalRing.position.set(x,y,ZONE_Z); arrivalRing.visible=true;
+  gameMessage('PITCHING', '노란 원에 맞추고 스윙!');
+}
+
+function noSwing(){
+  if(isStrike(pTo.x,pTo.y)){
+    strikes++; gameMessage('STRIKE!', '스윙 안 함');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+  } else {
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(true); gameMessage('볼넷', '출루'); }
+  }
+  updateUI(); mode='result'; schedule(1000);
+}
+
+function doSwing(){
+  if(mode!=='pitch'||swung||!isOffense) return;
+  swung=true;
+  const p=Math.min(1,(performance.now()-pitchAt)/pitchMs);
+  const timing=Math.max(0,1-Math.abs(p-0.82)/0.24);
+  const space=Math.max(0,1-Math.hypot(pTo.x-aimX,pTo.y-aimY)/0.95);
+  const acc=timing*space;
+  arrivalRing.visible=false;
+
+  if(acc<0.26){
+    strikes++; gameMessage('WHIFF!', '헛스윙');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; ball.visible=false; updateUI(); schedule(900); return;
+  }
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  let n=1, msg, sub;
+  if(acc<0.48){ const f=Math.random()<0.55; msg=f?'FLY OUT':'GROUND OUT'; sub=f?'뜬공':'땅볼'; n=0; outs++; resetCount(); }
+  else if(acc<0.70){ msg='SINGLE'; sub='1루타'; n=1; resetCount(); }
+  else if(acc<0.87){ const t=Math.random()<0.2; msg=t?'TRIPLE':'DOUBLE'; sub=t?'3루타':'2루타'; n=t?3:2; resetCount(); }
+  else{ msg='HOME RUN!!'; sub='홈런'; n=4; resetCount(); }
+
+  if(n===4) hitTo=new THREE.Vector3((Math.random()-0.5)*7,8,-24);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*10,4,-16);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*7,1.6,-9);
+
+  if(n>0) advance(n,true); else sideChange();
+  gameMessage(msg,sub); updateUI();
+}
+
+// ===== 투수 =====
+function readyPitch(){
+  mode = 'pitching';
+  setCameraPitching();
+  ball.visible = false;
+  arrivalRing.visible = false;
+  resetBatterBat();
+  pitchAimX = 0;
+  pitchAimY = 1.15;
+  aimRing.position.set(0, 1.15, ZONE_Z);
+  aimRing.visible = true;
+  gameMessage('YOUR PITCH', PITCHES[selectedPitch].name + ' · 초록 원 조준 후 투구!');
+  updateUI();
+}
+
+function doThrow(){
+  if(mode !== 'pitching') return;
+  mode = 'pitch';
+  const pitch = PITCHES[selectedPitch];
+  pitchAt = performance.now();
+  pitchMs = 720 + (1-pitch.speed)*380;
+
+  const dir = Math.random() > 0.5 ? 1 : -1;
+  const bx = pitch.bx * dir;
+  const by = pitch.by;
+  const tx = pitchAimX + bx * 0.9;
+  const ty = pitchAimY + by;
+
+  pFrom = new THREE.Vector3(0, 1.9, -10.8);
+  pTo = new THREE.Vector3(tx, ty, ZONE_Z + 0.45);
+  pitchBreak = { bx, by, late: pitch.late, curve: pitch.curve };
+
+  ball.position.copy(pFrom);
+  ball.visible = true;
+  arrivalRing.position.set(tx, ty, ZONE_Z);
+  arrivalRing.visible = true;
+  aimRing.visible = false;
+  gameMessage('PITCHING', pitch.name);
+}
+
+function resolvePitch(){
+  const pitch = PITCHES[selectedPitch];
+  const inZone = isStrike(pTo.x, pTo.y);
+  const hard = 0.62 - (1 - pitch.speed) * 0.10;
+
+  // 볼 (스윙 안 함)
+  if(!inZone && Math.random() < 0.50){
+    balls++; gameMessage('BALL', '볼');
+    if(balls>=4){ resetCount(); walk(false); gameMessage('WALK', '볼넷'); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // ★ 스윙하는 경우 → 애니메이션 실행
+  triggerBatterSwing();
+
+  // 헛스윙/콜
+  if(Math.random() > hard * 0.85){
+    strikes++; gameMessage('STRIKE!', '헛스윙/콜');
+    if(strikes>=3){ resetCount(); outs++; sideChange(); }
+    mode='result'; updateUI(); schedule(950); return;
+  }
+
+  // 컨택
+  const r = Math.random();
+  let n=0, msg, sub;
+  if(r < 0.58){
+    msg = Math.random()<0.55 ? 'FLY OUT' : 'GROUND OUT';
+    sub = '상대 아웃';
+    n = 0; outs++; resetCount();
+  } else if(r < 0.82){
+    msg = 'SINGLE'; sub = '상대 안타'; n = 1; resetCount();
+  } else if(r < 0.95){
+    msg = 'DOUBLE'; sub = '상대 2루타'; n = 2; resetCount();
+  } else {
+    msg = 'HOME RUN'; sub = '상대 홈런'; n = 4; resetCount();
+  }
+
+  if(n>0) advance(n,false); else sideChange();
+  mode='hit'; hitAt=performance.now(); hitFrom=ball.position.clone();
+  if(n>=4) hitTo=new THREE.Vector3((Math.random()-0.5)*8,9,-26);
+  else if(n>=2) hitTo=new THREE.Vector3((Math.random()-0.5)*9,4,-15);
+  else hitTo=new THREE.Vector3((Math.random()-0.5)*6,1.7,-10);
+  gameMessage(msg,sub); updateUI();
+}
+
+function sideChange(){
+  if(outs<3) return;
+  outs=0; bases=[false,false,false]; resetCount();
+  resetBatterBat();
+  if(half==='top'){ half='bottom'; isOffense=!isOffense; }
+  else{
+    half='top'; inning++; isOffense=!isOffense;
+    if(inning>3){ mode='over'; gameMessage('GAME OVER', `${scoreUs} : ${scoreThem}`); clearTimeout(autoTimer); updateUI(); return; }
+  }
+  if(isOffense){
+    setCameraBatting(); mode='batting';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 타격`);
+    schedule(1200);
+  } else {
+    setCameraPitching(); mode='pitching';
+    gameMessage('공수교대', `inning회{half==='top'?'초':'말'} · 투수`);
+    setTimeout(readyPitch, 900);
+  }
+  updateUI();
+}
+
+function loop(){
+  if(!renderer) return;
+  const now = performance.now();
+
+  // ★ 타자 스윙 애니메이션
+  if(swingAnim && batterBat){
+    const t = Math.min(1, (now - swingAnim.start) / swingAnim.duration);
+    // ease-out
+    const ease = 1 - Math.pow(1 - t, 2);
+    batterBat.rotation.z = swingAnim.fromZ + (swingAnim.toZ - swingAnim.fromZ) * ease;
+    batterBat.rotation.y = swingAnim.fromY + (swingAnim.toY - swingAnim.fromY) * ease;
+
+    if(t >= 1){
+      // 잠시 후 원위치
+      setTimeout(() => {
+        if(batterBat){
+          batterBat.rotation.z = -0.9;
+          batterBat.rotation.y = 0.3;
+        }
+      }, 400);
+      swingAnim = null;
+    }
+  }
+
+  if(mode==='pitching' && aimRing){
+    aimRing.visible = true;
+    aimRing.position.set(pitchAimX, pitchAimY, ZONE_Z);
+  }
+
+  if(mode==='pitch'){
+    const p = Math.min(1, (now - pitchAt) / pitchMs);
+    const br = pitchBreak || {bx:0,by:0,late:0,curve:0};
+
+    let pos = new THREE.Vector3().lerpVectors(pFrom, pTo, p);
+
+    let breakFactor = 0;
+    if(br.late > 0){
+      const lateStart = 1 - br.late;
+      if(p > lateStart){
+        breakFactor = (p - lateStart) / br.late;
+        breakFactor = breakFactor * breakFactor;
+      }
+    } else {
+      breakFactor = p;
+    }
+
+    const curveAmt = br.curve || 0;
+    const sideSwing = Math.sin(p * Math.PI) * br.bx * 0.35 * (1 + curveAmt);
+    const dropSwing = Math.sin(p * Math.PI * 0.9) * Math.abs(br.by) * 0.4 * (1 + curveAmt);
+
+    pos.x += sideSwing * breakFactor;
+    pos.y -= dropSwing * breakFactor;
+    pos.y += Math.sin(p * Math.PI) * 0.10;
+
+    ball.position.copy(pos);
+
+    if(p >= 1){
+      ball.visible = false;
+      arrivalRing.visible = false;
+      if(isOffense){ if(!swung) noSwing(); }
+      else resolvePitch();
+    }
+  }
+
+  if(mode==='hit'){
+    const p = Math.min(1, (now - hitAt) / 880);
+    ball.visible = true;
+    ball.position.lerpVectors(hitFrom, hitTo, p);
+    ball.position.y += Math.sin(p * Math.PI) * (hitTo.y > 5 ? 4.5 : 1.8);
+    if(p >= 1){ ball.visible = false; mode = 'result'; schedule(900); }
+  }
+
+  renderer.render(scene, camera);
+}
+
+$('gameCanvas').addEventListener('mousemove', e => {
+  if(!camera || !renderer) return;
+  const r = $('gameCanvas').getBoundingClientRect();
+  const ndc = new THREE.Vector2((e.clientX-r.left)/r.width*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(ndc, camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,0,1), -ZONE_Z);
+  const pt = new THREE.Vector3();
+  if(ray.ray.intersectPlane(plane, pt)){
+    const x = Math.max(-1.2, Math.min(1.2, pt.x));
+    const y = Math.max(0.25, Math.min(2.1, pt.y));
+    if(isOffense){
+      aimX = x; aimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    } else {
+      pitchAimX = x; pitchAimY = y;
+      aimRing.position.set(x, y, ZONE_Z);
+      aimRing.visible = true;
+    }
+  }
+});
+
+$('actionBtn').onclick = () => {
+  if(mode === 'select') return;
+  if(isOffense) doSwing();
+  else doThrow();
+};
+$('resetGame').onclick = () => {
+  clearTimeout(autoTimer);
+  mode = 'select'; isHome = null; isOffense = true; half = 'top'; inning = 1;
+  scoreUs = 0; scoreThem = 0; outs = 0; bases = [false,false,false]; resetCount();
+  ball.visible = false; aimRing.visible = false; arrivalRing.visible = false;
+  resetBatterBat();
+  $('btnAway').classList.remove('selected'); $('btnHome').classList.remove('selected');
+  setCameraBatting(); gameMessage('홈 / 원정을 선택하세요'); updateUI();
+};
+window.addEventListener('keydown', e => {
+  if(e.code === 'Space' && $('game').classList.contains('active')){
+    e.preventDefault();
+    if(isOffense) doSwing(); else doThrow();
+  }
+});
+window.addEventListener('resize', resizeGame);
+
+initThree();
+updateUI();
+})();
+</script>
+</body>
+</html>

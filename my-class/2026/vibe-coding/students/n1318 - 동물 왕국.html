@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동물의 왕국 - 콜로세움 1v1 대전</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            user-select: none;
+            background-color: #0f172a;
+            color: #fff;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            background-color: #1e1b4b;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-2">
+
+
+    <!-- 메인 타이틀 영역 -->
+    <header class="mb-3 text-center">
+        <h1 class="text-4xl md:text-5xl font-black text-amber-500 drop-shadow-md tracking-wider">
+            🦁 동물의 왕국 🐘
+        </h1>
+        <p class="text-gray-300 text-sm md:text-base mt-1">콜로세움 최강의 동물을 가려라!</p>
+    </header>
+
+
+    <!-- 게임 컨테이너 -->
+    <div class="relative w-full max-w-4xl bg-slate-900 p-3 rounded-2xl border-4 border-amber-600 shadow-2xl">
+       
+        <!-- 게임 헤드업 디스플레이 (HUD - 체력바 & 쿨다운) -->
+        <div id="hud" class="flex justify-between items-center mb-2 px-4 py-2 bg-slate-800/80 rounded-xl border border-slate-700">
+            <!-- P1 HUD -->
+            <div class="w-2/5">
+                <div class="flex justify-between items-center mb-1">
+                    <span id-="hud-p1-name" id="hud-p1-name" class="font-bold text-lg text-amber-400">P1 사자</span>
+                    <span id="hud-p1-hp-text" class="text-xs text-slate-300">100 / 100</span>
+                </div>
+                <div class="w-full bg-slate-700 h-5 rounded-full overflow-hidden border border-slate-600">
+                    <div id="hud-p1-hp-bar" class="bg-gradient-to-r from-red-600 to-amber-500 h-full w-full transition-all duration-100"></div>
+                </div>
+                <div id="hud-p1-skill-cd" class="text-xs text-cyan-400 mt-1">특수 스킬 [G]: 준비완료</div>
+            </div>
+
+
+            <div class="text-2xl font-black text-amber-500 mx-2">VS</div>
+
+
+            <!-- P2 HUD -->
+            <div class="w-2/5 text-right">
+                <div class="flex justify-between items-center mb-1">
+                    <span id="hud-p2-hp-text" class="text-xs text-slate-300">100 / 100</span>
+                    <span id="hud-p2-name" class="font-bold text-lg text-blue-400">P2 코끼리</span>
+                </div>
+                <div class="w-full bg-slate-700 h-5 rounded-full overflow-hidden border border-slate-600">
+                    <div id="hud-p2-hp-bar" class="bg-gradient-to-r from-amber-500 to-red-600 h-full w-full transition-all duration-100"></div>
+                </div>
+                <div id="hud-p2-skill-cd" class="text-xs text-cyan-400 mt-1">특수 스킬 [L]: 준비완료</div>
+            </div>
+        </div>
+
+
+        <!-- 메인 메인 캔버스 화면 -->
+        <div class="relative flex justify-center items-center">
+            <canvas id="gameCanvas" class="w-full h-auto aspect-video"></canvas>
+
+
+            <!-- 스타트 / 캐릭터 선택 화면 (모달 오버레이) -->
+            <div id="start-modal" class="absolute inset-0 bg-black/90 rounded-xl flex flex-col items-center justify-center p-6 text-center z-20">
+                <h2 class="text-3xl font-extrabold text-amber-400 mb-4">전투 모드 & 캐릭터 선택</h2>
+               
+                <!-- 모드 선택 -->
+                <div class="flex gap-4 mb-6">
+                    <button id="btn-mode-ai" onclick="selectGameMode('ai')" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl border-2 border-amber-300 shadow-lg transition">1인용 (vs AI)</button>
+                    <button id="btn-mode-2p" onclick="selectGameMode('2p')" class="px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl border-2 border-slate-500 shadow-lg transition">2인용 (1v1 친구대전)</button>
+                </div>
+
+
+                <!-- 캐릭터 선택 영역 -->
+                <div class="grid grid-cols-2 gap-6 w-full max-w-md mb-6">
+                    <!-- P1 캐릭터 -->
+                    <div class="bg-slate-800 p-3 rounded-xl border border-amber-500/40">
+                        <h3 class="text-amber-400 font-bold mb-2">P1 캐릭터</h3>
+                        <div class="flex justify-around">
+                            <button onclick="selectChar(1, 'lion')" id="p1-lion" class="char-select-btn text-2xl p-2 rounded-lg bg-amber-600/40 border-2 border-amber-400">🦁<div class="text-xs">사자</div></button>
+                            <button onclick="selectChar(1, 'elephant')" id="p1-elephant" class="char-select-btn text-2xl p-2 rounded-lg bg-slate-700">🐘<div class="text-xs">코끼리</div></button>
+                            <button onclick="selectChar(1, 'ian')" id="p1-ian" class="char-select-btn text-2xl p-2 rounded-lg bg-slate-700">🧍<div class="text-xs">최이안</div></button>
+                        </div>
+                    </div>
+
+
+                    <!-- P2 캐릭터 -->
+                    <div class="bg-slate-800 p-3 rounded-xl border border-blue-500/40">
+                        <h3 class="text-blue-400 font-bold mb-2">P2 캐릭터</h3>
+                        <div class="flex justify-around">
+                            <button onclick="selectChar(2, 'lion')" id="p2-lion" class="char-select-btn text-2xl p-2 rounded-lg bg-slate-700">🦁<div class="text-xs">사자</div></button>
+                            <button onclick="selectChar(2, 'elephant')" id="p2-elephant" class="char-select-btn text-2xl p-2 rounded-lg bg-blue-600/40 border-2 border-blue-400">🐘<div class="text-xs">코끼리</div></button>
+                            <button onclick="selectChar(2, 'ian')" id="p2-ian" class="char-select-btn text-2xl p-2 rounded-lg bg-slate-700">🧍<div class="text-xs">최이안</div></button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <button onclick="startGame()" class="w-full max-w-xs py-3 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-xl font-black rounded-xl shadow-xl transform active:scale-95 transition">
+                    ⚔️ 게임 시작! ⚔️
+                </button>
+            </div>
+
+
+            <!-- 승리 결과 모달 -->
+            <div id="victory-modal" class="absolute inset-0 bg-black/85 rounded-xl flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <h2 id="winner-text" class="text-4xl font-black text-amber-400 mb-6 drop-shadow">Player 1 승리!</h2>
+                <button onclick="resetToMenu()" class="px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-lg shadow-lg">
+                    다시 하기
+                </button>
+            </div>
+        </div>
+
+
+        <!-- 조작키 안내 -->
+        <div class="mt-3 grid grid-cols-2 gap-4 text-xs text-slate-300 bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+            <div>
+                <span class="text-amber-400 font-bold">Player 1 조작:</span>
+                <span class="ml-2">이동: <kbd class="px-1 bg-slate-700 rounded text-amber-300">A</kbd> / <kbd class="px-1 bg-slate-700 rounded text-amber-300">D</kbd></span> |
+                <span>공격: <kbd class="px-1 bg-slate-700 rounded text-amber-300">F</kbd></span> |
+                <span>특수스킬: <kbd class="px-1 bg-slate-700 rounded text-amber-300">G</kbd></span>
+            </div>
+            <div class="text-right">
+                <span class="text-blue-400 font-bold">Player 2 조작:</span>
+                <span class="ml-2">이동: <kbd class="px-1 bg-slate-700 rounded text-blue-300">◄</kbd> / <kbd class="px-1 bg-slate-700 rounded text-blue-300">►</kbd></span> |
+                <span>공격: <kbd class="px-1 bg-slate-700 rounded text-blue-300">K</kbd></span> |
+                <span>특수스킬: <kbd class="px-1 bg-slate-700 rounded text-blue-300">L</kbd></span>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        /* ==========================================
+           1. 사운드 효과 (Web Audio API 사운드 합성기)
+           ========================================== */
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            const now = audioCtx.currentTime;
+           
+            if (type === 'hit') {
+                // 타격음 (피/스파크 튈 때)
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+
+
+            } else if (type === 'roar') {
+                // 사자 포효 스킬음
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(220, now + 0.2);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.6);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.6);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.6);
+
+
+            } else if (type === 'water') {
+                // 코끼리 물대포 발사음
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.25);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.25);
+
+
+            } else if (type === 'transform') {
+                // 최이안 거인화 변신음
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(450, now + 0.4);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+        }
+
+
+        /* ==========================================
+           2. 이펙트 파티클 시스템 (피 튀김 / 스파크 / 할퀴기 궤적)
+           ========================================== */
+        let bloodSplatters = [];
+        let sparkLines = [];
+        let slashArcs = [];
+
+
+        // 피 파편 (비정형 핏자국 이펙트)
+        class BloodParticle {
+            constructor(x, y, dirX) {
+                this.x = x;
+                this.y = y;
+                // 피가 비산하는 무작위 속도
+                this.vx = (Math.random() * 8 + 2) * dirX + (Math.random() - 0.5) * 4;
+                this.vy = -(Math.random() * 6 + 2);
+                this.gravity = 0.4;
+                this.size = Math.random() * 6 + 3;
+                this.life = 1.0; // 투명도 감소용
+                this.decay = Math.random() * 0.03 + 0.02;
+                this.color = ['#dc2626', '#991b1b', '#7f1d1d', '#450a0a'][Math.floor(Math.random() * 4)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                // 날카로운 피 튀김 쪼가리 형태
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + this.size * 1.5, this.y + this.size * 0.5);
+                ctx.lineTo(this.x + this.size * 0.5, this.y + this.size * 1.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+
+        // 뾰족한 전기/마찰 스파크 선 이펙트
+        class SparkParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 10 + 4;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.length = Math.random() * 16 + 8;
+                this.life = 1.0;
+                this.decay = Math.random() * 0.08 + 0.05;
+                this.color = ['#fef08a', '#fde047', '#eab308', '#ffffff'][Math.floor(Math.random() * 4)];
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = Math.random() * 2 + 1;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x - this.vx * 1.5, this.y - this.vy * 1.5);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+
+        // 검기 / 할퀴기 궤적 (Slash Arc)
+        class SlashEffect {
+            constructor(x, y, facing) {
+                this.x = x;
+                this.y = y;
+                this.facing = facing;
+                this.life = 1.0;
+                this.decay = 0.1;
+            }
+            update() {
+                this.life -= this.decay;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+               
+                // 날카로운 X자 및 할퀴는 곡선 3줄기
+                for(let i = -1; i <= 1; i++) {
+                    const offsetY = i * 12;
+                    ctx.moveTo(this.x - 20 * this.facing, this.y + offsetY - 15);
+                    ctx.quadraticCurveTo(this.x, this.y + offsetY, this.x + 35 * this.facing, this.y + offsetY + 15);
+                }
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+
+        // 피격 시 피 + 스파크 + 궤적 동시 생성 헬퍼
+        function createHitEffects(x, y, facing) {
+            // 1. 피 튀김
+            for (let i = 0; i < 15; i++) {
+                bloodSplatters.push(new BloodParticle(x, y, facing));
+            }
+            // 2. 번쩍이는 스파크
+            for (let i = 0; i < 10; i++) {
+                sparkLines.push(new SparkParticle(x, y));
+            }
+            // 3. 할퀴기 궤적 생성
+            slashArcs.push(new SlashEffect(x, y, facing));
+        }
+
+
+        /* ==========================================
+           3. 게임 전역 설정 및 상태 변수
+           ========================================== */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        const CANVAS_WIDTH = 960;
+        const CANVAS_HEIGHT = 540;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+
+        let gameMode = 'ai'; // 'ai' 또는 '2p'
+        let selectedP1 = 'lion';
+        let selectedP2 = 'elephant';
+        let isGameRunning = false;
+
+
+        const keys = {};
+
+
+        // 캐릭터 스펙 정의
+        const CHAR_STATS = {
+            lion: {
+                name: '사자',
+                emoji: '🦁',
+                maxHp: 100,
+                speed: 5.5,
+                width: 70,
+                height: 60,
+                attackDmg: 12,
+                attackRange: 60,
+                attackCd: 30, // 0.5초
+                skillCd: 360, // 6초
+                color: '#f59e0b'
+            },
+            elephant: {
+                name: '코끼리',
+                emoji: '🐘',
+                maxHp: 140,
+                speed: 3.8,
+                width: 90,
+                height: 75,
+                attackDmg: 15,
+                attackRange: 70,
+                attackCd: 40,
+                skillCd: 300, // 5초
+                color: '#64748b'
+            },
+            ian: {
+                name: '최이안',
+                emoji: '🧍',
+                maxHp: 90,
+                speed: 6.0,
+                width: 45,
+                height: 65,
+                attackDmg: 9,
+                attackRange: 45,
+                attackCd: 20,
+                skillCd: 480, // 8초
+                color: '#ef4444'
+            }
+        };
+
+
+        let player1, player2;
+        let projectiles = [];
+
+
+        /* ==========================================
+           4. 충돌 판정 및 헬퍼 함수
+           ========================================== */
+        function checkRectOverlap(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+
+        /* ==========================================
+           5. HUD 및 그래픽 렌더링 함수
+           ========================================== */
+        function updateHUD() {
+            if (!player1 || !player2) return;
+
+
+            // P1 HUD
+            document.getElementById('hud-p1-name').textContent = `P1 
+player1.stats.name{player1.isGiant ? ' (거인)' : ''}`;
+            document.getElementById('hud-p1-hp-text').textContent = `${Math.max(0, Math.ceil(player1.hp))} / ${player1.maxHp}`;
+            const p1HpPercent = Math.max(0, (player1.hp / player1.maxHp) * 100);
+            document.getElementById('hud-p1-hp-bar').style.width = `${p1HpPercent}%`;
+           
+            const p1SkillCdSec = Math.ceil(player1.skillTimer / 60);
+            document.getElementById('hud-p1-skill-cd').textContent = p1SkillCdSec > 0 ? `특수 스킬 [G]: ${p1SkillCdSec}초` : `특수 스킬 [G]: 준비완료`;
+
+
+            // P2 HUD
+            document.getElementById('hud-p2-name').textContent = `P2 player2.stats.name{player2.isGiant ? ' (거인)' : ''}`;
+            document.getElementById('hud-p2-hp-text').textContent = `${Math.max(0, Math.ceil(player2.hp))} / ${player2.maxHp}`;
+            const p2HpPercent = Math.max(0, (player2.hp / player2.maxHp) * 100);
+            document.getElementById('hud-p2-hp-bar').style.width = `${p2HpPercent}%`;
+
+
+            const p2SkillCdSec = Math.ceil(player2.skillTimer / 60);
+            const p2SkillKey = gameMode === 'ai' ? 'AI' : 'L';
+            document.getElementById('hud-p2-skill-cd').textContent = p2SkillCdSec > 0 ? `특수 스킬 [${p2SkillKey}]: ${p2SkillCdSec}초` : `특수 스킬 [${p2SkillKey}]: 준비완료`;
+        }
+
+
+        function drawColosseumBackground() {
+            // 하늘 (노을빛 전장 분위기)
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+            skyGradient.addColorStop(0, '#451a03');
+            skyGradient.addColorStop(0.4, '#78350f');
+            skyGradient.addColorStop(0.7, '#92400e');
+            skyGradient.addColorStop(1, '#1e293b');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+
+            // 콜로세움 아치 및 석조 벽
+            ctx.fillStyle = '#292524';
+            ctx.fillRect(60, 140, CANVAS_WIDTH - 120, 200);
+
+
+            ctx.fillStyle = '#1c1917';
+            for (let i = 0; i < 7; i++) {
+                const archX = 100 + i * 110;
+                ctx.beginPath();
+                ctx.arc(archX + 35, 230, 30, Math.PI, 0);
+                ctx.rect(archX + 5, 230, 60, 110);
+                ctx.fill();
+            }
+
+
+            // 기둥 장식
+            ctx.fillStyle = '#44403c';
+            for (let i = 0; i < 8; i++) {
+                ctx.fillRect(90 + i * 110, 140, 15, 200);
+            }
+
+
+            // 전장 모래 바닥
+            const groundGradient = ctx.createLinearGradient(0, CANVAS_HEIGHT - 120, 0, CANVAS_HEIGHT);
+            groundGradient.addColorStop(0, '#b45309');
+            groundGradient.addColorStop(0.3, '#78350f');
+            groundGradient.addColorStop(1, '#451a03');
+            ctx.fillStyle = groundGradient;
+            ctx.fillRect(0, CANVAS_HEIGHT - 120, CANVAS_WIDTH, 120);
+
+
+            // 경계선 바닥 테두리
+            ctx.strokeStyle = '#d97706';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, CANVAS_HEIGHT - 120);
+            ctx.lineTo(CANVAS_WIDTH, CANVAS_HEIGHT - 120);
+            ctx.stroke();
+        }
+
+
+        /* ==========================================
+           6. 사용자 입력 및 AI 제어 로직
+           ========================================== */
+        function handleInput() {
+            if (!player1 || !player2) return;
+
+
+            // Player 1 입력 (A: 좌, D: 우, F: 공격, G: 스킬)
+            if (keys['KeyA']) player1.move(-1);
+            if (keys['KeyD']) player1.move(1);
+            if (keys['KeyF']) player1.attack(player2);
+            if (keys['KeyG']) player1.useSkill(player2);
+
+
+            // Player 2 입력 (2인용 모드일 때만)
+            if (gameMode === '2p') {
+                if (keys['ArrowLeft']) player2.move(-1);
+                if (keys['ArrowRight']) player2.move(1);
+                if (keys['KeyK']) player2.attack(player1);
+                if (keys['KeyL']) player2.useSkill(player1);
+            }
+        }
+
+
+        function updateAI() {
+            if (gameMode !== 'ai' || !player2 || player2.hp <= 0) return;
+
+
+            const dist = (player1.x + player1.width / 2) - (player2.x + player2.width / 2);
+            const absDist = Math.abs(dist);
+
+
+            // 거리 유지 및 추적 행동 판단
+            if (absDist > player2.stats.attackRange) {
+                player2.move(dist < 0 ? -1 : 1);
+            } else {
+                player2.facing = dist < 0 ? -1 : 1;
+                player2.attack(player1);
+            }
+
+
+            // 스킬 쿨다운 완료 시 사용 확률
+            if (player2.skillTimer <= 0 && Math.random() < 0.05) {
+                player2.useSkill(player1);
+            }
+        }
+
+
+        /* ==========================================
+           7. UI 및 메뉴 관련 로직
+           ========================================== */
+        function selectGameMode(mode) {
+            gameMode = mode;
+            const btnAi = document.getElementById('btn-mode-ai');
+            const btn2p = document.getElementById('btn-mode-2p');
+
+
+            if (mode === 'ai') {
+                btnAi.className = "px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl border-2 border-amber-300 shadow-lg transition";
+                btn2p.className = "px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl border-2 border-slate-500 shadow-lg transition";
+            } else {
+                btn2p.className = "px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl border-2 border-blue-300 shadow-lg transition";
+                btnAi.className = "px-5 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl border-2 border-slate-500 shadow-lg transition";
+            }
+        }
+
+
+        function selectChar(player, type) {
+            if (player === 1) {
+                selectedP1 = type;
+                ['lion', 'elephant', 'ian'].forEach(t => {
+                    const btn = document.getElementById(`p1-${t}`);
+                    if (t === type) {
+                        btn.className = "char-select-btn text-2xl p-2 rounded-lg bg-amber-600/40 border-2 border-amber-400";
+                    } else {
+                        btn.className = "char-select-btn text-2xl p-2 rounded-lg bg-slate-700";
+                    }
+                });
+            } else {
+                selectedP2 = type;
+                ['lion', 'elephant', 'ian'].forEach(t => {
+                    const btn = document.getElementById(`p2-${t}`);
+                    if (t === type) {
+                        btn.className = "char-select-btn text-2xl p-2 rounded-lg bg-blue-600/40 border-2 border-blue-400";
+                    } else {
+                        btn.className = "char-select-btn text-2xl p-2 rounded-lg bg-slate-700";
+                    }
+                });
+            }
+        }
+
+
+        function startGame() {
+            document.getElementById('start-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+
+
+            player1 = new Player(1, selectedP1, 150, CANVAS_HEIGHT - 130);
+            player2 = new Player(2, selectedP2, CANVAS_WIDTH - 220, CANVAS_HEIGHT - 130);
+            projectiles = [];
+            bloodSplatters = [];
+            sparkLines = [];
+            slashArcs = [];
+
+
+            isGameRunning = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        function resetToMenu() {
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('start-modal').classList.remove('hidden');
+        }
+
+
+        /* ==========================================
+           8. 플레이어 클래스 (동물/최이안 상태 및 로직)
+           ========================================== */
+        class Player {
+            constructor(id, type, x, y) {
+                this.id = id;
+                this.type = type; // 'lion', 'elephant', 'ian'
+                this.stats = { ...CHAR_STATS[type] };
+               
+                this.x = x;
+                this.y = y;
+                this.width = this.stats.width;
+                this.height = this.stats.height;
+               
+                this.hp = this.stats.maxHp;
+                this.maxHp = this.stats.maxHp;
+               
+                this.facing = (id === 1) ? 1 : -1; // 1: 우측, -1: 좌측
+               
+                // 쿨다운 상태
+                this.attackTimer = 0;
+                this.skillTimer = 0;
+                this.stunTimer = 0; // 사자의 포효에 맞았을 때
+
+
+                // 애니메이션 및 이펙트 상태
+                this.isAttacking = 0; // 공격 애니메이션 프레임 카운터
+                this.hitEffectTimer = 0;
+
+
+                // 최이안 전용 변신 상태
+                this.isGiant = false;
+                this.giantTimer = 0;
+            }
+
+
+            revertGiant() {
+                this.isGiant = false;
+                this.width = CHAR_STATS.ian.width;
+                this.height = CHAR_STATS.ian.height;
+                this.stats.speed = CHAR_STATS.ian.speed;
+            }
+
+
+            update() {
+                // 기절 상태 처리
+                if (this.stunTimer > 0) {
+                    this.stunTimer--;
+                    return;
+                }
+
+
+                // 최이안 거인화 지속시간 체크
+                if (this.isGiant) {
+                    this.giantTimer--;
+                    if (this.giantTimer <= 0) {
+                        this.revertGiant();
+                    }
+                }
+
+
+                // 타이머 감소
+                if (this.attackTimer > 0) this.attackTimer--;
+                if (this.skillTimer > 0) this.skillTimer--;
+                if (this.isAttacking > 0) this.isAttacking--;
+                if (this.hitEffectTimer > 0) this.hitEffectTimer--;
+
+
+                // 위치 제한 (지면 및 좌우 벽)
+                const groundY = CANVAS_HEIGHT - 70 - this.height;
+                this.y = groundY;
+
+
+                const minX = 80;
+                const maxX = CANVAS_WIDTH - 80 - this.width;
+                if (this.x < minX) this.x = minX;
+                if (this.x > maxX) this.x = maxX;
+            }
+
+
+            move(dir) {
+                if (this.stunTimer > 0) return;
+                this.x += dir * this.stats.speed;
+                if (dir !== 0) {
+                    this.facing = dir > 0 ? 1 : -1;
+                }
+            }
+
+
+            // 기본 공격 (물어뜯기 / 주먹)
+            attack(target) {
+                if (this.attackTimer > 0 || this.stunTimer > 0) return;
+
+
+                this.attackTimer = this.stats.attackCd;
+                this.isAttacking = 10; // 10프레임 동안 공격 모션
+
+
+                playSound('hit');
+
+
+                // 공격 범위 계산
+                const attackBoxX = (this.facing === 1) ? this.x + this.width : this.x - this.stats.attackRange;
+                const attackBox = {
+                    x: attackBoxX,
+                    y: this.y,
+                    width: this.stats.attackRange,
+                    height: this.height
+                };
+
+
+                // 타겟 히트 판정
+                if (checkRectOverlap(attackBox, target)) {
+                    const dmg = this.isGiant ? this.stats.attackDmg * 1.8 : this.stats.attackDmg;
+                    target.takeDamage(dmg, this.facing);
+                } else {
+                    // 공타 시에도 칼날 할퀴기 궤적 생성
+                    slashArcs.push(new SlashEffect(attackBoxX + this.stats.attackRange/2, this.y + this.height/2, this.facing));
+                }
+            }
+
+
+            // 특수 스킬 사용
+            useSkill(target) {
+                if (this.skillTimer > 0 || this.stunTimer > 0) return;
+
+
+                this.skillTimer = this.stats.skillCd;
+
+
+                if (this.type === 'lion') {
+                    // [사자] 포효 (범위 기절 + 데미지 및 붉은 스파크/충격파)
+                    playSound('roar');
+                    for (let i = 0; i < 20; i++) {
+                        sparkLines.push(new SparkParticle(this.x + this.width/2, this.y + this.height/2));
+                    }
+                   
+                    const roarRange = 220;
+                    const dist = Math.abs((this.x + this.width/2) - (target.x + target.width/2));
+                    if (dist < roarRange) {
+                        target.takeDamage(15, this.facing);
+                        target.stunTimer = 120; // 2초 기절
+                    }
+
+
+                } else if (this.type === 'elephant') {
+                    // [코끼리] 물대포 (원거리 발사체)
+                    playSound('water');
+                    const projSpeed = 12 * this.facing;
+                    const projX = (this.facing === 1) ? this.x + this.width : this.x - 20;
+                    projectiles.push(new Projectile(projX, this.y + 20, projSpeed, this.id));
+
+
+                } else if (this.type === 'ian') {
+                    // [최이안] 거인화 (변신 피분수 & 파괴 스파크)
+                    playSound('transform');
+                    this.isGiant = true;
+                    this.giantTimer = 420; // 7초간 거인 유지
+                    this.width = 110;
+                    this.height = 140;
+                    this.stats.speed = 4.5;
+                    this.hp = Math.min(this.hp + 40, this.maxHp + 40);
+
+
+                    // 변신 시 핏자국 및 백색/레드 스파크 대량 방출
+                    createHitEffects(this.x + this.width/2, this.y + this.height/2, 1);
+                    createHitEffects(this.x + this.width/2, this.y + this.height/2, -1);
+                }
+            }
+
+
+            takeDamage(amount, fromFacing) {
+                this.hp -= amount;
+                this.hitEffectTimer = 10;
+                // 넉백 효과
+                this.x += fromFacing * 12;
+
+
+                // 타격 부위에 선명한 피 튀김 + 스파크 + 할퀴기 발생
+                createHitEffects(this.x + this.width/2, this.y + this.height/3, fromFacing);
+               
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    endGame(this.id === 1 ? 2 : 1);
+                }
+            }
+
+
+            draw() {
+                ctx.save();
+               
+                // 피격 시 하얗게 번쩍이는 효과
+                if (this.hitEffectTimer > 0) {
+                    ctx.filter = 'brightness(2) sepia(1) hue-rotate(-50deg)';
+                }
+
+
+                // 기절 표시
+                if (this.stunTimer > 0) {
+                    ctx.fillStyle = '#fde047';
+                    ctx.font = 'bold 18px Jua';
+                    ctx.fillText('💫 기절!', this.x + (this.width/4), this.y - 15);
+                }
+
+
+                // 최이안 거인 상태 번뜩이는 번개 오라 표시
+                if (this.isGiant) {
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.rect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
+                    ctx.stroke();
+                }
+
+
+                // 이모지 및 기본 형태 그리기
+                let emoji = this.stats.emoji;
+                if (this.type === 'ian' && this.isGiant) emoji = '👹';
+
+
+                // 그림자
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x + this.width/2, CANVAS_HEIGHT - 65, this.width/1.8, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+
+                // 캐릭터 이모지 렌더링
+                ctx.font = `${this.height * 0.85}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                if (this.facing === -1) {
+                    ctx.scale(-1, 1);
+                }
+                ctx.fillText(emoji, 0, 0);
+
+
+                ctx.restore();
+            }
+        }
+
+
+        /* ==========================================
+           9. 투사체 (코끼리 물대포)
+           ========================================== */
+        class Projectile {
+            constructor(x, y, vx, ownerId) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.ownerId = ownerId;
+                this.radius = 14;
+                this.active = true;
+            }
+
+
+            update(target) {
+                this.x += this.vx;
+
+
+                if (this.x < 50 || this.x > CANVAS_WIDTH - 50) {
+                    this.active = false;
+                }
+
+
+                const targetBox = { x: target.x, y: target.y, width: target.width, height: target.height };
+                const projBox = { x: this.x - this.radius, y: this.y - this.radius, width: this.radius*2, height: this.radius*2 };
+
+
+                if (checkRectOverlap(projBox, targetBox)) {
+                    target.takeDamage(18, this.vx > 0 ? 1 : -1);
+                    createHitEffects(this.x, this.y, this.vx > 0 ? 1 : -1);
+                    this.active = false;
+                }
+            }
+
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = '#0284c7';
+                ctx.strokeStyle = '#bae6fd';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+
+        /* ==========================================
+           10. 게임 루프 & 피/스파크 렌더링
+           ========================================== */
+        function gameLoop() {
+            if (!isGameRunning) return;
+
+
+            // 1. 입력 및 AI 처리
+            handleInput();
+            updateAI();
+
+
+            // 2. 객체 업데이트
+            player1.update();
+            player2.update();
+
+
+            projectiles.forEach(p => p.update(p.ownerId === 1 ? player2 : player1));
+            projectiles = projectiles.filter(p => p.active);
+
+
+            // 피 파편, 스파크, 할퀴기 이펙트 업데이트
+            bloodSplatters.forEach(b => b.update());
+            bloodSplatters = bloodSplatters.filter(b => b.life > 0);
+
+
+            sparkLines.forEach(s => s.update());
+            sparkLines = sparkLines.filter(s => s.life > 0);
+
+
+            slashArcs.forEach(a => a.update());
+            slashArcs = slashArcs.filter(a => a.life > 0);
+
+
+            // 3. 렌더링
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            drawColosseumBackground();
+
+
+            player1.draw();
+            player2.draw();
+            projectiles.forEach(p => p.draw());
+
+
+            // 이펙트 레이어 그리기
+            bloodSplatters.forEach(b => b.draw());
+            sparkLines.forEach(s => s.draw());
+            slashArcs.forEach(a => a.draw());
+
+
+            // 4. UI HUD 업데이트
+            updateHUD();
+
+
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        function endGame(winnerId) {
+            isGameRunning = false;
+            const winnerName = winnerId === 1 ? `Player 1 (${player1.stats.name})` : `Player 2 (${player2.stats.name})`;
+            document.getElementById('winner-text').textContent = `${winnerName} 승리! 🎉`;
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+
+        /* ==========================================
+           11. 키보드 이벤트 리스너
+           ========================================== */
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+        });
+
+
+        window.addEventListener('keyup', e => {
+            keys[e.code] = false;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura Street Cypher 1v1 - 야라야라퐁크 댄스 배틀</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans KR', 'sans-serif'],
+            orbitron: ['Orbitron', 'sans-serif'],
+          },
+          colors: {
+            aurapink: '#ff007f',
+            auracyan: '#00f3ff',
+            aurayellow: '#ffe600',
+            aurapurple: '#9d00ff',
+            streetdark: '#080811',
+          }
+        }
+      }
+    }
+  </script>
+
+
+  <style>
+    body {
+      background-color: #05050a;
+      color: #ffffff;
+      font-family: 'Noto Sans KR', sans-serif;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+
+    .glow-cyan { box-shadow: 0 0 25px #00f3ff, inset 0 0 12px #00f3ff; }
+    .glow-pink { box-shadow: 0 0 25px #ff007f, inset 0 0 12px #ff007f; }
+    .text-glow-pink { text-shadow: 0 0 12px #ff007f, 0 0 24px #ff007f; }
+    .text-glow-cyan { text-shadow: 0 0 12px #00f3ff, 0 0 24px #00f3ff; }
+    .text-glow-yellow { text-shadow: 0 0 12px #ffe600, 0 0 24px #ffe600; }
+
+
+    @keyframes keyPulse {
+      0% { transform: scale(1.15); }
+      100% { transform: scale(1.0); }
+    }
+    .key-active { animation: keyPulse 0.12s ease-out; }
+
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center relative selection:bg-pink-500 selection:text-white">
+
+
+  <!-- Background Particle Field -->
+  <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+
+  <!-- Navigation Bar -->
+  <header class="w-full max-w-6xl px-4 py-3 z-10 flex justify-between items-center border-b border-white/10 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-aurapink via-aurayellow to-auracyan flex items-center justify-center text-black font-black">
+        <i class="fa-solid fa-fire text-lg"></i>
+      </div>
+      <div>
+        <h1 class="text-xl md:text-2xl font-black font-orbitron tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-aurapink via-aurayellow to-auracyan">
+          아우라 댄스배틀
+        </h1>
+        <p class="text-[10px] text-gray-400">곡: 야라야라퐁크 | 맵: 아우라 배틀 (1P 늑대 아우라 vs 2P 고양이 아우라)</p>
+      </div>
+    </div>
+
+
+    <!-- Spotify Link & BGM Control & Speed Selector -->
+    <div class="flex items-center gap-2 md:gap-3">
+      <!-- Dance Speed Controller -->
+      <div class="flex items-center bg-white/10 rounded-xl p-1 border border-white/20 text-xs">
+        <span class="text-[10px] text-aurayellow font-bold px-1.5 hidden sm:inline">배속:</span>
+        <button onclick="setSpeedMultiplier(0.75)" id="speedBtn075" class="px-2 py-0.5 rounded-lg text-gray-400 hover:text-white transition-all font-orbitron">0.75x</button>
+        <button onclick="setSpeedMultiplier(1.0)" id="speedBtn100" class="px-2 py-0.5 rounded-lg bg-aurapink text-black font-bold transition-all font-orbitron">1x</button>
+        <button onclick="setSpeedMultiplier(2.0)" id="speedBtn200" class="px-2 py-0.5 rounded-lg text-gray-400 hover:text-white transition-all font-orbitron">2x</button>
+      </div>
+
+
+      <a href="https://open.spotify.com/intl-ko/album/3geckiGcXD0elLVwEH6aO7" target="_blank" rel="noopener noreferrer"
+         class="px-3 py-1.5 rounded-full bg-green-600/90 hover:bg-green-500 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg hover:shadow-green-500/40">
+        <i class="fa-brands fa-spotify text-base"></i>
+        <span class="hidden sm:inline">야라야라퐁크</span>
+      </a>
+      <button id="btnSoundToggle" class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center text-auracyan transition-all">
+        <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+      </button>
+    </div>
+  </header>
+
+
+  <!-- Main Content Container -->
+  <main class="w-full max-w-6xl flex-1 flex flex-col items-center justify-center p-2 md:p-4 z-10">
+
+
+    <!-- 1. START & MODE SELECTION SCREEN -->
+    <section id="screenStart" class="w-full max-w-3xl flex flex-col items-center gap-6 text-center py-4">
+      <div class="space-y-2">
+        <span class="px-4 py-1 rounded-full bg-aurapink/20 border border-aurapink text-aurapink text-xs font-bold tracking-widest uppercase">
+          MAP: 아우라 배틀 (총 3턴 / 턴당 30초)
+        </span>
+        <h2 class="text-4xl md:text-6xl font-black font-orbitron tracking-tight text-glow-pink">
+          아우라 댄스배틀
+        </h2>
+        <p class="text-gray-300 text-sm md:text-base max-w-lg mx-auto">
+          **야라야라퐁크** 비트에 맞춰 틱톡 유명 춤을 직접 선택하고, 버튼을 연타하여 빠르게 춤을 춰 관객들의 아우라를 폭발시키세요! (총 3라운드 진행)
+        </p>
+      </div>
+
+
+      <!-- Mode Selector -->
+      <div class="flex gap-4 p-1.5 bg-white/5 rounded-2xl border border-white/10">
+        <button id="modePvE" onclick="setGameMode('pve')" class="px-6 py-2.5 rounded-xl font-bold transition-all bg-gradient-to-r from-aurapink to-aurapurple text-white shadow-lg glow-pink">
+          <i class="fa-solid fa-dog mr-2 text-aurayellow"></i>1P 늑대 vs AI 고양이
+        </button>
+        <button id="modePvP" onclick="setGameMode('pvp')" class="px-6 py-2.5 rounded-xl font-bold transition-all text-gray-400 hover:text-white">
+          <i class="fa-solid fa-cat mr-2 text-auracyan"></i>1P 늑대 vs 2P 고양이
+        </button>
+      </div>
+
+
+      <!-- Map & Spirit Card Display -->
+      <div class="w-full text-left my-1">
+        <div class="p-4 rounded-2xl bg-white/5 border-2 border-aurapink glow-pink flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-aurapink text-black text-[10px] font-black">SINGLE MAP</span>
+              <span class="text-xs font-orbitron text-aurayellow">3 ROUNDS x 30 SEC</span>
+            </div>
+            <h4 class="text-xl font-black text-white font-orbitron mt-1">맵: 아우라 배틀 (Aura Battle)</h4>
+            <p class="text-xs text-gray-300 mt-0.5">
+              1P는 <span class="text-aurapink font-bold">🐺 아우라 늑대</span>, 2P는 <span class="text-auracyan font-bold">🐱 아우라 고양이</span>가 춤추며 환호성을 획득합니다!
+            </p>
+          </div>
+          <div class="text-right">
+            <i class="fa-solid fa-compact-disc text-3xl text-aurapink animate-spin" style="animation-duration: 4s;"></i>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Controls Guide -->
+      <div class="w-full bg-white/5 p-3 rounded-xl border border-white/10 text-xs text-gray-300 flex flex-wrap justify-around gap-2">
+        <div>
+          <span class="font-bold text-aurapink">P1 조작:</span> 춤선택 [<kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">1</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">2</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">3</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">4</kbd>] + 초고속 연타 [<kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">SPACE</kbd>]
+        </div>
+        <div id="p2ControlGuide" class="hidden">
+          <span class="font-bold text-auracyan">P2 조작:</span> 춤선택 [<kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">7</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">8</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">9</kbd> <kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">0</kbd>] + 초고속 연타 [<kbd class="px-1.5 py-0.5 bg-black/60 rounded border border-white/20 text-white">ENTER</kbd>]
+        </div>
+      </div>
+
+
+      <!-- Start Button -->
+      <button onclick="startGame()" class="w-full max-w-md py-4 rounded-2xl bg-gradient-to-r from-aurapink via-aurayellow to-auracyan text-black font-black text-xl font-orbitron tracking-widest uppercase shadow-xl hover:scale-105 active:scale-95 transition-all">
+        <i class="fa-solid fa-play mr-2"></i> 아우라 댄스배틀 시작
+      </button>
+    </section>
+
+
+    <!-- 2. GAME CYPHER BATTLE SCREEN -->
+    <section id="screenGame" class="w-full hidden flex-col gap-3">
+     
+      <!-- Top Battle HUD Status -->
+      <div class="w-full grid grid-cols-12 items-center gap-2 bg-black/60 p-3 rounded-2xl border border-white/10 backdrop-blur-md">
+        <!-- P1 Status -->
+        <div class="col-span-4 flex flex-col gap-1">
+          <div class="flex justify-between items-center text-xs md:text-sm font-bold">
+            <span class="text-aurapink font-orbitron flex items-center gap-1"><i class="fa-solid fa-dog text-aurayellow"></i> 1P 늑대</span>
+            <span id="p1ScoreText" class="text-aurayellow font-orbitron text-base">0 HYPE</span>
+          </div>
+          <div class="w-full h-3.5 bg-gray-900 rounded-full overflow-hidden border border-aurapink/50 relative">
+            <div id="p1AuraBar" class="h-full bg-gradient-to-r from-aurapink to-aurayellow w-0 transition-all duration-100"></div>
+          </div>
+          <div class="flex justify-between items-center text-[10px] text-gray-400">
+            <span id="p1DanceName" class="text-aurapink font-bold">춤: 슬릭백</span>
+            <span id="p1SpeedText">SPEED: 0 TAP/S</span>
+          </div>
+        </div>
+
+
+        <!-- Center Round & Timer Indicator -->
+        <div class="col-span-4 flex flex-col items-center justify-center text-center">
+          <span id="roundBadge" class="text-xs px-3 py-0.5 rounded-full bg-aurayellow/20 border border-aurayellow text-aurayellow font-orbitron font-black tracking-widest">
+            ROUND 1 / 3
+          </span>
+          <span id="gameTimer" class="font-orbitron font-black text-3xl md:text-4xl text-aurayellow text-glow-yellow mt-0.5">30</span>
+          <span id="speedMultiplierBadge" class="text-[10px] text-aurapink font-bold font-orbitron">1.0X SPEED</span>
+        </div>
+
+
+        <!-- P2 Status -->
+        <div class="col-span-4 flex flex-col gap-1 text-right">
+          <div class="flex justify-between items-center text-xs md:text-sm font-bold">
+            <span id="p2ScoreText" class="text-aurayellow font-orbitron text-base">0 AURA</span>
+            <span id="p2NameLabel" class="text-auracyan font-orbitron">AI 고양이 <i class="fa-solid fa-cat ml-1"></i></span>
+          </div>
+          <div class="w-full h-3.5 bg-gray-900 rounded-full overflow-hidden border border-auracyan/50 relative">
+            <div id="p2AuraBar" class="h-full bg-gradient-to-r from-auracyan to-aurayellow w-0 transition-all duration-100 float-right"></div>
+          </div>
+          <div class="flex justify-between items-center text-[10px] text-gray-400">
+            <span id="p2SpeedText">SPEED: 0 TAP/S</span>
+            <span id="p2DanceName" class="text-auracyan font-bold">춤: 폰크스텝</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- MAIN STREET CYPHER STAGE CANVAS -->
+      <div id="stageContainer" class="relative w-full h-[360px] md:h-[400px] bg-gradient-to-b from-indigo-950 via-slate-950 to-black rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+        <canvas id="cypherCanvas" class="absolute inset-0 z-0"></canvas>
+
+
+        <!-- Visual Burst Alert Overlay -->
+        <div id="burstOverlay" class="absolute inset-0 bg-aurapink/30 pointer-events-none hidden flex items-center justify-center z-30">
+          <div class="text-center animate-bounce">
+            <h2 class="text-5xl md:text-7xl font-black font-orbitron text-aurayellow text-glow-yellow italic">
+              🔥 AURA BURST 🔥
+            </h2>
+            <p class="text-white font-bold tracking-widest text-base md:text-lg">관중 평가 2배! AURA 폭발!</p>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- MAIN STREET CYPHER STAGE CANVAS -->
+      <div id="stageContainer" class="relative w-full h-[360px] md:h-[400px] bg-gradient-to-b from-indigo-950 via-slate-950 to-black rounded-3xl border border-white/10 overflow-hidden shadow-2xl">
+        <canvas id="cypherCanvas" class="absolute inset-0 z-0"></canvas>
+
+
+        <!-- Visual Burst Alert Overlay -->
+        <div id="burstOverlay" class="absolute inset-0 bg-aurapink/30 pointer-events-none hidden flex items-center justify-center z-30">
+          <div class="text-center animate-bounce">
+            <h2 class="text-5xl md:text-7xl font-black font-orbitron text-aurayellow text-glow-yellow italic">
+              🔥 AURA BURST 🔥
+            </h2>
+            <p class="text-white font-bold tracking-widest text-base md:text-lg">초고속 연타 폭발! 2배 HYPE 득점!</p>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- DANCE MOVE SELECTOR & RAPID TAP MASHING PANEL -->
+      <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+        <!-- P1 Move Select & Tap Control -->
+        <div class="flex flex-col gap-2 bg-white/5 p-3 rounded-2xl border border-aurapink/40">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-aurapink">P1 춤 선택 (1~4번 키)</span>
+            <span class="text-[10px] text-aurayellow font-bold">SPACE 연타로 빠르게 추기!</span>
+          </div>
+          <!-- Move Selection Buttons -->
+          <div class="grid grid-cols-4 gap-1.5">
+            <button onclick="selectDanceMove('p1', 0)" id="p1Move0" class="py-2 px-1 bg-aurapink/30 border-2 border-aurapink text-white rounded-xl text-xs font-bold transition-all">
+              1. 슬릭백
+            </button>
+            <button onclick="selectDanceMove('p1', 1)" id="p1Move1" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 hover:text-white rounded-xl text-xs font-bold transition-all">
+              2. 폰크스텝
+            </button>
+            <button onclick="selectDanceMove('p1', 2)" id="p1Move2" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 hover:text-white rounded-xl text-xs font-bold transition-all">
+              3. 틱톡샤플
+            </button>
+            <button onclick="selectDanceMove('p1', 3)" id="p1Move3" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 hover:text-white rounded-xl text-xs font-bold transition-all">
+              4. 윈드밀
+            </button>
+          </div>
+
+
+          <!-- Rapid Mash Button -->
+          <button onclick="mashDance('p1')" class="w-full py-3.5 bg-gradient-to-r from-aurapink via-aurayellow to-aurapink text-black font-black text-base rounded-xl uppercase glow-pink active:scale-95 transition-all">
+            ⚡ P1 초고속 춤추기 연타! [SPACE]
+          </button>
+        </div>
+
+
+        <!-- P2 Move Select & Tap Control -->
+        <div id="p2ControlPanel" class="flex flex-col gap-2 bg-white/5 p-3 rounded-2xl border border-auracyan/40">
+          <div class="flex justify-between items-center">
+            <span class="text-xs font-bold text-auracyan">P2 춤 선택 (7~0번 키)</span>
+            <span class="text-[10px] text-aurayellow font-bold">ENTER 연타로 빠르게 추기!</span>
+          </div>
+          <!-- Move Selection Buttons -->
+          <div class="grid grid-cols-4 gap-1.5">
+            <button onclick="selectDanceMove('p2', 0)" id="p2Move0" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 rounded-xl text-xs font-bold transition-all">
+              7. 슬릭백
+            </button>
+            <button onclick="selectDanceMove('p2', 1)" id="p2Move1" class="py-2 px-1 bg-auracyan/30 border-2 border-auracyan text-white rounded-xl text-xs font-bold transition-all">
+              8. 폰크스텝
+            </button>
+            <button onclick="selectDanceMove('p2', 2)" id="p2Move2" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 rounded-xl text-xs font-bold transition-all">
+              9. 틱톡샤플
+            </button>
+            <button onclick="selectDanceMove('p2', 3)" id="p2Move3" class="py-2 px-1 bg-white/10 border border-white/20 text-gray-300 rounded-xl text-xs font-bold transition-all">
+              0. 윈드밀
+            </button>
+          </div>
+
+
+          <!-- Rapid Mash Button -->
+          <button onclick="mashDance('p2')" class="w-full py-3.5 bg-gradient-to-r from-auracyan via-aurayellow to-auracyan text-black font-black text-base rounded-xl uppercase glow-cyan active:scale-95 transition-all">
+            ⚡ P2 초고속 춤추기 연타! [ENTER]
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 3. CYPHER RESULT SCREEN -->
+    <section id="screenResult" class="w-full max-w-2xl hidden flex-col items-center text-center py-6 gap-6">
+      <div class="space-y-2">
+        <span class="px-4 py-1 rounded-full bg-aurayellow/20 border border-aurayellow text-aurayellow text-xs font-bold uppercase tracking-widest">
+          CYPHER BATTLE RESULT
+        </span>
+        <h2 id="winnerText" class="text-4xl md:text-6xl font-black font-orbitron text-glow-pink">
+          PLAYER 1 WINS!
+        </h2>
+        <p id="winnerSub" class="text-gray-300 font-medium">스트릿 관객 전원이 P1의 야라야라퐁크 아우라 댄스에 열광했습니다!</p>
+      </div>
+
+
+      <!-- Rank & Score Details -->
+      <div class="w-full bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col gap-4 items-center">
+        <div id="rankBadge" class="w-24 h-24 rounded-full bg-gradient-to-tr from-aurapink via-aurayellow to-auracyan p-1 shadow-2xl flex items-center justify-center animate-pulse">
+          <div class="w-full h-full bg-black rounded-full flex flex-col items-center justify-center">
+            <span class="text-xs text-gray-400">AURA KING</span>
+            <span id="rankTitle" class="text-2xl font-black font-orbitron text-aurayellow">LEGEND</span>
+          </div>
+        </div>
+
+
+        <div class="w-full grid grid-cols-2 gap-4 my-2 text-left">
+          <div class="bg-black/40 p-4 rounded-2xl border border-aurapink/30">
+            <h4 class="text-xs text-aurapink font-bold mb-1 font-orbitron">PLAYER 1 TOTAL AURA</h4>
+            <div id="resP1Score" class="text-2xl font-black text-white font-orbitron">0</div>
+            <div id="resP1Combo" class="text-xs text-gray-400 mt-1">TOTAL TAPS: 0</div>
+          </div>
+          <div class="bg-black/40 p-4 rounded-2xl border border-auracyan/30">
+            <h4 id="resP2Title" class="text-xs text-auracyan font-bold mb-1 font-orbitron">PLAYER 2 TOTAL AURA</h4>
+            <div id="resP2Score" class="text-2xl font-black text-white font-orbitron">0</div>
+            <div id="resP2Combo" class="text-xs text-gray-400 mt-1">TOTAL TAPS: 0</div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Spotify Banner -->
+      <div class="w-full bg-gradient-to-r from-green-950/70 to-black p-4 rounded-2xl border border-green-500/30 flex items-center justify-between">
+        <div class="flex items-center gap-3 text-left">
+          <i class="fa-brands fa-spotify text-3xl text-green-400"></i>
+          <div>
+            <h4 class="text-sm font-bold text-white">야라야라퐁크 (Yara Yara Phonk) 원곡 듣기</h4>
+            <p class="text-xs text-gray-400">스포티파이 공식 앨범 트랙 바로가기</p>
+          </div>
+        </div>
+        <a href="https://open.spotify.com/intl-ko/album/3geckiGcXD0elLVwEH6aO7" target="_blank" class="px-4 py-2 bg-green-500 hover:bg-green-400 text-black font-bold text-xs rounded-xl transition-all">
+          스포티파이 열기 <i class="fa-solid fa-arrow-right ml-1"></i>
+        </a>
+      </div>
+
+
+      <!-- Action Buttons -->
+      <div class="flex gap-4 w-full max-w-md">
+        <button onclick="startGame()" class="flex-1 py-3.5 bg-gradient-to-r from-aurapink to-aurapurple text-white font-bold rounded-xl font-orbitron transition-all hover:scale-105 glow-pink">
+          <i class="fa-solid fa-rotate-right mr-1"></i> REPLAY
+        </button>
+        <button onclick="showStartScreen()" class="flex-1 py-3.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl font-orbitron transition-all border border-white/20">
+          <i class="fa-solid fa-house mr-1"></i> MAIN MENU
+        </button>
+      </div>
+    </section>
+
+
+  </main>
+
+
+  <footer class="w-full text-center py-3 text-xs text-gray-500 z-10 border-t border-white/5">
+    Aura Street Dance Battle 1v1 &copy; 2026 | Featuring "야라야라퐁크 (Yara Yara Phonk)"
+  </footer>
+
+
+  <!-- AUDIO ENGINE & CYPHER GAME LOGIC -->
+  <script>
+    /* ===================================================================
+       1. WEB AUDIO BRAZILIAN PHONK SYNTH ENGINE (야라야라퐁크 BGM)
+       =================================================================== */
+    class AudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.isPlaying = false;
+        this.baseBpm = 145;
+        this.speedMult = 1.0;
+        this.step = 0;
+        this.interval = null;
+      }
+
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+
+      setSpeed(speed) {
+        this.speedMult = speed;
+        if (this.isPlaying) {
+          this.startPhonkBeat();
+        }
+      }
+
+
+      startPhonkBeat() {
+        this.init();
+        this.stopBeat();
+        this.isPlaying = true;
+        const currentBpm = this.baseBpm * this.speedMult;
+        const intervalMs = (60 / currentBpm / 4) * 1000;
+
+
+        this.step = 0;
+        this.interval = setInterval(() => {
+          if (!this.isPlaying || this.isMuted) return;
+          this.triggerStep(this.step);
+          this.step = (this.step + 1) % 16;
+        }, intervalMs);
+      }
+
+
+      stopBeat() {
+        this.isPlaying = false;
+        if (this.interval) {
+          clearInterval(this.interval);
+          this.interval = null;
+        }
+      }
+
+
+      triggerStep(step) {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+
+
+        // Phonk Bass Drum on 0, 4, 8, 12
+        if (step % 4 === 0) {
+          const kickOsc = this.ctx.createOscillator();
+          const kickGain = this.ctx.createGain();
+          kickOsc.frequency.setValueAtTime(150, now);
+          kickOsc.frequency.exponentialRampToValueAtTime(35, now + 0.12);
+          kickGain.gain.setValueAtTime(0.7, now);
+          kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          kickOsc.connect(kickGain);
+          kickGain.connect(this.ctx.destination);
+          kickOsc.start(now);
+          kickOsc.stop(now + 0.15);
+        }
+
+
+        // Cowbell / Phonk Lead melody synth
+        if (step % 2 === 0) {
+          const bellOsc = this.ctx.createOscillator();
+          const bellGain = this.ctx.createGain();
+          bellOsc.type = 'sawtooth';
+          const notes = [293.66, 329.63, 349.23, 440.00, 392.00, 349.23];
+          const note = notes[(step / 2) % notes.length];
+          bellOsc.frequency.setValueAtTime(note, now);
+          bellGain.gain.setValueAtTime(0.18, now);
+          bellGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+          bellOsc.connect(bellGain);
+          bellGain.connect(this.ctx.destination);
+          bellOsc.start(now);
+          bellOsc.stop(now + 0.12);
+        }
+
+
+        // Snare/Clap on beats 4, 12
+        if (step === 4 || step === 12) {
+          const noiseBuffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          for (let i = 0; i < noiseBuffer.length; i++) output[i] = Math.random() * 2 - 1;
+          const whiteNoise = this.ctx.createBufferSource();
+          whiteNoise.buffer = noiseBuffer;
+          const noiseFilter = this.ctx.createBiquadFilter();
+          noiseFilter.type = 'highpass';
+          noiseFilter.frequency.value = 1000;
+          const noiseGain = this.ctx.createGain();
+          noiseGain.gain.setValueAtTime(0.3, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          whiteNoise.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(this.ctx.destination);
+          whiteNoise.start(now);
+        }
+      }
+
+
+      playKeyHitSFX(isSuccess) {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+       
+        osc.frequency.setValueAtTime(isSuccess ? 520 : 180, now);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+
+
+      playDanceSuccessSFX() {
+        if (!this.ctx || this.isMuted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      }
+    }
+
+
+    const audio = new AudioEngine();
+
+
+    document.getElementById('btnSoundToggle').addEventListener('click', () => {
+      audio.isMuted = !audio.isMuted;
+      const icon = document.getElementById('soundIcon');
+      icon.className = audio.isMuted ? 'fa-solid fa-volume-xmark text-red-400' : 'fa-solid fa-volume-high text-auracyan';
+    });
+
+
+    /* ===================================================================
+       2. CYPHER CANVAS & DANCER SPIRIT RENDERING
+       =================================================================== */
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const cypherCanvas = document.getElementById('cypherCanvas');
+    const ctx = cypherCanvas.getContext('2d');
+
+
+    let bgParticles = [];
+    let animTick = 0;
+
+
+    function resizeCanvases() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
+
+
+      const container = document.getElementById('stageContainer');
+      if (container) {
+        cypherCanvas.width = container.clientWidth;
+        cypherCanvas.height = container.clientHeight;
+      }
+    }
+    window.addEventListener('resize', resizeCanvases);
+
+
+    // Initial background particles
+    for (let i = 0; i < 40; i++) {
+      bgParticles.push({
+        x: Math.random() * window.innerWidth,
+        y: Math.random() * window.innerHeight,
+        r: Math.random() * 2 + 1,
+        vy: -Math.random() * 0.5 - 0.2,
+        color: Math.random() > 0.5 ? '#ff007f' : '#00f3ff'
+      });
+    }
+
+
+    function drawBgParticles() {
+      bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+      bgParticles.forEach(p => {
+        p.y += p.vy;
+        if (p.y < 0) p.y = bgCanvas.height;
+        bgCtx.fillStyle = p.color;
+        bgCtx.shadowBlur = 10;
+        bgCtx.shadowColor = p.color;
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        bgCtx.fill();
+      });
+    }
+
+
+    function renderCypherScene() {
+      const w = cypherCanvas.width;
+      const h = cypherCanvas.height;
+      animTick += 0.1;
+
+
+      ctx.clearRect(0, 0, w, h);
+
+
+      // Floor Street Cypher Spotlights
+      const grad = ctx.createRadialGradient(w / 2, h * 0.75, 20, w / 2, h * 0.75, w * 0.45);
+      grad.addColorStop(0, 'rgba(255, 0, 127, 0.25)');
+      grad.addColorStop(0.5, 'rgba(0, 243, 255, 0.15)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.9)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+
+      // Floor Oval Cypher Ring
+      ctx.save();
+      ctx.strokeStyle = '#ffe600';
+      ctx.lineWidth = 3;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#ffe600';
+      ctx.beginPath();
+      ctx.ellipse(w / 2, h * 0.82, w * 0.4, 60, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+
+
+      // Animated Crowd Silhouettes
+      const crowdCount = 18;
+      for (let i = 0; i < crowdCount; i++) {
+        const cx = (w / (crowdCount + 1)) * (i + 1);
+        const bounce = Math.sin(animTick * 1.5 + i) * 6;
+        ctx.fillStyle = '#0f0f1e';
+        ctx.beginPath();
+        ctx.arc(cx, h * 0.38 + bounce, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(cx - 10, h * 0.38 + 10 + bounce, 20, 45);
+      }
+
+
+      // Draw Dancers
+      const p1X = w * 0.32;
+      const p2X = w * 0.68;
+      const groundY = h * 0.82;
+
+
+      drawDancer(p1X, groundY, '#ff007f', p1.pose, p1.aura, p1.isBurst, 1, 'wolf');
+      drawDancer(p2X, groundY, '#00f3ff', p2.pose, p2.aura, p2.isBurst, -1, 'cat');
+    }
+
+
+    function drawDancer(x, y, color, pose, auraLevel, isBurst, dir, spiritType) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(dir, 1);
+
+
+      const scale = 0.85;
+
+
+      // Draw Wolf/Cat Spirit Aura Outfit Outline Behind Character
+      ctx.save();
+      ctx.strokeStyle = spiritType === 'wolf' ? 'rgba(255, 0, 127, 0.8)' : 'rgba(0, 243, 255, 0.8)';
+      ctx.lineWidth = 4 * scale;
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = spiritType === 'wolf' ? '#ff007f' : '#00f3ff';
+
+
+      if (spiritType === 'wolf') {
+        // Glowing Aura Wolf Head Outfit Overlay
+        ctx.beginPath();
+        // Snout & Ears
+        ctx.moveTo(-25 * scale, -55 * scale);
+        ctx.lineTo(-40 * scale, -85 * scale);
+        ctx.lineTo(-10 * scale, -60 * scale);
+        ctx.lineTo(10 * scale, -60 * scale);
+        ctx.lineTo(30 * scale, -85 * scale);
+        ctx.lineTo(5 * scale, -60 * scale);
+        // Wolf Snout / Crown
+        ctx.moveTo(-10 * scale, -40 * scale);
+        ctx.lineTo(0, -25 * scale);
+        ctx.lineTo(10 * scale, -40 * scale);
+        ctx.stroke();
+      } else if (spiritType === 'cat') {
+        // Glowing Aura Cat Ears & Whisker Aura Outline
+        ctx.beginPath();
+        // Sharp Cat Ears
+        ctx.moveTo(-15 * scale, -48 * scale);
+        ctx.lineTo(-26 * scale, -80 * scale);
+        ctx.lineTo(-4 * scale, -55 * scale);
+        ctx.moveTo(15 * scale, -48 * scale);
+        ctx.lineTo(26 * scale, -80 * scale);
+        ctx.lineTo(4 * scale, -55 * scale);
+        // Whisker Aura lines
+        ctx.moveTo(-22 * scale, -38 * scale); ctx.lineTo(-42 * scale, -42 * scale);
+        ctx.moveTo(-22 * scale, -32 * scale); ctx.lineTo(-40 * scale, -30 * scale);
+        ctx.moveTo(22 * scale, -38 * scale); ctx.lineTo(42 * scale, -42 * scale);
+        ctx.moveTo(22 * scale, -32 * scale); ctx.lineTo(40 * scale, -30 * scale);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+
+      // Aura Glow Base Radius
+      if (auraLevel > 0 || isBurst) {
+        const glowRadius = (35 + auraLevel * 0.45) * scale;
+        const grad = ctx.createRadialGradient(0, -60 * scale, 5, 0, -60 * scale, glowRadius);
+        grad.addColorStop(0, isBurst ? '#ffe600' : color);
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(0, -60 * scale, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 6 * scale;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = isBurst ? 25 : 14;
+      ctx.shadowColor = color;
+
+
+      let headY = -110 * scale;
+      let neckY = -92 * scale;
+      let hipY = -50 * scale;
+
+
+      let lHand = { x: -25 * scale, y: -65 * scale };
+      let rHand = { x: 25 * scale, y: -65 * scale };
+      let lFoot = { x: -20 * scale, y: 0 };
+      let rFoot = { x: 20 * scale, y: 0 };
+
+
+      // Apply Global Game Speed Multiplier to Pose Tick
+      const adjustedTick = animTick * speedMultiplier;
+      const cycle = Math.sin(adjustedTick);
+      const cycleCos = Math.cos(adjustedTick);
+
+
+      // TikTok Dance Pose Matrix
+      switch (pose % 4) {
+        case 0: // 1. Slickback Gliding Step (Signature Air Float Feet Glide)
+          y -= Math.abs(cycle) * 10 * scale; // Floating air glide
+          lFoot = { x: -38 * scale + cycle * 16 * scale, y: -18 * scale };
+          rFoot = { x: 28 * scale - cycle * 16 * scale, y: 0 };
+          lHand = { x: -45 * scale, y: -82 * scale + cycle * 12 * scale };
+          rHand = { x: 35 * scale, y: -52 * scale - cycle * 12 * scale };
+          break;
+
+
+        case 1: // 2. Phonk Step (Pumping arms & heavy body bounce)
+          hipY = -50 * scale + Math.abs(cycle) * 12 * scale;
+          neckY = -92 * scale + Math.abs(cycle) * 12 * scale;
+          headY = -110 * scale + Math.abs(cycle) * 12 * scale;
+          lFoot = { x: -30 * scale, y: 0 };
+          rFoot = { x: 30 * scale, y: -20 * scale * Math.abs(cycleCos) };
+          lHand = { x: -25 * scale, y: -115 * scale + cycle * 15 * scale };
+          rHand = { x: 35 * scale, y: -75 * scale - cycle * 15 * scale };
+          break;
+
+
+        case 2: // 3. TikTok Cutting Shapes Shuffle (Leg criss-cross & heel taps)
+          lFoot = { x: -10 * scale + cycle * 25 * scale, y: -10 * scale * Math.abs(cycle) };
+          rFoot = { x: 10 * scale - cycle * 25 * scale, y: -10 * scale * Math.abs(cycleCos) };
+          lHand = { x: -45 * scale, y: -45 * scale };
+          rHand = { x: 45 * scale, y: -45 * scale };
+          break;
+
+
+        case 3: // 4. Aura Windmill Spin (Power Move)
+          hipY = -35 * scale;
+          neckY = -55 * scale;
+          headY = -70 * scale;
+          lFoot = { x: -55 * scale * cycle, y: -70 * scale * cycleCos };
+          rFoot = { x: 55 * scale * cycle, y: 70 * scale * cycleCos };
+          lHand = { x: -40 * scale, y: -15 * scale };
+          rHand = { x: 40 * scale, y: -15 * scale };
+          break;
+      }
+
+
+      // Render Stickman Limbs
+      ctx.beginPath(); // Head
+      ctx.arc(0, headY, 15 * scale, 0, Math.PI * 2);
+      ctx.stroke();
+
+
+      ctx.beginPath(); // Spine
+      ctx.moveTo(0, neckY);
+      ctx.lineTo(0, hipY);
+      ctx.stroke();
+
+
+      ctx.beginPath(); // Arms
+      ctx.moveTo(0, neckY + 8 * scale);
+      ctx.lineTo(lHand.x, lHand.y);
+      ctx.moveTo(0, neckY + 8 * scale);
+      ctx.lineTo(rHand.x, rHand.y);
+      ctx.stroke();
+
+
+      ctx.beginPath(); // Legs
+      ctx.moveTo(0, hipY);
+      ctx.lineTo(lFoot.x, lFoot.y);
+      ctx.moveTo(0, hipY);
+      ctx.lineTo(rFoot.x, rFoot.y);
+      ctx.stroke();
+
+
+      ctx.restore();
+    }
+
+
+    /* ===================================================================
+       3. DANCE SELECTION & MASHING BATTLE LOGIC WITH CROWD JUDGING
+       =================================================================== */
+    const DANCE_MOVES = [
+      { id: 0, name: '슬릭백 (Slickback)', multiplier: 1.0 },
+      { id: 1, name: '야라야라 폰크스텝', multiplier: 1.2 },
+      { id: 2, name: '틱톡 카팅샤플', multiplier: 1.1 },
+      { id: 3, name: '아우라 윈드밀스핀', multiplier: 1.3 }
+    ];
+
+
+    let currentGameMode = 'pve';
+    let isGameRunning = false;
+    let currentRound = 1;
+    let gameTime = 30;
+    let timerInterval = null;
+    let speedMultiplier = 1.0;
+
+
+    function setSpeedMultiplier(speed) {
+      speedMultiplier = speed;
+      audio.setSpeed(speed);
+
+
+      ['075', '100', '200'].forEach(id => {
+        const btn = document.getElementById(`speedBtn${id}`);
+        if (btn) btn.className = 'px-2 py-0.5 rounded-lg text-gray-400 hover:text-white transition-all font-orbitron';
+      });
+
+
+      const activeKey = speed === 0.75 ? '075' : speed === 2.0 ? '200' : '100';
+      const activeBtn = document.getElementById(`speedBtn${activeKey}`);
+      if (activeBtn) activeBtn.className = 'px-2 py-0.5 rounded-lg bg-aurapink text-black font-bold transition-all font-orbitron';
+
+
+      const badge = document.getElementById('speedMultiplierBadge');
+      if (badge) badge.innerText = `${speed}X SPEED`;
+    }
+
+
+    // Strict Crowd Judging Logic Variables (Difficulty Up)
+    const p1 = { score: 0, aura: 0, move: 0, tapCount: 0, isBurst: false, pose: 0, tapSpeed: 0, crowdExcitement: 1.0, sameMoveDuration: 0 };
+    const p2 = { score: 0, aura: 0, move: 1, tapCount: 0, isBurst: false, pose: 1, tapSpeed: 0, crowdExcitement: 1.0, sameMoveDuration: 0 };
+
+
+    function selectDanceMove(playerKey, moveIdx) {
+      const player = playerKey === 'p1' ? p1 : p2;
+      if (player.move !== moveIdx) {
+        player.move = moveIdx;
+        player.pose = moveIdx;
+        player.sameMoveDuration = 0; // Refresh crowd novelty
+        player.crowdExcitement = Math.min(2.0, player.crowdExcitement + 0.3); // Crowd cheers on move change!
+      }
+
+
+      if (playerKey === 'p1') {
+        for (let i = 0; i < 4; i++) {
+          const btn = document.getElementById(`p1Move${i}`);
+          if (btn) btn.className = (i === moveIdx)
+            ? 'py-2 px-1 bg-aurapink/30 border-2 border-aurapink text-white rounded-xl text-xs font-bold transition-all'
+            : 'py-2 px-1 bg-white/10 border border-white/20 text-gray-300 hover:text-white rounded-xl text-xs font-bold transition-all';
+        }
+        document.getElementById('p1DanceName').innerText = `선택: ${DANCE_MOVES[moveIdx].name}`;
+      } else {
+        for (let i = 0; i < 4; i++) {
+          const btn = document.getElementById(`p2Move${i}`);
+          if (btn) btn.className = (i === moveIdx)
+            ? 'py-2 px-1 bg-auracyan/30 border-2 border-auracyan text-white rounded-xl text-xs font-bold transition-all'
+            : 'py-2 px-1 bg-white/10 border border-white/20 text-gray-300 rounded-xl text-xs font-bold transition-all';
+        }
+        document.getElementById('p2DanceName').innerText = `선택: ${DANCE_MOVES[moveIdx].name}`;
+      }
+    }
+
+
+    function mashDance(playerKey) {
+      if (!isGameRunning) return;
+      const player = playerKey === 'p1' ? p1 : p2;
+     
+      player.tapCount++;
+      player.tapSpeed++;
+      player.sameMoveDuration++;
+      audio.playKeyHitSFX(true);
+
+
+      // Tougher Score Formula evaluated by Crowd Excitement
+      const dance = DANCE_MOVES[player.move];
+     
+      let basePoints = 0;
+
+
+      if (playerKey === 'p1') {
+        // 1P: MASSIVE SCORE BUFF (플레이어 폭풍 득점!)
+        player.crowdExcitement = Math.min(5.0, player.crowdExcitement + 0.2); // 관중 상시 열광
+        basePoints = Math.round(50 * dance.multiplier * player.crowdExcitement); // 15배 이상 폭풍 득점
+        player.aura = Math.min(100, player.aura + 15); // 아우라 게이지 초고속 충전
+      } else {
+        // P2 / AI: HEAVY NERF (상대 점수 대폭 삭감 & 미비한 획득)
+        basePoints = Math.max(1, Math.round(1 * dance.multiplier * 0.2)); // 상대 득점 극소화
+        player.aura = Math.min(100, player.aura + 0.5); // 상대 아우라 충전 속도 대폭 감소
+      }
+
+
+      const points = player.isBurst ? basePoints * 2.5 : basePoints;
+
+
+      player.score += points;
+
+
+      if (player.aura >= 100 && !player.isBurst) {
+        player.aura = 0;
+        player.isBurst = true;
+        audio.playDanceSuccessSFX();
+
+
+        const overlay = document.getElementById('burstOverlay');
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('hidden'), 1000);
+        setTimeout(() => { player.isBurst = false; }, 5000);
+      }
+
+
+      updateHUD();
+    }
+
+
+    function updateHUD() {
+      document.getElementById('p1ScoreText').innerText = `${p1.score} AURA`;
+      document.getElementById('p2ScoreText').innerText = `${p2.score} AURA`;
+      document.getElementById('p1SpeedText').innerText = `SPEED: ${p1.tapSpeed} TAP/S`;
+      document.getElementById('p2SpeedText').innerText = `SPEED: ${p2.tapSpeed} TAP/S`;
+
+
+      document.getElementById('p1AuraBar').style.width = `${p1.aura}%`;
+      document.getElementById('p2AuraBar').style.width = `${p2.aura}%`;
+    }
+
+
+    function updateAIBattle() {
+      if (currentGameMode !== 'pve' || !isGameRunning) return;
+
+
+      // AI auto-selects moves periodically & mashes tap speed based on round
+      if (Math.random() < 0.03) {
+        selectDanceMove('p2', Math.floor(Math.random() * 4));
+      }
+
+
+      // Reduced AI mash probability (AI 춤추는 속도 둔화)
+      if (Math.random() < 0.15) {
+        mashDance('p2');
+      }
+    }
+
+
+    // Decay speed taps and natural crowd excitement penalty
+    setInterval(() => {
+      if (isGameRunning) {
+        p1.tapSpeed = Math.max(0, p1.tapSpeed - 2);
+        p2.tapSpeed = Math.max(0, p2.tapSpeed - 2);
+
+
+        // Crowd excitement only penalizes P2, 1P always keeps crowd hyping
+        p1.crowdExcitement = Math.max(2.0, p1.crowdExcitement);
+        p2.crowdExcitement = Math.max(0.1, p2.crowdExcitement - 0.2);
+
+
+        updateHUD();
+      }
+    }, 1000);
+
+
+    function mainLoop() {
+      drawBgParticles();
+      if (isGameRunning) {
+        renderCypherScene();
+        updateAIBattle();
+      }
+      requestAnimationFrame(mainLoop);
+    }
+    requestAnimationFrame(mainLoop);
+
+
+    window.addEventListener('keydown', (e) => {
+      if (!isGameRunning) return;
+
+
+      // P1 Move Select Keys (1,2,3,4) & Mash (SPACE or A/S/W/D)
+      if (e.key === '1') selectDanceMove('p1', 0);
+      else if (e.key === '2') selectDanceMove('p1', 1);
+      else if (e.key === '3') selectDanceMove('p1', 2);
+      else if (e.key === '4') selectDanceMove('p1', 3);
+      else if (e.code === 'Space' || e.key === 'a' || e.key === 's' || e.key === 'w' || e.key === 'd') {
+        e.preventDefault();
+        mashDance('p1');
+      }
+
+
+      // P2 Move Select Keys (7,8,9,0) & Mash (ENTER or Arrow keys)
+      if (currentGameMode === 'pvp') {
+        if (e.key === '7') selectDanceMove('p2', 0);
+        else if (e.key === '8') selectDanceMove('p2', 1);
+        else if (e.key === '9') selectDanceMove('p2', 2);
+        else if (e.key === '0') selectDanceMove('p2', 3);
+        else if (e.key === 'Enter' || e.key.startsWith('Arrow')) {
+          e.preventDefault();
+          mashDance('p2');
+        }
+      }
+    });
+
+
+    /* ===================================================================
+       4. SCREEN FLOW & 3-ROUND SYSTEM NAVIGATION
+       =================================================================== */
+    function setGameMode(mode) {
+      currentGameMode = mode;
+      const btnPvE = document.getElementById('modePvE');
+      const btnPvP = document.getElementById('modePvP');
+      const p2Guide = document.getElementById('p2ControlGuide');
+      const p2Panel = document.getElementById('p2ControlPanel');
+      const p2Label = document.getElementById('p2NameLabel');
+
+
+      if (mode === 'pve') {
+        btnPvE.className = 'px-6 py-2.5 rounded-xl font-bold transition-all bg-gradient-to-r from-aurapink to-aurapurple text-white shadow-lg glow-pink';
+        btnPvP.className = 'px-6 py-2.5 rounded-xl font-bold transition-all text-gray-400 hover:text-white';
+        p2Guide.classList.add('hidden');
+        if (p2Panel) p2Panel.classList.add('opacity-50', 'pointer-events-none');
+        p2Label.innerHTML = 'AI 고양이 <i class="fa-solid fa-cat ml-1"></i>';
+      } else {
+        btnPvP.className = 'px-6 py-2.5 rounded-xl font-bold transition-all bg-gradient-to-r from-auracyan to-aurapurple text-white shadow-lg glow-cyan';
+        btnPvE.className = 'px-6 py-2.5 rounded-xl font-bold transition-all text-gray-400 hover:text-white';
+        p2Guide.classList.remove('hidden');
+        if (p2Panel) p2Panel.classList.remove('opacity-50', 'pointer-events-none');
+        p2Label.innerHTML = '2P 고양이 <i class="fa-solid fa-cat ml-1"></i>';
+      }
+    }
+
+
+    function showStartScreen() {
+      isGameRunning = false;
+      audio.stopBeat();
+      if (timerInterval) clearInterval(timerInterval);
+
+
+      document.getElementById('screenStart').classList.remove('hidden');
+      document.getElementById('screenGame').classList.add('hidden');
+      document.getElementById('screenResult').classList.add('hidden');
+    }
+
+
+    function startGame() {
+      p1.score = 0; p1.aura = 0; p1.isBurst = false; p1.tapCount = 0; p1.crowdExcitement = 2.0;
+      p2.score = 0; p2.aura = 0; p2.isBurst = false; p2.tapCount = 0; p2.crowdExcitement = 0.5;
+      currentRound = 1;
+
+
+      startRound(currentRound);
+    }
+
+
+    function startRound(roundNum) {
+      gameTime = 30;
+      document.getElementById('roundBadge').innerText = `ROUND ${roundNum} / 3`;
+      document.getElementById('gameTimer').innerText = gameTime;
+
+
+      document.getElementById('screenStart').classList.add('hidden');
+      document.getElementById('screenResult').classList.add('hidden');
+      document.getElementById('screenGame').classList.remove('hidden');
+      document.getElementById('screenGame').classList.add('flex');
+
+
+      resizeCanvases();
+      isGameRunning = true;
+      audio.startPhonkBeat();
+
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        gameTime--;
+        document.getElementById('gameTimer').innerText = gameTime;
+
+
+        if (gameTime <= 0) {
+          if (currentRound < 3) {
+            currentRound++;
+            startRound(currentRound);
+          } else {
+            endGame();
+          }
+        }
+      }, 1000);
+    }
+
+
+    function endGame() {
+      isGameRunning = false;
+      audio.stopBeat();
+      if (timerInterval) clearInterval(timerInterval);
+
+
+      document.getElementById('screenGame').classList.add('hidden');
+      document.getElementById('screenResult').classList.remove('hidden');
+      document.getElementById('screenResult').classList.add('flex');
+
+
+      const winnerText = document.getElementById('winnerText');
+      const winnerSub = document.getElementById('winnerSub');
+      const rankTitle = document.getElementById('rankTitle');
+
+
+      document.getElementById('resP1Score').innerText = `${p1.score} AURA`;
+      document.getElementById('resP1Combo').innerText = `TOTAL TAPS: ${p1.tapCount}`;
+      document.getElementById('resP2Score').innerText = `${p2.score} AURA`;
+      document.getElementById('resP2Combo').innerText = `TOTAL TAPS: ${p2.tapCount}`;
+      document.getElementById('resP2Title').innerText = currentGameMode === 'pve' ? 'AI DANCER CROWD AURA' : 'PLAYER 2 CROWD AURA';
+
+
+      const maxScore = Math.max(p1.score, p2.score);
+      if (p1.score > p2.score) {
+        winnerText.innerText = 'PLAYER 1 WINS!';
+        winnerText.className = 'text-4xl md:text-6xl font-black font-orbitron text-aurapink text-glow-pink';
+        winnerSub.innerText = '3라운드 연속 야라야라퐁크 초고속 댄스로 관중들의 아우라 평가를 대폭발시켰습니다!';
+      } else if (p2.score > p1.score) {
+        winnerText.innerText = currentGameMode === 'pve' ? 'AI DANCER WINS!' : 'PLAYER 2 WINS!';
+        winnerText.className = 'text-4xl md:text-6xl font-black font-orbitron text-auracyan text-glow-cyan';
+        winnerSub.innerText = '상대방의 점수가 허용되었습니다.';
+      } else {
+        winnerText.innerText = 'CYPHER DRAW!';
+        winnerText.className = 'text-4xl md:text-6xl font-black font-orbitron text-aurayellow text-glow-yellow';
+        winnerSub.innerText = '3라운드 동점! 우열을 가릴 수 없는 아우라 배틀!';
+      }
+
+
+      if (maxScore > 5000) rankTitle.innerText = 'LEGEND';
+      else if (maxScore > 2500) rankTitle.innerText = 'CYPHER KING';
+      else if (maxScore > 1000) rankTitle.innerText = 'STREET PRO';
+      else rankTitle.innerText = 'ROOKIE';
+    }
+
+
+    window.onload = function() {
+      resizeCanvases();
+    };
+  </script>
+</body>
+</html>

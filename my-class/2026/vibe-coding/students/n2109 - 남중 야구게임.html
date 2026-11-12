@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>3D 야구 게임</title>
+<style>
+:root{--bg:#0a0f1e;--bd:#3a506b;--ac:#4cc9f0;--tx:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#0a0f1e}}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#050814;font-family:'Segoe UI',system-ui,sans-serif;color:var(--tx);user-select:none;-webkit-user-select:none;touch-action:none}
+canvas{display:block}
+.pn{position:absolute;background:rgba(10,15,30,.85);border:2px solid var(--bd);border-radius:10px;padding:10px 14px}
+#hud{top:calc(10px + env(safe-area-inset-top,0px));right:10px;min-width:170px;font-size:13px;font-weight:700}
+.r{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:10px}
+.dots{display:flex;gap:4px}.d{width:11px;height:11px;border-radius:50%;background:#2b2d42;border:1px solid #4a4e69}
+.B.on{background:#00b4d8}.S.on{background:#ffb703}.O.on{background:#e63946}
+#bs{position:relative;width:56px;height:36px;margin:2px auto 6px}
+.bs{position:absolute;width:14px;height:14px;background:#2b2d42;border:1px solid #4a4e69;transform:rotate(45deg)}
+.bs.on{background:#ffb703;box-shadow:0 0 6px #ffb703}
+#last{font-size:12px;color:var(--ac);text-align:center;min-height:16px;border-top:1px solid var(--bd);padding-top:5px}
+#res{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:clamp(28px,7vw,52px);font-weight:900;text-shadow:0 0 12px #000,0 0 28px var(--ac);opacity:0;transition:opacity .25s;pointer-events:none;text-align:center;white-space:nowrap}
+#sub{position:absolute;top:calc(30% + 40px);left:50%;transform:translateX(-50%);font-size:18px;font-weight:700;color:#ffd166;text-shadow:0 0 8px #000;pointer-events:none;opacity:0}
+#ctl{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;max-width:96vw}
+.g{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.b{background:#1d2d44;color:#fff;border:1px solid var(--bd);padding:9px 13px;border-radius:7px;cursor:pointer;font-weight:700;font-size:14px}
+.b:hover{background:var(--bd)}.b.a{background:var(--ac);color:#000}
+#sw{background:#e63946;border:0;font-size:20px;padding:14px 48px}
+#hint{font-size:12px;opacity:.8}
+#ov{position:absolute;inset:0;background:rgba(5,8,20,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px}
+#ov h1{margin:0;font-size:clamp(26px,6vw,44px)}#ov p{margin:0;max-width:460px;line-height:1.6;font-size:14px;opacity:.9}
+</style></head><body>
+<div id="hud" class="pn">
+<div class="r"><span id="inn">1회</span><span>점수 <b id="sc" style="color:var(--ac)">0</b></span></div>
+<div id="bs"><i class="bs" id="b2" style="left:21px;top:0"></i><i class="bs" id="b1" style="left:40px;top:17px"></i><i class="bs" id="b3" style="left:2px;top:17px"></i></div>
+<div class="r"><span>B</span><div class="dots" id="bd"><i class="d B"></i><i class="d B"></i><i class="d B"></i></div></div>
+<div class="r"><span>S</span><div class="dots" id="sd"><i class="d S"></i><i class="d S"></i></div></div>
+<div class="r"><span>O</span><div class="dots" id="od"><i class="d O"></i><i class="d O"></i></div></div>
+<div id="last">-</div>
+</div>
+<div id="res"></div><div id="sub"></div>
+<div id="ctl" class="pn">
+<div id="pc" class="g">
+ <button class="b a" data-p="FAST">1 직구</button><button class="b" data-p="SLIDER">2 슬라이더</button>
+ <button class="b" data-p="CURVE">3 커브</button><button class="b" data-p="CHANGE">4 체인지업</button>
+</div>
+<div id="bc" class="g" style="display:none"><button id="sw" class="b">SWING (Space/터치)</button><button id="bt" class="b" style="padding:14px 18px">번트 (B)</button></div>
+<div class="g"><button id="stl" class="b">도루 (S)</button><button id="pk" class="b" style="display:none">견제 (Q)</button></div>
+<div class="g"><button class="b" id="zn">스트라이크존 (Z)</button><button class="b" id="menu">모드 변경</button></div>
+<div id="hint"></div>
+</div>
+<div id="ov"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=i=>document.getElementById(i),cl=(v,a,b)=>Math.max(a,Math.min(b,v)),gs=()=>(Math.random()+Math.random()+Math.random()-1.5)*1.6;
+let INN=3,dif=1;const G=9.8,DF={win:[150,110,80],spd:[-8,0,8],ts:[1.7,1.5,1.25],sk:[-.12,0,.1]};
+const P={FAST:{n:'직구',v:152,b:[0,.06],j:.08,pen:.1},SLIDER:{n:'슬라이더',v:136,b:[.4,-.12],j:.11,pen:.14},CURVE:{n:'커브',v:122,b:[.15,-.65],j:.13,pen:.12},CHANGE:{n:'체인지업',v:128,b:[-.15,-.28],j:.11,pen:.16}};
+const OUTS={SINGLE:[1,'안타!'],DOUBLE:[2,'2루타!'],TRIPLE:[3,'3루타!'],HR:[4,'홈런!!'],FLY:[0,'플라이 아웃'],GROUND:[0,'땅볼 아웃'],FOUL:[0,'파울'],SAC:[0,'희생번트'],BUNTHIT:[1,'번트 안타!']};
+const CAM={P:{p:new THREE.Vector3(-1,2.3,-21.5),l:new THREE.Vector3(0,.8,0),f:22},B:{p:new THREE.Vector3(.4,1.6,2.8),l:new THREE.Vector3(0,1,-18),f:48}};
+let cheerT=0,stealing=false,swingBunt=false,mode='B',st='OVER',inning,outs,balls,strikes,runs,bases,sel='FAST',cur,hit,swung,swingAt,plan,tok=0,zoneOn=true,over,wind,swingT=-1,aim={x:0,y:.8};
+ 
+// ---- scene
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x050814);scene.fog=new THREE.FogExp2(0x050814,.006);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xaabbff,0x203020,.9));
+const dl=new THREE.DirectionalLight(0xffffff,.9);dl.position.set(20,50,30);scene.add(dl);
+const M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.85},o||{}));
+const add=(g,m,x,y,z,rx)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);if(rx)o.rotation.x=rx;scene.add(o);return o};
+add(new THREE.CircleGeometry(170,64),M(0x1b4332),0,0,0,-Math.PI/2);
+add(new THREE.CircleGeometry(25,40),M(0x7f5539),0,.01,-19,-Math.PI/2);
+add(new THREE.CircleGeometry(1.4,24),M(0x8d6648),0,.03,-18.4,-Math.PI/2);
+const wm=new THREE.MeshBasicMaterial({color:0xffffff});
+[[-1,1],[1,-1]].forEach(([s,a])=>{const l=add(new THREE.PlaneGeometry(.15,110),wm,s*38.9,.04,-38.9);l.rotation.set(-Math.PI/2,0,a*Math.PI/4)});
+[[19.4,-19.4],[0,-38.8],[-19.4,-19.4]].forEach(([x,z])=>add(new THREE.BoxGeometry(.6,.12,.6),wm,x,.06,z));
+add(new THREE.CircleGeometry(.45,5),wm,0,.05,0,-Math.PI/2);
+const fence=add(new THREE.CylinderGeometry(100,100,5,96,1,true,Math.PI-1.745,3.49),new THREE.MeshStandardMaterial({color:0x14532d,side:THREE.DoubleSide}),0,2.5,0);
+function fig(c,x,z,s){const g=new THREE.Group();const b=new THREE.Mesh(new THREE.CylinderGeometry(.28,.3,1.3,10),M(c));b.position.y=.65;const h=new THREE.Mesh(new THREE.SphereGeometry(.2,12,12),M(0xf1c27d));h.position.y=1.5;g.add(b,h);if(s){const gl=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),M(0x8b4513));gl.scale.set(.6,1,.9);gl.position.set(s*.36,.95,.5);const ar=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.6,8),M(c));ar.position.set(s*.36,1.1,.25);ar.rotation.x=2.1;g.add(gl,ar)}g.position.set(x,0,z);scene.add(g);return g}
+// stands, crowd, scoreboard
+add(new THREE.CylinderGeometry(141,106,20,96,1,true,Math.PI-1.745,3.49),new THREE.MeshStandardMaterial({color:0x1b2338,side:THREE.DoubleSide}),0,10,0);
+const crowd=new THREE.Group();scene.add(crowd);
+{const rows=[];for(let r=0;r<7;r++){const R=108+r*4.5,n=Math.floor(R*3.4/.95);for(let i=0;i<n;i++)rows.push([R,Math.PI-1.7+3.4*i/n,(R-106)*.571])}
+const bm=new THREE.InstancedMesh(new THREE.BoxGeometry(.55,.8,.4),new THREE.MeshBasicMaterial({color:0xffffff}),rows.length),hm=new THREE.InstancedMesh(new THREE.SphereGeometry(.2,8,6),new THREE.MeshBasicMaterial({color:0xffffff}),rows.length),o=new THREE.Object3D(),col=new THREE.Color(),pal=[0xd62828,0x1d4ed8,0xf5f5f5,0xfacc15,0x16a34a,0x7c3aed,0xea580c,0x374151],sk=[0xf1c27d,0xe0ac69,0xc68642,0x8d5524];
+rows.forEach(([R,a,y],i)=>{o.position.set(R*Math.sin(a),y+.5,R*Math.cos(a));o.rotation.y=a;o.updateMatrix();bm.setMatrixAt(i,o.matrix);bm.setColorAt(i,col.setHex(pal[Math.random()*8|0]));o.position.y+=.75;o.updateMatrix();hm.setMatrixAt(i,o.matrix);hm.setColorAt(i,col.setHex(sk[Math.random()*4|0]))});
+crowd.add(bm,hm)}
+const bCv=document.createElement('canvas');bCv.width=1024;bCv.height=400;const bG=bCv.getContext('2d'),bTex=new THREE.CanvasTexture(bCv);let boardMsg='';
+add(new THREE.PlaneGeometry(60,24),new THREE.MeshBasicMaterial({map:bTex,fog:false}),0,34,-142);
+add(new THREE.BoxGeometry(62,26,1),M(0x111111),0,34,-142.7);[-24,24].forEach(x=>add(new THREE.BoxGeometry(2,14,2),M(0x222222),x,15,-142.4));
+function drawBoard(){const g=bG,I=inning||1,bs=bases||[0,0,0];g.fillStyle='#07101f';g.fillRect(0,0,1024,400);g.strokeStyle='#4cc9f0';g.lineWidth=8;g.strokeRect(6,6,1012,388);g.textAlign='left';
+g.fillStyle='#4cc9f0';g.font='bold 44px sans-serif';g.fillText('3D BASEBALL',40,70);g.fillStyle='#fff';g.font='bold 56px sans-serif';g.fillText(Math.min(I,INN)+' / '+INN+'회',40,160);
+g.fillStyle='#ffd166';g.font='bold 130px sans-serif';g.fillText(String(runs||0),40,300);g.fillStyle='#fff';g.font='bold 36px sans-serif';g.fillText(mode==='P'?'실점':'득점',40,358);
+[['B',balls,3,'#00b4d8'],['S',strikes,2,'#ffb703'],['O',outs,2,'#e63946']].forEach((r,i)=>{g.fillStyle='#fff';g.font='bold 50px sans-serif';g.fillText(r[0],400,150+i*70);for(let k=0;k<r[2];k++){g.beginPath();g.arc(485+k*55,135+i*70,20,0,7);g.fillStyle=k<(r[1]||0)?r[3]:'#222b3f';g.fill()}});
+[[810,140,1],[880,210,0],[740,210,2]].forEach(([x,y,i])=>{g.save();g.translate(x,y);g.rotate(Math.PI/4);g.fillStyle=bs[i]?'#ffb703':'#222b3f';g.fillRect(-25,-25,50,50);g.restore()});
+g.fillStyle='#4cc9f0';g.font='bold 38px sans-serif';g.textAlign='center';g.fillText(
+('last').textContent==='-'?'PLAYBALL':('last').textContent,810,330);
+if(boardMsg){g.fillStyle='rgba(0,0,0,.75)';g.fillRect(12,140,1000,120);g.fillStyle='#ffd166';g.font='bold 96px sans-serif';g.fillText(boardMsg,512,235)}
+bTex.needsUpdate=true}
+drawBoard();
+const FD=[[16,-24,0],[8,-33,0],[-8,-33,0],[-16,-24,0],[-38,-72,1],[0,-85,1],[38,-72,1]];
+FD.forEach(f=>fig(0x2d6a9f,f[0],f[1],1));
+const pitcher=fig(0x0077b6,0,-18.4,-1),arm=new THREE.Group();arm.position.set(.38,1.3,0);
+const am=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.7),M(0x0077b6));am.position.y=-.35;arm.add(am);pitcher.add(arm);
+const batter=fig(0xd90429,-.75,-.05),bp=new THREE.Group();bp.position.set(.35,1.25,.15);bp.rotation.order='YXZ';const batM=M(0xe6b36a,{emissive:0x553311}),ptsB=[[0,0],[.03,0],[.034,.02],[.017,.045],[.017,.3],[.024,.42],[.034,.58],[.042,.74],[.045,.86],[.04,.93],[0,.96]].map(p=>new THREE.Vector2(p[0],p[1]));
+function mkBat(){const g=new THREE.Group(),w=new THREE.Mesh(new THREE.LatheGeometry(ptsB,20),batM),t=new THREE.Mesh(new THREE.CylinderGeometry(.021,.021,.26,12),M(0x222222));w.position.y=-.1;t.position.y=.07;g.add(w,t);g.scale.setScalar(1.2);return g}
+bp.add(mkBat());batter.add(bp);bp.rotation.set(0,-1.5,-.5);
+const tb=mkBat();tb.visible=false;scene.add(tb);let tbv=null;
+function toss(){bp.visible=false;tb.visible=true;tb.position.set(-.6,1.2,-.1);tb.rotation.set(0,0,Math.PI/2);tbv={x:-1.5,y:3,z:1.5}}
+const ball=new THREE.Mesh(new THREE.SphereGeometry(.06,24,24),new THREE.MeshBasicMaterial({map:seamTex()}));ball.visible=false;
+function seamTex(){const c=document.createElement('canvas');c.width=512;c.height=256;const g=c.getContext('2d');g.fillStyle='#f4f1e8';g.fillRect(0,0,512,256);g.strokeStyle='#d62828';
+for(const s of[1,-1]){const f=x=>128+s*90*Math.sin(x/512*Math.PI*2);g.lineWidth=3;g.beginPath();for(let x=0;x<=512;x+=4)x?g.lineTo(x,f(x)):g.moveTo(x,f(x));g.stroke();g.lineWidth=5;
+ for(let x=0;x<512;x+=14){const y=f(x),a=Math.atan2(f(x+1)-f(x-1),2)+Math.PI/2,dx=Math.cos(a)*11,dy=Math.sin(a)*11;g.beginPath();g.moveTo(x-dx,y-dy);g.lineTo(x+dx,y+dy);g.stroke()}}
+return new THREE.CanvasTexture(c)}scene.add(ball);
+const shadow=add(new THREE.CircleGeometry(.09,12),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.5}),0,.05,0,-Math.PI/2);shadow.visible=false;
+const TN=40,tr=new Float32Array(TN*3),trg=new THREE.BufferGeometry();trg.setAttribute('position',new THREE.BufferAttribute(tr,3));const trail=new THREE.Points(trg,new THREE.PointsMaterial({color:0xffe08a,size:1.2,transparent:true,opacity:.75,depthWrite:false}));trail.frustumCulled=false;trail.visible=false;scene.add(trail);
+const zone=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(.52,.68)),new THREE.LineBasicMaterial({color:0x4cc9f0}));zone.position.set(0,.8,0);scene.add(zone);
+const ret=add(new THREE.RingGeometry(.035,.055,24),new THREE.MeshBasicMaterial({color:0xffd166,side:THREE.DoubleSide}),0,.8,0);
+ 
+// ---- audio
+let ac;function tone(f,d,t,v){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=t||'square';o.frequency.value=f;g.gain.setValueAtTime(v||.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+ 
+// ---- UI
+function say(t,s){boardMsg=t;clearTimeout(window._bt);window._bt=setTimeout(()=>{boardMsg='';drawBoard()},1800);drawBoard();const r=('res');r.textContent=t;r.style.opacity=1;clearTimeout(r.t);r.t=setTimeout(()=>r.style.opacity=0,1500);constu=('sub');u.textContent=s||'';u.style.opacity=s?1:0}
+function hud(){drawBoard();('inn').textContent=Math.min(inning,INN)+'/'+INN+'회';('sc').textContent=runs;
+[['bd',balls],['sd',strikes],['od',outs]].forEach(([id,n])=>[...$(id).children].forEach((d,i)=>d.classList.toggle('on',i<n)));
+[1,2,3].forEach(i=>$('b'+i).classList.toggle('on',!!bases[i-1]))}
+function setMode(m){mode=m;('pc').style.display=m==='P'?'flex':'none';('bc').style.display=m==='B'?'flex':'none';$('pk').style.display=m==='P'?'':'none';
+$('hint').textContent=m==='P'?'원하는 위치를 클릭/터치하면 투구 (파란 사각형 = 스트라이크존, 1~4 구종 · Q 견제)':'공이 홈플레이트에 닿는 순간에 맞춰 스윙! (빠르면 당겨치고 늦으면 밀려요) · B 번트 · S 도루(출루 시)';
+ret.visible=m==='P'}
+const best=()=>{try{return localStorage.getItem('bb_'+mode+INN+dif)}catch(e){return null}};
+function menu(title,body,btns){const o=$('ov');o.style.display='flex';o.innerHTML='<h1>'+title+'</h1><p>'+body+'</p><div class="g">'+[1,3,5,9].map(n=>'<button class="b'+(n===INN?' a':'')+'" data-i="'+n+'">'+n+'이닝</button>').join('')+'</div><div class="g">'+['쉬움','보통','어려움'].map((n,i)=>'<button class="b'+(i===dif?' a':'')+'" data-d="'+i+'">'+n+'</button>').join('')+'</div><div class="g">'+btns.map(b=>'<button class="b a" style="font-size:17px;padding:14px 22px" data-m="'+b[0]+'">'+b[1]+'</button>').join('')+'</div>';
+o.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{INN=+b.dataset.i;o.querySelectorAll('[data-i]').forEach(x=>x.classList.toggle('a',x===b))});o.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{dif=+b.dataset.d;o.querySelectorAll('[data-d]').forEach(x=>x.classList.toggle('a',x===b))});o.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{o.style.display='none';start(b.dataset.m)})}
+const MENU=[['B','⚾ 타자로 플레이'],['P','🎯 투수로 플레이']];
+function showMenu(){tok++;st='OVER';menu('3D 야구','이닝 수와 난이도를 고른 뒤 시작하세요. <b>타자</b>: 타이밍에 맞춰 스윙해 최대한 많이 득점. <b>투수</b>: 코스와 구종을 골라 실점을 최소화.',MENU)}
+function gameOver(){st='OVER';let k='bb_'+mode+INN+dif,b=best(),txt=(mode==='B'?'득점 ':'실점 ')+runs;
+if(b===null||(mode==='B'?runs>+b:runs<+b)){try{localStorage.setItem(k,runs)}catch(e){}txt+=' — 신기록!'}else txt+=' (최고 '+b+')';
+menu('경기 종료',txt,MENU)}
+ 
+// ---- game flow
+function start(m){tok++;setMode(m);inning=1;outs=balls=strikes=runs=0;bases=[0,0,0];hit=cur=null;over=false;hud();$('last').textContent='-';next()}
+function next(){const t=tok;if(over)return gameOver();st='READY';stealing=false;bp.visible=true;tb.visible=false;tbv=null;ball.visible=shadow.visible=false;hud();
+if(mode==='B')setTimeout(()=>{if(t===tok&&st==='READY')aiPitch()},1300)}
+function after(ms){st='RESULT';const t=tok;setTimeout(()=>{if(t===tok)next()},ms)}
+function newBatter(){balls=strikes=0}
+function outs3(){if(outs>=3){outs=0;bases=[0,0,0];if(++inning>INN){over=true;inning=INN}newBatter()}}
+function out(){outs++;newBatter();outs3()}
+function advRun(){if(bases[2])runs++;bases=[0,bases[0],bases[1]]}
+function sub(t){const u=$('sub');u.textContent=t;u.style.opacity=1}
+function lead(){return bases[1]&&!bases[2]?1:bases[0]&&!bases[1]?0:-1}
+function doSteal(kmh){const l=lead();if(l<0)return;const s=mode==='B'?1:-1;
+if(Math.random()<cl(.72-(kmh-125)*.004+s*[.1,0,-.12][dif],.2,.9)){bases[l]=0;bases[l+1]=1;sub('도루 성공!')}else{bases[l]=0;sub('도루 실패!');outs++;outs3()}}
+function armSteal(){if(mode==='B'&&(st==='READY'||st==='WINDUP')&&lead()>=0){stealing=true;sub('도루 준비!')}}
+function pickoff(){if(mode!=='P'||st!=='READY')return;const l=bases[1]?1:bases[0]?0:-1;if(l<0)return say('견제할 주자가 없어요');
+if(Math.random()<.12){bases[l]=0;outs++;say('견제사!');outs3();over?gameOver():hud()}else say('견제 - 세이프')}
+function adv(n){let r=0,nb=[0,0,0];for(let i=2;i>=0;i--)if(bases[i]){const p=i+1+n;p>=4?r++:nb[p-1]=1}n>=4?r++:nb[n-1]=1;bases=nb;runs+=mode==='B'?r:r;newBatter()}
+function walk(){const[a,b,c]=bases;if(a&&b&&c)runs++;if(a&&b)bases[2]=1;if(a)bases[1]=1;bases[0]=1;newBatter()}
+function addStrike(foul){if(foul&&strikes>=2)return;strikes++;if(strikes>=3){say('삼진 아웃!');out()}}
+ 
+// ---- pitching
+function aiPitch(){const c=strikes,r=Math.random(),types=Object.keys(P),t=types[Math.random()<.5?0:1+Math.floor(Math.random()*3)];
+const inZ=balls>=3||r<.55;let x,y;if(inZ){x=gs()*.13;y=.8+gs()*.16}else{const a=Math.random()*6.28;x=Math.cos(a)*(.4+Math.random()*.25);y=.8+Math.sin(a)*(.45+Math.random()*.2)}
+startPitch(t,x,Math.max(.2,y))}
+function startPitch(type,tx,ty){const p=P[type],pl=mode==='P';st='WINDUP';wind=performance.now();swung=false;plan=null;
+const kmh=Math.round(p.v+(Math.random()-.5)*6+(pl?0:DF.spd[dif]));
+cur={type,kmh,dur:17.4/(kmh/3.6)*DF.ts[dif],x:tx+(pl?gs()*p.j:0),y:ty+(pl?gs()*p.j:0),b:[p.b[0]+(Math.random()-.5)*.1,p.b[1]+(Math.random()-.5)*.1]}}
+function release(now){st='PITCH';cur.t0=now;arm.rotation.x=0;shadow.scale.setScalar(1);ball.visible=shadow.visible=true;$('last').textContent=P[cur.type].n+' '+cur.kmh+'km/h';drawBoard();
+if(mode==='P'){plan=aiPlan(cur);if(!plan.bunt&&outs<2&&((bases[0]&&!bases[1])||(bases[1]&&!bases[2]))&&Math.random()<(cur.kmh<130?.2:.1)){stealing=true;sub('주자 스타트!')}}}
+const S0=new THREE.Vector3(.3,1.75,-17.5);
+function dz(x,y){return Math.hypot(Math.max(0,Math.abs(x)-.26),Math.max(0,Math.abs(y-.8)-.34))}
+function aiPlan(c){if((bases[0]||bases[1])&&outs<2&&Math.random()<.1)return{sw:true,bunt:true,res:Math.random()<.8?{bunt:true,q:Math.random()}:null,started:false};const d=dz(c.x,c.y),two=strikes>=2,cn=Math.hypot(c.x/.26,(c.y-.8)/.34);
+const sp=d===0?(two?.9:.65):d<.15?(two?.55:.3):d<.3?.12:.03,sw=Math.random()<sp;
+const cp=cl(.8+DF.sk[dif]-P[c.type].pen-d*1.2-Math.min(cn,1.6)*.1,.1,.85);let res=null;
+if(sw&&Math.random()<cp){const cen=Math.max(0,1-cn/1.6),q=Math.random()*(.6+.4*cen);let s=(Math.random()+Math.random()+Math.random()-1.5)*50;if(q<.2)s*=1.6;res={q,spray:s}}
+return{sw,res,started:false}}
+function playerContact(bunt){const W=DF.win[dif]*(bunt?1.3:1),c=cur,diff=swingAt-(c.t0+c.dur*1000);
+if(Math.abs(diff)>W||Math.abs(c.x)>.55||c.y<.2||c.y>1.5)return{miss:diff};
+const tq=1-Math.abs(diff)/W;if(bunt)return{bunt:true,q:cl(tq*.9+Math.random()*.1,0,1),diff};const lq=1-Math.min(1,Math.hypot(c.x,c.y-.8)/.6);
+return{q:cl(.6*tq+.4*lq+(Math.random()-.5)*.15,0,1),spray:diff/W*55+(Math.random()-.5)*16,diff}}
+function arrive(){ball.visible=shadow.visible=false;const c=cur,d=dz(c.x,c.y),inZ=d===0,stl=stealing,o0=outs;stealing=false;
+const sw=mode==='B'?swung:plan.sw;
+if(sw){const r=mode==='B'?playerContact(swingBunt):plan.res;if(r&&r.bunt)return doBunt(r);
+ if(r&&r.q!==undefined)return doHit(r);
+ tone(200,.15);say('헛스윙!',mode==='B'&&r&&r.miss!==undefined?(r.miss<0?'너무 빨랐어요':'너무 늦었어요'):'');addStrike();
+}else if(inZ){tone(300,.12);say('스트라이크!');addStrike()}
+else{tone(180,.12);say('볼');balls++;if(balls>=4){say('볼넷!');walk()}}
+if(stl&&balls+strikes>0&&outs>=o0)doSteal(c.kmh);after(1300)}
+function pick(a){let r=Math.random()*a.reduce((s,x)=>s+x[0],0);for(const x of a){if((r-=x[0])<=0)return x[1]}return a[0][1]}
+function outcome(q){if(q<.3)return pick([[8,'GROUND'],[2,'SINGLE']]);if(q<.5)return pick([[5,'FLY'],[3,'SINGLE'],[2,'GROUND']]);
+if(q<.7)return pick([[2,'FLY'],[4.5,'SINGLE'],[3.5,'DOUBLE']]);if(q<.88)return pick([[2,'FLY'],[2.5,'SINGLE'],[3.3,'DOUBLE'],[.7,'TRIPLE'],[1.5,'HR']]);
+return pick([[1,'FLY'],[1,'SINGLE'],[2.5,'DOUBLE'],[.5,'TRIPLE'],[5,'HR']])}
+function doHit(r){let o=outcome(r.q),s=r.spray,ap=10,d=40,gr=false;
+if(Math.abs(s)>45)o='FOUL';else s=cl(s,-44,44);const a=s*Math.PI/180;let e;
+if(o==='HR'){d=108+Math.random()*12;ap=28+Math.random()*10}
+else if(o==='TRIPLE'){d=88+Math.random()*8;ap=18}
+else if(o==='DOUBLE'){d=68+Math.random()*14;ap=r.q>.6?14:6}
+else if(o==='SINGLE'){d=32+Math.random()*25;gr=r.q<.5;ap=gr?1.1:4+Math.random()*3}
+else if(o==='FOUL'){d=20+Math.random()*30;gr=r.q<.4;ap=gr?1.2:12}
+else{const fly=o==='FLY',L=FD.filter(f=>!!f[2]===fly);let f=L[0],bd=9;L.forEach(g=>{const da=Math.abs(Math.atan2(g[0],-g[1])*180/Math.PI-s);if(da<bd){bd=da;f=g}});
+ e=new THREE.Vector3(f[0],0,f[1]);d=Math.hypot(f[0],f[1]);gr=!fly;ap=fly?25:1}
+e=e||new THREE.Vector3(d*Math.sin(a),0,-d*Math.cos(a));
+const dur=Math.max(gr?d/20:2*Math.sqrt(2*ap/G)*.85,d/32);
+hit={e,ap,dur,gr,o,t0:performance.now(),d};st='HIT';if(OUTS[o][0]>0){toss();cheerT=performance.now()+(o==='HR'?3500:1800)}tone(900,.06);tone(160,.1,'sawtooth',.15);if(o==='HR')setTimeout(()=>{tone(523,.15);tone(659,.15);tone(784,.3)},300);
+say(OUTS[o][1],r.diff!==undefined?(Math.abs(r.diff)<25?'퍼펙트 타이밍!':r.diff<0?'빠른 타이밍 (당겨침)':'늦은 타이밍 (밀어침)'):'')}
+function doBunt(r){const o=r.q<.25?'FOUL':pick([[8.5,'SAC'],[1.5,'BUNTHIT']]),a=(Math.random()-.5)*.9,d=5+Math.random()*7;
+hit={e:new THREE.Vector3(d*Math.sin(a),0,-d*Math.cos(a)),ap:.3,dur:d/6,gr:true,o,t0:performance.now(),d,bk:true};st='HIT';tone(300,.08);
+say(o==='FOUL'?'파울 번트':o==='SAC'?(bases[0]||bases[1]||bases[2]?'희생번트':'번트 아웃'):'번트 안타!')}
+function finishHit(){const o=hit.o;ball.visible=shadow.visible=false;
+if(o==='FOUL')addStrike(!hit.bk);else if(o==='SAC'){if(outs<2)advRun();out()}else if(o==='GROUND'&&bases[0]&&outs<2&&Math.random()<(mode==='B'?[.3,.5,.65][dif]:[.65,.5,.3][dif])){say('병살타!');bases[0]=0;out();out()}else if(o==='FLY'||o==='GROUND')out();else adv(OUTS[o][0]);
+hit=null;after(1500)}
+ 
+// ---- swing
+function swing(b){if(mode!=='B'||st!=='PITCH'||swung)return;swung=true;swingBunt=!!b;swingAt=performance.now()+100;swingT=performance.now()}
+ 
+// ---- input
+renderer.domElement.addEventListener('pointermove',e=>{if(mode==='P')aimAt(e)});
+renderer.domElement.addEventListener('pointerdown',e=>{if(st==='OVER')return;if(mode==='P'){aimAt(e);if(st==='READY')startPitch(sel,aim.x,aim.y)}else swing()});
+const ray=new THREE.Raycaster(),pln=new THREE.Plane(new THREE.Vector3(0,0,1),0),mv=new THREE.Vector2(),hp=new THREE.Vector3();
+function aimAt(e){mv.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(mv,camera);
+if(ray.ray.intersectPlane(pln,hp)){aim.x=cl(hp.x,-1,1);aim.y=cl(hp.y,.1,1.7);ret.position.set(aim.x,aim.y,0)}}
+function pitchSel(k){sel=k;document.querySelectorAll('[data-p]').forEach(b=>b.classList.toggle('a',b.dataset.p===k))}
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>pitchSel(b.dataset.p));
+$('sw').onpointerdown=e=>{e.stopPropagation();swing()};
+('stl').onclick=armSteal;('pk').onclick=pickoff;$('bt').onpointerdown=e=>{e.stopPropagation();swing(true)};
+('zn').onclick=()=>zoneOn=!zoneOn;('menu').onclick=showMenu;
+addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();swing()}
+else if('1234'.includes(e.key)&&mode==='P')pitchSel(Object.keys(P)[+e.key-1]);else if(e.key==='z'||e.key==='Z')zoneOn=!zoneOn;else if(e.key==='b'||e.key==='B')swing(true);else if(e.key==='s'||e.key==='S')armSteal();else if(e.key==='q'||e.key==='Q')pickoff()});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+ 
+// ---- loop
+const lookV=new THREE.Vector3(0,1,-18),tv=new THREE.Vector3();let last=performance.now();
+function loop(){requestAnimationFrame(loop);const now=performance.now(),dt=Math.min(.05,(now-last)/1000);last=now;
+if(st==='WINDUP'){const p=(now-wind)/600;arm.rotation.x=Math.min(p,1)*5.9;if(p>=1)release(now)}
+if(st==='PITCH'){const c=cur,t=(now-c.t0)/(c.dur*1000);
+ if(mode==='P'&&plan.sw&&!plan.started&&now>=c.t0+c.dur*1000-100){plan.started=true;swingT=now}
+ if(t>=1)arrive();else{const k=t*t*t;ball.position.set(S0.x+(c.x-c.b[0]-S0.x)*t+c.b[0]*k,S0.y+(c.y-c.b[1]-S0.y)*t+c.b[1]*k,S0.z*(1-t));shadow.position.set(ball.position.x,.05,ball.position.z);const sp=(c.type==='CHANGE'?14:34)*dt;ball.rotation.x+=c.type==='CURVE'?-sp:sp;if(c.type==='SLIDER')ball.rotation.z+=sp*.8}}
+if(st==='HIT'){const h=hit,t=Math.min(1,(now-h.t0)/1000/h.dur);
+ const y=h.gr?Math.abs(Math.sin(t*Math.PI*4))*h.ap*(1-t):.9*(1-t)+4*h.ap*t*(1-t);
+ ball.position.set(h.e.x*t,y+.1,h.e.z*t);shadow.position.set(ball.position.x,.05,ball.position.z);
+ shadow.scale.setScalar(3+y*.05);ball.rotation.x-=25*dt;if(!trail.visible){for(let i=0;i<TN;i++)tr.set([ball.position.x,ball.position.y,ball.position.z],i*3);trail.visible=true}tr.copyWithin(3,0,TN*3-3);tr.set([ball.position.x,ball.position.y,ball.position.z],0);trg.attributes.position.needsUpdate=true;if(t>=1)finishHit()}
+// bat
+if(swingT>=0){const bk=mode==='B'?swingBunt:plan&&plan.bunt,p=(now-swingT)/(bk?500:380);if(p>=1){bp.rotation.set(0,-1.5,-.5);swingT=-1}else if(bk){const u=Math.min(1,p*5);bp.rotation.set(0,-1.5+1.35*u,-.5-.9*u)}else bp.rotation.set(0,-1.5+3.5*Math.sin(p*Math.PI/2),-.5-1.07*Math.min(1,p*4))}
+if(tbv){tbv.y-=9.8*dt;tb.position.x+=tbv.x*dt;tb.position.y=Math.max(.08,tb.position.y+tbv.y*dt);tb.position.z+=tbv.z*dt;if(tb.position.y<=.08){tbv.x=tbv.z=tbv.y=0}else tb.rotation.z+=8*dt}
+// camera
+crowd.position.y=now<cheerT?Math.abs(Math.sin(now/110))*.6:0;ball.scale.setScalar(st==='HIT'?Math.max(4,ball.position.distanceTo(camera.position)*.12):1);if(st!=='HIT')trail.visible=false;
+const cp=CAM[mode],k=1-Math.exp(-dt*(st==='HIT'?3:4));
+if(st==='HIT'){tv.set(ball.position.x*.6,Math.max(ball.position.y+4,5),ball.position.z+16);camera.position.lerp(tv,k);lookV.lerp(ball.position,k*1.5);camera.fov+=(55-camera.fov)*k}
+else{camera.position.lerp(cp.p,k);lookV.lerp(cp.l,k);camera.fov+=(cp.f-camera.fov)*k}
+camera.updateProjectionMatrix();camera.lookAt(lookV);
+zone.visible=zoneOn||mode==='P';ret.visible=mode==='P'&&st==='READY';
+renderer.render(scene,camera)}
+setMode('B');showMenu();loop();
+</script></body></html>

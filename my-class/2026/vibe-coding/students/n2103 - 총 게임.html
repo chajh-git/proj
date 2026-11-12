@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>플레리어: 네온 차원전쟁</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050717;color:#f5f5ff;font-family:system-ui,sans-serif}
+#app{max-width:1200px;margin:auto;padding:12px}
+header{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;background:linear-gradient(110deg,#10173e,#21104a);border:1px solid #684cff;border-radius:14px;box-shadow:0 0 25px #4b22ff40}
+h1{font-size:22px;margin:0;color:#d9c9ff;text-shadow:0 0 14px #985cff}
+.stats{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;font-weight:800}
+.stat{white-space:nowrap}
+#arena{position:relative;margin-top:10px;border:2px solid #5d4aff;border-radius:14px;overflow:hidden;box-shadow:0 0 30px #4226ff40;background:#080d24}
+canvas{display:block;width:100%;height:min(70vh,680px);cursor:crosshair}
+#help{text-align:center;font-size:13px;color:#c4cfff;padding:10px}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);font-size:clamp(18px,3vw,30px);font-weight:1000;color:#fff;text-shadow:0 0 7px #fff,0 0 20px #b65cff,0 0 35px #674cff;pointer-events:none;white-space:nowrap;text-align:center}
+.overlay{position:absolute;inset:0;z-index:5;background:#050617ef;display:flex;align-items:center;justify-content:center;padding:16px}
+.panel{max-width:700px;width:100%;padding:25px;border-radius:22px;text-align:center;background:linear-gradient(145deg,#141c4a,#090d28);border:1px solid #9b70ff;box-shadow:0 0 45px #713bff77}
+.panel h2{font-size:clamp(28px,5vw,48px);margin:4px;color:#e7dcff;text-shadow:0 0 24px #9c5bff}
+.panel p{color:#cbd3ff}
+button{cursor:pointer;color:#fff;font-weight:900;font-size:15px;padding:12px 20px;border:1px solid #c9b8ff;border-radius:11px;background:linear-gradient(120deg,#8e3dff,#3422c8);box-shadow:0 0 20px #703bff66;margin:5px}
+button:hover{filter:brightness(1.25);transform:translateY(-2px)}
+.cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.card{width:180px;padding:15px 10px;border:1px solid #686cff;border-radius:14px;background:linear-gradient(160deg,#172454,#160f3d);cursor:pointer}
+.card:hover{box-shadow:0 0 25px #7e4dff;transform:translateY(-4px)}
+.ico{font-size:32px}
+.desc{font-size:13px;color:#c7d1ff;margin:8px 0}
+#bottom{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.skillpill{background:#10183b;border:1px solid #3c4fa6;border-radius:9px;padding:7px 12px;font-size:13px}
+kbd{border:1px solid #8291ff;border-radius:5px;padding:2px 6px;background:#161e4a;color:#fff}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+<h1>✦ 플레리어 : 네온 차원전쟁 ✦</h1>
+<div class="stats">
+<div class="stat">라운드 <span id="round">1</span>/20</div>
+<div class="stat">❤️ <span id="hp">100</span>/<span id="maxhp">100</span></div>
+<div class="stat">⚔ 공격 <span id="atk">18</span></div>
+<div class="stat">👾 적 <span id="count">0</span></div>
+<div class="stat">✦ 궁극기 <span id="ult">0</span>%</div>
+</div>
+</header>
+
+<div id="arena">
+<canvas id="game" width="1100" height="650"></canvas>
+<div id="toast"></div>
+
+<div class="overlay" id="start">
+<div class="panel">
+<h2>플레리어</h2>
+<h3>NEON DIMENSION SURVIVAL</h3>
+<p>마우스로 조준 방향을 움직이세요. 총은 가까운 적에게 자동 발사됩니다!<br>몬스터를 처치하고 스킬을 강화해 20라운드를 돌파하세요.</p>
+<p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동　마우스 이동 조준　자동 발사</p>
+<p><kbd>Q</kbd> 돌진　<kbd>E</kbd> 폭발　<kbd>R</kbd> 시간 왜곡　<kbd>SPACE</kbd> 궁극기</p>
+<button id="startBtn">게임 시작</button>
+</div>
+</div>
+
+<div class="overlay" id="upgrade" style="display:none">
+<div class="panel">
+<h2>✧ 차원 강화 ✧</h2>
+<p>강화할 능력을 하나 선택하세요.</p>
+<div class="cards" id="cards"></div>
+</div>
+</div>
+</div>
+
+<div id="help">마우스를 움직여 조준하세요 · 총은 가장 가까운 적을 향해 자동 발사 · WASD 이동 · Q 순간 돌진 · E 폭발 사격 · R 시간 왜곡 · SPACE 차원 붕괴</div>
+<div id="bottom">
+<span class="skillpill">🟣 Q 돌진: <span id="qcd">준비 완료</span></span>
+<span class="skillpill">🔴 E 폭발: <span id="ecd">준비 완료</span></span>
+<span class="skillpill">🔵 R 시간 왜곡: <span id="rcd">준비 완료</span></span>
+<span class="skillpill">🌌 SPACE 궁극기: <span id="ultready">충전 중</span></span>
+</div>
+</div>
+
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
+let running=false,paused=false,last=0,spawnTimer=0,fireTimer=0,round=1,kills=0,ult=0,slowUntil=0;
+let mouse={x:550,y:325,down:false},keys={},player,enemies=[],shots=[],particles=[],rings=[],texts=[],shake=0;
+
+function say(t){
+$('toast').textContent=t;
+setTimeout(()=>{if($('toast').textContent===t)$('toast').textContent=''},1300)
+}
+
+function reset(){
+round=1;kills=0;ult=0;spawnTimer=0;fireTimer=0;
+enemies=[];shots=[];particles=[];rings=[];texts=[];
+player={x:550,y:325,r:16,hp:100,maxHp:100,atk:18,speed:250,inv:0,cd:{q:0,e:0,r:0}};
+running=true;paused=false;
+('start').style.display='none';('upgrade').style.display='none';
+say('마우스로 직접 조준! 발사는 자동!');
+last=performance.now();requestAnimationFrame(loop)
+}
+$('startBtn').onclick=reset;
+
+canvas.addEventListener('mousemove',e=>{
+const b=canvas.getBoundingClientRect();
+mouse.x=(e.clientX-b.left)/b.width*canvas.width;
+mouse.y=(e.clientY-b.top)/b.height*canvas.height
+});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+window.addEventListener('keydown',e=>{
+let k=e.key.toLowerCase();keys[k]=true;
+if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+if(!running||paused||!player)return;
+if(k==='q')dash();
+if(k==='e')blast();
+if(k==='r')timeWarp();
+if(e.code==='Space')ultimate()
+});
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function burst(x,y,color,n=25,power=200){
+for(let i=0;i<n;i++){
+let a=Math.random()*Math.PI*2,s=35+Math.random()*power;
+particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.3+Math.random()*.7,max:.9,color,r:1.5+Math.random()*4,glow:5+Math.random()*15})
+}
+}
+function ring(x,y,color,max=120,width=5){
+rings.push({x,y,color,r:5,max,life:.5,maxLife:.5,width})
+}
+function floatText(x,y,t,color='#fff'){
+texts.push({x,y,t,color,life:.8})
+}
+
+function dash(){
+if(player.cd.q>0)return;
+player.cd.q=4;
+let a=Math.atan2(mouse.y-player.y,mouse.x-player.x),ox=player.x,oy=player.y;
+for(let i=0;i<5;i++)particles.push({x:ox+(player.x-ox)*i/5,y:oy+(player.y-oy)*i/5,vx:(Math.random()-.5)*80,vy:(Math.random()-.5)*80,life:.4,max:.4,color:'#b15cff',r:8,glow:22});
+player.x=Math.max(20,Math.min(1080,player.x+Math.cos(a)*145));
+player.y=Math.max(20,Math.min(630,player.y+Math.sin(a)*145));
+player.inv=.35;ring(player.x,player.y,'#c477ff',100,8);
+burst(player.x,player.y,'#a85bff',40,240);shake=7;say('Q · 순간 돌진!')
+}
+
+function blast(){
+if(player.cd.e>0)return;
+player.cd.e=7;ring(player.x,player.y,'#ff376c',240,10);
+ring(player.x,player.y,'#ffb23f',180,4);
+burst(player.x,player.y,'#ff3b70',90,350);shake=13;
+enemies.forEach(e=>{
+let d=Math.hypot(e.x-player.x,e.y-player.y);
+if(d<240){let dmg=player.atk*2.2;e.hp-=dmg;floatText(e.x,e.y-20,'-'+Math.round(dmg),'#ff9bcb')}
+});
+say('E · 플라즈마 폭발!')
+}
+
+function timeWarp(){
+if(player.cd.r>0)return;
+player.cd.r=14;slowUntil=performance.now()+3500;
+ring(player.x,player.y,'#31eaff',330,7);
+burst(player.x,player.y,'#35dfff',70,280);
+for(let e of enemies)floatText(e.x,e.y-18,'SLOW','#80f7ff');
+say('R · 시간 왜곡!')
+}
+
+function ultimate(){
+if(ult<100){say('궁극기 게이지가 부족해!');return}
+ult=0;ring(player.x,player.y,'#e16bff',440,14);
+ring(player.x,player.y,'#fff',350,3);
+burst(player.x,player.y,'#e16bff',180,480);
+burst(player.x,player.y,'#58eaff',100,370);shake=20;
+enemies.forEach(e=>{
+let dmg=player.atk*3+28;e.hp-=dmg;
+floatText(e.x,e.y-25,'-'+Math.round(dmg),'#ffcbff')
+});
+say('🌌 차원 붕괴!!!')
+}
+
+function fire(){
+if(fireTimer>0)return;
+let target=null,dist=620;
+for(const e of enemies){
+const d=Math.hypot(e.x-player.x,e.y-player.y);
+if(d<dist){dist=d;target=e}
+}
+if(!target)return;
+fireTimer=.13;
+let a=Math.atan2(target.y-player.y,target.x-player.x);
+shots.push({x:player.x+Math.cos(a)*22,y:player.y+Math.sin(a)*22,vx:Math.cos(a)*780,vy:Math.sin(a)*780,life:1.15,dmg:player.atk,r:4});
+burst(player.x+Math.cos(a)*23,player.y+Math.sin(a)*23,'#6df5ff',4,65);
+floatText(player.x+Math.cos(a)*30,player.y+Math.sin(a)*30,'✦','#9dfaff')
+}
+
+function spawnEnemy(){
+let edge=Math.floor(Math.random()*4),
+x=edge===0?0:edge===1?1100:Math.random()*1100,
+y=edge===2?0:edge===3?650:Math.random()*650;
+let boss=round%5===0&&kills===0&&!enemies.some(e=>e.boss);
+let hp=boss?260+round*25:36+round*6;
+enemies.push({x,y,r:boss?30:12+Math.random()*5,hp,maxHp:hp,speed:boss?48:60+Math.random()*35+round*1.5,boss,phase:Math.random()*7});
+if(boss){say('☠ 차원 보스 출현!');ring(x,y,'#ff247c',90,8);burst(x,y,'#ff247c',45,220)}
+}
+
+function update(dt,now){
+player.inv=Math.max(0,player.inv-dt);fireTimer-=dt;
+for(let k of ['q','e','r'])player.cd[k]=Math.max(0,player.cd[k]-dt);
+
+let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),
+dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0),
+l=Math.hypot(dx,dy)||1;
+player.x=Math.max(18,Math.min(1082,player.x+dx/l*player.speed*dt));
+player.y=Math.max(18,Math.min(632,player.y+dy/l*player.speed*dt));
+
+fire();
+spawnTimer+=dt;
+if(spawnTimer>Math.max(.28,1.0-round*.03)&&enemies.length<Math.min(38,8+round*2)){
+spawnTimer=0;spawnEnemy()
+}
+
+shots.forEach(b=>{
+b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+for(let e of enemies){
+if(Math.hypot(b.x-e.x,b.y-e.y)<e.r+b.r){
+e.hp-=b.dmg;b.life=0;burst(b.x,b.y,'#72f5ff',8,90);
+floatText(e.x,e.y-e.r,'-'+b.dmg,'#b7ffff');break
+}
+}
+});
+shots=shots.filter(b=>b.life>0&&b.x>-20&&b.x<1120&&b.y>-20&&b.y<670);
+
+enemies.forEach(e=>{
+let a=Math.atan2(player.y-e.y,player.x-e.x),sf=now<slowUntil?.3:1;
+e.x+=Math.cos(a)*e.speed*sf*dt;e.y+=Math.sin(a)*e.speed*sf*dt;e.phase+=dt*5;
+if(Math.hypot(player.x-e.x,player.y-e.y)<player.r+e.r&&player.inv<=0){
+player.hp-=e.boss?18:9;player.inv=.65;shake=8;
+burst(player.x,player.y,'#ff4d86',20,180);
+if(player.hp<=0)end(false)
+}
+});
+
+let dead=enemies.filter(e=>e.hp<=0);
+dead.forEach(e=>{
+kills++;ult=Math.min(100,ult+(e.boss?25:5));
+burst(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?85:24,e.boss?350:180);
+ring(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?100:45,4)
+});
+enemies=enemies.filter(e=>e.hp>0);
+
+particles.forEach(p=>{
+p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.985;p.vy*=.985;p.life-=dt
+});
+particles=particles.filter(p=>p.life>0);
+rings.forEach(r=>{r.life-=dt;r.r=r.max*(1-r.life/r.maxLife)});
+rings=rings.filter(r=>r.life>0);
+texts.forEach(t=>{t.y-=30*dt;t.life-=dt});
+texts=texts.filter(t=>t.life>0);
+
+if(kills>=round*7&&enemies.length===0){
+if(round>=20){end(true);return}
+else{paused=true;showUpgrade()}
+}
+$('round').textContent=round;
+$('hp').textContent=Math.max(0,Math.ceil(player.hp));
+$('maxhp').textContent=player.maxHp;
+$('atk').textContent=player.atk;
+$('count').textContent=enemies.length;
+$('ult').textContent=Math.floor(ult);
+$('qcd').textContent=player.cd.q?player.cd.q.toFixed(1)+'초':'준비 완료';
+$('ecd').textContent=player.cd.e?player.cd.e.toFixed(1)+'초':'준비 완료';
+$('rcd').textContent=player.cd.r?player.cd.r.toFixed(1)+'초':'준비 완료';
+$('ultready').textContent=ult>=100?'사용 가능!':'충전 중';
+}
+
+function draw(now){
+ctx.save();
+if(shake>0){
+ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+shake*=.85;if(shake<.4)shake=0
+}
+let g=ctx.createLinearGradient(0,0,1100,650);
+g.addColorStop(0,'#08152d');g.addColorStop(.5,'#111039');g.addColorStop(1,'#071b2c');
+ctx.fillStyle=g;ctx.fillRect(-20,-20,1140,690);
+ctx.strokeStyle='#182b54';ctx.lineWidth=1;
+for(let x=0;x<1100;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,650);ctx.stroke()}
+for(let y=0;y<650;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(1100,y);ctx.stroke()}
+for(let i=0;i<45;i++){
+let x=(i*173+now*.012)%1100,y=(i*97+Math.sin(now*.001+i)*25)%650;
+ctx.fillStyle=`rgba(105,145,255,${.15+((i%4)*.1)})`;ctx.fillRect(x,y,2,2)
+}
+rings.forEach(r=>{
+ctx.save();ctx.globalAlpha=Math.max(0,r.life/r.maxLife);
+ctx.strokeStyle=r.color;ctx.shadowColor=r.color;ctx.shadowBlur=28;
+ctx.lineWidth=r.width;ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
+ctx.stroke();ctx.restore()
+});
+shots.forEach(b=>{
+ctx.save();ctx.strokeStyle='#73f7ff';ctx.shadowColor='#3af4ff';ctx.shadowBlur=20;ctx.lineWidth=5;
+ctx.beginPath();ctx.moveTo(b.x-b.vx*.025,b.y-b.vy*.025);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.restore()
+});
+enemies.forEach(e=>{
+ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.phase*.15);
+ctx.shadowColor=e.boss?'#ff237b':'#3ceeff';ctx.shadowBlur=e.boss?30:17;
+ctx.fillStyle=e.boss?'#8e174f':'#14617b';ctx.strokeStyle=e.boss?'#ff73b6':'#70f5ff';
+ctx.lineWidth=e.boss?4:2.5;ctx.beginPath();
+for(let i=0;i<8;i++){
+let a=i*Math.PI/4,r=e.r*(i%2?0.78:1.18);
+i?ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r):ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r)
+}
+ctx.closePath();ctx.fill();ctx.stroke();ctx.shadowBlur=0;
+ctx.fillStyle='#fff';ctx.beginPath();
+ctx.arc(-e.r*.28,-2,2.8,0,7);ctx.arc(e.r*.28,-2,2.8,0,7);ctx.fill();
+ctx.fillStyle='#28172d';ctx.fillRect(-e.r,e.r+5,e.r*2,5);
+ctx.fillStyle=e.boss?'#ff2e80':'#57f0b8';
+ctx.fillRect(-e.r,e.r+5,e.r*2*Math.max(0,e.hp/e.maxHp),5);
+if(e.boss){
+ctx.fillStyle='#ffadd9';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+ctx.fillText('DIMENSION BOSS',0,-e.r-12)
+}
+ctx.restore()
+});
+particles.forEach(p=>{
+ctx.save();ctx.globalAlpha=Math.min(1,p.life/p.max);
+ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=p.glow;
+ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.restore()
+});
+texts.forEach(t=>{
+ctx.save();ctx.globalAlpha=Math.max(0,t.life/.8);ctx.font='bold 16px system-ui';ctx.textAlign='center';
+ctx.fillStyle=t.color;ctx.shadowColor=t.color;ctx.shadowBlur=12;ctx.fillText(t.t,t.x,t.y);ctx.restore()
+});
+
+if(player){
+ctx.save();ctx.translate(player.x,player.y);
+let a=Math.atan2(mouse.y-player.y,mouse.x-player.x);ctx.rotate(a);
+ctx.shadowColor=player.inv>0?'#fff':'#b26aff';ctx.shadowBlur=28;
+ctx.fillStyle=player.inv>0?'#fff':'#a58bff';ctx.strokeStyle='#f4eaff';ctx.lineWidth=3;
+ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+ctx.fillStyle='#d5ffff';ctx.fillRect(4,-6,26,12);
+ctx.fillStyle='#5233c5';ctx.fillRect(8,-3,20,6);ctx.restore();
+
+ctx.save();ctx.strokeStyle='#a4faff';ctx.shadowColor='#63efff';ctx.shadowBlur=12;ctx.lineWidth=1.5;
+ctx.beginPath();ctx.arc(mouse.x,mouse.y,10,0,Math.PI*2);
+ctx.moveTo(mouse.x-17,mouse.y);ctx.lineTo(mouse.x-5,mouse.y);
+ctx.moveTo(mouse.x+5,mouse.y);ctx.lineTo(mouse.x+17,mouse.y);
+ctx.moveTo(mouse.x,mouse.y-17);ctx.lineTo(mouse.x,mouse.y-5);
+ctx.moveTo(mouse.x,mouse.y+5);ctx.lineTo(mouse.x,mouse.y+17);
+ctx.stroke();ctx.restore()
+}
+ctx.restore()
+}
+
+function showUpgrade(){
+let opts=[
+{ico:'⚔️',name:'초고속 탄환',desc:'공격력 +7',fn:()=>player.atk+=7},
+{ico:'💖',name:'생명력 회복',desc:'체력 완전 회복',fn:()=>player.hp=player.maxHp},
+{ico:'⚡',name:'신속 강화',desc:'이동 속도 +15%',fn:()=>player.speed*=1.15},
+{ico:'🌌',name:'궁극기 충전',desc:'궁극기 게이지 +45%',fn:()=>ult=Math.min(100,ult+45)},
+{ico:'🛡️',name:'차원 갑옷',desc:'최대 체력 +25',fn:()=>{player.maxHp+=25;player.hp=Math.min(player.maxHp,player.hp+25)}}
+].sort(()=>Math.random()-.5);
+$('cards').innerHTML='';
+opts.slice(0,3).forEach(o=>{
+let d=document.createElement('div');d.className='card';
+d.innerHTML=`<div class="ico">${o.ico}</div><b>o.name</b><divclass="desc">{o.desc}</div><button>강화 선택</button>`;
+d.onclick=()=>{
+o.fn();round++;kills=0;spawnTimer=0;paused=false;$('upgrade').style.display='none';
+say('ROUND '+round+' START!');last=performance.now();requestAnimationFrame(loop)
+};
+$('cards').appendChild(d)
+});
+$('upgrade').style.display='flex'
+}
+
+function end(win){
+if(!running)return;running=false;paused=true;
+$('start').style.display='flex';
+$('start').querySelector('h2').textContent=win?'차원 정복 성공!':'GAME OVER';
+$('start').querySelector('h3').textContent=win?'20라운드 클리어!':'라운드 '+round+'에서 쓰러졌습니다';
+$('start').querySelectorAll('p')[0].textContent=win?'완벽한 생존! 플레리어가 차원을 구했습니다.':'다시 도전해 더 강해져 보세요.';
+$('startBtn').textContent='다시 시작'
+}
+
+function loop(now){
+if(!running)return;
+let dt=Math.min(.033,(now-last)/1000||.016);last=now;
+if(!paused)update(dt,now);
+draw(now);
+if(running)requestAnimationFrame(loop)
+}
+})();
+</script>
+</body>
+</html>

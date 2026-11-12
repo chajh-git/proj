@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 콜로세움 동물 배틀 (FPS/TPS)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
+            overflow: hidden;
+            background-color: #05070d;
+            margin: 0;
+        }
+
+
+        .font-title { font-family: 'Black Han Sans', sans-serif; }
+
+
+        .glass-panel {
+            background: rgba(10, 15, 29, 0.92);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+        }
+
+
+        .glass-card {
+            background: rgba(26, 35, 54, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+
+        .glass-card:hover {
+            transform: translateY(-5px) scale(1.03);
+            border-color: rgba(245, 158, 11, 0.8);
+            box-shadow: 0 12px 28px -4px rgba(245, 158, 11, 0.35);
+        }
+
+
+        .glass-card.selected-p1 {
+            border-color: #6366f1;
+            background: rgba(79, 70, 229, 0.45);
+            box-shadow: 0 0 25px rgba(99, 102, 241, 0.8);
+        }
+
+
+        .glass-card.selected-p2 {
+            border-color: #f43f5e;
+            background: rgba(225, 29, 72, 0.45);
+            box-shadow: 0 0 25px rgba(244, 63, 94, 0.8);
+        }
+
+
+        @keyframes floatDamage {
+            0% { opacity: 1; transform: translateY(0) scale(1.3); }
+            30% { opacity: 1; transform: translateY(-45px) scale(1.8); }
+            100% { opacity: 0; transform: translateY(-100px) scale(0.8); }
+        }
+
+
+        .damage-pop {
+            position: absolute;
+            animation: floatDamage 0.9s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+            pointer-events: none;
+            font-family: 'Black Han Sans', sans-serif;
+            text-shadow: 0 0 10px rgba(0,0,0,0.9), 0 0 20px rgba(245, 158, 11, 0.6);
+        }
+
+
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(10, 15, 29, 0.7); }
+        ::-webkit-scrollbar-thumb { background: rgba(245, 158, 11, 0.6); border-radius: 4px; }
+    </style>
+</head>
+<body class="text-white h-screen w-screen relative">
+
+
+    <!-- 3D Canvas Viewport -->
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0 cursor-crosshair"></div>
+
+
+    <!-- UI Overlay Layer -->
+    <div id="ui-layer" class="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-3 md:p-5">
+       
+        <!-- HEADER -->
+        <header class="flex justify-between items-center w-full pointer-events-auto">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                    <i class="fa-solid fa-chess-rook text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-title text-2xl md:text-3xl tracking-wide bg-gradient-to-r from-amber-300 via-indigo-300 to-pink-400 bg-clip-text text-transparent">
+                        콜로세움 동물 대전 (FPS / TPS)
+                    </h1>
+                    <p class="text-xs text-amber-200/80">고유 공격 모션 & 특수 스킬 액션</p>
+                </div>
+            </div>
+           
+            <div class="flex items-center gap-2">
+                <button id="btn-copy-code" onclick="copySourceCode()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-regular fa-copy"></i> 코드 복사
+                </button>
+            </div>
+        </header>
+
+
+        <!-- SELECTION SCREEN OVERLAY -->
+        <section id="select-screen" class="pointer-events-auto flex-1 flex flex-col my-3 glass-panel rounded-2xl p-4 md:p-6 overflow-hidden max-w-6xl mx-auto w-full shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-slate-700/60 gap-3">
+                <div>
+                    <h2 class="font-title text-xl text-amber-300 flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved"></i> 콜로세움 전사 선택 (20종)
+                    </h2>
+                    <p class="text-xs text-gray-300">플레이어 동물과 상대 AI 동물을 선택하세요.</p>
+                </div>
+
+
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center bg-slate-900/80 rounded-xl p-1 border border-slate-700">
+                        <button id="mode-player" onclick="setSelectTarget('player')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white">
+                            내 동물 선택 (P1)
+                        </button>
+                        <button id="mode-ai" onclick="setSelectTarget('ai')" class="px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+                            상대 AI 선택
+                        </button>
+                    </div>
+                    <button onclick="selectRandomAnimals()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-400 border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-dice"></i> 랜덤 선택
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Roster & Match Preview Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0 mt-3">
+               
+                <!-- Roster List (Left 8 Cols) -->
+                <div class="lg:col-span-8 overflow-y-auto pr-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 h-full max-h-[48vh] lg:max-h-none" id="roster-grid">
+                    <!-- JavaScript Populates 20 Animals -->
+                </div>
+
+
+                <!-- Preview Box (Right 4 Cols) -->
+                <div class="lg:col-span-4 bg-slate-900/80 rounded-xl p-4 flex flex-col justify-between border border-slate-800">
+                    <div>
+                        <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5 border-b border-slate-800 pb-2">콜로세움 매치업</h3>
+                       
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <!-- Player Preview Card -->
+                            <div class="bg-indigo-950/60 border border-indigo-500/40 rounded-lg p-2.5 text-center">
+                                <span class="text-[10px] bg-indigo-600 text-white font-bold px-2 py-0.5 rounded-full uppercase">Player</span>
+                                <div id="p1-preview-name" class="font-title text-base text-indigo-200 mt-1.5">투투</div>
+                                <div id="p1-preview-role" class="text-xs text-indigo-400">아메리칸 숏헤어</div>
+                            </div>
+                            <!-- AI Preview Card -->
+                            <div class="bg-rose-950/60 border border-rose-500/40 rounded-lg p-2.5 text-center">
+                                <span class="text-[10px] bg-rose-600 text-white font-bold px-2 py-0.5 rounded-full uppercase">AI 상대</span>
+                                <div id="p2-preview-name" class="font-title text-base text-rose-200 mt-1.5">코끼리</div>
+                                <div id="p2-preview-role" class="text-xs text-rose-400">거신류</div>
+                            </div>
+                        </div>
+
+
+                        <!-- Active Stats -->
+                        <div id="active-info-box" class="space-y-2 bg-slate-800/60 p-3 rounded-lg border border-slate-700/60">
+                            <div class="space-y-1 text-xs">
+                                <div>
+                                    <div class="flex justify-between text-gray-300 mb-0.5">
+                                        <span>체력 (HP)</span>
+                                        <span id="info-hp-val" class="font-bold">240</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                                        <div id="info-hp-bar" class="bg-emerald-500 h-full w-[60%]"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-gray-300 mb-0.5">
+                                        <span>공격력 (ATK)</span>
+                                        <span id="info-atk-val" class="font-bold">48</span>
+                                    </div>
+                                    <div class="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
+                                        <div id="info-atk-bar" class="bg-rose-500 h-full w-[70%]"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="pt-2 border-t border-slate-700/50 text-xs space-y-1">
+                                <div class="text-amber-300 font-semibold" id="info-skill0">좌클릭: 기본 모션 공격</div>
+                                <div class="text-indigo-300 font-semibold" id="info-skill1">우클릭: 고유 특수 스킬</div>
+                                <div class="text-purple-300 font-semibold" id="info-skill2">E키: 고유 궁극 필살기</div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Controls Guide Mini Box -->
+                    <div class="my-2 text-[11px] bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 text-slate-300 space-y-0.5">
+                        <div class="text-amber-400 font-bold mb-0.5"><i class="fa-solid fa-keyboard"></i> 조작 안내</div>
+                        <div>WASD: 이동 | Space: 점프 | Shift: 대시</div>
+                        <div>마우스 이동: 시점 조절 | C: 1인칭/3인칭 전환</div>
+                        <div>마우스 클릭 / HUD 버튼: 공격 발동</div>
+                    </div>
+
+
+                    <button onclick="startActionBattle()" class="w-full py-3 rounded-xl font-title text-base bg-gradient-to-r from-amber-600 via-indigo-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white shadow-lg shadow-indigo-600/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-play"></i> 콜로세움 대전 시작
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- IN-GAME HUD OVERLAY -->
+        <section id="battle-hud" class="hidden pointer-events-none flex-1 flex flex-col justify-between my-1">
+           
+            <!-- Crosshair -->
+            <div id="hud-crosshair" class="crosshair flex items-center justify-center">
+                <div class="w-3.5 h-3.5 border-2 border-amber-400/90 rounded-full flex items-center justify-center">
+                    <div class="w-1 h-1 bg-white rounded-full"></div>
+                </div>
+            </div>
+
+
+            <!-- Top Health Bars -->
+            <div class="grid grid-cols-2 gap-4 max-w-5xl mx-auto w-full pointer-events-auto">
+                <!-- Player HUD -->
+                <div class="glass-panel p-2.5 rounded-xl border-l-4 border-l-indigo-500">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-title text-base text-indigo-300" id="hud-p1-name">투투 (Player)</span>
+                        <span id="hud-p1-hp-num" class="text-xs font-bold text-slate-300">240 / 240</span>
+                    </div>
+                    <div class="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden border border-slate-700">
+                        <div id="hud-p1-hp-bar" class="h-full bg-gradient-to-r from-emerald-500 to-green-400 rounded-full transition-all duration-150 w-full"></div>
+                    </div>
+                </div>
+
+
+                <!-- AI HUD -->
+                <div class="glass-panel p-2.5 rounded-xl border-r-4 border-r-rose-500 text-right">
+                    <div class="flex justify-between items-center mb-1 flex-row-reverse">
+                        <span class="font-title text-base text-rose-300" id="hud-p2-name">코끼리 (AI)</span>
+                        <span id="hud-p2-hp-num" class="text-xs font-bold text-slate-300">420 / 420</span>
+                    </div>
+                    <div class="w-full bg-slate-900/80 h-3 rounded-full overflow-hidden border border-slate-700">
+                        <div id="hud-p2-hp-bar" class="h-full bg-gradient-to-r from-rose-500 to-red-400 rounded-full transition-all duration-150 w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Announcement Banner -->
+            <div id="battle-announcer" class="text-center my-auto opacity-0 transition-opacity duration-300">
+                <div id="announcer-text" class="inline-block px-6 py-2 rounded-full font-title text-xl md:text-2xl glass-panel border border-amber-400/60 text-amber-300 shadow-2xl">
+                    게임 시작!
+                </div>
+            </div>
+
+
+            <!-- Bottom Skill Buttons & Camera Info -->
+            <div class="flex flex-col sm:flex-row justify-between items-end max-w-4xl mx-auto w-full gap-3 pointer-events-auto">
+                <!-- Camera View Mode Toggle Button -->
+                <button onclick="toggleCameraMode()" class="glass-panel px-4 py-2 rounded-xl border border-indigo-500/30 text-xs font-bold text-indigo-300 flex items-center gap-2 hover:bg-indigo-900/40 transition">
+                    <i class="fa-solid fa-camera"></i>
+                    <span id="camera-view-text">3인칭 시점 (C키)</span>
+                </button>
+
+
+                <!-- Interactive Skill Action Buttons -->
+                <div class="flex gap-2">
+                    <button id="btn-atk-basic" onclick="triggerPlayerAttack('basic')" class="glass-panel px-3.5 py-2 rounded-xl border border-amber-500/40 hover:bg-amber-900/40 active:scale-95 transition text-center">
+                        <div class="text-[10px] text-amber-300">좌클릭</div>
+                        <div id="hud-skill0-name" class="font-bold text-xs text-white">기본 공격</div>
+                    </button>
+                    <button id="btn-atk-skill1" onclick="triggerPlayerAttack('skill1')" class="glass-panel px-3.5 py-2 rounded-xl border border-indigo-500/40 hover:bg-indigo-900/40 active:scale-95 transition text-center">
+                        <div class="text-[10px] text-indigo-300">우클릭</div>
+                        <div id="hud-skill1-name" class="font-bold text-xs text-indigo-200">특수 스킬</div>
+                        <div id="cd-text-skill1" class="text-[9px] text-indigo-400 mt-0.5">READY</div>
+                    </button>
+                    <button id="btn-atk-ult" onclick="triggerPlayerAttack('ult')" class="glass-panel px-3.5 py-2 rounded-xl border border-purple-500/40 hover:bg-purple-900/40 active:scale-95 transition text-center">
+                        <div class="text-[10px] text-purple-300">E 키</div>
+                        <div id="hud-skill2-name" class="font-bold text-xs text-purple-200">필살 궁극기</div>
+                        <div id="cd-text-ult" class="text-[9px] text-purple-400 mt-0.5">READY</div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- RESULT MODAL -->
+        <div id="result-modal" class="hidden pointer-events-auto fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+            <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-md w-full text-center border border-amber-500/40 shadow-2xl">
+                <div id="result-icon-container" class="w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4 text-4xl shadow-lg">
+                    <i id="result-icon" class="fa-solid fa-trophy"></i>
+                </div>
+                <h2 id="result-title" class="font-title text-3xl text-amber-300 mb-2">승리하였습니다!</h2>
+                <p id="result-desc" class="text-sm text-gray-300 mb-6">콜로세움의 챔피언이 되었습니다!</p>
+
+
+                <div class="flex gap-3">
+                    <button onclick="restartBattle()" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition border border-slate-700 text-sm">
+                        재대결
+                    </button>
+                    <button onclick="returnToSelect()" class="flex-1 py-3 bg-gradient-to-r from-amber-600 via-indigo-600 to-rose-600 hover:opacity-90 text-white font-bold rounded-xl transition text-sm shadow-lg shadow-indigo-600/30">
+                        동물 변경
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+
+    <!-- DAMAGE POPUP CONTAINER -->
+    <div id="damage-container" class="absolute inset-0 pointer-events-none z-20"></div>
+
+
+    <script>
+        /* =========================================================================
+           1. ANIMAL ROSTER DATA & SKILLS (20 SPECIES)
+           ========================================================================= */
+        const ANIMALS = [
+            {
+                id: 'tutu', name: '투투', type: '아메리칸 숏헤어', hp: 270, atk: 54, spd: 15.0, size: 0.72,
+                color: 0x94a3b8, secColor: 0x334155, shape: 'cat',
+                atkBasic: { name: '냥냥 번개베기', dmg: 28, range: 3.4, motion: 'cat_claw' },
+                skill1: { name: '냥냥 초음속 도약', cd: 3.0, dmg: 42, range: 4.8, motion: 'pounce' },
+                ult: { name: '아메카숏 신속난무', cd: 7.2, dmg: 88, range: 5.5, motion: 'blitz' }
+            },
+            {
+                id: 'ttotto', name: '또또', type: '하얀 개', hp: 285, atk: 50, spd: 14.0, size: 0.78,
+                color: 0xfffffa, secColor: 0xe2e8f0, shape: 'dog_white',
+                atkBasic: { name: '신속 멍멍 물기', dmg: 26, range: 3.4, motion: 'bite' },
+                skill1: { name: '하얀 털 돌풍', cd: 2.8, dmg: 40, range: 4.6, motion: 'spin_dash' },
+                ult: { name: '복실복실 수호 회오리', cd: 7.5, dmg: 84, range: 5.2, motion: 'bark_whirl' }
+            },
+            {
+                id: 'kaku', name: '카쿠', type: '푸들', hp: 295, atk: 48, spd: 13.0, size: 0.78,
+                color: 0xd97706, secColor: 0x78350f, shape: 'poodle',
+                atkBasic: { name: '팝콘 폭발 펀치', dmg: 25, range: 3.2, motion: 'poodle_punch' },
+                skill1: { name: '푸들 바운스 훅', cd: 3.0, dmg: 38, range: 4.0, motion: 'bounce_hook' },
+                ult: { name: '갈색 대지 바위구르기', cd: 8.0, dmg: 80, range: 4.8, motion: 'heavy_roll' }
+            },
+            {
+                id: 'elephant', name: '코끼리', type: '거신류', hp: 460, atk: 48, spd: 8.0, size: 1.35,
+                color: 0x64748b, secColor: 0x94a3b8, shape: 'elephant',
+                atkBasic: { name: '긴 코 후려치기', dmg: 32, range: 4.6, motion: 'trunk_slap' },
+                skill1: { name: '대지 발구르기 충격파', cd: 4.2, dmg: 48, range: 5.6, motion: 'stomp_earth' },
+                ult: { name: '상아 돌파 스토머', cd: 9.5, dmg: 98, range: 7.0, motion: 'tusk_blaster' }
+            },
+            {
+                id: 'eagle', name: '독수리', type: '비행류', hp: 240, atk: 52, spd: 16.0, size: 0.7,
+                color: 0x78350f, secColor: 0xffffff, shape: 'eagle',
+                atkBasic: { name: '날개 바람 강타', dmg: 26, range: 3.8, motion: 'wing_wing' },
+                skill1: { name: '비행 급강하 발톱', cd: 3.0, dmg: 42, range: 5.2, motion: 'eagle_dive' },
+                ult: { name: '폭풍 선회 비행 난무', cd: 7.5, dmg: 85, range: 6.0, motion: 'tornado_soar' }
+            },
+            {
+                id: 'lion', name: '사자', type: '맹수류', hp: 350, atk: 56, spd: 12.5, size: 1.05,
+                color: 0xd97706, secColor: 0x92400e, shape: 'lion',
+                atkBasic: { name: '사자 양손 펀치', dmg: 30, range: 3.8, motion: 'lion_paw' },
+                skill1: { name: '백수의 왕 포효', cd: 3.5, dmg: 45, range: 4.8, motion: 'lion_roar' },
+                ult: { name: '황금 갈기 피니시', cd: 8.0, dmg: 90, range: 5.5, motion: 'lion_ult' }
+            },
+            {
+                id: 'tiger', name: '호랑이', type: '맹수류', hp: 345, atk: 58, spd: 13.0, size: 1.05,
+                color: 0xeab308, secColor: 0x0f172a, shape: 'tiger',
+                atkBasic: { name: '맹호 호랑이 발톱', dmg: 32, range: 3.8, motion: 'tiger_claw' },
+                skill1: { name: '맹호 신속 도약', cd: 3.2, dmg: 46, range: 5.0, motion: 'tiger_pounce' },
+                ult: { name: '산군 대파쇄', cd: 8.2, dmg: 92, range: 5.6, motion: 'tiger_ult' }
+            },
+            {
+                id: 'bear', name: '곰', type: '야수류', hp: 410, atk: 55, spd: 9.5, size: 1.25,
+                color: 0x451a03, secColor: 0x78350f, shape: 'bear',
+                atkBasic: { name: '묵직한 곰 내려치기', dmg: 34, range: 4.0, motion: 'bear_slap' },
+                skill1: { name: '곰베어 가슴 베어버리기', cd: 4.0, dmg: 50, range: 4.8, motion: 'bear_hug' },
+                ult: { name: '대지 파괴 베어 스톰프', cd: 9.0, dmg: 96, range: 6.0, motion: 'bear_ult' }
+            },
+            {
+                id: 'gorilla', name: '고릴라', type: '영장류', hp: 380, atk: 57, spd: 11.0, size: 1.15,
+                color: 0x1e293b, secColor: 0x475569, shape: 'gorilla',
+                atkBasic: { name: '고릴라 양주먹 해머', dmg: 33, range: 3.6, motion: 'gorilla_smash' },
+                skill1: { name: '가슴 두드리기 포효', cd: 3.8, dmg: 44, range: 4.5, motion: 'gorilla_drum' },
+                ult: { name: '킹콩 분노의 연속 펀치', cd: 8.5, dmg: 94, range: 5.4, motion: 'gorilla_ult' }
+            },
+            {
+                id: 'rhino', name: '코뿔소', type: '갑주류', hp: 430, atk: 50, spd: 10.0, size: 1.28,
+                color: 0x475569, secColor: 0x64748b, shape: 'rhino',
+                atkBasic: { name: '뿔 치올리기', dmg: 29, range: 3.8, motion: 'rhino_horn' },
+                skill1: { name: '철벽 불도저 돌진', cd: 4.0, dmg: 52, range: 5.8, motion: 'rhino_charge' },
+                ult: { name: '강철 뿔 폭풍 받아치기', cd: 8.8, dmg: 95, range: 6.2, motion: 'rhino_ult' }
+            },
+            {
+                id: 'hippo', name: '하마', type: '중갑류', hp: 440, atk: 51, spd: 9.0, size: 1.3,
+                color: 0x6b7280, secColor: 0x9ca3af, shape: 'hippo',
+                atkBasic: { name: '대형 입 물어뜯기', dmg: 31, range: 3.6, motion: 'hippo_bite' },
+                skill1: { name: '하수구 수중 쿵쿵', cd: 4.0, dmg: 46, range: 4.8, motion: 'hippo_stomp' },
+                ult: { name: '하마 대폭발 삼키기', cd: 9.0, dmg: 95, range: 5.8, motion: 'hippo_ult' }
+            },
+            {
+                id: 'cheetah', name: '치타', type: '스피드류', hp: 250, atk: 53, spd: 17.5, size: 0.8,
+                color: 0xf59e0b, secColor: 0x451a03, shape: 'cheetah',
+                atkBasic: { name: '음속 스크래치', dmg: 25, range: 3.4, motion: 'cheetah_claw' },
+                skill1: { name: '잔상 대시 베기', cd: 2.6, dmg: 39, range: 5.2, motion: 'cheetah_dash' },
+                ult: { name: '초음속 음속 폭풍 슬래시', cd: 7.0, dmg: 84, range: 6.0, motion: 'cheetah_ult' }
+            },
+            {
+                id: 'wolf', name: '늑대', type: '야수류', hp: 280, atk: 51, spd: 14.5, size: 0.85,
+                color: 0x64748b, secColor: 0x1e293b, shape: 'wolf',
+                atkBasic: { name: '늑대 물어뜯기', dmg: 27, range: 3.4, motion: 'wolf_bite' },
+                skill1: { name: '달빛 질주 기습', cd: 3.0, dmg: 41, range: 4.8, motion: 'wolf_pounce' },
+                ult: { name: '울부짖는 늑대 무리', cd: 7.8, dmg: 86, range: 5.5, motion: 'wolf_ult' }
+            },
+            {
+                id: 'fox', name: '여우', type: '민첩류', hp: 255, atk: 49, spd: 15.5, size: 0.75,
+                color: 0xea580c, secColor: 0xffffff, shape: 'fox',
+                atkBasic: { name: '여우 꼬리 치기', dmg: 24, range: 3.2, motion: 'fox_tail' },
+                skill1: { name: '환영 분신 회피격', cd: 2.8, dmg: 37, range: 4.4, motion: 'fox_dash' },
+                ult: { name: '구미호 옥구슬 폭발', cd: 7.2, dmg: 82, range: 5.3, motion: 'fox_ult' }
+            },
+            {
+                id: 'panda', name: '판다', type: '무술류', hp: 360, atk: 50, spd: 11.5, size: 1.1,
+                color: 0xf8fafc, secColor: 0x0f172a, shape: 'panda',
+                atkBasic: { name: '대나무 권법 펀치', dmg: 28, range: 3.6, motion: 'panda_punch' },
+                skill1: { name: '굴러서 쿵후 킥', cd: 3.4, dmg: 43, range: 4.8, motion: 'panda_roll' },
+                ult: { name: '용의 전사 구르기 폭발', cd: 8.0, dmg: 89, range: 5.6, motion: 'panda_ult' }
+            },
+            {
+                id: 'crocodile', name: '악어', type: '파충류', hp: 370, atk: 54, spd: 10.5, size: 1.15,
+                color: 0x15803d, secColor: 0x166534, shape: 'crocodile',
+                atkBasic: { name: '강철 턱 데스롤', dmg: 31, range: 3.6, motion: 'croc_bite' },
+                skill1: { name: '꼬리 채찍 강타', cd: 3.6, dmg: 45, range: 4.6, motion: 'croc_tail' },
+                ult: { name: '수중 데스롤 롤링', cd: 8.2, dmg: 91, range: 5.4, motion: 'croc_ult' }
+            },
+            {
+                id: 'kangaroo', name: '캥거루', type: '격투류', hp: 310, atk: 53, spd: 14.0, size: 0.95,
+                color: 0xb45309, secColor: 0xd97706, shape: 'kangaroo',
+                atkBasic: { name: '복싱 잽 연타', dmg: 27, range: 3.4, motion: 'kanga_jab' },
+                skill1: { name: '양발 드롭킥', cd: 3.2, dmg: 44, range: 4.6, motion: 'kanga_kick' },
+                ult: { name: '챔피언 캥거루 KO 펀치', cd: 7.8, dmg: 88, range: 5.2, motion: 'kanga_ult' }
+            },
+            {
+                id: 'bull', name: '황소', type: '돌진류', hp: 390, atk: 52, spd: 11.5, size: 1.2,
+                color: 0x78350f, secColor: 0x451a03, shape: 'bull',
+                atkBasic: { name: '황소 뿔 들이받기', dmg: 29, range: 3.8, motion: 'bull_horn' },
+                skill1: { name: '투우사의 분노 돌진', cd: 3.6, dmg: 47, range: 5.5, motion: 'bull_charge' },
+                ult: { name: '대지 삼키는 황소 폭주', cd: 8.5, dmg: 93, range: 6.2, motion: 'bull_ult' }
+            },
+            {
+                id: 'snake', name: '뱀', type: '맹독류', hp: 260, atk: 55, spd: 14.8, size: 0.8,
+                color: 0x16a34a, secColor: 0x15803d, shape: 'snake',
+                atkBasic: { name: '맹독 독니 물기', dmg: 27, range: 3.6, motion: 'snake_bite' },
+                skill1: { name: '조르기 압박', cd: 3.2, dmg: 42, range: 4.2, motion: 'snake_constrict' },
+                ult: { name: '거대 독사 독액 분사', cd: 7.6, dmg: 87, range: 5.5, motion: 'snake_ult' }
+            },
+            {
+                id: 'dragon', name: '드래곤', type: '신화류', hp: 390, atk: 60, spd: 12.2, size: 1.25,
+                color: 0xd97706, secColor: 0xef4444, shape: 'dragon',
+                atkBasic: { name: '화염 발톱', dmg: 33, range: 4.0, motion: 'dragon_claw' },
+                skill1: { name: '드래곤 브레스', cd: 3.6, dmg: 50, range: 5.5, motion: 'fire_breath' },
+                ult: { name: '용의 강림 멸망', cd: 9.2, dmg: 100, range: 6.8, motion: 'dragon_ult' }
+            }
+        ];
+
+
+        /* =========================================================================
+           2. GLOBAL STATE VARIABLES
+           ========================================================================= */
+        let selectTarget = 'player'; // 'player' or 'ai'
+        let p1Data = ANIMALS[0];
+        let p2Data = ANIMALS[3];
+
+
+        let scene, camera, renderer;
+        let p1MeshObj = null, p2MeshObj = null;
+        let p1Group = null, p2Group = null;
+
+
+        let isBattling = false;
+        let isPointerLocked = false;
+        let cameraMode = 'tps'; // 'tps' or 'fps'
+
+
+        // P1 & P2 Positions / Stats
+        let p1Pos = new THREE.Vector3(-12, 0, 0);
+        let p2Pos = new THREE.Vector3(12, 0, 0);
+        let p1RotY = Math.PI / 2;
+        let p2RotY = -Math.PI / 2;
+
+
+        let p1Hp = 100, p1MaxHp = 100;
+        let p2Hp = 100, p2MaxHp = 100;
+
+
+        let p1Cd1 = 0, p1CdUlt = 0;
+        let p2Cd1 = 0, p2CdUlt = 0;
+        let p2AiAttackTimer = 0;
+
+
+        // Camera control angles
+        let cameraYaw = Math.PI / 2;
+        let cameraPitch = 0.15;
+
+
+        // Key states
+        const keys = { w: false, a: false, s: false, d: false, shift: false, space: false };
+
+
+        // FX Particles & Timers
+        const particles = [];
+        let hitStopTimer = 0;
+        let lastTime = performance.now();
+
+
+        /* =========================================================================
+           3. UI SELECTION AND MANAGEMENT
+           ========================================================================= */
+        function setSelectTarget(target) {
+            selectTarget = target;
+            document.getElementById('mode-player').className = target === 'player'
+                ? "px-4 py-1.5 rounded-lg text-xs font-bold transition bg-indigo-600 text-white"
+                : "px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            document.getElementById('mode-ai').className = target === 'ai'
+                ? "px-4 py-1.5 rounded-lg text-xs font-bold transition bg-rose-600 text-white"
+                : "px-4 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white";
+            renderRosterCards();
+        }
+
+
+        function renderRosterCards() {
+            const container = document.getElementById('roster-grid');
+            container.innerHTML = '';
+
+
+            ANIMALS.forEach((animal) => {
+                const card = document.createElement('div');
+                let cardClass = "glass-card p-3 rounded-xl cursor-pointer flex flex-col justify-between border relative ";
+                if (p1Data.id === animal.id) cardClass += "selected-p1 ";
+                if (p2Data.id === animal.id) cardClass += "selected-p2 ";
+
+
+                card.className = cardClass;
+                card.onclick = () => selectAnimal(animal);
+
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-title text-sm text-white">${animal.name}</span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">${animal.type}</span>
+                    </div>
+                    <div class="text-[11px] text-gray-300 space-y-0.5 my-1">
+                        <div class="flex justify-between"><span>HP</span> <span class="font-bold text-emerald-400">${animal.hp}</span></div>
+                        <div class="flex justify-between"><span>ATK</span> <span class="font-bold text-rose-400">${animal.atk}</span></div>
+                        <div class="flex justify-between"><span>SPD</span> <span class="font-bold text-sky-400">${animal.spd}</span></div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+
+        function selectAnimal(animal) {
+            if (selectTarget === 'player') {
+                p1Data = animal;
+            } else {
+                p2Data = animal;
+            }
+            renderRosterCards();
+            updatePreviewUI(selectTarget === 'player' ? p1Data : p2Data);
+            update3DModels();
+        }
+
+
+        function selectRandomAnimals() {
+            const p1Idx = Math.floor(Math.random() * ANIMALS.length);
+            let p2Idx = Math.floor(Math.random() * ANIMALS.length);
+            if (p2Idx === p1Idx) p2Idx = (p1Idx + 1) % ANIMALS.length;
+
+
+            p1Data = ANIMALS[p1Idx];
+            p2Data = ANIMALS[p2Idx];
+
+
+            renderRosterCards();
+            updatePreviewUI(p1Data);
+            update3DModels();
+        }
+
+
+        function updatePreviewUI(animal) {
+            document.getElementById('p1-preview-name').innerText = p1Data.name;
+            document.getElementById('p1-preview-role').innerText = p1Data.type;
+            document.getElementById('p2-preview-name').innerText = p2Data.name;
+            document.getElementById('p2-preview-role').innerText = p2Data.type;
+
+
+            document.getElementById('info-hp-val').innerText = animal.hp;
+            document.getElementById('info-hp-bar').style.width = Math.min(100, (animal.hp / 480) * 100) + '%';
+            document.getElementById('info-atk-val').innerText = animal.atk;
+            document.getElementById('info-atk-bar').style.width = Math.min(100, (animal.atk / 65) * 100) + '%';
+
+
+            document.getElementById('info-skill0').innerText = `좌클릭: ${animal.atkBasic.name}`;
+            document.getElementById('info-skill1').innerText = `우클릭: ${animal.skill1.name}`;
+            document.getElementById('info-skill2').innerText = `E 키: ${animal.ult.name}`;
+        }
+
+
+        /* =========================================================================
+           4. THREE.JS ENGINE SETUP & COLOSSEUM SCENE CREATION
+           ========================================================================= */
+        function initEngine() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e17);
+            scene.fog = new THREE.FogExp2(0x0a0e17, 0.012);
+
+
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+
+            // Lighting Setup
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+
+            const sunLight = new THREE.DirectionalLight(0xffedd5, 1.4);
+            sunLight.position.set(25, 45, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 120;
+            sunLight.shadow.camera.left = -45;
+            sunLight.shadow.camera.right = 45;
+            sunLight.shadow.camera.top = 45;
+            sunLight.shadow.camera.bottom = -45;
+            scene.add(sunLight);
+
+
+            // Roman Colosseum Arena Creation (Radius: 40)
+            buildColosseumArena();
+
+
+            // Controls & Keyboard listeners
+            setupControls();
+
+
+            window.addEventListener('resize', onResize);
+            animateLoop();
+        }
+
+
+        function buildColosseumArena() {
+            // Sand Floor
+            const floorGeo = new THREE.CylinderGeometry(40, 40, 1.0, 64);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.85, metalness: 0.1 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.position.y = -0.5;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+
+            // Inner Ring Boundary Marking
+            const ringGeo = new THREE.RingGeometry(38.8, 39.8, 64);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.02;
+            scene.add(ring);
+
+
+            // Perimeter Pillars (48 Pillars)
+            const pillarGeo = new THREE.CylinderGeometry(1.2, 1.4, 14, 16);
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6 });
+
+
+            for (let i = 0; i < 48; i++) {
+                const angle = (i / 48) * Math.PI * 2;
+                const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+                pillar.position.set(Math.cos(angle) * 40, 7, Math.sin(angle) * 40);
+                pillar.castShadow = true;
+                pillar.receiveShadow = true;
+                scene.add(pillar);
+
+
+                // Torch Light FX on Pillars
+                if (i % 3 === 0) {
+                    const torchLight = new THREE.PointLight(0xf59e0b, 1.2, 18);
+                    torchLight.position.set(Math.cos(angle) * 38.5, 9, Math.sin(angle) * 38.5);
+                    scene.add(torchLight);
+                }
+            }
+        }
+
+
+        /* =========================================================================
+           5. PROCEDURAL 3D ANIMAL MESH BUILDER
+           ========================================================================= */
+        function createAnimalMesh(data) {
+            const group = new THREE.Group();
+            const mainMat = new THREE.MeshStandardMaterial({ color: data.color, roughness: 0.35, metalness: 0.15 });
+            const secMat = new THREE.MeshStandardMaterial({ color: data.secColor, roughness: 0.45, metalness: 0.1 });
+            const eyeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 });
+
+
+            const parts = {};
+
+
+            // Body
+            const bodyGeo = new THREE.SphereGeometry(data.size * 0.75, 24, 24);
+            bodyGeo.scale(1, 0.88, 1.35);
+            const body = new THREE.Mesh(bodyGeo, mainMat);
+            body.position.y = data.size * 0.75;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            group.add(body);
+            parts.body = body;
+
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(data.size * 0.52, 24, 24);
+            const head = new THREE.Mesh(headGeo, mainMat);
+            head.position.set(0, data.size * 1.35, data.size * 0.65);
+            head.castShadow = true;
+            group.add(head);
+            parts.head = head;
+
+
+            // Eyes
+            const eyeGeo = new THREE.SphereGeometry(data.size * 0.09, 12, 12);
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(data.size * 0.22, data.size * 1.42, data.size * 1.05);
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeR.position.set(-data.size * 0.22, data.size * 1.42, data.size * 1.05);
+            group.add(eyeL); group.add(eyeR);
+
+
+            // Front Limbs
+            const pawGeo = new THREE.SphereGeometry(data.size * 0.2, 12, 12);
+            const pawL = new THREE.Mesh(pawGeo, secMat);
+            pawL.position.set(data.size * 0.38, data.size * 0.42, data.size * 0.65);
+            pawL.castShadow = true;
+            const pawR = new THREE.Mesh(pawGeo, secMat);
+            pawR.position.set(-data.size * 0.38, data.size * 0.42, data.size * 0.65);
+            pawR.castShadow = true;
+            group.add(pawL); group.add(pawR);
+            parts.pawL = pawL; parts.pawR = pawR;
+
+
+            // Species Customizations
+            if (data.id === 'tutu') {
+                const earGeo = new THREE.ConeGeometry(data.size * 0.2, data.size * 0.4, 6);
+                const earL = new THREE.Mesh(earGeo, secMat);
+                earL.position.set(data.size * 0.3, data.size * 1.82, data.size * 0.65);
+                earL.rotation.z = -0.25;
+                const earR = new THREE.Mesh(earGeo, secMat);
+                earR.position.set(-data.size * 0.3, data.size * 1.82, data.size * 0.65);
+                earR.rotation.z = 0.25;
+                group.add(earL); group.add(earR);
+            } else if (data.id === 'kaku') {
+                for (let i = 0; i < 5; i++) {
+                    const puff = new THREE.Mesh(new THREE.SphereGeometry(data.size * 0.18, 12, 12), secMat);
+                    puff.position.set((Math.random() - 0.5) * 0.4, data.size * (1.7 + Math.random() * 0.2), data.size * 0.55);
+                    group.add(puff);
+                }
+            } else if (data.id === 'elephant') {
+                const trunkGroup = new THREE.Group();
+                trunkGroup.position.set(0, data.size * 1.15, data.size * 1.1);
+                const segs = [];
+                for (let s = 0; s < 4; s++) {
+                    const seg = new THREE.Mesh(new THREE.CylinderGeometry(data.size * (0.16 - s*0.03), data.size * (0.18 - s*0.03), data.size * 0.28, 12), secMat);
+                    seg.position.y = -s * data.size * 0.24;
+                    seg.castShadow = true;
+                    trunkGroup.add(seg);
+                    segs.push(seg);
+                }
+                group.add(trunkGroup);
+                parts.trunkGroup = trunkGroup;
+            } else if (data.id === 'eagle') {
+                const wingGeo = new THREE.BoxGeometry(data.size * 1.4, data.size * 0.08, data.size * 0.6);
+                const wingL = new THREE.Mesh(wingGeo, secMat);
+                wingL.position.set(data.size * 0.9, data.size * 1.1, 0);
+                const wingR = new THREE.Mesh(wingGeo, secMat);
+                wingR.position.set(-data.size * 0.9, data.size * 1.1, 0);
+                group.add(wingL); group.add(wingR);
+                parts.wingL = wingL; parts.wingR = wingR;
+            }
+
+
+            return { group, parts };
+        }
+
+
+        function update3DModels() {
+            if (p1Group) scene.remove(p1Group);
+            if (p2Group) scene.remove(p2Group);
+
+
+            p1MeshObj = createAnimalMesh(p1Data);
+            p1Group = p1MeshObj.group;
+            p1Group.position.copy(p1Pos);
+            p1Group.rotation.y = p1RotY;
+            scene.add(p1Group);
+
+
+            p2MeshObj = createAnimalMesh(p2Data);
+            p2Group = p2MeshObj.group;
+            p2Group.position.copy(p2Pos);
+            p2Group.rotation.y = p2RotY;
+            scene.add(p2Group);
+
+
+            if (!isBattling) {
+                camera.position.set(0, 8, 22);
+                camera.lookAt(0, 1.5, 0);
+            }
+        }
+
+
+        /* =========================================================================
+           6. COMBAT MOTIONS & PARTICLES
+           ========================================================================= */
+        function playAttackMotion(parts, motionType) {
+            if (!parts) return;
+
+
+            if (parts.trunkGroup && motionType.includes('trunk')) {
+                let frame = 0;
+                const animTimer = setInterval(() => {
+                    frame += 0.2;
+                    parts.trunkGroup.rotation.x = Math.sin(frame) * 0.8;
+                    parts.trunkGroup.rotation.z = Math.cos(frame) * 0.7;
+                    if (frame > Math.PI * 2) {
+                        clearInterval(animTimer);
+                        parts.trunkGroup.rotation.set(0, 0, 0);
+                    }
+                }, 16);
+            } else if (parts.wingL && parts.wingR) {
+                let frame = 0;
+                const animTimer = setInterval(() => {
+                    frame += 0.3;
+                    parts.wingL.rotation.z = -Math.sin(frame) * 1.2;
+                    parts.wingR.rotation.z = Math.sin(frame) * 1.2;
+                    if (frame > Math.PI * 2) {
+                        clearInterval(animTimer);
+                        parts.wingL.rotation.z = 0; parts.wingR.rotation.z = 0;
+                    }
+                }, 16);
+            } else if (parts.pawR) {
+                parts.pawR.position.z += 0.6;
+                parts.pawR.position.y += 0.2;
+                setTimeout(() => {
+                    parts.pawR.position.z -= 0.6;
+                    parts.pawR.position.y -= 0.2;
+                }, 200);
+            }
+        }
+
+
+        function spawnImpactParticles(pos, colorHex = 0xf59e0b, count = 35) {
+            const pGroup = new THREE.Group();
+            pGroup.position.copy(pos);
+            pGroup.position.y += 0.9;
+
+
+            const ringGeo = new THREE.RingGeometry(0.2, 0.4, 24);
+            const ringMat = new THREE.MeshBasicMaterial({ color: colorHex, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            pGroup.add(ring);
+
+
+            const pGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
+            const pMat = new THREE.MeshBasicMaterial({ color: colorHex });
+            const itemParticles = [];
+
+
+            for (let i = 0; i < count; i++) {
+                const p = new THREE.Mesh(pGeo, pMat);
+                const vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 8.0,
+                    Math.random() * 5.5 + 2.0,
+                    (Math.random() - 0.5) * 8.0
+                );
+                itemParticles.push({ mesh: p, vel });
+                pGroup.add(p);
+            }
+
+
+            scene.add(pGroup);
+            particles.push({ group: pGroup, ring, particles: itemParticles, life: 1.0 });
+        }
+
+
+        function spawnDamagePop(damage, isP1) {
+            const container = document.getElementById('damage-container');
+            const el = document.createElement('div');
+            el.className = 'damage-pop font-title text-2xl ' + (isP1 ? 'text-amber-300' : 'text-rose-400');
+            el.innerText = `-${damage}`;
+
+
+            const screenPos = isP1 ? p2Pos.clone() : p1Pos.clone();
+            screenPos.y += 1.8;
+            screenPos.project(camera);
+
+
+            const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+            const y = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+
+
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            container.appendChild(el);
+
+
+            setTimeout(() => el.remove(), 900);
+        }
+
+
+        /* =========================================================================
+           7. COMBAT SYSTEM & BATTLE FLOW
+           ========================================================================= */
+        function startActionBattle() {
+            document.getElementById('select-screen').classList.add('hidden');
+            document.getElementById('battle-hud').classList.remove('hidden');
+
+
+            isBattling = true;
+
+
+            p1Hp = p1Data.hp; p1MaxHp = p1Data.hp;
+            p2Hp = p2Data.hp; p2MaxHp = p2Data.hp;
+            p1Cd1 = 0; p1CdUlt = 0;
+            p2Cd1 = 0; p2CdUlt = 0;
+
+
+            p1Pos.set(-12, 0, 0);
+            p2Pos.set(12, 0, 0);
+            p1RotY = Math.PI / 2;
+            p2RotY = -Math.PI / 2;
+
+
+            cameraYaw = Math.PI / 2;
+            cameraPitch = 0.15;
+
+
+            document.getElementById('hud-p1-name').innerText = `${p1Data.name} (${p1Data.type})`;
+            document.getElementById('hud-p2-name').innerText = `${p2Data.name} (${p2Data.type})`;
+            document.getElementById('hud-skill0-name').innerText = p1Data.atkBasic.name;
+            document.getElementById('hud-skill1-name').innerText = p1Data.skill1.name;
+            document.getElementById('hud-skill2-name').innerText = p1Data.ult.name;
+
+
+            showAnnouncer("대 결 투 시작!");
+            updateHUD();
+            update3DModels();
+
+
+            setTimeout(() => {
+                document.getElementById('canvas-container').requestPointerLock();
+            }, 300);
+        }
+
+
+        function triggerPlayerAttack(type) {
+            if (!isBattling) return;
+
+
+            let skill = null;
+            if (type === 'basic') {
+                skill = p1Data.atkBasic;
+            } else if (type === 'skill1') {
+                if (p1Cd1 > 0) return;
+                skill = p1Data.skill1;
+                p1Cd1 = skill.cd;
+            } else if (type === 'ult') {
+                if (p1CdUlt > 0) return;
+                skill = p1Data.ult;
+                p1CdUlt = skill.cd;
+            }
+
+
+            if (!skill) return;
+
+
+            playAttackMotion(p1MeshObj.parts, skill.motion);
+
+
+            const dist = p1Pos.distanceTo(p2Pos);
+            if (dist <= skill.range + p1Data.size + p2Data.size) {
+                const totalDmg = Math.round(skill.dmg * (p1Data.atk / 50));
+                p2Hp = Math.max(0, p2Hp - totalDmg);
+                spawnImpactParticles(p2Pos, 0xf59e0b, 40);
+                spawnDamagePop(totalDmg, true);
+                hitStopTimer = 4;
+
+
+                if (p2Hp <= 0) {
+                    endBattle(true);
+                }
+            }
+        }
+
+
+        function triggerAiAttack(type) {
+            if (!isBattling) return;
+
+
+            let skill = null;
+            if (type === 'basic') skill = p2Data.atkBasic;
+            else if (type === 'skill1') skill = p2Data.skill1;
+            else if (type === 'ult') skill = p2Data.ult;
+
+
+            if (!skill) return;
+
+
+            playAttackMotion(p2MeshObj.parts, skill.motion);
+
+
+            const dist = p2Pos.distanceTo(p1Pos);
+            if (dist <= skill.range + p1Data.size + p2Data.size) {
+                const totalDmg = Math.round(skill.dmg * (p2Data.atk / 50));
+                p1Hp = Math.max(0, p1Hp - totalDmg);
+                spawnImpactParticles(p1Pos, 0xf43f5e, 40);
+                spawnDamagePop(totalDmg, false);
+
+
+                if (p1Hp <= 0) {
+                    endBattle(false);
+                }
+            }
+        }
+
+
+        function updateHUD() {
+            document.getElementById('hud-p1-hp-num').innerText = `${p1Hp} / ${p1MaxHp}`;
+            document.getElementById('hud-p1-hp-bar').style.width = `${Math.max(0, (p1Hp / p1MaxHp) * 100)}%`;
+
+
+            document.getElementById('hud-p2-hp-num').innerText = `${p2Hp} / ${p2MaxHp}`;
+            document.getElementById('hud-p2-hp-bar').style.width = `${Math.max(0, (p2Hp / p2MaxHp) * 100)}%`;
+
+
+            document.getElementById('cd-text-skill1').innerText = p1Cd1 > 0 ? `${p1Cd1.toFixed(1)}s` : 'READY';
+            document.getElementById('cd-text-ult').innerText = p1CdUlt > 0 ? `${p1CdUlt.toFixed(1)}s` : 'READY';
+        }
+
+
+        function showAnnouncer(text) {
+            const el = document.getElementById('battle-announcer');
+            document.getElementById('announcer-text').innerText = text;
+            el.style.opacity = '1';
+            setTimeout(() => { el.style.opacity = '0'; }, 1800);
+        }
+
+
+        function toggleCameraMode() {
+            cameraMode = cameraMode === 'tps' ? 'fps' : 'tps';
+            document.getElementById('camera-view-text').innerText = cameraMode === 'tps' ? '3인칭 시점 (C키)' : '1인칭 시점 (C키)';
+            document.getElementById('hud-crosshair').style.display = cameraMode === 'fps' ? 'flex' : 'none';
+        }
+
+
+        function endBattle(playerWon) {
+            isBattling = false;
+            document.exitPointerLock();
+
+
+            const modal = document.getElementById('result-modal');
+            const iconBox = document.getElementById('result-icon-container');
+            const icon = document.getElementById('result-icon');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+
+
+            if (playerWon) {
+                iconBox.className = "w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4 text-4xl shadow-lg bg-emerald-600/30 text-emerald-400 border border-emerald-500/50";
+                icon.className = "fa-solid fa-trophy";
+                title.className = "font-title text-3xl text-amber-300 mb-2";
+                title.innerText = "승리 하였습니다!";
+                desc.innerText = `${p1Data.name}(이)가 콜로세움 챔피언이 되었습니다!`;
+            } else {
+                iconBox.className = "w-20 h-20 rounded-full mx-auto flex items-center justify-center mb-4 text-4xl shadow-lg bg-rose-600/30 text-rose-400 border border-rose-500/50";
+                icon.className = "fa-solid fa-skull";
+                title.className = "font-title text-3xl text-rose-400 mb-2";
+                title.innerText = "패배 하였습니다!";
+                desc.innerText = `${p2Data.name}(에게) 패배했습니다. 다시 도전하세요!`;
+            }
+
+
+            modal.classList.remove('hidden');
+        }
+
+
+        function restartBattle() {
+            document.getElementById('result-modal').classList.add('hidden');
+            startActionBattle();
+        }
+
+
+        function returnToSelect() {
+            document.getElementById('result-modal').classList.add('hidden');
+            document.getElementById('battle-hud').classList.add('hidden');
+            document.getElementById('select-screen').classList.remove('hidden');
+            update3DModels();
+        }
+
+
+        /* =========================================================================
+           8. CONTROL LISTENERS & MOUSE INPUT
+           ========================================================================= */
+        function setupControls() {
+            const container = document.getElementById('canvas-container');
+
+
+            container.addEventListener('click', () => {
+                if (isBattling && !isPointerLocked) {
+                    container.requestPointerLock();
+                }
+            });
+
+
+            document.addEventListener('pointerlockchange', () => {
+                isPointerLocked = (document.pointerLockElement === container);
+            });
+
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isPointerLocked || !isBattling) return;
+                const sensitivity = 0.0022;
+
+
+                cameraYaw -= e.movementX * sensitivity;
+                // Upward mouse movement looks up, downward mouse movement looks down
+                cameraPitch += e.movementY * sensitivity;
+
+
+                const maxPitch = (Math.PI / 2) - 0.1;
+                cameraPitch = Math.max(-maxPitch, Math.min(maxPitch, cameraPitch));
+            });
+
+
+            window.addEventListener('keydown', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w') keys.w = true;
+                if (k === 'a') keys.a = true;
+                if (k === 's') keys.s = true;
+                if (k === 'd') keys.d = true;
+                if (k === 'shift') keys.shift = true;
+                if (k === ' ') keys.space = true;
+                if (k === 'c') toggleCameraMode();
+                if (k === 'e') triggerPlayerAttack('ult');
+            });
+
+
+            window.addEventListener('keyup', (e) => {
+                const k = e.key.toLowerCase();
+                if (k === 'w') keys.w = false;
+                if (k === 'a') keys.a = false;
+                if (k === 's') keys.s = false;
+                if (k === 'd') keys.d = false;
+                if (k === 'shift') keys.shift = false;
+                if (k === ' ') keys.space = false;
+            });
+
+
+            window.addEventListener('mousedown', (e) => {
+                if (!isBattling || !isPointerLocked) return;
+                if (e.button === 0) triggerPlayerAttack('basic');
+                if (e.button === 2) triggerPlayerAttack('skill1');
+            });
+
+
+            window.addEventListener('contextmenu', (e) => {
+                if (isBattling) e.preventDefault();
+            });
+        }
+
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+
+        /* =========================================================================
+           9. GAME LOOP & PLAYER / AI MOVEMENT UPDATES
+           ========================================================================= */
+        function updatePlayerMovement(delta) {
+            const moveSpeed = (keys.shift ? p1Data.spd * 1.4 : p1Data.spd) * delta;
+            const forward = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw)).normalize();
+            const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).negate().normalize();
+
+
+            const moveDir = new THREE.Vector3(0, 0, 0);
+            if (keys.w) moveDir.add(forward);
+            if (keys.s) moveDir.sub(forward);
+            if (keys.d) moveDir.add(right);
+            if (keys.a) moveDir.sub(right);
+
+
+            if (moveDir.lengthSq() > 0) {
+                moveDir.normalize();
+                p1Pos.addScaledVector(moveDir, moveSpeed);
+
+
+                // Colosseum boundary constraint (Radius: 38)
+                const distFromCenter = Math.sqrt(p1Pos.x * p1Pos.x + p1Pos.z * p1Pos.z);
+                if (distFromCenter > 38) {
+                    p1Pos.setLength(38);
+                }
+
+
+                p1RotY = cameraYaw;
+            }
+
+
+            if (p1Group) {
+                p1Group.position.copy(p1Pos);
+                p1Group.rotation.y = p1RotY;
+            }
+        }
+
+
+        function updateAiBehavior(delta) {
+            const dist = p2Pos.distanceTo(p1Pos);
+            const targetDir = new THREE.Vector3().subVectors(p1Pos, p2Pos).normalize();
+            targetDir.y = 0;
+
+
+            p2RotY = Math.atan2(targetDir.x, targetDir.z);
+
+
+            // Move towards player if outside basic range
+            if (dist > p2Data.atkBasic.range * 0.8) {
+                p2Pos.addScaledVector(targetDir, p2Data.spd * delta);
+
+
+                const distFromCenter = Math.sqrt(p2Pos.x * p2Pos.x + p2Pos.z * p2Pos.z);
+                if (distFromCenter > 38) {
+                    p2Pos.setLength(38);
+                }
+            }
+
+
+            if (p2Group) {
+                p2Group.position.copy(p2Pos);
+                p2Group.rotation.y = p2RotY;
+            }
+
+
+            // AI Attack AI Timer Logic
+            p2AiAttackTimer -= delta;
+            if (p2AiAttackTimer <= 0) {
+                p2AiAttackTimer = 1.2 + Math.random() * 1.5;
+
+
+                if (dist <= p2Data.ult.range && p2CdUlt <= 0 && Math.random() < 0.4) {
+                    triggerAiAttack('ult');
+                    p2CdUlt = p2Data.ult.cd;
+                } else if (dist <= p2Data.skill1.range && p2Cd1 <= 0 && Math.random() < 0.6) {
+                    triggerAiAttack('skill1');
+                    p2Cd1 = p2Data.skill1.cd;
+                } else if (dist <= p2Data.atkBasic.range + 1.0) {
+                    triggerAiAttack('basic');
+                }
+            }
+        }
+
+
+        function updateCamera() {
+            if (cameraMode === 'fps') {
+                const eyeHeight = p1Data.size * 1.4;
+                camera.position.set(p1Pos.x, p1Pos.y + eyeHeight, p1Pos.z);
+
+
+                const lookDir = new THREE.Vector3(
+                    -Math.sin(cameraYaw) * Math.cos(cameraPitch),
+                    Math.sin(cameraPitch),
+                    -Math.cos(cameraYaw) * Math.cos(cameraPitch)
+                );
+                camera.lookAt(camera.position.clone().add(lookDir));
+            } else { // TPS
+                const camDist = 7.5 + p1Data.size * 2.0;
+                const camHeight = 3.2 + p1Data.size * 1.2;
+
+
+                const camOffset = new THREE.Vector3(
+                    Math.sin(cameraYaw) * Math.cos(cameraPitch) * camDist,
+                    camHeight + Math.sin(cameraPitch) * camDist,
+                    Math.cos(cameraYaw) * Math.cos(cameraPitch) * camDist
+                );
+
+
+                camera.position.copy(p1Pos).add(camOffset);
+                const targetLook = p1Pos.clone().add(new THREE.Vector3(0, p1Data.size * 1.2, 0));
+                camera.lookAt(targetLook);
+            }
+        }
+
+
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const pObj = particles[i];
+                pObj.life -= delta * 2.2;
+
+
+                if (pObj.ring) {
+                    pObj.ring.scale.addScalar(delta * 4.5);
+                    pObj.ring.material.opacity = Math.max(0, pObj.life);
+                }
+
+
+                pObj.particles.forEach(p => {
+                    p.mesh.position.addScaledVector(p.vel, delta);
+                    p.vel.y -= delta * 12.0; // gravity
+                });
+
+
+                if (pObj.life <= 0) {
+                    scene.remove(pObj.group);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+
+
+            const now = performance.now();
+            const delta = Math.min(0.08, (now - lastTime) / 1000);
+            lastTime = now;
+
+
+            if (hitStopTimer > 0) {
+                hitStopTimer--;
+                renderer.render(scene, camera);
+                return;
+            }
+
+
+            if (isBattling) {
+                // Cooldown timers
+                if (p1Cd1 > 0) p1Cd1 = Math.max(0, p1Cd1 - delta);
+                if (p1CdUlt > 0) p1CdUlt = Math.max(0, p1CdUlt - delta);
+                if (p2Cd1 > 0) p2Cd1 = Math.max(0, p2Cd1 - delta);
+                if (p2CdUlt > 0) p2CdUlt = Math.max(0, p2CdUlt - delta);
+
+
+                updatePlayerMovement(delta);
+                updateAiBehavior(delta);
+                updateCamera();
+                updateHUD();
+            } else {
+                // Idle camera rotation around preview models on selection screen
+                const time = now * 0.0004;
+                camera.position.x = Math.sin(time) * 26;
+                camera.position.z = Math.cos(time) * 26;
+                camera.position.y = 10;
+                camera.lookAt(0, 1.5, 0);
+            }
+
+
+            updateParticles(delta);
+            renderer.render(scene, camera);
+        }
+
+
+        /* Copy Source Code Utility */
+        function copySourceCode() {
+            const fullHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const textarea = document.createElement('textarea');
+            textarea.value = fullHtml;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert("전체 소스 코드가 클립보드에 복사되었습니다!");
+        }
+
+
+        // Initialize App on Window Load
+        window.onload = () => {
+            initEngine();
+            setSelectTarget('player');
+            selectAnimal(ANIMALS[0]);
+            setSelectTarget('ai');
+            selectAnimal(ANIMALS[3]);
+            setSelectTarget('player');
+        };
+    </script>
+</body>
+</html>

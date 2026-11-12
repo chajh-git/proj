@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 사직 야구장 - 롯데 자이언츠 VS 삼성 라이온즈</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #050b14;
+        }
+        #webgl-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #pitch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            touch-action: none;
+        }
+        /* Custom UI Shadows and Styling */
+        .glass-panel {
+            background: rgba(13, 22, 38, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .text-shadow-lg {
+            text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+        }
+        .bso-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background-color: rgba(255,255,255,0.15);
+            transition: all 0.2s ease;
+        }
+        .bso-b.active { background-color: #3b82f6; box-shadow: 0 0 10px #3b82f6; } /* Ball - Blue */
+        .bso-s.active { background-color: #eab308; box-shadow: 0 0 10px #eab308; } /* Strike - Yellow */
+        .bso-o.active { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; } /* Out - Red */
+
+
+        .diamond-base {
+            width: 22px;
+            height: 22px;
+            transform: rotate(45deg);
+            border: 2px solid #64748b;
+            background-color: rgba(15, 23, 42, 0.8);
+            transition: all 0.3s ease;
+        }
+        .diamond-base.occupied {
+            background-color: #f59e0b;
+            border-color: #fff;
+            box-shadow: 0 0 12px #f59e0b;
+        }
+
+
+        /* Pitch Countdown Radial Bar */
+        .timer-bar-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        #pitch-timer-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #ef4444);
+            transition: width 0.1s linear;
+        }
+
+
+        /* Banner Notification Animation */
+        @keyframes popup {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+        }
+        .banner-anim {
+            animation: popup 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+    </style>
+</head>
+<body class="text-white overflow-hidden">
+
+
+    <!-- 3D WebGL Canvas Container -->
+    <div id="webgl-container"></div>
+
+
+    <!-- Pitcher Mode Trajectory Canvas -->
+    <canvas id="pitch-canvas" class="hidden"></canvas>
+
+
+    <!-- Top Overlay: Main Scoreboard UI -->
+    <div class="absolute top-3 left-1/2 -translate-x-1/2 z-20 w-[95%] max-w-4xl">
+        <div class="glass-panel rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 shadow-2xl">
+           
+            <!-- Left: Teams & Score -->
+            <div class="flex items-center space-x-3 sm:space-x-6">
+                <!-- Lotte Giants -->
+                <div class="flex items-center space-x-2">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-navy-900 border-2 border-red-500 flex items-center justify-center font-black text-sm text-white shadow-md">
+                        LOT
+                    </div>
+                    <div>
+                        <div class="text-xs text-red-400 font-bold uppercase tracking-wider">홈 (롯데)</div>
+                        <div id="lotte-score" class="text-2xl font-black text-white leading-none">0</div>
+                    </div>
+                </div>
+
+
+                <div class="text-lg font-black text-gray-500">VS</div>
+
+
+                <!-- Samsung Lions -->
+                <div class="flex items-center space-x-2">
+                    <div>
+                        <div class="text-xs text-blue-400 font-bold uppercase tracking-wider text-right">원정 (삼성)</div>
+                        <div id="samsung-score" class="text-2xl font-black text-white leading-none text-right">0</div>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-800 border-2 border-blue-400 flex items-center justify-center font-black text-sm text-white shadow-md">
+                        SAM
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Middle: Inning & BSO -->
+            <div class="flex items-center space-x-5 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700/50">
+                <!-- Inning -->
+                <div class="text-center pr-4 border-r border-slate-700">
+                    <div id="inning-text" class="text-sm font-extrabold text-amber-400">1회초</div>
+                    <div id="defense-attack-text" class="text-[10px] text-gray-400">삼성 공격</div>
+                </div>
+
+
+                <!-- BSO Count -->
+                <div class="flex flex-col space-y-1 text-xs font-bold">
+                    <div class="flex items-center justify-between">
+                        <span class="text-blue-400 mr-2">B</span>
+                        <div>
+                            <span id="b1" class="bso-dot bso-b"></span>
+                            <span id="b2" class="bso-dot bso-b"></span>
+                            <span id="b3" class="bso-dot bso-b"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-yellow-400 mr-2">S</span>
+                        <div>
+                            <span id="s1" class="bso-dot bso-s"></span>
+                            <span id="s2" class="bso-dot bso-s"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-red-500 mr-2">O</span>
+                        <div>
+                            <span id="o1" class="bso-dot bso-o"></span>
+                            <span id="o2" class="bso-dot bso-o"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Right: Diamond Base Runners & Mode Indicator -->
+            <div class="flex items-center space-x-4">
+                <!-- Base Runners -->
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                    <div id="base-2" class="diamond-base absolute -top-1 left-1/2 -translate-x-1/2" title="2루"></div>
+                    <div id="base-1" class="diamond-base absolute top-1/2 -right-1 -translate-y-1/2" title="1루"></div>
+                    <div id="base-3" class="diamond-base absolute top-1/2 -left-1 -translate-y-1/2" title="3루"></div>
+                </div>
+
+
+                <!-- Mode Switcher Buttons -->
+                <div class="flex bg-slate-900/90 rounded-xl p-1 border border-slate-700">
+                    <button id="btn-mode-batter" onclick="setGameMode('batter')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-red-600 text-white shadow-lg">
+                        <i class="fa-solid fa-baseball-bat-ball mr-1"></i> 타자 모드
+                    </button>
+                    <button id="btn-mode-pitcher" onclick="setGameMode('pitcher')" class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-gray-400 hover:text-white">
+                        <i class="fa-solid fa-hand-fist mr-1"></i> 투수 모드
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Pitcher Mode Instruction Overlay -->
+    <div id="pitch-instruction" class="hidden absolute top-24 left-1/2 -translate-x-1/2 z-20 glass-panel px-6 py-2 rounded-full border border-blue-500/40 text-center animate-pulse">
+        <p class="text-sm font-bold text-blue-300">
+            <i class="fa-solid fa-pen-nib mr-2"></i>화면에 공이 날아갈 궤적(선)을 그리세요!
+        </p>
+    </div>
+
+
+    <!-- Batter Auto-Pitch Countdown Bar Overlay -->
+    <div id="batter-timer-overlay" class="absolute top-24 left-1/2 -translate-x-1/2 z-20 glass-panel px-6 py-3 rounded-2xl border border-red-500/40 text-center w-64 shadow-xl">
+        <div class="flex items-center justify-between text-xs font-bold text-gray-200">
+            <span><i class="fa-solid fa-stopwatch text-amber-400 mr-1"></i>다음 투구까지</span>
+            <span id="timer-text" class="text-amber-400 font-extrabold text-sm">4.0초</span>
+        </div>
+        <div class="timer-bar-container">
+            <div id="pitch-timer-bar"></div>
+        </div>
+    </div>
+
+
+    <!-- Center Result Banner (Strike, Ball, Home Run, etc.) -->
+    <div id="result-banner" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none">
+        <div class="glass-panel px-10 py-6 rounded-3xl border-2 border-amber-400/80 text-center shadow-2xl banner-anim">
+            <h1 id="banner-text" class="text-5xl sm:text-7xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-red-500 text-shadow-lg">
+                STRIKE!
+            </h1>
+            <p id="banner-subtext" class="text-lg font-bold text-gray-200 mt-2">정확한 파울입니다!</p>
+        </div>
+    </div>
+
+
+    <!-- Bottom Controls & Action UI -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-full max-w-xs text-center">
+        <!-- Batter Mode Swing Button -->
+        <div id="batter-controls">
+            <button id="btn-swing" class="w-full py-4 bg-gradient-to-r from-red-600 via-red-500 to-amber-500 hover:from-red-500 hover:to-amber-400 text-white font-black text-xl rounded-2xl shadow-2xl transform active:scale-95 transition-all border-2 border-red-400/50 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-bolt text-yellow-300 text-2xl"></i>
+                <span>SWING ! (스페이스바)</span>
+            </button>
+        </div>
+
+
+        <!-- Pitcher Mode Throw Action -->
+        <div id="pitcher-controls" class="hidden">
+            <button id="btn-pitch-reset" onclick="resetPitchTrajectory()" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold rounded-xl shadow-lg border border-slate-600">
+                <i class="fa-solid fa-rotate-left mr-2"></i>궤적 다시 그리기
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Game Engine Script -->
+    <script>
+        // --- GAME STATE & GLOBAL VARIABLES ---
+        let scene, camera, renderer;
+        let gameMode = 'batter'; // 'batter' | 'pitcher'
+       
+        // Baseball Rule Stats
+        let inning = 1;
+        let isTopInning = true; // true = 초 (삼성 공격, 롯데 수비), false = 말 (롯데 공격, 삼성 수비)
+        let scoreLotte = 0;
+        let scoreSamsung = 0;
+        let balls = 0;
+        let strikes = 0;
+        let outs = 0;
+        let bases = [false, false, false]; // 1루, 2루, 3루
+
+
+        // Pitch & Batting Physics State
+        let ball, bat, strikeZoneMesh;
+        let pitcherChar, batterChar, catcherChar; // 3D Player Characters
+        let isPitching = false;
+        let isSwinging = false;
+        let ballProgress = 0; // 0 to 1
+        let pitchCurve = null; // 3D Curve for trajectory
+        let customDrawnPoints = []; // Screen coordinates drawn by user in pitcher mode
+        let pitchSpeed = 0.022; // Speed of pitch
+        let batAngle = 0;
+        let hitResultOccurred = false;
+        let ballVelocity = new THREE.Vector3(0, 0, 0);
+        let isBallHit = false;
+
+
+        // Auto Pitch Timer Variables (Batter Mode - 4 sec interval)
+        let pitchTimer = null;
+        let pitchTimerTimeLeft = 4.0;
+        const PITCH_INTERVAL = 4.0; // 4 Seconds
+
+
+        // Colors
+        const COLOR_LOTTE_RED = 0xd91c24;
+        const COLOR_LOTTE_NAVY = 0x0a192f;
+        const COLOR_SAMSUNG_BLUE = 0x0056b3;
+        const COLOR_GRASS = 0x2e7d32;
+        const COLOR_DIRT = 0x8d5b4c;
+
+
+        // UI Canvas for Pitcher trajectory drawing
+        let pitchCanvas, pitchCtx;
+        let isDrawingPath = false;
+
+
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            init3DScene();
+            initPitchCanvas();
+            setupEventListeners();
+            resetAtBat();
+            updateUI();
+            animate();
+        };
+
+
+        // --- THREE.JS SCENE SETUP ---
+        function init3DScene() {
+            const container = document.getElementById('webgl-container');
+
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0d1527);
+            scene.fog = new THREE.FogExp2(0x0d1527, 0.003);
+
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+           
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+
+            const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.2);
+            sunLight.position.set(40, 80, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 250;
+            const d = 80;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+
+            // Sajik Stadium Floodlights Effect
+            createLightTowers();
+
+
+            // Build Sajik Stadium Geometry & Crowds
+            buildSajikStadium();
+            buildCrowdAudience();
+
+
+            // Create Players (Pitcher, Batter, Catcher), Ball, Bat & Strike Zone
+            createPlayers();
+            createGameObjects();
+
+
+            // Set Initial Camera Mode
+            updateCameraPosition();
+
+
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+
+        // --- SAJIK STADIUM BUILDER ---
+        function buildSajikStadium() {
+            // 1. Infield Dirt & Outfield Grass Ground
+            const fieldGroup = new THREE.Group();
+
+
+            // Outfield Grass Field
+            const grassGeo = new THREE.CylinderGeometry(110, 110, 0.2, 64);
+            const grassMat = new THREE.MeshStandardMaterial({ color: COLOR_GRASS, roughness: 0.8 });
+            const grassField = new THREE.Mesh(grassGeo, grassMat);
+            grassField.position.set(0, -0.1, -40);
+            grassField.receiveShadow = true;
+            fieldGroup.add(grassField);
+
+
+            // Infield Diamond Dirt
+            const dirtGeo = new THREE.PlaneGeometry(38, 38);
+            const dirtMat = new THREE.MeshStandardMaterial({ color: COLOR_DIRT, roughness: 0.9, side: THREE.DoubleSide });
+            const dirtDiamond = new THREE.Mesh(dirtGeo, dirtMat);
+            dirtDiamond.rotation.x = -Math.PI / 2;
+            dirtDiamond.rotation.z = Math.PI / 4;
+            dirtDiamond.position.set(0, 0.02, -18);
+            dirtDiamond.receiveShadow = true;
+            fieldGroup.add(dirtDiamond);
+
+
+            // Base Markings & Pitcher's Mound
+            const moundGeo = new THREE.CylinderGeometry(2.5, 3, 0.4, 32);
+            const moundMat = new THREE.MeshStandardMaterial({ color: COLOR_DIRT });
+            const mound = new THREE.Mesh(moundGeo, moundMat);
+            mound.position.set(0, 0.15, -18.44);
+            mound.receiveShadow = true;
+            fieldGroup.add(mound);
+
+
+            // Rubber Plate
+            const plateGeo = new THREE.BoxGeometry(0.6, 0.1, 0.2);
+            const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const rubber = new THREE.Mesh(plateGeo, whiteMat);
+            rubber.position.set(0, 0.36, -18.44);
+            fieldGroup.add(rubber);
+
+
+            // Home Plate
+            const homePlateGeo = new THREE.BoxGeometry(0.7, 0.05, 0.7);
+            const homePlate = new THREE.Mesh(homePlateGeo, whiteMat);
+            homePlate.position.set(0, 0.03, 0);
+            homePlate.rotation.y = Math.PI / 4;
+            fieldGroup.add(homePlate);
+
+
+            // Bases (1B, 2B, 3B)
+            const baseGeo = new THREE.BoxGeometry(0.6, 0.1, 0.6);
+            const base1 = new THREE.Mesh(baseGeo, whiteMat);
+            base1.position.set(13, 0.08, -13);
+            base1.rotation.y = Math.PI / 4;
+           
+            const base2 = new THREE.Mesh(baseGeo, whiteMat);
+            base2.position.set(0, 0.08, -26);
+            base2.rotation.y = Math.PI / 4;
+
+
+            const base3 = new THREE.Mesh(baseGeo, whiteMat);
+            base3.position.set(-13, 0.08, -13);
+            base3.rotation.y = Math.PI / 4;
+
+
+            fieldGroup.add(base1, base2, base3);
+
+
+            // 2. Outfield Wall / Fence
+            const fenceGeo = new THREE.CylinderGeometry(95, 95, 4, 48, 1, true, -Math.PI*0.35, Math.PI*0.7);
+            const fenceMat = new THREE.MeshStandardMaterial({ color: COLOR_LOTTE_RED, side: THREE.DoubleSide, roughness: 0.5 });
+            const fence = new THREE.Mesh(fenceGeo, fenceMat);
+            fence.position.set(0, 2, -40);
+            fence.receiveShadow = true;
+            fieldGroup.add(fence);
+
+
+            // Outfield Stands (Grandstands)
+            const standsGeo = new THREE.CylinderGeometry(115, 98, 20, 48, 1, true, -Math.PI*0.4, Math.PI*0.8);
+            const standsMat = new THREE.MeshStandardMaterial({ color: COLOR_LOTTE_NAVY, side: THREE.DoubleSide });
+            const stands = new THREE.Mesh(standsGeo, standsMat);
+            stands.position.set(0, 10, -40);
+            fieldGroup.add(stands);
+
+
+            // 3. Sajik Main Scoreboard
+            const scoreboardGroup = new THREE.Group();
+            const boardFrameGeo = new THREE.BoxGeometry(32, 14, 1.5);
+            const boardFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+            const boardFrame = new THREE.Mesh(boardFrameGeo, boardFrameMat);
+           
+            const boardCanvas = document.createElement('canvas');
+            boardCanvas.width = 1024;
+            boardCanvas.height = 512;
+            const bCtx = boardCanvas.getContext('2d');
+           
+            bCtx.fillStyle = '#050b14';
+            bCtx.fillRect(0, 0, 1024, 512);
+            bCtx.strokeStyle = '#d91c24';
+            bCtx.lineWidth = 12;
+            bCtx.strokeRect(10, 10, 1004, 492);
+
+
+            bCtx.fillStyle = '#ffffff';
+            bCtx.font = 'bold 44px sans-serif';
+            bCtx.textAlign = 'center';
+            bCtx.fillText('사직 야구장 (SAJIK STADIUM)', 512, 70);
+
+
+            bCtx.fillStyle = '#ef4444';
+            bCtx.font = 'bold 55px sans-serif';
+            bCtx.fillText('롯데 자이언츠 (LOTTE)', 300, 170);
+
+
+            bCtx.fillStyle = '#3b82f6';
+            bCtx.fillText('삼성 라이온즈 (SAMSUNG)', 724, 170);
+
+
+            bCtx.fillStyle = '#fbbf24';
+            bCtx.font = 'bold 70px sans-serif';
+            bCtx.fillText('BUSAN IS READY!', 512, 330);
+            bCtx.font = 'bold 32px sans-serif';
+            bCtx.fillStyle = '#9ca3af';
+            bCtx.fillText('GIANTS WINNING SPIRIT', 512, 420);
+
+
+            const boardTexture = new THREE.CanvasTexture(boardCanvas);
+            const boardScreenGeo = new THREE.PlaneGeometry(30, 12);
+            const boardScreenMat = new THREE.MeshBasicMaterial({ map: boardTexture });
+            const boardScreen = new THREE.Mesh(boardScreenGeo, boardScreenMat);
+            boardScreen.position.z = 0.8;
+
+
+            scoreboardGroup.add(boardFrame);
+            scoreboardGroup.add(boardScreen);
+            scoreboardGroup.position.set(0, 24, -90);
+            fieldGroup.add(scoreboardGroup);
+
+
+            scene.add(fieldGroup);
+        }
+
+
+        // --- 3D AUDIENCE / CROWD GENERATOR ---
+        function buildCrowdAudience() {
+            const crowdGroup = new THREE.Group();
+            const colors = [0xd91c24, 0x0056b3, 0xffffff, 0xeab308, 0x475569, 0xd97706];
+            const crowdCount = 600;
+
+
+            const headGeo = new THREE.SphereGeometry(0.3, 8, 8);
+            const bodyGeo = new THREE.CylinderGeometry(0.25, 0.35, 0.9, 8);
+
+
+            for (let i = 0; i < crowdCount; i++) {
+                const angle = -Math.PI * 0.38 + Math.random() * (Math.PI * 0.76);
+                const radius = 99 + Math.random() * 14;
+                const height = 2.5 + (radius - 98) * 0.85 + Math.random() * 0.4;
+
+
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const mat = new THREE.MeshLambertMaterial({ color: color });
+
+
+                const person = new THREE.Group();
+                const head = new THREE.Mesh(headGeo, mat);
+                head.position.y = 0.7;
+                const body = new THREE.Mesh(bodyGeo, mat);
+
+
+                person.add(head);
+                person.add(body);
+
+
+                // Position on arc stand
+                person.position.x = Math.sin(angle) * radius;
+                person.position.z = -40 + Math.cos(angle) * radius * 0.6;
+                person.position.y = height;
+
+
+                person.lookAt(0, 0, -20);
+                crowdGroup.add(person);
+            }
+            scene.add(crowdGroup);
+        }
+
+
+        // --- 3D PLAYERS CREATOR (BATTER, PITCHER, CATCHER) ---
+        function createPlayerMesh(jerseyColor, capColor) {
+            const group = new THREE.Group();
+
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: jerseyColor, roughness: 0.5 });
+            const capMat = new THREE.MeshStandardMaterial({ color: capColor });
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+            const pantMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.7 });
+
+
+            // Torso
+            const torsoGeo = new THREE.CylinderGeometry(0.35, 0.3, 0.9, 12);
+            const torso = new THREE.Mesh(torsoGeo, bodyMat);
+            torso.position.y = 1.0;
+            torso.castShadow = true;
+            group.add(torso);
+
+
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(0.12, 0.1, 0.8, 8);
+            const legL = new THREE.Mesh(legGeo, pantMat);
+            legL.position.set(-0.16, 0.4, 0);
+            legL.castShadow = true;
+            const legR = new THREE.Mesh(legGeo, pantMat);
+            legR.position.set(0.16, 0.4, 0);
+            legR.castShadow = true;
+            group.add(legL, legR);
+
+
+            // Head & Cap
+            const headGeo = new THREE.SphereGeometry(0.22, 16, 16);
+            const head = new THREE.Mesh(headGeo, skinMat);
+            head.position.y = 1.62;
+            head.castShadow = true;
+
+
+            const capGeo = new THREE.SphereGeometry(0.24, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.y = 1.64;
+
+
+            const visorGeo = new THREE.BoxGeometry(0.24, 0.03, 0.2);
+            const visor = new THREE.Mesh(visorGeo, capMat);
+            visor.position.set(0, 1.72, -0.15);
+
+
+            group.add(head, cap, visor);
+
+
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.09, 0.08, 0.7, 8);
+            const armL = new THREE.Mesh(armGeo, bodyMat);
+            armL.position.set(-0.4, 1.0, 0);
+            armL.rotation.z = Math.PI / 8;
+            armL.castShadow = true;
+
+
+            const armR = new THREE.Mesh(armGeo, bodyMat);
+            armR.position.set(0.4, 1.0, 0);
+            armR.rotation.z = -Math.PI / 8;
+            armR.castShadow = true;
+            group.add(armL, armR);
+
+
+            return group;
+        }
+
+
+        function createPlayers() {
+            // Batter Team: Lotte (Home) or Samsung (Away) based on attack
+            const batterJersey = isTopInning ? COLOR_SAMSUNG_BLUE : COLOR_LOTTE_RED;
+            const pitcherJersey = isTopInning ? COLOR_LOTTE_NAVY : COLOR_SAMSUNG_BLUE;
+
+
+            // Batter at Home Plate
+            batterChar = createPlayerMesh(batterJersey, 0x000000);
+            batterChar.position.set(0.7, 0, 0.1);
+            batterChar.rotation.y = -Math.PI / 2;
+            scene.add(batterChar);
+
+
+            // Pitcher on Mound
+            pitcherChar = createPlayerMesh(pitcherJersey, pitcherJersey);
+            pitcherChar.position.set(0, 0.35, -18.44);
+            scene.add(pitcherChar);
+
+
+            // Catcher Behind Home Plate
+            catcherChar = createPlayerMesh(pitcherJersey, 0x1e293b);
+            catcherChar.position.set(0, -0.2, 1.3);
+            catcherChar.scale.set(1, 0.7, 1); // Squatting scale
+            scene.add(catcherChar);
+        }
+
+
+        function createLightTowers() {
+            const towerPositions = [
+                [-60, 0, -60], [60, 0, -60],
+                [-80, 0, -20], [80, 0, -20]
+            ];
+
+
+            towerPositions.forEach(pos => {
+                const towerGroup = new THREE.Group();
+                const poleGeo = new THREE.CylinderGeometry(0.8, 1.5, 45);
+                const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+                const pole = new THREE.Mesh(poleGeo, poleMat);
+                pole.position.y = 22.5;
+                towerGroup.add(pole);
+
+
+                const headGeo = new THREE.BoxGeometry(10, 6, 1);
+                const headMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+                const head = new THREE.Mesh(headGeo, headMat);
+                head.position.set(0, 45, 0);
+                towerGroup.add(head);
+
+
+                const spot = new THREE.SpotLight(0xffffff, 0.8);
+                spot.position.set(0, 45, 0);
+                spot.target.position.set(0, 0, -20);
+                spot.angle = Math.PI / 4;
+                spot.penumbra = 0.5;
+                towerGroup.add(spot);
+
+
+                towerGroup.position.set(pos[0], pos[1], pos[2]);
+                scene.add(towerGroup);
+            });
+        }
+
+
+        // --- GAME OBJECTS: BALL, BAT, STRIKE ZONE ---
+        function createGameObjects() {
+            // 1. Baseball
+            const ballGeo = new THREE.SphereGeometry(0.18, 32, 32);
+            const ballMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+            ball = new THREE.Mesh(ballGeo, ballMat);
+            ball.castShadow = true;
+            ball.position.set(0, 1.2, -18.44);
+            scene.add(ball);
+
+
+            // 2. Bat
+            const batGroup = new THREE.Group();
+            const batGeo = new THREE.CylinderGeometry(0.08, 0.03, 1.2, 16);
+            const batMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
+            const batMesh = new THREE.Mesh(batGeo, batMat);
+            batMesh.position.y = 0.6;
+            batMesh.castShadow = true;
+            batGroup.add(batMesh);
+
+
+            batGroup.position.set(0.6, 1.0, 0.2);
+            batGroup.rotation.z = -Math.PI / 6;
+            scene.add(batGroup);
+            bat = batGroup;
+
+
+            // 3. Strike Zone Grid Box
+            const zoneGeo = new THREE.BoxGeometry(1.2, 1.5, 0.1);
+            const zoneEdges = new THREE.EdgesGeometry(zoneGeo);
+            const zoneLineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 });
+            strikeZoneMesh = new THREE.LineSegments(zoneEdges, zoneLineMat);
+            strikeZoneMesh.position.set(0, 1.2, -0.4);
+            scene.add(strikeZoneMesh);
+
+
+            const paneGeo = new THREE.PlaneGeometry(1.2, 1.5);
+            const paneMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.15, side: THREE.DoubleSide });
+            const zonePane = new THREE.Mesh(paneGeo, paneMat);
+            zonePane.position.set(0, 1.2, -0.4);
+            scene.add(zonePane);
+        }
+
+
+        // --- CAMERA CONTROLLER ---
+        function updateCameraPosition() {
+            if (gameMode === 'batter') {
+                camera.position.set(0, 1.8, 2.8);
+                camera.lookAt(0, 1.2, -18.44);
+            } else {
+                // Pitcher 1st Person Camera (Eye Level at Pitcher's position)
+                camera.position.set(0, 1.7, -18.44);
+                camera.lookAt(0, 1.15, 0);
+            }
+        }
+
+
+        // --- MODE SWITCHER & UI CONTROL ---
+        function setGameMode(mode) {
+            gameMode = mode;
+            const btnBatter = document.getElementById('btn-mode-batter');
+            const btnPitcher = document.getElementById('btn-mode-pitcher');
+            const pitchCanvasEl = document.getElementById('pitch-canvas');
+            const pitchInstruct = document.getElementById('pitch-instruction');
+            const batterTimerOverlay = document.getElementById('batter-timer-overlay');
+            const batterCtrl = document.getElementById('batter-controls');
+            const pitcherCtrl = document.getElementById('pitcher-controls');
+
+
+            stopAutoPitchTimer();
+
+
+            if (mode === 'batter') {
+                btnBatter.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-red-600 text-white shadow-lg";
+                btnPitcher.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-gray-400 hover:text-white";
+                pitchCanvasEl.classList.add('hidden');
+                pitchInstruct.classList.add('hidden');
+                batterTimerOverlay.classList.remove('hidden');
+                batterCtrl.classList.remove('hidden');
+                pitcherCtrl.classList.add('hidden');
+
+
+                startAutoPitchTimer();
+            } else {
+                btnPitcher.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all bg-blue-600 text-white shadow-lg";
+                btnBatter.className = "px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all text-gray-400 hover:text-white";
+                pitchCanvasEl.classList.remove('hidden');
+                pitchInstruct.classList.remove('hidden');
+                batterTimerOverlay.classList.add('hidden');
+                batterCtrl.classList.add('hidden');
+                pitcherCtrl.classList.remove('hidden');
+            }
+
+
+            updateCameraPosition();
+            resetAtBat();
+        }
+
+
+        // --- AUTO PITCH TIMER (BATTER MODE: EVERY 4 SECONDS) ---
+        function startAutoPitchTimer() {
+            stopAutoPitchTimer();
+            pitchTimerTimeLeft = PITCH_INTERVAL;
+            updateTimerUI();
+
+
+            const intervalMs = 100;
+            pitchTimer = setInterval(() => {
+                if (gameMode !== 'batter') return;
+
+
+                if (!isPitching) {
+                    pitchTimerTimeLeft -= (intervalMs / 1000);
+                    if (pitchTimerTimeLeft <= 0) {
+                        pitchTimerTimeLeft = PITCH_INTERVAL;
+                        resetAtBat();
+                        generateDefaultPitchPath();
+                        startPitchingSequence();
+                    }
+                    updateTimerUI();
+                }
+            }, intervalMs);
+        }
+
+
+        function stopAutoPitchTimer() {
+            if (pitchTimer) {
+                clearInterval(pitchTimer);
+                pitchTimer = null;
+            }
+        }
+
+
+        function updateTimerUI() {
+            const timerText = document.getElementById('timer-text');
+            const timerBar = document.getElementById('pitch-timer-bar');
+
+
+            if (timerText && timerBar) {
+                const displaySec = Math.max(0, pitchTimerTimeLeft).toFixed(1);
+                timerText.innerText = `${displaySec}초`;
+                const percentage = (pitchTimerTimeLeft / PITCH_INTERVAL) * 100;
+                timerBar.style.width = `${percentage}%`;
+            }
+        }
+
+
+        // --- PITCHER MODE: TRAJECTORY CANVAS DRAWING & ACCURATE 3D MAPPING ---
+        function initPitchCanvas() {
+            pitchCanvas = document.getElementById('pitch-canvas');
+            pitchCtx = pitchCanvas.getContext('2d');
+            resizePitchCanvas();
+
+
+            window.addEventListener('resize', resizePitchCanvas);
+
+
+            const startDraw = (e) => {
+                if (gameMode !== 'pitcher' || isPitching) return;
+                isDrawingPath = true;
+                customDrawnPoints = [];
+                pitchCtx.clearRect(0, 0, pitchCanvas.width, pitchCanvas.height);
+                addPoint(e);
+            };
+
+
+            const moveDraw = (e) => {
+                if (!isDrawingPath) return;
+                addPoint(e);
+                drawTrajectoryLine();
+            };
+
+
+            const endDraw = () => {
+                if (!isDrawingPath) return;
+                isDrawingPath = false;
+                if (customDrawnPoints.length > 3) {
+                    convertDrawnPathTo3DCurve();
+                    startPitchingSequence();
+                }
+            };
+
+
+            pitchCanvas.addEventListener('mousedown', startDraw);
+            pitchCanvas.addEventListener('mousemove', moveDraw);
+            pitchCanvas.addEventListener('mouseup', endDraw);
+
+
+            pitchCanvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+            pitchCanvas.addEventListener('touchmove', (e) => moveDraw(e.touches[0]));
+            pitchCanvas.addEventListener('touchend', endDraw);
+        }
+
+
+        function resizePitchCanvas() {
+            pitchCanvas.width = window.innerWidth;
+            pitchCanvas.height = window.innerHeight;
+        }
+
+
+        function addPoint(e) {
+            const rect = pitchCanvas.getBoundingClientRect();
+            customDrawnPoints.push({
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            });
+        }
+
+
+        function drawTrajectoryLine() {
+            pitchCtx.clearRect(0, 0, pitchCanvas.width, pitchCanvas.height);
+            if (customDrawnPoints.length < 2) return;
+
+
+            pitchCtx.beginPath();
+            pitchCtx.moveTo(customDrawnPoints[0].x, customDrawnPoints[0].y);
+            for (let i = 1; i < customDrawnPoints.length; i++) {
+                pitchCtx.lineTo(customDrawnPoints[i].x, customDrawnPoints[i].y);
+            }
+            pitchCtx.strokeStyle = '#38bdf8';
+            pitchCtx.lineWidth = 6;
+            pitchCtx.lineCap = 'round';
+            pitchCtx.lineJoin = 'round';
+            pitchCtx.shadowColor = '#0284c7';
+            pitchCtx.shadowBlur = 12;
+            pitchCtx.stroke();
+        }
+
+
+        function resetPitchTrajectory() {
+            customDrawnPoints = [];
+            pitchCtx.clearRect(0, 0, pitchCanvas.width, pitchCanvas.height);
+            resetAtBat();
+        }
+
+
+        // Accurate conversion of 2D screen line coordinates to a 3D trajectory using 3D perspective Raycasting
+        function convertDrawnPathTo3DCurve() {
+            const points3D = [];
+            const total = customDrawnPoints.length;
+
+
+            const tempRaycaster = new THREE.Raycaster();
+            const mouseVec = new THREE.Vector2();
+
+
+            for (let i = 0; i < total; i++) {
+                const pt = customDrawnPoints[i];
+                const progress = i / (total - 1);
+               
+                // Z progresses smoothly from Pitcher (-18.44) to Home Plate (0.0)
+                const targetZ = -18.44 + (18.44 * progress);
+
+
+                // Convert screen pixel coordinates to Normalized Device Coordinates (-1 to +1)
+                mouseVec.x = (pt.x / window.innerWidth) * 2 - 1;
+                mouseVec.y = -(pt.y / window.innerHeight) * 2 + 1;
+
+
+                // Cast ray from pitcher 1st person camera
+                tempRaycaster.setFromCamera(mouseVec, camera);
+
+
+                // Find intersection of ray with vertical Z-plane at targetZ
+                const distanceZ = Math.abs(targetZ - camera.position.z);
+                const projectedPoint = tempRaycaster.ray.origin.clone().add(
+                    tempRaycaster.ray.direction.clone().multiplyScalar(distanceZ / Math.abs(tempRaycaster.ray.direction.z))
+                );
+
+
+                points3D.push(projectedPoint);
+            }
+
+
+            // Create smooth continuous 3D Curve
+            pitchCurve = new THREE.CatmullRomCurve3(points3D);
+        }
+
+
+        // --- PITCHING & BATTING ENGINE ---
+        function generateDefaultPitchPath() {
+            const pitchType = Math.floor(Math.random() * 3);
+            const targetX = (Math.random() - 0.5) * 1.6;
+            const targetY = 0.6 + Math.random() * 1.2;
+
+
+            const pts = [];
+            const steps = 20;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                const z = -18.44 + (18.44 * t);
+                let x = targetX * t;
+                let y = 1.4 + (targetY - 1.4) * t;
+
+
+                if (pitchType === 1) x += Math.sin(t * Math.PI) * 0.5;
+                else if (pitchType === 2) y += Math.sin(t * Math.PI) * 0.4;
+
+
+                pts.push(new THREE.Vector3(x, y, z));
+            }
+            pitchCurve = new THREE.CatmullRomCurve3(pts);
+        }
+
+
+        function triggerBatterSwing() {
+            if (isSwinging || !isPitching || isBallHit) return;
+            isSwinging = true;
+           
+            let swingProgress = 0;
+            const swingInterval = setInterval(() => {
+                swingProgress += 0.15;
+                bat.rotation.y = -Math.sin(swingProgress * Math.PI) * 2.2;
+               
+                if (!hitResultOccurred && ballProgress > 0.7 && ballProgress < 0.98) {
+                    checkBatBallHit();
+                }
+
+
+                if (swingProgress >= 1) {
+                    clearInterval(swingInterval);
+                    bat.rotation.y = 0;
+                    isSwinging = false;
+                }
+            }, 16);
+        }
+
+
+        function checkBatBallHit() {
+            const ballPos = ball.position;
+            const dist = ballPos.distanceTo(new THREE.Vector3(0, 1.2, 0));
+
+
+            if (dist < 1.4) {
+                isBallHit = true;
+                hitResultOccurred = true;
+
+
+                const timingDiff = Math.abs(ballProgress - 0.88);
+               
+                if (timingDiff < 0.03) {
+                    ballVelocity.set((Math.random() - 0.5) * 0.8, 1.2 + Math.random() * 0.4, -2.2);
+                    showBanner("HOME RUN!", "사직구장 담장을 넘기는 대형 홈런!", "text-yellow-400");
+                    processHitOutcome("HOMERUN");
+                } else if (timingDiff < 0.07) {
+                    ballVelocity.set((Math.random() - 0.5) * 1.5, 0.5 + Math.random() * 0.4, -1.5);
+                    const outcome = Math.random() > 0.4 ? "2BHIT" : "1BHIT";
+                    showBanner("안 타!", "우중간을 가르는 통쾌한 안타!", "text-green-400");
+                    processHitOutcome(outcome);
+                } else if (timingDiff < 0.12) {
+                    ballVelocity.set(Math.random() > 0.5 ? 1.5 : -1.5, 0.6, -0.4);
+                    showBanner("FOUL", "파울 라인을 벗어납니다.", "text-gray-300");
+                    processHitOutcome("FOUL");
+                } else {
+                    ballVelocity.set((Math.random() - 0.5) * 1.0, 0.9, -0.8);
+                    showBanner("OUT!", "야수 정면으로 향하는 아웃입니다.", "text-red-500");
+                    processHitOutcome("OUT");
+                }
+            }
+        }
+
+
+        function startPitchingSequence() {
+            if (isPitching) return;
+            isPitching = true;
+            ballProgress = 0;
+            isBallHit = false;
+            hitResultOccurred = false;
+        }
+
+
+        function evaluatePitchOutcome() {
+            hitResultOccurred = true;
+            const finalPos = ball.position;
+            const insideX = Math.abs(finalPos.x) <= 0.6;
+            const insideY = finalPos.y >= 0.45 && finalPos.y <= 1.95;
+
+
+            if (insideX && insideY) {
+                showBanner("STRIKE!", "스트라이크 존을 통과합니다!", "text-yellow-400");
+                processHitOutcome("STRIKE");
+            } else {
+                showBanner("BALL", "볼! 존을 벗어납니다.", "text-blue-400");
+                processHitOutcome("BALL");
+            }
+        }
+
+
+        // --- BASEBALL RULES & SCORING LOGIC ENGINE ---
+        function processHitOutcome(type) {
+            setTimeout(() => {
+                if (type === "STRIKE") {
+                    strikes++;
+                    if (strikes >= 3) {
+                        outs++;
+                        strikes = 0;
+                        balls = 0;
+                        showBanner("삼진 아웃!", "투수 삼진을 솎아냅니다!", "text-red-500");
+                    }
+                } else if (type === "BALL") {
+                    balls++;
+                    if (balls >= 4) {
+                        advanceRunners(1);
+                        balls = 0;
+                        strikes = 0;
+                        showBanner("볼넷 (Walk)", "1루로 출루합니다.", "text-blue-300");
+                    }
+                } else if (type === "FOUL") {
+                    if (strikes < 2) strikes++;
+                } else if (type === "OUT") {
+                    outs++;
+                    balls = 0;
+                    strikes = 0;
+                } else if (type === "1BHIT") {
+                    advanceRunners(1);
+                    balls = 0;
+                    strikes = 0;
+                } else if (type === "2BHIT") {
+                    advanceRunners(2);
+                    balls = 0;
+                    strikes = 0;
+                } else if (type === "HOMERUN") {
+                    let runs = 1;
+                    for (let i = 0; i < 3; i++) {
+                        if (bases[i]) {
+                            runs++;
+                            bases[i] = false;
+                        }
+                    }
+                    addScore(runs);
+                    balls = 0;
+                    strikes = 0;
+                }
+
+
+                if (outs >= 3) {
+                    changeInning();
+                }
+
+
+                updateUI();
+               
+                setTimeout(() => {
+                    resetAtBat();
+                }, 2000);
+
+
+            }, 800);
+        }
+
+
+        function advanceRunners(numBases) {
+            let currentScore = 0;
+            let newBases = [false, false, false];
+
+
+            for (let i = 2; i >= 0; i--) {
+                if (bases[i]) {
+                    const nextBase = i + numBases;
+                    if (nextBase >= 3) {
+                        currentScore++;
+                    } else {
+                        newBases[nextBase] = true;
+                    }
+                }
+            }
+
+
+            if (numBases - 1 < 3) {
+                newBases[numBases - 1] = true;
+            } else {
+                currentScore++;
+            }
+
+
+            bases = newBases;
+            if (currentScore > 0) addScore(currentScore);
+        }
+
+
+        function addScore(pts) {
+            if (isTopInning) {
+                scoreSamsung += pts;
+            } else {
+                scoreLotte += pts;
+            }
+        }
+
+
+        function changeInning() {
+            outs = 0;
+            balls = 0;
+            strikes = 0;
+            bases = [false, false, false];
+
+
+            if (!isTopInning) {
+                inning++;
+            }
+            isTopInning = !isTopInning;
+
+
+            showBanner(`${inning}회${isTopInning ? '초' : '말'} 교대`, isTopInning ? "삼성 라이온즈 공격" : "롯데 자이언츠 공격", "text-amber-300");
+        }
+
+
+        function resetAtBat() {
+            isPitching = false;
+            ballProgress = 0;
+            isBallHit = false;
+            hitResultOccurred = false;
+            ball.position.set(0, 1.2, -18.44);
+            ballVelocity.set(0, 0, 0);
+
+
+            if (gameMode === 'batter') {
+                pitchTimerTimeLeft = PITCH_INTERVAL;
+            }
+        }
+
+
+        // --- UI REFRESH ---
+        function updateUI() {
+            document.getElementById('lotte-score').innerText = scoreLotte;
+            document.getElementById('samsung-score').innerText = scoreSamsung;
+
+
+            document.getElementById('inning-text').innerText = `${inning}회${isTopInning ? '초' : '말'}`;
+            document.getElementById('defense-attack-text').innerText = isTopInning ? "삼성 공격 (롯데 수비)" : "롯데 공격 (삼성 수비)";
+
+
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`b${i}`).className = `bso-dot bso-b ${i <= balls ? 'active' : ''}`;
+            }
+            for (let i = 1; i <= 2; i++) {
+                document.getElementById(`s${i}`).className = `bso-dot bso-s ${i <= strikes ? 'active' : ''}`;
+                document.getElementById(`o${i}`).className = `bso-dot bso-o ${i <= outs ? 'active' : ''}`;
+            }
+
+
+            document.getElementById('base-1').className = `diamond-base absolute top-1/2 -right-1 -translate-y-1/2 ${bases[0] ? 'occupied' : ''}`;
+            document.getElementById('base-2').className = `diamond-base absolute -top-1 left-1/2 -translate-x-1/2 ${bases[1] ? 'occupied' : ''}`;
+            document.getElementById('base-3').className = `diamond-base absolute top-1/2 -left-1 -translate-y-1/2 ${bases[2] ? 'occupied' : ''}`;
+        }
+
+
+        function showBanner(title, subtext, colorClass = "text-yellow-400") {
+            const banner = document.getElementById('result-banner');
+            const textEl = document.getElementById('banner-text');
+            const subtextEl = document.getElementById('banner-subtext');
+
+
+            textEl.innerText = title;
+            textEl.className = `text-5xl sm:text-7xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-400 to-red-500 text-shadow-lg ${colorClass}`;
+            subtextEl.innerText = subtext;
+
+
+            banner.classList.remove('hidden');
+            setTimeout(() => {
+                banner.classList.add('hidden');
+            }, 1800);
+        }
+
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            document.getElementById('btn-swing').addEventListener('click', triggerBatterSwing);
+
+
+            window.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && gameMode === 'batter') {
+                    e.preventDefault();
+                    triggerBatterSwing();
+                }
+            });
+        }
+
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+
+        // --- MAIN RENDER & ANIMATION LOOP ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+
+            if (isPitching) {
+                if (!isBallHit) {
+                    if (ballProgress < 1.0) {
+                        ballProgress += pitchSpeed;
+                        if (pitchCurve) {
+                            const point = pitchCurve.getPoint(Math.min(ballProgress, 1.0));
+                            ball.position.copy(point);
+                        }
+                    } else {
+                        if (!hitResultOccurred) {
+                            evaluatePitchOutcome();
+                        }
+                    }
+                } else {
+                    ball.position.add(ballVelocity);
+                    ballVelocity.y -= 0.02;
+                    if (ball.position.y < 0.18) {
+                        ball.position.y = 0.18;
+                        ballVelocity.multiplyScalar(0.6);
+                    }
+                }
+
+
+                ball.rotation.x += 0.2;
+                ball.rotation.y += 0.1;
+            }
+
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DISASTER: 마지막 탈출</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#090c10;color:#edf2f5;font-family:Arial,"Malgun Gothic",sans-serif}
+#game{display:block;width:100vw;height:100vh}
+.panel{position:fixed;background:linear-gradient(135deg,rgba(8,12,16,.88),rgba(20,25,30,.65));border:1px solid #71808b66;backdrop-filter:blur(5px);padding:12px 15px;box-shadow:0 8px 28px #0005}
+#status{left:18px;top:18px;min-width:240px;border-left:3px solid #ef654e}
+#status strong{font-size:16px;letter-spacing:1px}#hazard{color:#ff816a;margin-top:6px;font-size:13px}
+#objective{left:18px;top:120px;max-width:300px;font-size:13px;line-height:1.7}
+#right{right:18px;top:18px;width:190px;font-size:12px;line-height:1.8}
+#prompt{left:50%;bottom:125px;transform:translateX(-50%);font-size:15px;text-align:center;min-width:260px;display:none;border-color:#d3b16a}
+#crosshair{position:fixed;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);pointer-events:none}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff9;box-shadow:0 0 4px #000}
+#crosshair:before{width:2px;height:16px;left:7px}#crosshair:after{height:2px;width:16px;top:7px}
+#bottom{left:50%;bottom:18px;transform:translateX(-50%);display:flex;gap:7px}
+.slot{width:58px;height:55px;border:1px solid #aeb9c266;background:#080b0dbb;display:flex;align-items:center;justify-content:center;flex-direction:column;font-size:11px}
+.slot b{font-size:20px;color:#d9e3e8}.slot.active{border:1px solid #e7c06b;background:#66502788}
+#help{right:18px;bottom:18px;font-size:12px;line-height:1.8;color:#d7e0e6}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,rgba(18,28,35,.42),rgba(0,0,0,.93));display:flex;align-items:center;justify-content:center;text-align:center;padding:24px}
+#menu{max-width:650px;background:#0a0f14dd;border:1px solid #72818d66;padding:32px 38px;box-shadow:0 20px 80px #0009}
+h1{margin:0 0 6px;font-size:clamp(28px,5vw,52px);letter-spacing:3px}h1 span{color:#f16d55}
+.sub{color:#aebbc5;line-height:1.7;margin:12px 0 22px}
+button{background:#d95e49;color:white;border:0;padding:13px 24px;font-size:15px;font-weight:bold;cursor:pointer}button:hover{background:#f17a62}
+#disasterPick{background:#1c252d;color:#eee;border:1px solid #66737d;padding:10px;margin:0 5px 18px;max-width:100%}
+#message{font-size:13px;color:#ffcc83;min-height:20px;margin-top:12px}
+#damage{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse,transparent 45%,rgba(160,25,10,.45));opacity:0;transition:opacity .15s}
+@media(max-width:650px){#right,#help{display:none}#objective{top:112px;max-width:220px}#bottom{bottom:12px}.slot{width:45px;height:48px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="status" class="panel"><strong>DISASTER <span style="color:#ef765f">/ 생존 모드</span></strong><div id="hazard">재해 감지: 지진 경보</div><div id="clock">남은 시간 04:00</div></div>
+<div id="objective" class="panel"><b>탈출 임무</b><br><span id="tasks">□ 비상 통로 찾기<br>□ 생존 물품 수집 (0/3)<br>□ 출구 문 열기</span></div>
+<div id="right" class="panel">생존 상태<br>체력 <span id="health">100</span>%<br>체온 <span id="temp">36.6</span>°C<br>가방 <span id="count">0</span>/6<br><hr style="border-color:#53606a55">주변 위험도 <span id="risk">높음</span><br>목표: 지상 출구</div>
+<div id="prompt" class="panel">E — 물건 줍기</div>
+<div id="crosshair"></div><div id="damage"></div>
+<div id="bottom" class="panel">
+<div class="slot active"><b>🔦</b>1 손전등</div><div class="slot"><b>🩹</b>2 구급상자</div><div class="slot"><b>💧</b>3 물</div><div class="slot"><b>🪢</b>4 밧줄</div><div class="slot"><b>🔧</b>5 공구</div><div class="slot"><b>🗝</b>6 열쇠</div>
+</div>
+<div id="help" class="panel">W A S D 이동 · 마우스 시점 회전<br>E 상호작용 · Shift 달리기 · Space 넘기<br>마우스 드래그로 시점 회전</div>
+<div id="overlay"><div id="menu"><h1>DISASTER<span>:</span><br>마지막 탈출</h1><div class="sub">붕괴 중인 건물에서 살아남아라.<br>물건을 수집하고 장애물을 넘어서 출구까지 도달하라.<br><b>WASD</b> 이동 · <b>마우스</b> 시점 · <b>E</b> 상호작용</div>
+<select id="disasterPick"><option value="quake">대지진 · 붕괴하는 도심</option><option value="flood">홍수 · 침수된 지하 시설</option><option value="storm">태풍 · 파손된 고층 건물</option><option value="fire">산불 · 연기로 가득한 시설</option><option value="volcano">화산재 · 정전된 대피소</option></select><br><button id="start">생존 시작</button><div id="message">PC 브라우저용 1인칭 프로토타입 · 그래픽을 불러오려면 인터넷 연결이 필요합니다.</div></div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const canvas=document.querySelector('#game');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x77818a);scene.fog=new THREE.FogExp2(0x77818a,.026);
+const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.08,180);
+camera.rotation.order='YXZ';
+const hemi=new THREE.HemisphereLight(0xb9c8d4,0x302921,1.15);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xffd9b2,2.0);sun.position.set(-7,15,5);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+const fill=new THREE.PointLight(0xffa05b,2.1,18);fill.position.set(1,2.6,-5);scene.add(fill);
+const mats={concrete:new THREE.MeshStandardMaterial({color:0x77766e,roughness:.96}),dark:new THREE.MeshStandardMaterial({color:0x282b2c,roughness:.88}),metal:new THREE.MeshStandardMaterial({color:0x515b61,metalness:.72,roughness:.48}),wood:new THREE.MeshStandardMaterial({color:0x604c38,roughness:.9}),glass:new THREE.MeshStandardMaterial({color:0x83a5b3,metalness:.2,roughness:.2}),red:new THREE.MeshStandardMaterial({color:0x9d3025,roughness:.7}),yellow:new THREE.MeshStandardMaterial({color:0xd4a43e,emissive:0x352000}),water:new THREE.MeshStandardMaterial({color:0x263f4b,metalness:.45,roughness:.24})};
+let solids=[],items=[],interactives=[],running=false,started=false,yaw=0,pitch=0,health=100,elapsed=0,inventory=new Set(),keys={},near=null,selected=0,waterLevel=0,disaster='quake',jumpV=0,grounded=true;
+const player={x:0,y:1.7,z:7,vx:0,vz:0};
+function box(name,x,y,z,sx,sy,sz,mat,solid=true,rot=0){const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);o.name=name;o.position.set(x,y,z);o.rotation.y=rot;o.castShadow=true;o.receiveShadow=true;scene.add(o);if(solid)solids.push({x,y,z,sx,sy,sz,obj:o});return o}
+function beam(a,b,r,mat){const d=new THREE.Vector3().subVectors(b,a);const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),8),mat);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());o.castShadow=true;scene.add(o)}
+function clearWorld(){for(const o of [...scene.children])if(o!==hemi&&o!==sun&&o!==fill)scene.remove(o);solids=[];items=[];interactives=[];inventory.clear();health=100;elapsed=0;player.x=0;player.y=1.7;player.z=7;yaw=0;pitch=0;waterLevel=0}
+function item(label,kind,x,y,z,emoji){const o=new THREE.Group();o.position.set(x,y,z);const core=new THREE.Mesh(new THREE.BoxGeometry(.38,.28,.28),kind==='key'?mats.yellow:kind==='medkit'?mats.red:kind==='water'?mats.glass:mats.metal);core.castShadow=true;o.add(core);const glow=new THREE.PointLight(kind==='medkit'?0xff4545:0xffd28a,.5,2);glow.position.y=.3;o.add(glow);o.userData={label,kind,emoji};scene.add(o);items.push(o);return o}
+function interact(label,kind,x,y,z,callback){const o=new THREE.Group();o.position.set(x,y,z);o.userData={label,kind,callback};const m=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.5,.16),kind==='exit'?mats.red:mats.metal);m.castShadow=true;o.add(m);scene.add(o);interactives.push(o);return o}
+function buildWorld(){
+ clearWorld();
+ const floorMat=disaster==='flood'?mats.water:mats.concrete;
+ box('floor',0,-.25,0,18,.5,28,floorMat);
+ // damaged corridor shell, leaving a navigable route through the middle
+ box('left wall',-9,2.1,0,.4,4.2,28,mats.concrete);
+ box('right wall',9,2.1,0,.4,4.2,28,mats.concrete);
+ box('back wall',0,2.1,-14,18,4.2,.4,mats.concrete);
+ box('ceiling slab',0,4.35,-1,18,.35,25,mats.dark);
+ // exposed, broken corridor sections and rubble leave gaps to navigate around
+ box('partition A',-4.8,1.4,2,7,.25,.6,mats.dark,true,.13);
+ box('partition B',5.1,1.4,-3,6,.25,.6,mats.dark,true,-.18);
+ box('fallen slab',-1.4,2.4,-4,4,.35,2.4,mats.concrete,true,.12);
+ box('cabinet',-6.5,1,-5,1.1,2,1.2,mats.wood,true,.04);
+ box('desk',5.8,.8,4,2.2,.25,1.2,mats.wood,true,.08);
+ box('desk leg',5,.35,4,.15,.7,.15,mats.metal);
+ box('desk leg',6.6,.35,4,.15,.7,.15,mats.metal);
+ // rubble chunks
+ for(let i=0;i<18;i++){const x=(Math.random()-.5)*14,z=(Math.random()-.5)*21-1;if(Math.abs(x)<1.7&&z>1)continue;const s=.25+Math.random()*.7;const r=box('rubble',x,s*.38,z,s*1.6,s*.7,s,mats.dark,true,Math.random()*2);r.rotation.z=(Math.random()-.5)*.22;}
+ // hanging cables / rebar
+ for(let i=0;i<12;i++){const x=(Math.random()-.5)*14,z=-12+Math.random()*23;beam(new THREE.Vector3(x,4.2,z),new THREE.Vector3(x+(Math.random()-.5)*.7,2.8+Math.random()*1.1,z+.2),.025,mats.metal);}
+ // distant broken skyline through a breach
+ for(let i=0;i<12;i++){const x=-28+i*5,z=-27-Math.random()*5,h=5+Math.random()*14;box('distant building',x,h/2,z,3+Math.random()*2,h,3,mats.dark,false);for(let j=0;j<7;j++){const win=box('window',x-1.4+(j%3)*1.2,1.5+Math.floor(j/3)*2,z+1.54,.45,.7,.04,mats.glass,false);}}
+ // distinct disaster atmosphere
+ if(disaster==='flood'){waterLevel=.22;scene.fog.color.set(0x536a76);scene.fog.density=.035;scene.background.set(0x536a76);fill.color.set(0x6da4c7);fill.intensity=1.2}
+ else if(disaster==='storm'){scene.fog.color.set(0x626d7b);scene.background.set(0x626d7b);sun.intensity=1.2;fill.color.set(0x9ab9ff)}
+ else if(disaster==='fire'){scene.fog.color.set(0x665044);scene.background.set(0x665044);scene.fog.density=.045;fill.color.set(0xff5623);fill.intensity=4}
+ else if(disaster==='volcano'){scene.fog.color.set(0x5d5550);scene.background.set(0x5d5550);scene.fog.density=.055;fill.color.set(0xffb36b);fill.intensity=1.4}
+ else {scene.fog.color.set(0x77818a);scene.background.set(0x77818a);scene.fog.density=.026;sun.intensity=2}
+ // practical loot and interactables
+ item('구급상자','medkit',-6.1,.65,-4.7,'🩹');
+ item('생수','water',5.7,1.25,3.1,'💧');
+ item('출입 열쇠','key',1.8,.5,-8.8,'🗝');
+ item('손전등','flashlight',-2.3,.45,1.5,'🔦');
+ item('밧줄','rope',6.7,.4,-7.4,'🪢');
+ interact('막힌 잔해','debris',-1.1,.9,-1.4,()=>{if(!inventory.has('tool')){say('잔해가 너무 무겁다. 공구를 먼저 찾아야 한다.');return}say('공구로 잔해를 치웠다! 통로가 열렸다.');inventory.add('path');document.querySelector('#tasks').innerHTML='☑ 비상 통로 확보<br>□ 생존 물품 수집 ('+Math.min(inventory.size,3)+'/3)<br>□ 출구 문 열기';});
+ interact('비상 출구','exit',0,1.2,-12.6,()=>{if(!inventory.has('key')){say('잠긴 출구다. 출입 열쇠를 찾아라.');return}if(!inventory.has('path')){say('출구 앞 통로가 잔해로 막혔다. 공구로 길을 확보해야 한다.');return}finish(true)});
+ item('공구','tool',-6.2,.45,5.7,'🔧');
+ // signs
+ const sign=box('EXIT sign',0,3.4,-12.35,2.3,.35,.08,mats.red,false);
+}
+function say(t){document.querySelector('#message').textContent=t;document.querySelector('#prompt').style.display='block';document.querySelector('#prompt').textContent=t;setTimeout(()=>{if(running)document.querySelector('#prompt').style.display='none'},2400)}
+function finish(win){running=false;document.exitPointerLock?.();const overlay=document.querySelector('#overlay');overlay.style.display='flex';document.querySelector('#menu').innerHTML=`<h1>
+win?'탈출성공':'생존실패'</h1><divclass="sub">{win?'붕괴하는 건물에서 탈출했다. 생존 임무 완료.':'위험이 너무 커졌다. 다음에는 주변 물품을 활용해 보자.'}<br>생존 시간 ${Math.floor(elapsed)}초 · 수집 물품 ${inventory.size}개</div><button onclick="location.reload()">다시 도전</button>`}
+function nearest(){let best=null,dist=2.3;for(const o of [...items,...interactives]){const d=Math.hypot(o.position.x-player.x,o.position.z-player.z);if(d<dist){dist=d;best=o}}return best}
+function use(){if(!near)return;if(items.includes(near)){const k=near.userData.kind;inventory.add(k);scene.remove(near);items=items.filter(x=>x!==near);say(`${near.userData.label} 획득!`);document.querySelector('#count').textContent=inventory.size;updateTasks();return}if(interactives.includes(near)){near.userData.callback();return}}
+function updateTasks(){const n=inventory.size;document.querySelector('#tasks').innerHTML=(inventory.has('path')?'☑':'□')+' 비상 통로 확보<br>'+(n>=3?'☑':'□')+` 생존 물품 수집 (${Math.min(n,3)}/3)<br>`+(inventory.has('key')?'☑':'□')+' 출구 열쇠 확보';}
+function finishStart(){disaster=document.querySelector('#disasterPick').value;buildWorld();document.querySelector('#overlay').style.display='none';running=true;started=true;renderer.domElement.requestPointerLock?.();document.querySelector('#hazard').textContent='재해 감지: '+({quake:'강력한 지진 · 여진 진행 중',flood:'홍수 · 수위 상승 중',storm:'태풍 · 강풍 및 파편 경보',fire:'화재 · 연기 확산 중',volcano:'화산재 · 시야 저하 경보'}[disaster]);document.querySelector('#message').textContent='주변을 살피고 필요한 물건을 찾으세요.'}
+document.querySelector('#start').addEventListener('click',finishStart);
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===renderer.domElement){}});
+let draggingLook=false,lastMouseX=0,lastMouseY=0;
+document.addEventListener('mousemove',e=>{
+ if(!running)return;
+ if(document.pointerLockElement===renderer.domElement){
+   yaw-=e.movementX*.0021; pitch-=e.movementY*.0021;
+ } else if(draggingLook){
+   yaw-=(e.clientX-lastMouseX)*.004;
+   pitch-=(e.clientY-lastMouseY)*.004;
+   lastMouseX=e.clientX; lastMouseY=e.clientY;
+ }
+ pitch=Math.max(-1.45,Math.min(1.45,pitch));
+});
+renderer.domElement.addEventListener('mousedown',e=>{
+ if(!running||e.button!==0)return;
+ draggingLook=true;lastMouseX=e.clientX;lastMouseY=e.clientY;
+});
+document.addEventListener('mouseup',()=>draggingLook=false);
+document.addEventListener('pointerlockerror',()=>{if(running)say('마우스 잠금이 차단됐어요. 마우스를 누른 채 드래그해 시점을 돌리세요.');});
+document.addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE'&&running)use();if(e.code.startsWith('Digit')){selected=Number(e.code.slice(5))-1;document.querySelectorAll('.slot').forEach((s,i)=>s.classList.toggle('active',i===selected));}if(e.code==='Space'&&grounded){jumpV=5;grounded=false}});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+document.addEventListener('click',()=>{if(running&&document.pointerLockElement!==renderer.domElement)renderer.domElement.requestPointerLock?.()});
+function blocked(x,z){for(const s of solids){if(s.obj && s.obj.name==='floor')continue;if(s.obj && s.obj.name==='ceiling slab')continue;if(Math.abs(x-s.x)<s.sx/2+.32&&Math.abs(z-s.z)<s.sz/2+.32&&player.y-1.2<s.y+s.sy/2&&player.y+.15>s.y-s.sy/2)return true}return false}
+function animate(){requestAnimationFrame(animate);const dt=Math.min(renderer.info?0.035:.016,.035);if(running){elapsed+=dt;const speed=(keys.ShiftLeft||keys.ShiftRight)?5.1:3.1;let f=0,r=0;if(keys.KeyW)f+=1;if(keys.KeyS)f-=1;if(keys.KeyD)r+=1;if(keys.KeyA)r-=1;const len=Math.hypot(f,r)||1;f/=len;r/=len;const dx=(Math.sin(yaw)*f+Math.cos(yaw)*r)*speed*dt,dz=(-Math.cos(yaw)*f+Math.sin(yaw)*r)*speed*dt;if(!blocked(player.x+dx,player.z))player.x+=dx;if(!blocked(player.x,player.z+dz))player.z+=dz;
+ player.y+=jumpV*dt;jumpV-=12*dt;if(player.y<1.7){player.y=1.7;jumpV=0;grounded=true}
+ if(disaster==='flood'){waterLevel=Math.min(.95,waterLevel+dt*.004);if(player.z<0)health-=dt*.15}
+ if(disaster==='fire'&&Math.random()<.02)health-=.12;
+ if(disaster==='volcano'&&Math.random()<.015)health-=.08;
+ camera.position.set(player.x,player.y,player.z);camera.rotation.set(pitch,yaw,0,'YXZ');
+ near=nearest();const p=document.querySelector('#prompt');if(near){p.style.display='block';p.textContent='[E] '+near.userData.label+' 상호작용'}else p.style.display='none';
+ document.querySelector('#clock').textContent='남은 시간 '+Math.max(0,Math.floor(240-elapsed)/60|0)+':'+String(Math.max(0,Math.floor(240-elapsed)%60).toString().padStart(2,'0'));
+ document.querySelector('#health').textContent=Math.max(0,Math.floor(health));document.querySelector('#temp').textContent=(disaster==='flood'?36.6-elapsed*.002:36.6).toFixed(1);
+ if(elapsed>240||health<=0)finish(false);
+ if(Math.random()<.002){const d=box('falling debris',(Math.random()-.5)*12,5+Math.random()*2,(Math.random()-.5)*12,.4,.4,.4,mats.dark,false);d.userData.fall=true;d.userData.v=0;}
+ for(const o of scene.children){if(o.userData?.fall){o.userData.v=(o.userData.v||0)+dt*9;o.position.y-=o.userData.v*dt;if(o.position.y<0){scene.remove(o)}}}
+ document.querySelector('#damage').style.opacity=health<55?.5:0;
+ }
+ renderer.render(scene,camera)}
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+buildWorld();animate();
+</script>
+</body>
+</html>

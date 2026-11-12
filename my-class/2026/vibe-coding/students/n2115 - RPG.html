@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>3D RPG 통합판 - 바다/꽃/풀/NPC/명검/멀티</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{overflow:hidden;background:#111;font-family:'Malgun Gothic',sans-serif}
+  #ui{position:absolute;top:10px;left:10px;color:#fff;background:rgba(0,0,0,.82);padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.5;z-index:10;min-width:270px;border:1px solid #555;pointer-events:none}
+  #ui b{color:#ffd700}
+  #inventory{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:440px;background:rgba(12,12,22,.96);border:2px solid #666;border-radius:14px;padding:18px;z-index:40;display:none;color:#fff}
+  #inventory h2{text-align:center;margin-bottom:12px;color:#ffd700}
+  .inv-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .inv-slot{width:72px;height:72px;background:#222;border:2px solid #555;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;text-align:center}
+  .inv-slot:hover{border-color:#ffd700;background:#333}
+  .inv-slot.equipped{border-color:#4f4;box-shadow:0 0 8px #4f4}
+  #dialog{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.93);color:#fff;padding:16px 26px;border-radius:14px;max-width:640px;display:none;z-index:20;text-align:center;border:2px solid #666}
+  #dialog button{margin:8px 5px 0;padding:8px 14px;cursor:pointer;background:#2a6a2a;color:#fff;border:none;border-radius:8px;font-size:13px}
+  #dialog button:hover{background:#3a8a3a}
+  #mpanel{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.85);padding:12px;border-radius:10px;z-index:15;color:#fff;width:230px;border:1px solid #555;font-size:12px}
+  #mpanel input{width:100%;padding:7px;margin:5px 0;border-radius:6px;border:1px solid #555;background:#222;color:#fff}
+  #mpanel button{width:100%;padding:7px;margin-top:5px;border:none;border-radius:6px;background:#2a5a8a;color:#fff;cursor:pointer}
+  #hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#ccc;font-size:12px;z-index:5;background:rgba(0,0,0,.55);padding:5px 12px;border-radius:16px}
+</style>
+</head>
+<body>
+<div id="ui"></div>
+<div id="inventory"><h2>인벤토리 (I)</h2><div class="inv-grid" id="invGrid"></div></div>
+<div id="dialog"></div>
+<div id="mpanel">
+  <b>멀티플레이</b>
+  <div id="myId" style="margin:5px 0;color:#8cf">연결 중...</div>
+  <input id="roomInput" placeholder="방 코드">
+  <button onclick="hostGame()">방 만들기</button>
+  <button onclick="joinGame()">방 입장</button>
+  <div id="playersList" style="margin-top:6px;color:#aaa"></div>
+</div>
+<div id="hint">WASD 이동 | 마우스 드래그 시점 | E/클릭 공격 | I 인벤 | Space 점프 | F 상호작용</div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+// ========== 플레이어 상태 ==========
+const player = {
+  level:1, exp:0, maxExp:100, hp:100, maxHp:100, mp:50, maxMp:50,
+  atk:14, def:5, job:null, race:'인간',
+  inventory:[
+    {id:'sword_n', name:'낡은 검', type:'weapon', atk:5},
+    {id:'potion1', name:'체력 포션', type:'consumable', heal:40},
+    {id:'potion2', name:'체력 포션', type:'consumable', heal:40}
+  ],
+  equipped:{weapon:null},
+  legendary:{'흑혈':false,'백의':false,'금관':false},
+  quests:{piper:0, robert:0, piperKills:0, robertKills:0},
+  unlockedRaces:['인간']
+};
+const jobs=['전사','마법사','도적','무투가','아처'];
+let dragonKnight=false;
+
+// ========== Three.js ==========
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.Fog(0x87ceeb,90,220);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,350);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.55));
+const sun=new THREE.DirectionalLight(0xfff5e0,1.2);
+sun.position.set(50,80,40); sun.castShadow=true; scene.add(sun);
+
+// 땅
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(320,320), new THREE.MeshStandardMaterial({color:0x4a8c3f,roughness:0.9}));
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+// ===== 바다 =====
+const oceanGeo=new THREE.PlaneGeometry(400,180,32,16);
+const oceanMat=new THREE.MeshStandardMaterial({color:0x1a6a9a, transparent:true, opacity:0.85, roughness:0.3, metalness:0.2});
+const ocean=new THREE.Mesh(oceanGeo, oceanMat);
+ocean.rotation.x=-Math.PI/2;
+ocean.position.set(0,-0.3,140);
+scene.add(ocean);
+// 물결용
+const oceanClock=new THREE.Clock();
+
+// ===== 풀 =====
+function addGrass(){
+  const gmat=new THREE.MeshStandardMaterial({color:0x3a9a3a, side:THREE.DoubleSide});
+  for(let i=0;i<400;i++){
+    const x=(Math.random()-0.5)*200;
+    const z=(Math.random()-0.5)*160;
+    if(z>90) continue;
+    const h=0.25+Math.random()*0.45;
+    const blade=new THREE.Mesh(new THREE.ConeGeometry(0.06,h,3), gmat);
+    blade.position.set(x,h/2,z);
+    blade.rotation.y=Math.random()*Math.PI;
+    blade.rotation.z=(Math.random()-0.5)*0.3;
+    scene.add(blade);
+  }
+}
+addGrass();
+
+// ===== 꽃 =====
+function addFlowers(){
+  const colors=[0xff6699,0xffee55,0xff8833,0xcc66ff,0xffffff];
+  for(let i=0;i<120;i++){
+    const x=(Math.random()-0.5)*180;
+    const z=(Math.random()-0.5)*140;
+    if(z>85) continue;
+    const g=new THREE.Group();
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.35,5), new THREE.MeshStandardMaterial({color:0x2a7a2a}));
+    stem.position.y=0.18; g.add(stem);
+    const petal=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6), new THREE.MeshStandardMaterial({color:colors[i%colors.length]}));
+    petal.position.y=0.4; petal.scale.y=0.5; g.add(petal);
+    g.position.set(x,0,z);
+    scene.add(g);
+  }
+}
+addFlowers();
+
+// ===== 산 =====
+(function(){
+  const mat=new THREE.MeshStandardMaterial({color:0x6a6a6a,flatShading:true});
+  const m=new THREE.Mesh(new THREE.ConeGeometry(30,48,8),mat);
+  m.position.set(0,24,95); m.castShadow=true; scene.add(m);
+  const s=new THREE.Mesh(new THREE.ConeGeometry(10,14,8), new THREE.MeshStandardMaterial({color:0xf0f0ff}));
+  s.position.set(0,42,95); scene.add(s);
+  const m2=new THREE.Mesh(new THREE.ConeGeometry(16,30,7),mat);
+  m2.position.set(-20,15,88); scene.add(m2);
+})();
+
+// 건물
+function bld(x,z,w,h,d,c){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c}));m.position.set(x,h/2,z);m.castShadow=true;scene.add(m);}
+bld(-14,-10,9,5.5,7,0x8b5a2b); bld(12,-12,7,4.5,7,0x6b4e31);
+bld(-4,-18,11,6.5,8,0x7a5c3a); bld(18,4,6,4,6,0x5c4033);
+bld(-22,0,5,4,5,0x6b4423); // 상점
+bld(8,-22,6,4.5,5,0x5a3a2a); // 치료소
+
+// 나무
+function tree(x,z,s=1){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(0.14*s,0.2*s,1.7*s,6),new THREE.MeshStandardMaterial({color:0x6b3f1d}));
+  t.position.y=0.85*s;g.add(t);
+  const l=new THREE.Mesh(new THREE.ConeGeometry(1.2*s,2*s,7),new THREE.MeshStandardMaterial({color:0x2d6a2d}));
+  l.position.y=2.2*s;g.add(l);
+  g.position.set(x,0,z);scene.add(g);
+}
+for(let i=0;i<35;i++){
+  const x=(Math.random()-0.5)*160,z=(Math.random()-0.5)*130;
+  if(Math.abs(x)<14&&Math.abs(z)<14)continue;
+  if(z>70)continue;
+  tree(x,z,0.7+Math.random()*0.7);
+}
+
+// ========== 검 ==========
+function createSword(type='normal'){
+  const s=new THREE.Group();
+  let bc=0xcccccc,gc=0x888888,hc=0x5c3a1e;
+  if(type==='흑혈'){bc=0x1a0a0a;gc=0x440000;hc=0x220000;}
+  if(type==='백의'){bc=0xeeffff;gc=0xaaccff;hc=0xccddee;}
+  if(type==='금관'){bc=0xffd700;gc=0xffaa00;hc=0xcc8800;}
+  const blade=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.0,0.03),new THREE.MeshStandardMaterial({color:bc,metalness:0.8,roughness:0.25}));
+  blade.position.y=0.65;s.add(blade);
+  const tip=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.22,6),new THREE.MeshStandardMaterial({color:bc,metalness:0.8}));
+  tip.position.y=1.25;tip.rotation.x=Math.PI;s.add(tip);
+  const guard=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.07,0.1),new THREE.MeshStandardMaterial({color:gc,metalness:0.7}));
+  guard.position.y=0.12;s.add(guard);
+  const handle=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.32,8),new THREE.MeshStandardMaterial({color:hc}));
+  handle.position.y=-0.1;s.add(handle);
+  return s;
+}
+
+// ========== 캐릭터 ==========
+function createHuman(color=0x3a6ea5, scale=1){
+  const g=new THREE.Group();
+  const skin=0xffe0bd;
+  [-0.15,0.15].forEach(x=>{
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(0.1*scale,0.12*scale,0.7*scale,8),new THREE.MeshStandardMaterial({color:0x2c3e50}));
+    leg.position.set(x*scale,0.35*scale,0);g.add(leg);
+  });
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.26*scale,0.3*scale,0.7*scale,10),new THREE.MeshStandardMaterial({color}));
+  body.position.y=1.0*scale;body.castShadow=true;g.add(body);
+  const armG=new THREE.Group(); armG.position.set(0.38*scale,1.25*scale,0);
+  const arm=new THREE.Mesh(new THREE.CylinderGeometry(0.07*scale,0.08*scale,0.55*scale,8),new THREE.MeshStandardMaterial({color:skin}));
+  arm.position.y=-0.25*scale;armG.add(arm); g.add(armG); g.userData.rightArm=armG;
+  const larm=new THREE.Mesh(new THREE.CylinderGeometry(0.07*scale,0.08*scale,0.55*scale,8),new THREE.MeshStandardMaterial({color:skin}));
+  larm.position.set(-0.38*scale,1.0*scale,0);g.add(larm);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.23*scale,14,12),new THREE.MeshStandardMaterial({color:skin}));
+  head.position.y=1.7*scale;g.add(head);
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(0.25*scale,12,10),new THREE.MeshStandardMaterial({color:0x3b2a1a}));
+  hair.position.y=1.82*scale;hair.scale.set(1.05,0.7,1.05);g.add(hair);
+  return g;
+}
+function createMage(){
+  const g=new THREE.Group();
+  const t=new THREE.Mesh(new THREE.CylinderGeometry(0.42,0.55,1.4,10),new THREE.MeshStandardMaterial({color:0x5533aa}));
+  t.position.y=0.95;g.add(t);
+  const h=new THREE.Mesh(new THREE.SphereGeometry(0.25,12,10),new THREE.MeshStandardMaterial({color:0xffe0bd}));
+  h.position.y=1.85;g.add(h);
+  const hat=new THREE.Mesh(new THREE.ConeGeometry(0.38,0.85,8),new THREE.MeshStandardMaterial({color:0x331166}));
+  hat.position.y=2.4;g.add(hat);
+  const staff=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,2,6),new THREE.MeshStandardMaterial({color:0x8b5a2b}));
+  staff.position.set(0.5,1.2,0.15);g.add(staff);
+  const gem=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,8),new THREE.MeshStandardMaterial({color:0x66ffff,emissive:0x228888}));
+  gem.position.set(0.5,2.25,0.15);g.add(gem);
+  return g;
+}
+function createGoblin(){
+  const g=createHuman(0x3a8f3a,0.72);
+  return g;
+}
+function createDragon(){
+  const g=new THREE.Group(); const red=0xaa2222;
+  const b=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.4,3.5),new THREE.MeshStandardMaterial({color:red}));
+  b.position.y=1.5;g.add(b);
+  const n=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.45,1.6,8),new THREE.MeshStandardMaterial({color:red}));
+  n.position.set(0,2.3,1.5);n.rotation.x=-0.55;g.add(n);
+  const h=new THREE.Mesh(new THREE.BoxGeometry(0.85,0.65,1.2),new THREE.MeshStandardMaterial({color:0x661111}));
+  h.position.set(0,3.0,2.4);g.add(h);
+  [-1.5,1.5].forEach(x=>{
+    const w=new THREE.Mesh(new THREE.BoxGeometry(0.12,2,3.2),new THREE.MeshStandardMaterial({color:0x882222,side:THREE.DoubleSide,transparent:true,opacity:0.9}));
+    w.position.set(x,2.3,0);w.rotation.z=x>0?-0.45:0.45;g.add(w);
+  });
+  return g;
+}
+function createJinBear(){
+  const g=new THREE.Group(); const br=0x5c3a1e;
+  const body=new THREE.Mesh(new THREE.SphereGeometry(1.05,12,10),new THREE.MeshStandardMaterial({color:br}));
+  body.position.y=1.25;body.scale.set(1.25,1,0.9);g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.6,12,10),new THREE.MeshStandardMaterial({color:br}));
+  head.position.set(0,1.95,0.65);g.add(head);
+  return g;
+}
+function createSnake(){
+  const g=new THREE.Group();
+  for(let i=0;i<10;i++){
+    const seg=new THREE.Mesh(new THREE.SphereGeometry(0.16-i*0.008,8,6),new THREE.MeshStandardMaterial({color:i%2?0x1a5f1a:0x2a8f2a}));
+    seg.position.set(Math.sin(i*0.5)*0.2,0.15,-i*0.32);g.add(seg);
+  }
+  return g;
+}
+
+// 플레이어
+const playerMesh=createHuman(0x3a6ea5);
+playerMesh.position.set(0,0,8);
+scene.add(playerMesh);
+let heldSword=null;
+function updateWeaponVisual(){
+  if(heldSword){playerMesh.userData.rightArm.remove(heldSword);heldSword=null;}
+  const w=player.equipped.weapon;
+  if(w&&w.type==='weapon'){
+    let st='normal';
+    if(w.name.includes('흑혈'))st='흑혈';
+    else if(w.name.includes('백의'))st='백의';
+    else if(w.name.includes('금관'))st='금관';
+    heldSword=createSword(st);
+    heldSword.position.set(0,-0.55,0.05);
+    heldSword.rotation.x=0.2;
+    playerMesh.userData.rightArm.add(heldSword);
+  }
+}
+
+// ========== 3인칭 카메라 ==========
+let yaw=0,pitch=0.3,dragging=false;
+renderer.domElement.addEventListener('mousedown',e=>{if(e.button===0||e.button===2)dragging=true;});
+window.addEventListener('mouseup',()=>dragging=false);
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+renderer.domElement.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  yaw-=e.movementX*0.005;
+  pitch=Math.max(-0.05,Math.min(1.0,pitch-e.movementY*0.004));
+});
+
+// ========== 공격 모션 ==========
+let attacking=false,attackT=0;
+function playAttack(){
+  if(attacking)return;
+  attacking=true; attackT=0; tryHit();
+}
+function updateAttack(dt){
+  if(!attacking)return;
+  attackT+=dt;
+  const arm=playerMesh.userData.rightArm;
+  if(attackT<0.15) arm.rotation.x=-attackT*8;
+  else if(attackT<0.35) arm.rotation.x=-1.2+(attackT-0.15)*10;
+  else if(attackT<0.5) arm.rotation.x=0.8-(attackT-0.35)*5;
+  else{arm.rotation.x=0;attacking=false;}
+}
+
+// ========== 인벤토리 ==========
+const invEl=document.getElementById('inventory');
+const invGrid=document.getElementById('invGrid');
+let invOpen=false;
+function toggleInv(){invOpen=!invOpen;invEl.style.display=invOpen?'block':'none';if(invOpen)renderInv();}
+function renderInv(){
+  invGrid.innerHTML='';
+  player.inventory.forEach((item,idx)=>{
+    const s=document.createElement('div');
+    s.className='inv-slot'+(player.equipped.weapon&&player.equipped.weapon.id===item.id?' equipped':'');
+    s.textContent=item.name;
+    s.onclick=()=>useItem(idx);
+    invGrid.appendChild(s);
+  });
+  for(let i=player.inventory.length;i<15;i++){
+    const s=document.createElement('div');s.className='inv-slot';invGrid.appendChild(s);
+  }
+}
+function useItem(idx){
+  const item=player.inventory[idx]; if(!item)return;
+  if(item.type==='weapon'){
+    player.equipped.weapon=item;
+    player.atk=14+(item.atk||0);
+    if(item.name.includes('흑혈'))player.atk+=22;
+    if(item.name.includes('백의')){player.atk+=16;player.def=14;}
+    if(item.name.includes('금관')){player.atk+=26;player.maxHp=Math.max(player.maxHp,160);}
+    updateWeaponVisual(); updateUI();
+    showDialog(`<b>${item.name}</b> 장착<br><button onclick="closeDialog()">확인</button>`);
+  }else if(item.type==='consumable'){
+    player.hp=Math.min(player.maxHp,player.hp+(item.heal||30));
+    player.inventory.splice(idx,1); updateUI(); renderInv();
+    showDialog(`회복했습니다<br><button onclick="closeDialog()">확인</button>`);
+  }
+}
+
+// ========== 입력 ==========
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='KeyI')toggleInv();
+  if(e.code==='KeyE'||e.code==='KeyF'){playAttack(); interact();}
+  if(e.code==='Space')tryJump();
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('click',()=>{if(!invOpen)playAttack();});
+let vy=0,canJump=true;
+function tryJump(){if(canJump){vy=8;canJump=false;}}
+
+// ========== NPC ==========
+const npcs=[];
+function addNPC(x,z,mesh,name,type){
+  mesh.position.set(x,0,z); scene.add(mesh);
+  const c=document.createElement('canvas'); c.width=256;c.height=56;
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.beginPath(); ctx.roundRect(0,0,256,56,10); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='bold 20px sans-serif'; ctx.textAlign='center'; ctx.fillText(name,128,36);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c)}));
+  sp.scale.set(2.6,0.6,1); sp.position.set(0,2.4,0); mesh.add(sp);
+  npcs.push({mesh,name,type});
+}
+addNPC(-9,-6,createHuman(0x22aa44),'직업 선택','job');
+addNPC(9,-7,createMage(),'숨겨진 현자','hidden');
+addNPC(0,-14,createHuman(0xc9a227),'왕궁 안내','palace');
+addNPC(14,3,createHuman(0x444466),'종족 상인','race');
+addNPC(-20,5,createHuman(0x8b0000),'파이퍼','piper');
+addNPC(22,8,createHuman(0xffd700),'로버트','robert');
+addNPC(-22,-2,createHuman(0x6688aa),'상점 주인','shop');
+addNPC(8,-20,createHuman(0xeeaaaa),'치료사','healer');
+addNPC(-5,6,createHuman(0x88cc88),'마을 주민','villager');
+addNPC(5,5,createHuman(0xccaa66),'어부','fisher');
+
+// ========== 몬스터 ==========
+const monsters=[];
+function spawnMon(type,x,z,hp,atk){
+  let mesh;
+  if(type==='고블린')mesh=createGoblin();
+  else if(type==='용')mesh=createDragon();
+  else if(type==='진베어')mesh=createJinBear();
+  else if(type==='뱀')mesh=createSnake();
+  else mesh=createHuman(0x888888);
+  mesh.position.set(x,0,z); scene.add(mesh);
+  monsters.push({mesh,type,hp,maxHp:hp,atk,dead:false});
+}
+for(let i=0;i<6;i++)spawnMon('고블린',-24+Math.random()*12,16+Math.random()*12,40,7);
+for(let i=0;i<4;i++)spawnMon('뱀',20+Math.random()*10,14+Math.random()*10,35,6);
+spawnMon('진베어',-32,32,900,30);
+spawnMon('용',0,100,2500,48);
+
+function tryHit(){
+  for(const m of monsters){
+    if(m.dead)continue;
+    const r=m.type==='용'?6:m.type==='진베어'?3.8:2.7;
+    if(playerMesh.position.distanceTo(m.mesh.position)<r){
+      m.hp-=player.atk;
+      m.mesh.traverse(c=>{if(c.material&&c.material.emissive){c.material.emissive.setHex(0xff0000);setTimeout(()=>c.material.emissive&&c.material.emissive.setHex(0),120);}});
+      if(m.hp<=0){
+        m.dead=true; scene.remove(m.mesh);
+        player.exp+=m.type==='용'?200:m.type==='진베어'?120:35;
+        if(Math.random()<0.35)player.inventory.push({id:'p'+Date.now(),name:'체력 포션',type:'consumable',heal:40});
+        // 퀘스트
+        if(m.type==='고블린'&&player.quests.piper===1){
+          player.quests.piperKills++;
+          if(player.quests.piperKills>=5){
+            player.quests.piper=2; player.legendary['흑혈']=true;
+            player.inventory.push({id:'sword_black',name:'흑혈',type:'weapon',atk:25});
+            showDialog(`<b style="color:#ff4444">흑혈</b> 획득!<br><button onclick="closeDialog()">확인</button>`);
+          }
+        }
+        if(m.type==='뱀'&&player.quests.robert===1){
+          player.quests.robertKills++;
+          if(player.quests.robertKills>=3){
+            player.quests.robert=2; player.legendary['금관']=true;
+            player.inventory.push({id:'sword_gold',name:'금관',type:'weapon',atk:30});
+            showDialog(`<b style="color:#ffd700">금관</b> 획득!<br><button onclick="closeDialog()">확인</button>`);
+          }
+        }
+        if(m.type==='진베어'){
+          player.legendary['백의']=true;
+          player.inventory.push({id:'sword_white',name:'백의',type:'weapon',atk:22});
+          showDialog(`<b style="color:#aaddff">백의</b> 획득!<br><button onclick="closeDialog()">확인</button>`);
+        }
+        if(m.type==='용'){
+          dragonKnight=true;
+          showDialog(`고대 용 처치! 용기사 해금<br><button onclick="closeDialog()">확인</button>`);
+        }
+        while(player.exp>=player.maxExp){
+          player.exp-=player.maxExp; player.level++;
+          player.maxExp=Math.floor(player.maxExp*1.35);
+          player.maxHp+=16; player.hp=player.maxHp; player.atk+=2; player.def+=1;
+          showDialog(`레벨 업! Lv.${player.level}<br><button onclick="closeDialog()">확인</button>`);
+        }
+        updateUI();
+      }else{
+        player.hp-=Math.max(1,m.atk-player.def);
+        if(player.hp<=0){player.hp=player.maxHp;playerMesh.position.set(0,0,8);showDialog(`쓰러짐 → 마을 귀환<br><button onclick="closeDialog()">확인</button>`);}
+        updateUI();
+      }
+      break;
+    }
+  }
+}
+
+// ========== 상호작용 ==========
+function interact(){
+  let best=null,bd=3.3;
+  for(const n of npcs){
+    const d=playerMesh.position.distanceTo(n.mesh.position);
+    if(d<bd){bd=d;best=n;}
+  }
+  if(!best)return;
+  const t=best.type;
+  if(t==='job'){
+    let b=jobs.map(j=>`<button onclick="chooseJob('
+j')">{j}</button>`).join('');
+    if(dragonKnight)b+=`<button onclick="chooseJob('용기사')" style="background:#a22">용기사</button>`;
+    showDialog(`<b>직업 선택</b><br>${b}<br><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='hidden'){
+    showDialog(dragonKnight?`이미 용기사 자격 있음<br><button onclick="closeDialog()">닫기</button>`:`북쪽 산의 용을 처치하라<br><button onclick="closeDialog()">확인</button>`);
+  }else if(t==='palace'){
+    showDialog(`왕궁으로 이동?<br><button onclick="goPalace()">이동</button><button onclick="closeDialog()">취소</button>`);
+  }else if(t==='race'){
+    showDialog(`해금 종족: ${player.unlockedRaces.join(', ')}<br><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='piper'){
+    if(player.quests.piper===0)showDialog(`파이퍼: 고블린 5마리 처치하면 <b style="color:#f44">흑혈</b><br><button onclick="startPiper()">수락</button><button onclick="closeDialog()">거절</button>`);
+    else if(player.quests.piper===1)showDialog(`고블린 ${player.quests.piperKills}/5<br><button onclick="closeDialog()">확인</button>`);
+    else showDialog(`이미 흑혈을 주었네<br><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='robert'){
+    if(player.quests.robert===0)showDialog(`로버트: 독뱀 3마리 처치 시 <b style="color:#fd0">금관</b><br><button onclick="startRobert()">수락</button><button onclick="closeDialog()">거절</button>`);
+    else if(player.quests.robert===1)showDialog(`독뱀 ${player.quests.robertKills}/3<br><button onclick="closeDialog()">확인</button>`);
+    else showDialog(`이미 금관을 주었네<br><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='shop'){
+    showDialog(`상점: 포션 구매 (데모)<br><button onclick="buyPotion()">포션 얻기</button><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='healer'){
+    player.hp=player.maxHp; player.mp=player.maxMp; updateUI();
+    showDialog(`치료사가 당신을 회복시켰습니다<br><button onclick="closeDialog()">감사</button>`);
+  }else if(t==='villager'){
+    showDialog(`주민: 동쪽 숲에 고블린이, 북쪽 산에 용이 있대요<br><button onclick="closeDialog()">닫기</button>`);
+  }else if(t==='fisher'){
+    showDialog(`어부: 남쪽 바다에서 물고기가 잘 잡힙니다. 수영은 아직...<br><button onclick="closeDialog()">닫기</button>`);
+  }
+}
+window.startPiper=()=>{player.quests.piper=1;player.quests.piperKills=0;closeDialog();showDialog(`고블린 5마리 처치 퀘스트 시작<br><button onclick="closeDialog()">확인</button>`);};
+window.startRobert=()=>{player.quests.robert=1;player.quests.robertKills=0;closeDialog();showDialog(`독뱀 3마리 처치 퀘스트 시작<br><button onclick="closeDialog()">확인</button>`);};
+window.chooseJob=j=>{
+  player.job=j;
+  if(j==='전사'){player.atk+=8;player.def+=6;player.maxHp+=30;}
+  else if(j==='마법사'){player.atk+=12;player.maxMp+=40;player.mp+=40;}
+  else if(j==='도적')player.atk+=10;
+  else if(j==='무투가'){player.atk+=9;player.def+=3;}
+  else if(j==='아처')player.atk+=11;
+  else if(j==='용기사'){player.atk+=20;player.def+=10;player.maxHp+=50;}
+  player.hp=player.maxHp; updateUI(); closeDialog();
+  showDialog(`${j} 전직 완료<br><button onclick="closeDialog()">확인</button>`);
+};
+window.goPalace=()=>{playerMesh.position.set(0,0,-40);closeDialog();showDialog(`왕궁 입구<br><button onclick="closeDialog()">확인</button>`);};
+window.buyPotion=()=>{player.inventory.push({id:'p'+Date.now(),name:'체력 포션',type:'consumable',heal:40});updateUI();closeDialog();showDialog(`포션 획득<br><button onclick="closeDialog()">확인</button>`);};
+
+// ========== UI ==========
+const uiEl=document.getElementById('ui');
+const dialogEl=document.getElementById('dialog');
+function updateUI(){
+  const w=player.equipped.weapon?player.equipped.weapon.name:'주먹';
+  const leg=Object.entries(player.legendary).filter(([,v])=>v).map(([k])=>k).join(', ')||'없음';
+  uiEl.innerHTML=`<b>Lv.${player.level}</b> EXP player.exp/{player.maxExp}<br>
+  HP Math.floor(player.hp)/{player.maxHp} | MP player.mp/{player.maxMp}<br>
+  직업 ${player.job||'-'} | 종족 ${player.race}<br>
+  공격 ${player.atk} | 방어 ${player.def}<br>
+  무기: ${w}<br>명검: ${leg}<br>인벤 ${player.inventory.length} (I)`;
+}
+updateUI();
+window.closeDialog=()=>dialogEl.style.display='none';
+function showDialog(h){dialogEl.innerHTML=h;dialogEl.style.display='block';}
+
+// ========== 멀티플레이 ==========
+const otherPlayers={}; let peer=null,connList=[],myPeerId=null;
+function initPeer(){
+  peer=new Peer();
+  peer.on('open',id=>{myPeerId=id;document.getElementById('myId').textContent='내 ID: '+id;});
+  peer.on('connection',c=>setupConn(c));
+  peer.on('error',()=>{document.getElementById('myId').textContent='연결 오류';});
+}
+initPeer();
+function setupConn(conn){
+  connList.push(conn);
+  conn.on('data',d=>onNet(d));
+  conn.on('open',()=>{conn.send({type:'hello',id:myPeerId});updatePL();});
+  conn.on('close',()=>{connList=connList.filter(c=>c!==conn);updatePL();});
+}
+window.hostGame=()=>showDialog(`방 코드: <b>${myPeerId}</b><br>친구에게 공유하세요<br><button onclick="closeDialog()">확인</button>`);
+window.joinGame=()=>{
+  const code=document.getElementById('roomInput').value.trim();
+  if(!code)return alert('코드 입력');
+  setupConn(peer.connect(code));
+  showDialog(`연결 중...<br><button onclick="closeDialog()">확인</button>`);
+};
+function onNet(d){
+  if(d.type==='hello'||d.type==='state'){
+    if(!otherPlayers[d.id]){
+      const m=createHuman(0xcc6644); scene.add(m);
+      otherPlayers[d.id]={mesh:m,last:Date.now()};
+    }
+    if(d.type==='state'){
+      const op=otherPlayers[d.id];
+      op.mesh.position.set(d.x,d.y,d.z);
+      op.mesh.rotation.y=d.rotY;
+      op.last=Date.now();
+    }
+    updatePL();
+  }
+}
+function broadcast(){
+  const p={type:'state',id:myPeerId,x:playerMesh.position.x,y:playerMesh.position.y,z:playerMesh.position.z,rotY:playerMesh.rotation.y};
+  connList.forEach(c=>{if(c.open)c.send(p);});
+}
+function updatePL(){document.getElementById('playersList').textContent='접속: '+(Object.keys(otherPlayers).length+1)+'명';}
+
+// ========== 루프 ==========
+const clock=new THREE.Clock(); let sync=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05);
+
+  // 바다 출렁
+  const t=oceanClock.getElapsedTime();
+  ocean.position.y=-0.25+Math.sin(t*0.8)*0.08;
+
+  const speed=7;
+  const fwd=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(fwd.z,0,-fwd.x);
+  if(keys['KeyW'])playerMesh.position.addScaledVector(fwd,-speed*dt);
+  if(keys['KeyS'])playerMesh.position.addScaledVector(fwd,speed*dt);
+  if(keys['KeyA'])playerMesh.position.addScaledVector(right,speed*dt);
+  if(keys['KeyD'])playerMesh.position.addScaledVector(right,-speed*dt);
+  vy-=25*dt; playerMesh.position.y+=vy*dt;
+  if(playerMesh.position.y<0){playerMesh.position.y=0;vy=0;canJump=true;}
+  playerMesh.rotation.y=yaw+Math.PI;
+  updateAttack(dt);
+
+  const off=new THREE.Vector3(Math.sin(yaw)*6.5, 3.2+Math.sin(pitch)*2, Math.cos(yaw)*6.5);
+  camera.position.copy(playerMesh.position).add(off);
+  camera.lookAt(playerMesh.position.clone().add(new THREE.Vector3(0,1.3,0)));
+
+  sync+=dt; if(sync>0.05){sync=0;broadcast();}
+  const now=Date.now();
+  for(const id in otherPlayers){
+    if(now-otherPlayers[id].last>6000){scene.remove(otherPlayers[id].mesh);delete otherPlayers[id];updatePL();}
+  }
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+// 시작
+player.equipped.weapon=player.inventory[0];
+updateWeaponVisual(); updateUI();
+setTimeout(()=>{
+  showDialog(`
+    <b>통합 3D RPG</b><br><br>
+    바다 · 꽃 · 풀 · 산 · 마을 · 명검 퀘스트<br>
+    인벤토리 · 3인칭 · 공격 모션 · 멀티플레이<br><br>
+    <b>흑혈</b> 파이퍼(고블린5) · <b>백의</b> 진베어 · <b>금관</b> 로버트(뱀3)<br>
+    <button onclick="closeDialog()">시작</button>
+  `);
+},500);
+</script>
+</body>
+</html>

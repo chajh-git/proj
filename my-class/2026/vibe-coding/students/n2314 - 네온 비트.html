@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Rhythm Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: #05050d;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            min-height: 500px;
+            max-width: 450px;
+            background: #090a16;
+            border: 2px solid #1a1c38;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            background: linear-gradient(180deg, rgba(9,10,22,0.9) 0%, rgba(9,10,22,0) 100%);
+            pointer-events: none;
+        }
+        .hud-stat {
+            display: flex;
+            flex-direction: column;
+        }
+        .hud-label {
+            font-size: 10px;
+            color: #8a8fb5;
+        }
+        .hud-value {
+            font-size: 18px;
+            font-weight: 800;
+            color: #00f0ff;
+        }
+        #audio-btn {
+            pointer-events: auto;
+            background: rgba(255, 0, 85, 0.2);
+            border: 1px solid #ff0055;
+            color: #ff0055;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 10, 22, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            padding: 20px;
+            text-align: center;
+        }
+        .title {
+            font-size: 28px;
+            font-weight: 900;
+            background: linear-gradient(45deg, #ff0055, #00f0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            font-size: 12px;
+            color: #a0a5c7;
+            margin-bottom: 20px;
+        }
+        .diff-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .diff-btn {
+            background: #14162e;
+            border: 1px solid #2a2e5c;
+            color: #8a8fb5;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .diff-btn.selected {
+            background: #ff0055;
+            border-color: #ff0055;
+            color: #fff;
+        }
+        .start-btn {
+            background: linear-gradient(45deg, #00f0ff, #7000ff);
+            border: none;
+            color: #fff;
+            width: 180px;
+            padding: 12px;
+            border-radius: 25px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="hud">
+        <div class="hud-stat">
+            <span class="hud-label">SCORE</span>
+            <span class="hud-value" id="score-val">000000</span>
+        </div>
+        <div class="hud-stat">
+            <span class="hud-label">COMBO</span>
+            <span class="hud-value" id="combo-val">0</span>
+        </div>
+        <button id="audio-btn">🔊 TEST</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="overlay" id="startOverlay">
+        <div class="title">NEON RHYTHM</div>
+        <div class="subtitle">키보드 [ D F J K / 방향키 ] 또는 터치</div>
+        <div class="diff-selector">
+            <button class="diff-btn" data-diff="easy">EASY</button>
+            <button class="diff-btn selected" data-diff="normal">NORMAL</button>
+            <button class="diff-btn" data-diff="hard">HARD</button>
+        </div>
+        <button class="start-btn" id="startBtn">GAME START</button>
+    </div>
+</div>
+
+<script>
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.scale = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+        this.bassScale = [65.41, 73.42, 82.41, 87.31];
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playHitSynth(lane) {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(this.scale[lane * 2] * 1.5, now);
+        osc.frequency.exponentialRampToValueAtTime(this.scale[lane * 2], now + 0.15);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+
+        const bassOsc = this.ctx.createOscillator();
+        const bassGain = this.ctx.createGain();
+        bassOsc.type = 'triangle';
+        bassOsc.frequency.setValueAtTime(this.bassScale[lane], now);
+
+        bassGain.gain.setValueAtTime(0.4, now);
+        bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+        bassOsc.connect(bassGain);
+        bassGain.connect(this.ctx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + 0.2);
+    }
+
+    playMissSound() {
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.2);
+
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+}
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.sound = new SoundEngine();
+        
+        this.lanes = 4;
+        this.keyToLane = {
+            'd': 0, 'arrowleft': 0,
+            'f': 1, 'arrowdown': 1,
+            'j': 2, 'arrowup': 2,
+            'k': 3, 'arrowright': 3
+        };
+
+        this.diffConfigs = {
+            easy: { speed: 4, spawnRate: 65, doubleRatio: 0 },
+            normal: { speed: 6.5, spawnRate: 45, doubleRatio: 0.15 },
+            hard: { speed: 9.5, spawnRate: 28, doubleRatio: 0.35 }
+        };
+        this.selectedDiff = 'normal';
+
+        this.reset();
+        this.resize();
+        this.bindEvents();
+
+        window.addEventListener('resize', () => this.resize());
+    }
+
+    reset() {
+        this.score = 0;
+        this.combo = 0;
+        this.notes = [];
+        this.particles = [];
+        this.judgements = [];
+        this.lanePressState = [false, false, false, false];
+        this.frameCount = 0;
+        this.isPlaying = false;
+        this.shakeTime = 0;
+    }
+
+    resize() {
+        const container = document.getElementById('game-container');
+        this.width = this.canvas.width = container.clientWidth;
+        this.height = this.canvas.height = container.clientHeight;
+        this.laneWidth = this.width / this.lanes;
+        this.hitLineY = this.height - 110;
+    }
+
+    bindEvents() {
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+                e.target.classList.add('selected');
+                this.selectedDiff = e.target.dataset.diff;
+            });
+        });
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            this.sound.init();
+            document.getElementById('startOverlay').style.display = 'none';
+            this.reset();
+            this.isPlaying = true;
+            this.loop();
+        });
+
+        document.getElementById('audio-btn').addEventListener('click', () => {
+            this.sound.init();
+            for(let i = 0; i < 4; i++) {
+                setTimeout(() => this.sound.playHitSynth(i), i * 100);
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (this.keyToLane.hasOwnProperty(key)) {
+                e.preventDefault();
+                const lane = this.keyToLane[key];
+                if (!this.lanePressState[lane]) {
+                    this.lanePressState[lane] = true;
+                    this.handleInput(lane);
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (this.keyToLane.hasOwnProperty(key)) {
+                const lane = this.keyToLane[key];
+                this.lanePressState[lane] = false;
+            }
+        });
+
+        // 포인터 이벤트(터치/마우스 통합) 처리로 구글 사이트 터치 미인식 문제 보완
+        const handlePointer = (e) => {
+            if (!this.isPlaying) return;
+            e.preventDefault();
+            this.sound.init();
+
+            const rect = this.canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+            const touchX = clientX - rect.left;
+            const lane = Math.floor(touchX / this.laneWidth);
+
+            if (lane >= 0 && lane < 4) {
+                this.lanePressState[lane] = true;
+                this.handleInput(lane);
+                setTimeout(() => { this.lanePressState[lane] = false; }, 120);
+            }
+        };
+
+        this.canvas.addEventListener('pointerdown', handlePointer, { passive: false });
+        this.canvas.addEventListener('touchstart', handlePointer, { passive: false });
+    }
+
+    spawnNotes() {
+        const config = this.diffConfigs[this.selectedDiff];
+        if (this.frameCount % config.spawnRate === 0) {
+            let lane = Math.floor(Math.random() * this.lanes);
+            this.notes.push({ lane, y: -40, speed: config.speed, hit: false });
+
+            if (Math.random() < config.doubleRatio) {
+                let secondLane = (lane + Math.floor(Math.random() * 3) + 1) % this.lanes;
+                this.notes.push({ lane: secondLane, y: -40, speed: config.speed, hit: false });
+            }
+        }
+    }
+
+    handleInput(lane) {
+        if (!this.isPlaying) return;
+
+        let hitFound = false;
+        const hitWindow = 120;
+
+        for (let i = 0; i < this.notes.length; i++) {
+            let note = this.notes[i];
+            if (note.lane === lane && !note.hit) {
+                let diff = Math.abs(note.y - this.hitLineY);
+                if (diff < hitWindow) {
+                    hitFound = true;
+                    note.hit = true;
+
+                    let rating = "GOOD";
+                    let scoreAdd = 100;
+                    if (diff < 35) {
+                        rating = "PERFECT";
+                        scoreAdd = 300;
+                        this.shakeTime = 8;
+                    } else if (diff < 70) {
+                        rating = "GREAT";
+                        scoreAdd = 200;
+                    }
+
+                    this.combo++;
+                    this.score += scoreAdd + (this.combo * 10);
+                    this.sound.playHitSynth(lane);
+                    this.createParticles(lane);
+                    this.addJudgement(rating);
+                    break;
+                }
+            }
+        }
+
+        if (!hitFound) {
+            this.triggerMiss();
+        }
+
+        this.updateHUD();
+    }
+
+    triggerMiss() {
+        this.combo = 0;
+        this.sound.playMissSound();
+        this.addJudgement("MISS");
+        this.updateHUD();
+    }
+
+    addJudgement(text) {
+        this.judgements.push({ text: text, scale: 1.8, alpha: 1.0, y: this.height * 0.4 });
+    }
+
+    createParticles(lane) {
+        const x = lane * this.laneWidth + this.laneWidth / 2;
+        const y = this.hitLineY;
+        const colors = ['#00f0ff', '#ff0055', '#ffe600', '#ffffff'];
+
+        for (let i = 0; i < 18; i++) {
+            this.particles.push({
+                x: x, y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.8) * 8,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                size: Math.random() * 4 + 2,
+                life: 1.0
+            });
+        }
+    }
+
+    updateHUD() {
+        document.getElementById('score-val').innerText = this.score.toString().padStart(6, '0');
+        document.getElementById('combo-val').innerText = this.combo;
+    }
+
+    update() {
+        this.frameCount++;
+        this.spawnNotes();
+
+        if (this.shakeTime > 0) this.shakeTime--;
+
+        for (let i = this.notes.length - 1; i >= 0; i--) {
+            let note = this.notes[i];
+            note.y += note.speed;
+
+            if (note.y > this.hitLineY + 90 && !note.hit) {
+                this.notes.splice(i, 1);
+                this.triggerMiss();
+            } else if (note.y > this.height + 40) {
+                this.notes.splice(i, 1);
+            }
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.04;
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = 0; i < this.judgements.length; i++) {
+            let j = this.judgements[i];
+            j.scale += (1.0 - j.scale) * 0.2;
+            j.alpha -= 0.03;
+            if (j.alpha <= 0) this.judgements.splice(i, 1);
+        }
+    }
+
+    draw() {
+        this.ctx.save();
+        if (this.shakeTime > 0) {
+            this.ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+        }
+
+        this.ctx.fillStyle = '#090a16';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+
+        for (let i = 0; i < this.lanes; i++) {
+            const x = i * this.laneWidth;
+            this.ctx.strokeStyle = '#161936';
+            this.ctx.lineWidth = 1;
+            this.ctx.strokeRect(x, 0, this.laneWidth, this.height);
+
+            if (this.lanePressState[i]) {
+                const grad = this.ctx.createLinearGradient(0, 0, 0, this.height);
+                grad.addColorStop(0, 'rgba(0, 240, 255, 0)');
+                grad.addColorStop(1, 'rgba(0, 240, 255, 0.25)');
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(x, 0, this.laneWidth, this.height);
+            }
+        }
+
+        this.ctx.strokeStyle = '#00f0ff';
+        this.ctx.lineWidth = 4;
+        this.ctx.shadowColor = '#00f0ff';
+        this.ctx.shadowBlur = 10;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.hitLineY);
+        this.ctx.lineTo(this.width, this.hitLineY);
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
+
+        const colors = ['#ff0055', '#00f0ff', '#ffe600', '#b000ff'];
+        this.notes.forEach(note => {
+            if (!note.hit) {
+                const x = note.lane * this.laneWidth + 5;
+                const w = this.laneWidth - 10;
+                const h = 22;
+
+                this.ctx.fillStyle = colors[note.lane];
+                this.ctx.shadowColor = colors[note.lane];
+                this.ctx.shadowBlur = 8;
+                this.ctx.fillRect(x, note.y, w, h);
+                this.ctx.shadowBlur = 0;
+            }
+        });
+
+        this.particles.forEach(p => {
+            this.ctx.fillStyle = p.color;
+            this.ctx.globalAlpha = p.life;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.globalAlpha = 1.0;
+
+        this.judgements.forEach(j => {
+            this.ctx.save();
+            this.ctx.translate(this.width / 2, j.y);
+            this.ctx.scale(j.scale, j.scale);
+            this.ctx.font = '900 32px sans-serif';
+            this.ctx.textAlign = 'center';
+            this.ctx.globalAlpha = j.alpha;
+
+            if (j.text === 'PERFECT') this.ctx.fillStyle = '#00f0ff';
+            else if (j.text === 'GREAT') this.ctx.fillStyle = '#ffe600';
+            else if (j.text === 'GOOD') this.ctx.fillStyle = '#00ff66';
+            else this.ctx.fillStyle = '#ff0055';
+
+            this.ctx.shadowColor = this.ctx.fillStyle;
+            this.ctx.shadowBlur = 12;
+            this.ctx.fillText(j.text, 0, 0);
+            this.ctx.restore();
+        });
+
+        this.ctx.restore();
+    }
+
+    loop() {
+        if (!this.isPlaying) return;
+        this.update();
+        this.draw();
+        requestAnimationFrame(() => this.loop());
+    }
+}
+
+window.onload = () => {
+    new Game();
+};
+</script>
+</body>
+</html>

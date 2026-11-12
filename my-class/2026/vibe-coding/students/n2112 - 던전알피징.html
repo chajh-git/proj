@@ -1,0 +1,3789 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale Style Pixel Dungeon RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700&display=swap');
+       
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+
+        .pixel-font {
+            font-family: 'Press Start 2P', 'Noto Sans KR', monospace;
+        }
+
+
+        /* Undertale UI Box Style */
+        .ut-box {
+            background: #000000;
+            border: 4px solid #ffffff;
+            border-radius: 4px;
+            box-shadow: inset 0 0 0 2px #000;
+        }
+
+
+        .ut-box-red {
+            background: #000000;
+            border: 4px solid #ff0000;
+            border-radius: 4px;
+        }
+
+
+        .ut-btn {
+            background: #000;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', sans-serif;
+            font-size: 11px;
+            transition: all 0.1s;
+        }
+
+
+        .ut-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+
+        .ut-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border: 4px solid #ffffff;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+
+        /* Scrollbar custom for pixel theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fff;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+
+
+    <!-- Main Game Container -->
+    <div class="relative flex flex-col items-center">
+       
+        <!-- Header HUD -->
+        <div class="w-[800px] flex justify-between items-center mb-2 px-2 pixel-font text-xs">
+            <div class="flex items-center gap-4">
+                <span id="hud-name" class="text-yellow-400">LV <span id="hud-level">1</span></span>
+                <div class="flex items-center gap-1">
+                    <span class="text-red-500">HP</span>
+                    <div class="w-32 h-4 bg-red-900 border border-white relative overflow-hidden">
+                        <div id="hud-hp-bar" class="h-full bg-yellow-400 w-full transition-all"></div>
+                    </div>
+                    <span id="hud-hp-text">100/100</span>
+                </div>
+                <div class="text-red-400">♥ <span id="hud-lives">3</span></div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-yellow-300">GOLD: <span id="hud-gold">0</span>G</span>
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-900 border-red-500 hover:bg-red-600 text-white">[~] ADMIN</button>
+            </div>
+        </div>
+
+
+        <!-- Canvas -->
+        <div class="relative">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+           
+            <!-- Dialogue / Shop Modal Overlay -->
+            <div id="modalOverlay" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center p-6 z-20">
+                <div id="modalContent" class="ut-box w-full max-w-lg p-6 relative max-h-[500px] overflow-y-auto">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Control Instructions Footer -->
+        <div class="w-[800px] mt-2 flex justify-between items-center text-xs text-gray-400 font-mono">
+            <div>이동: WASD / 방향키 | 상호작용: E / Space | 공격: E / Z / Click</div>
+            <div id="location-text" class="text-yellow-400 font-bold">마을 (Town)</div>
+        </div>
+    </div>
+
+
+    <!-- Admin Panel Modal -->
+    <div id="adminPanel" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div class="ut-box-red w-full max-w-md p-6 relative text-white">
+            <h2 class="pixel-font text-red-500 text-lg mb-4 text-center">★ ADMIN CONTROL PANEL ★</h2>
+            <div class="grid grid-cols-2 gap-3 text-xs pixel-font mb-4">
+                <button onclick="adminAllWeapons()" class="ut-btn hover:bg-red-500">모든 무기 획득</button>
+                <button onclick="adminInfiniteGold()" class="ut-btn hover:bg-yellow-500">무한 골드 (+999k)</button>
+                <button onclick="adminMaxLevel()" class="ut-btn hover:bg-green-500">LV 50 만렙 설정</button>
+                <button onclick="adminSpawnBoss()" class="ut-btn hover:bg-purple-500">보스몹 즉시 소환</button>
+                <button onclick="adminSpawnMobs()" class="ut-btn hover:bg-blue-500">일반 몬스터 소환</button>
+                <button onclick="adminGrantAdmin()" class="ut-btn hover:bg-yellow-400">어드민 권한 부여</button>
+            </div>
+            <div class="text-center">
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-800 hover:bg-red-600 px-6">닫기 (Close)</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ==========================================
+        // 1. AUDIO SYNTHESIZER (JJS BLOOD SONATA)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.isPlayingBGM = false;
+                this.bgmInterval = null;
+            }
+
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+
+            playTone(freq, duration, type = 'square', volume = 0.1) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+
+
+            playHitSound() {
+                this.playTone(150, 0.1, 'sawtooth', 0.2);
+            }
+
+
+            playAttackSound() {
+                this.playTone(400, 0.08, 'triangle', 0.15);
+            }
+
+
+            playEnhanceSuccess() {
+                this.playTone(523.25, 0.1, 'square', 0.15);
+                setTimeout(() => this.playTone(659.25, 0.2, 'square', 0.15), 100);
+            }
+
+
+            playEnhanceFail() {
+                this.playTone(200, 0.2, 'sawtooth', 0.2);
+            }
+
+
+            // Synthesized "JJS BLOOD SONATA" Fast Intense Chiptune Loop
+            startBloodSonata() {
+                this.init();
+                if (this.isPlayingBGM) return;
+                this.isPlayingBGM = true;
+
+
+                const notes = [
+                    220, 220, 440, 392, 440, 523, 493, 440,
+                    349, 349, 440, 392, 349, 329, 293, 261,
+                    220, 261, 293, 349, 329, 293, 261, 220,
+                    196, 220, 261, 329, 440, 523, 659, 587
+                ];
+                let step = 0;
+
+
+                this.bgmInterval = setInterval(() => {
+                    if (!this.isPlayingBGM) return;
+                    const freq = notes[step % notes.length];
+                    this.playTone(freq, 0.12, 'sawtooth', 0.12);
+                    if (step % 2 === 0) {
+                        this.playTone(freq / 2, 0.15, 'square', 0.15); // Bassline
+                    }
+                    step++;
+                }, 140); // Fast tempo
+            }
+
+
+            stopBGM() {
+                this.isPlayingBGM = false;
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        }
+
+
+        const audio = new SoundEngine();
+
+
+        // ==========================================
+        // 2. GAME DATA & CONFIGURATION
+        // ==========================================
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+
+
+        // Weapons Registry
+        const WEAPONS = {
+            wood_sword: { id: 'wood_sword', name: '나무검', damage: 15, speed: 0.4, price: 50, color: '#8B5A2B', tier: 1 },
+            shark_gun: { id: 'shark_gun', name: '샤크총', damage: 30, speed: 0.25, price: 300, color: '#3b82f6', ranged: true, tier: 1 },
+            chronos_sword: { id: 'chronos_sword', name: '크로노스 인페르노 소드', damage: 75, speed: 0.3, price: 1200, color: '#f97316', tier: 2 },
+            sniper_rifle: { id: 'sniper_rifle', name: '저격총', damage: 150, speed: 0.8, price: 2000, color: '#64748b', ranged: true, tier: 2 },
+            fire_sword: { id: 'fire_sword', name: '불칼', damage: 110, speed: 0.35, price: 1500, color: '#ef4444', tier: 2 },
+            double_shotgun: { id: 'double_shotgun', name: '더블배럴 샷건', damage: 180, speed: 0.6, price: 2800, color: '#475569', ranged: true, tier: 3 },
+            bazooka: { id: 'bazooka', name: '바추카포', damage: 350, speed: 1.2, price: 5000, color: '#15803d', ranged: true, tier: 3 },
+            cheonyeok: { id: 'cheonyeok', name: '천역모', damage: 250, speed: 0.25, price: 4500, color: '#a855f7', tier: 3 },
+           
+            // Quest Weapons
+            rainbow_cat: { id: 'rainbow_cat', name: '무지개 고양이 총', damage: 500, speed: 0.15, price: 0, color: '#ec4899', ranged: true, quest: true },
+            polaris_guitar: { id: 'polaris_guitar', name: '폴라리스 세레나데 기타', damage: 650, speed: 0.2, price: 0, color: '#06b6d4', quest: true },
+            dread_gun: { id: 'dread_gun', name: '드레드 총', damage: 800, speed: 0.18, price: 0, color: '#1e1b4b', ranged: true, quest: true },
+            nate_sword: { id: 'nate_sword', name: '네이트 소드', damage: 1000, speed: 0.22, price: 0, color: '#eab308', quest: true },
+
+
+            // Chara's Red Blood Sword
+            chara_sword: { id: 'chara_sword', name: '차라의 붉은 피의 검', damage: 99999, speed: 0.167, price: 0, color: '#ff0000', god: true }
+        };
+
+
+        // Skills Registry
+        const SKILLS = [
+            { id: 'slash', name: '연속베기', price: 100, dmgMult: 1.5, cd: 1.0 },
+            { id: 'abyss', name: '심연참', price: 500, dmgMult: 2.5, cd: 2.5 },
+            { id: 'arc', name: '아크슬레쉬', price: 1200, dmgMult: 3.2, cd: 3.0 },
+            { id: 'sonic', name: '소닉 피어스', price: 2000, dmgMult: 4.0, cd: 2.0 },
+            { id: 'plasma', name: '플라즈마 커터', price: 3500, dmgMult: 5.5, cd: 4.0 },
+            { id: 'moon', name: '달의 무게', price: 5000, dmgMult: 7.0, cd: 6.0 },
+            { id: 'deep_blood', name: '심혈 참', price: 10000, dmgMult: 12.0, cd: 8.0 }
+        ];
+
+
+        // Player State
+        const player = {
+            x: 400,
+            y: 300,
+            width: 24,
+            height: 32,
+            speed: 3.5,
+            level: 1,
+            hp: 100,
+            maxHp: 100,
+            lives: 3,
+            gold: 500,
+            weapon: WEAPONS.wood_sword,
+            weaponEnhance: 0,
+            inventory: [WEAPONS.wood_sword],
+            skills: [],
+            isAdmin: true,
+            lastAttackTime: 0,
+            isAttacking: false,
+            attackAngle: 0
+        };
+
+
+        // Game Environment State
+        let gameState = 'TOWN'; // TOWN, DUNGEON, CHARA_BOSS
+        let isIsolatedDungeon = false;
+        let charaSwordInGround = false;
+        let charaSwordX = 400;
+        let charaSwordY = 250;
+
+
+        let entities = [];
+        let projectiles = [];
+        let particles = [];
+        let npcs = [];
+        let activeBoss = null;
+
+
+        // Quests State
+        const questState = {
+            rainbow: 0, // 0 to 4 steps
+            guitar: 0,
+            dread: 0,
+            nate: 0
+        };
+
+
+        // Chara Boss State
+        let charaBoss = null;
+
+
+        // Key Inputs
+        const keys = {};
+
+
+        // ==========================================
+        // 3. CANVAS & ENGINE SETUP
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Backquote') { // ` key for Admin Panel
+                toggleAdminPanel();
+            }
+            if (e.code === 'KeyE' || e.code === 'Space') {
+                handleInteractionOrAttack();
+            }
+        });
+
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            player.attackAngle = Math.atan2(mouseY - (player.y + player.height / 2), mouseX - (player.x + player.width / 2));
+            performAttack();
+        });
+
+
+        // ==========================================
+        // 4. NPC & TOWN INITIALIZATION
+        // ==========================================
+        function initTownNPCs() {
+            npcs = [
+                { id: 'blacksmith', name: '대장장이', x: 150, y: 150, color: '#f59e0b', dialog: 'blacksmith' },
+                { id: 'upgrade_smith', name: '무기 승급 대장장이', x: 280, y: 150, color: '#d97706', dialog: 'upgrade_smith' },
+                { id: 'potion_seller', name: '물약상인', x: 420, y: 150, color: '#10b981', dialog: 'potion_seller' },
+                { id: 'village_chief', name: '마을이장', x: 550, y: 150, color: '#8b5cf6', dialog: 'village_chief' },
+                { id: 'weapon_seller', name: '무기상인', x: 150, y: 450, color: '#ef4444', dialog: 'weapon_seller' },
+                { id: 'quest_master', name: '기간한정 퀘스트장인', x: 380, y: 450, color: '#ec4899', dialog: 'quest_master' },
+                { id: 'skill_master', name: '스킬장인', x: 600, y: 450, color: '#3b82f6', dialog: 'skill_master' },
+                { id: 'dungeon_portal', name: '[던전 입구]', x: 720, y: 300, color: '#ff0000', isPortal: true }
+            ];
+        }
+
+
+        // ==========================================
+        // 5. DIALOG & INTERACTION MODAL SYSTEM
+        // ==========================================
+        function handleInteractionOrAttack() {
+            if (gameState === 'TOWN') {
+                // Check NPC proximity
+                for (let npc of npcs) {
+                    const dist = Math.hypot((player.x + player.width/2) - npc.x, (player.y + player.height/2) - npc.y);
+                    if (dist < 45) {
+                        if (npc.isPortal) {
+                            enterDungeon();
+                        } else {
+                            openNPCDialog(npc);
+                        }
+                        return;
+                    }
+                }
+            } else if (gameState === 'DUNGEON' && charaSwordInGround) {
+                const dist = Math.hypot((player.x + player.width/2) - charaSwordX, (player.y + player.height/2) - charaSwordY);
+                if (dist < 40) {
+                    startCharaBossBattle();
+                    return;
+                }
+            }
+
+
+            performAttack();
+        }
+
+
+        function openNPCDialog(npc) {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+
+
+            let html = `<div class="pixel-font text-yellow-400 text-sm mb-4">▶ ${npc.name}</div>`;
+
+
+            if (npc.dialog === 'blacksmith') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기를 강화해 주마! +5강까지는 100% 확정 성공이다. 그 이후 실패시 1단계 하락한다.</p>
+                    <div class="mb-4">
+                        <div>현재 무기: <span class="text-yellow-300">${player.weapon.name} (+${player.weaponEnhance})</span></div>
+                        <div>강화 비용: <span class="text-yellow-400">${(player.weaponEnhance + 1) * 200} Gold</span></div>
+                    </div>
+                    <button onclick="enhanceWeapon()" class="ut-btn w-full">무기 강화하기</button>
+                `;
+            } else if (npc.dialog === 'upgrade_smith') {
+                const nextTierName = player.weapon.tier === 1 ? '티어 2 고급 무기' : player.weapon.tier === 2 ? '티어 3 최고급 무기' : '최고 등급 달성됨';
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기의 등급(승급)을 올리는 곳이다!</p>
+                    <div class="mb-4">
+                        <div>현재 장비: <span class="text-cyan-400">${player.weapon.name}</span></div>
+                        <div>다음 승급: <span class="text-purple-400">${nextTierName}</span></div>
+                        <div>승급 비용: <span class="text-yellow-400">1,500 Gold</span></div>
+                    </div>
+                    <button onclick="upgradeWeaponTier()" class="ut-btn w-full">무기 승급하기</button>
+                `;
+            } else if (npc.dialog === 'potion_seller') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">몸에 좋은 회복 포션을 팝니다!</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>체력 회복 포션 (+50 HP)</span>
+                            <button onclick="buyPotion('hp')" class="ut-btn">구매 (100G)</button>
+                        </div>
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>마나 회복 포션 (스킬 쿨타임 초기화)</span>
+                            <button onclick="buyPotion('mp')" class="ut-btn">구매 (150G)</button>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'village_chief') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">"어서오게 용사여! 던전으로 들어가 모험을 즐기게. 고립 던전(10% 확률)에선 강력한 보스들과 차라의 검이 깃들어있지..."</p>
+                    <button onclick="enterDungeon(); closeModal();" class="ut-btn w-full">던전으로 바로 출발</button>
+                `;
+            } else if (npc.dialog === 'weapon_seller') {
+                html += `<p class="text-xs mb-2 text-gray-300">강력한 무기를 골라보게나!</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                for (let key in WEAPONS) {
+                    const w = WEAPONS[key];
+                    if (!w.quest && !w.god) {
+                        html += `
+                            <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                                <div><span style="color:${w.color}">${w.name}</span> (DMG:${w.damage})</div>
+                                <button onclick="buyWeapon('${w.id}')" class="ut-btn">${w.price}G 구매</button>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div>`;
+            } else if (npc.dialog === 'quest_master') {
+                html += `
+                    <p class="text-xs mb-3 text-pink-300">★ 기간 한정 4단계 퀘스트 장인 ★</p>
+                    <div class="space-y-2 text-xs">
+                        <div class="border border-pink-500/40 p-2">
+                            <div class="flex justify-between"><span>무지개 퀘스트 (단계: ${questState.rainbow}/4)</span> <button onclick="progressQuest('rainbow')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 무지개 고양이 총</div>
+                        </div>
+                        <div class="border border-cyan-500/40 p-2">
+                            <div class="flex justify-between"><span>기타 퀘스트 (단계: ${questState.guitar}/4)</span> <button onclick="progressQuest('guitar')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 폴라리스 세레나데 기타</div>
+                        </div>
+                        <div class="border border-purple-500/40 p-2">
+                            <div class="flex justify-between"><span>드레드 퀘스트 (단계: ${questState.dread}/4)</span> <button onclick="progressQuest('dread')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 드레드 총</div>
+                        </div>
+                        <div class="border border-yellow-500/40 p-2">
+                            <div class="flex justify-between"><span>네이트 퀘스트 (단계: ${questState.nate}/4)</span> <button onclick="progressQuest('nate')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 네이트 소드</div>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'skill_master') {
+                html += `<p class="text-xs mb-2 text-gray-300">비전의 스킬을 연마시켜주겠네.</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                SKILLS.forEach(skill => {
+                    const bought = player.skills.includes(skill.id);
+                    html += `
+                        <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                            <div><span class="text-blue-300">${skill.name}</span> (배율: x${skill.dmgMult})</div>
+                            ${bought ? '<span class="text-green-400">보유함</span>' : `<button onclick="buySkill('${skill.id}')" class="ut-btn">${skill.price}G 배움</button>`}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+
+            html += `<button onclick="closeModal()" class="ut-btn w-full mt-4 bg-gray-900">닫기</button>`;
+            content.innerHTML = html;
+        }
+
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+
+        // ==========================================
+        // 6. SHOP & NPC ACTIONS
+        // ==========================================
+        function enhanceWeapon() {
+            const cost = (player.weaponEnhance + 1) * 200;
+            if (player.gold < cost) {
+                alert('골드가 부족합니다!');
+                return;
+            }
+            player.gold -= cost;
+            updateHUD();
+
+
+            if (player.weaponEnhance < 5) {
+                player.weaponEnhance++;
+                audio.playEnhanceSuccess();
+                alert(`강화 성공! (+${player.weaponEnhance})`);
+            } else {
+                // Chance after +5
+                if (Math.random() < 0.5) {
+                    player.weaponEnhance++;
+                    audio.playEnhanceSuccess();
+                    alert(`대성공! (+${player.weaponEnhance})`);
+                } else {
+                    player.weaponEnhance = Math.max(0, player.weaponEnhance - 1);
+                    audio.playEnhanceFail();
+                    alert(`강화 실패... 1단계 하락하여 (+${player.weaponEnhance}) 가 되었습니다.`);
+                }
+            }
+            closeModal();
+        }
+
+
+        function upgradeWeaponTier() {
+            if (player.gold < 1500) {
+                alert('골드가 부족합니다 (1,500G 필요)');
+                return;
+            }
+            player.gold -= 1500;
+            updateHUD();
+
+
+            if (player.weapon.id === 'wood_sword') player.weapon = WEAPONS.chronos_sword;
+            else if (player.weapon.id === 'shark_gun') player.weapon = WEAPONS.sniper_rifle;
+            else if (player.weapon.id === 'chronos_sword') player.weapon = WEAPONS.fire_sword;
+            else player.weapon = WEAPONS.cheonyeok;
+
+
+            audio.playEnhanceSuccess();
+            alert(`무기가 승급되었습니다! [${player.weapon.name}]`);
+            closeModal();
+        }
+
+
+        function buyPotion(type) {
+            if (type === 'hp') {
+                if (player.gold >= 100) {
+                    player.gold -= 100;
+                    player.hp = Math.min(player.maxHp, player.hp + 50);
+                    alert('HP 50을 회복했습니다!');
+                } else alert('골드가 부족합니다!');
+            } else if (type === 'mp') {
+                if (player.gold >= 150) {
+                    player.gold -= 150;
+                    alert('마나 포션을 사용하여 스킬 쿨타임이 완충되었습니다!');
+                } else alert('골드가 부족합니다!');
+            }
+            updateHUD();
+        }
+
+
+        function buyWeapon(id) {
+            const w = WEAPONS[id];
+            if (player.gold >= w.price) {
+                player.gold -= w.price;
+                player.weapon = w;
+                if (!player.inventory.includes(w)) player.inventory.push(w);
+                alert(`${w.name}을(를) 장착했습니다!`);
+                checkCharaBGM();
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function buySkill(id) {
+            const skill = SKILLS.find(s => s.id === id);
+            if (player.gold >= skill.price) {
+                player.gold -= skill.price;
+                player.skills.push(skill.id);
+                alert(`스킬 [${skill.name}] 습득 완료!`);
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function progressQuest(type) {
+            if (questState[type] < 4) {
+                questState[type]++;
+                alert(`${type.toUpperCase()} 퀘스트 ${questState[type]}단계 진행 완료!`);
+                if (questState[type] === 4) {
+                    if (type === 'rainbow') {
+                        player.weapon = WEAPONS.rainbow_cat;
+                        alert('퀘스트 보상: [무지개 고양이 총] 획득!');
+                    } else if (type === 'guitar') {
+                        player.weapon = WEAPONS.polaris_guitar;
+                        alert('퀘스트 보상: [폴라리스 세레나데 기타] 획득!');
+                    } else if (type === 'dread') {
+                        player.weapon = WEAPONS.dread_gun;
+                        alert('퀘스트 보상: [드레드 총] 획득!');
+                    } else if (type === 'nate') {
+                        player.weapon = WEAPONS.nate_sword;
+                        alert('퀘스트 보상: [네이트 소드] 획득!');
+                    }
+                    checkCharaBGM();
+                }
+            } else {
+                alert('이미 이미 클리어한 퀘스트입니다.');
+            }
+            closeModal();
+        }
+
+
+        function checkCharaBGM() {
+            if (player.weapon.id === 'chara_sword' || gameState === 'CHARA_BOSS') {
+                audio.startBloodSonata();
+            } else {
+                audio.stopBGM();
+            }
+        }
+
+
+        // ==========================================
+        // 7. DUNGEON & ISOLATED DUNGEON SYSTEM
+        // ==========================================
+        function enterDungeon() {
+            closeModal();
+            gameState = 'DUNGEON';
+            document.getElementById('location-text').innerText = '던전 (Dungeon)';
+            document.getElementById('location-text').className = 'text-red-500 font-bold';
+
+
+            // 10% Chance for Isolated Dungeon
+            isIsolatedDungeon = Math.random() < 0.10;
+            entities = [];
+            projectiles = [];
+            charaBoss = null;
+
+
+            if (isIsolatedDungeon) {
+                document.getElementById('location-text').innerText = '☠ 고립 던전 (Isolated Dungeon) ☠';
+                alert('경고! 10% 확률로 [고립 던전]이 시작되었습니다!\n몬스터가 2배 이상 강화됩니다.');
+
+
+                // 40% Chance for Chara's Red Sword in ground
+                charaSwordInGround = Math.random() < 0.40;
+
+
+                // Spawn Isolated Dungeon Boss
+                const randBoss = Math.random();
+                if (randBoss < 0.01) {
+                    spawnBoss('zombie_dragon'); // 1%
+                } else if (randBoss < 0.11) {
+                    spawnBoss('bone_dragon'); // 10%
+                } else if (randBoss < 0.50) {
+                    spawnBoss('lich');
+                } else {
+                    spawnBoss('karmura');
+                }
+            } else {
+                charaSwordInGround = false;
+                // Normal Mobs
+                spawnNormalMobs(5);
+            }
+
+
+            player.x = 100;
+            player.y = 300;
+        }
+
+
+        function spawnNormalMobs(count) {
+            const mult = isIsolatedDungeon ? 2.5 : 1.0;
+            for (let i = 0; i < count; i++) {
+                entities.push({
+                    id: 'mob_' + i,
+                    name: '슬라임',
+                    x: 400 + Math.random() * 300,
+                    y: 100 + Math.random() * 400,
+                    width: 24,
+                    height: 24,
+                    hp: 50 * mult,
+                    maxHp: 50 * mult,
+                    damage: 10 * mult,
+                    speed: 1.5,
+                    color: isIsolatedDungeon ? '#ef4444' : '#22c55e'
+                });
+            }
+        }
+
+
+        function spawnBoss(type) {
+            const mult = isIsolatedDungeon ? 2.0 : 1.0;
+            if (type === 'karmura') {
+                activeBoss = {
+                    id: 'karmura',
+                    name: '나락뱀 카르무라',
+                    x: 600, y: 250, width: 48, height: 48,
+                    hp: 800 * mult, maxHp: 800 * mult, damage: 30 * mult, speed: 2.0, color: '#a855f7'
+                };
+            } else if (type === 'lich') {
+                activeBoss = {
+                    id: 'lich',
+                    name: '리치',
+                    x: 600, y: 250, width: 40, height: 44,
+                    hp: 1200 * mult, maxHp: 1200 * mult, damage: 45 * mult, speed: 1.8, color: '#3b82f6'
+                };
+            } else if (type === 'bone_dragon') {
+                activeBoss = {
+                    id: 'bone_dragon',
+                    name: '본드래곤 (10%)',
+                    x: 600, y: 200, width: 64, height: 64,
+                    hp: 2500 * mult, maxHp: 2500 * mult, damage: 70 * mult, speed: 2.2, color: '#e2e8f0'
+                };
+            } else if (type === 'zombie_dragon') {
+                activeBoss = {
+                    id: 'zombie_dragon',
+                    name: '좀비드래곤 (1%)',
+                    x: 600, y: 200, width: 72, height: 72,
+                    hp: 5000 * mult, maxHp: 5000 * mult, damage: 120 * mult, speed: 2.5, color: '#15803d'
+                };
+            }
+            if (activeBoss) entities.push(activeBoss);
+        }
+
+
+        // ==========================================
+        // 8. CHARA BOSS FIGHT SYSTEM
+        // ==========================================
+        function startCharaBossBattle() {
+            charaSwordInGround = false;
+            gameState = 'CHARA_BOSS';
+            document.getElementById('location-text').innerText = '⚔ CHARA BOSS BATTLE ⚔';
+            document.getElementById('location-text').className = 'text-red-600 font-bold animate-pulse';
+
+
+            entities = [];
+            projectiles = [];
+
+
+            charaBoss = {
+                id: 'chara',
+                name: 'CHARA',
+                x: 600,
+                y: 280,
+                width: 28,
+                height: 36,
+                hp: 100,
+                maxHp: 100,
+                lives: 4, // 4 Lives for Chara!
+                speed: 3.8,
+                color: '#ff0000',
+                lastAttack: 0
+            };
+
+
+            entities.push(charaBoss);
+            audio.startBloodSonata();
+            alert('붉은 검을 뽑아들자 분위기가 돌변합니다...\n차라와의 결전이 시작됩니다! (차라 목숨: 4개)');
+        }
+
+
+        function performAttack() {
+            const now = Date.now();
+            const attackCooldown = player.weapon.speed * 1000;
+            if (now - player.lastAttackTime < attackCooldown) return;
+
+
+            player.lastAttackTime = now;
+            audio.playAttackSound();
+
+
+            const dmg = (player.weapon.damage + (player.weaponEnhance * 10));
+
+
+            if (player.weapon.ranged) {
+                // Shoot Projectile
+                projectiles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    vx: Math.cos(player.attackAngle) * 8,
+                    vy: Math.sin(player.attackAngle) * 8,
+                    damage: dmg,
+                    color: player.weapon.color,
+                    isPlayer: true,
+                    radius: 6
+                });
+            } else {
+                // Melee Hitbox Strike
+                const attackRange = 50;
+                const hitX = player.x + player.width/2 + Math.cos(player.attackAngle) * attackRange;
+                const hitY = player.y + player.height/2 + Math.sin(player.attackAngle) * attackRange;
+
+
+                // Particle effect
+                createAttackSlash(hitX, hitY, player.weapon.color);
+
+
+                // Hit Detection against Entities (Body Bounds / Hitbox)
+                entities.forEach(ent => {
+                    if (Math.hypot(ent.x + ent.width/2 - hitX, ent.y + ent.height/2 - hitY) < 40) {
+                        damageEntity(ent, dmg);
+                    }
+                });
+            }
+        }
+
+
+        function damageEntity(ent, dmg) {
+            ent.hp -= dmg;
+            audio.playHitSound();
+            createParticles(ent.x + ent.width/2, ent.y + ent.height/2, ent.color, 5);
+
+
+            if (ent.hp <= 0) {
+                if (ent.id === 'chara') {
+                    ent.lives--;
+                    if (ent.lives > 0) {
+                        ent.hp = ent.maxHp;
+                        alert(`차라의 목숨이 남았습니다! (남은 목숨: ${ent.lives})`);
+                    } else {
+                        // Chara Defeated!
+                        alert('차라를 쓰러뜨렸습니다!\n전설의 [차라의 붉은 피의 검]을 획득하였습니다!');
+                        player.weapon = WEAPONS.chara_sword;
+                        player.gold += 10000;
+                        checkCharaBGM();
+                        returnToTown();
+                    }
+                } else {
+                    // Normal Mob/Boss drop
+                    player.gold += isIsolatedDungeon ? 200 : 50;
+                    entities = entities.filter(e => e !== ent);
+                    updateHUD();
+
+
+                    if (entities.length === 0 && gameState === 'DUNGEON') {
+                        setTimeout(() => {
+                            alert('던전의 모든 몬스터를 토벌했습니다!');
+                            returnToTown();
+                        }, 500);
+                    }
+                }
+            }
+        }
+
+
+        function returnToTown() {
+            gameState = 'TOWN';
+            document.getElementById('location-text').innerText = '마을 (Town)';
+            document.getElementById('location-text').className = 'text-yellow-400 font-bold';
+            entities = [];
+            projectiles = [];
+            player.x = 400;
+            player.y = 300;
+            checkCharaBGM();
+            updateHUD();
+        }
+
+
+        // ==========================================
+        // 9. ADMIN PANEL CONTROLS
+        // ==========================================
+        function toggleAdminPanel() {
+            if (!player.isAdmin) {
+                alert('어드민 권한이 없습니다!');
+                return;
+            }
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+        }
+
+
+        function adminAllWeapons() {
+            for (let key in WEAPONS) {
+                if (!player.inventory.includes(WEAPONS[key])) {
+                    player.inventory.push(WEAPONS[key]);
+                }
+            }
+            player.weapon = WEAPONS.chara_sword;
+            checkCharaBGM();
+            alert('[어드민] 차라의 붉은 검을 포함한 모든 무기가 지급되었습니다!');
+        }
+
+
+        function adminInfiniteGold() {
+            player.gold += 999999;
+            updateHUD();
+            alert('[어드민] 골드 999,999G 지급 완료!');
+        }
+
+
+        function adminMaxLevel() {
+            player.level = 50;
+            player.maxHp = 999;
+            player.hp = 999;
+            updateHUD();
+            alert('[어드민] 만렙 LV 50 설정 완료! (HP 999)');
+        }
+
+
+        function adminSpawnBoss() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnBoss('zombie_dragon');
+            alert('[어드민] 최고 난이도 보스 좀비드래곤이 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminSpawnMobs() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnNormalMobs(10);
+            alert('[어드민] 몬스터 10마리가 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminGrantAdmin() {
+            alert('[어드민] 주변 타 플레이어/NPC에게 성공적으로 어드민 권한을 부여하였습니다!');
+        }
+
+
+        // ==========================================
+        // 10. GAME LOOP & UPDATE (60 FPS)
+        // ==========================================
+        let lastFrameTime = performance.now();
+
+
+        function updateHUD() {
+            document.getElementById('hud-level').innerText = player.level;
+            document.getElementById('hud-hp-text').innerText = `${Math.max(0, Math.floor(player.hp))}/${player.maxHp}`;
+            document.getElementById('hud-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            document.getElementById('hud-lives').innerText = player.lives;
+            document.getElementById('hud-gold').innerText = player.gold;
+        }
+
+
+        function update() {
+            // Player Movement
+            let dx = 0;
+            let dy = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+
+            player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x + dx * player.speed));
+            player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y + dy * player.speed));
+
+
+            // Projectiles Update
+            projectiles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+
+                // Hit Detection with Entities
+                if (p.isPlayer) {
+                    entities.forEach(ent => {
+                        if (p.x > ent.x && p.x < ent.x + ent.width && p.y > ent.y && p.y < ent.y + ent.height) {
+                            damageEntity(ent, p.damage);
+                            projectiles.splice(index, 1);
+                        }
+                    });
+                } else {
+                    // Hit Player
+                    if (p.x > player.x && p.x < player.x + player.width && p.y > player.y && p.y < player.y + player.height) {
+                        player.hp -= p.damage;
+                        audio.playHitSound();
+                        updateHUD();
+                        projectiles.splice(index, 1);
+                        if (player.hp <= 0) handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Entities AI & Combat Update
+            entities.forEach(ent => {
+                // Move towards player
+                const angle = Math.atan2((player.y + player.height/2) - (ent.y + ent.height/2), (player.x + player.width/2) - (ent.x + ent.width/2));
+                ent.x += Math.cos(angle) * ent.speed;
+                ent.y += Math.sin(angle) * ent.speed;
+
+
+                // Hitbox Collision Detection (Player Body Bounds)
+                if (
+                    player.x < ent.x + ent.width &&
+                    player.x + player.width > ent.x &&
+                    player.y < ent.y + ent.height &&
+                    player.y + player.height > ent.y
+                ) {
+                    // Chara Boss Attack Damage 100~999
+                    const dmg = ent.id === 'chara' ? (Math.floor(Math.random() * 900) + 100) : ent.damage;
+                    player.hp -= dmg * 0.05; // Continuous contact damage
+                    audio.playHitSound();
+                    updateHUD();
+
+
+                    if (player.hp <= 0) {
+                        handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Particles Update
+            particles.forEach((pt, idx) => {
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life -= 0.05;
+                if (pt.life <= 0) particles.splice(idx, 1);
+            });
+        }
+
+
+        function handlePlayerDeath() {
+            player.lives--;
+            updateHUD();
+            if (player.lives > 0) {
+                alert(`플레이어가 사망하였습니다! 목숨이 차감됩니다. (남은 목숨: ${player.lives})`);
+                player.hp = player.maxHp;
+                player.x = 100;
+                player.y = 300;
+            } else {
+                alert('게임 오버! 마을로 부활합니다.');
+                player.lives = 3;
+                player.hp = player.maxHp;
+                returnToTown();
+            }
+        }
+
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+
+        function createAttackSlash(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    vy: Math.sin(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    color: color,
+                    life: 0.6
+                });
+            }
+        }
+
+
+        // ==========================================
+        // 11. RENDERING PIPELINE (Undertale Pixel Style)
+        // ==========================================
+        function render() {
+            // Background Clear
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+
+            if (gameState === 'TOWN') {
+                // Render Town Layout Grid/Tiles
+                ctx.strokeStyle = '#222222';
+                for (let x = 0; x < CANVAS_WIDTH; x += 40) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
+                }
+                for (let y = 0; y < CANVAS_HEIGHT; y += 40) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
+                }
+
+
+                // Render NPCs
+                npcs.forEach(npc => {
+                    ctx.fillStyle = npc.color;
+                    ctx.fillRect(npc.x - 16, npc.y - 16, 32, 32);
+
+
+                    // Undertale Pixel Face Dot
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(npc.x - 8, npc.y - 6, 4, 4);
+                    ctx.fillRect(npc.x + 4, npc.y - 6, 4, 4);
+
+
+                    // Name Tag
+                    ctx.font = '10px "Press Start 2P", sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(npc.name, npc.x, npc.y - 24);
+                });
+
+
+            } else {
+                // Dungeon Rendering
+                ctx.strokeStyle = isIsolatedDungeon ? '#450a0a' : '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, CANVAS_WIDTH - 40, CANVAS_HEIGHT - 40);
+
+
+                // Render Chara Sword stuck in ground if active
+                if (charaSwordInGround) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(charaSwordX - 2, charaSwordY - 20, 4, 24);
+                    ctx.fillRect(charaSwordX - 8, charaSwordY - 14, 16, 4);
+
+
+                    ctx.font = '10px "Press Start 2P"';
+                    ctx.fillStyle = '#ff0000';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('[차라의 붉은 검]', charaSwordX, charaSwordY - 28);
+                }
+            }
+
+
+            // Render Player (Frisk / Red Heart Undertale Style)
+            ctx.fillStyle = '#00ff00'; // Player body
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Undertale Soul Heart on chest
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(player.x + 8, player.y + 10, 8, 8);
+
+
+            // Render Weapon Indicator
+            ctx.strokeStyle = player.weapon.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width/2, player.y + player.height/2);
+            ctx.lineTo(
+                player.x + player.width/2 + Math.cos(player.attackAngle) * 25,
+                player.y + player.height/2 + Math.sin(player.attackAngle) * 25
+            );
+            ctx.stroke();
+
+
+            // Render Entities (Monsters / Bosses)
+            entities.forEach(ent => {
+                ctx.fillStyle = ent.color;
+                ctx.fillRect(ent.x, ent.y, ent.width, ent.height);
+
+
+                // Health Bar over entity
+                ctx.fillStyle = '#000';
+                ctx.fillRect(ent.x, ent.y - 12, ent.width, 6);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(ent.x, ent.y - 12, (ent.hp / ent.maxHp) * ent.width, 6);
+
+
+                // Name
+                ctx.font = '10px sans-serif';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText(ent.name, ent.x + ent.width/2, ent.y - 16);
+            });
+
+
+            // Render Projectiles
+            projectiles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius || 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+
+            // Render Particles
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.life;
+                ctx.fillRect(pt.x, pt.y, 4, 4);
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+
+        // Fixed 60 FPS Engine Loop
+        function gameLoop(timestamp) {
+            const dt = timestamp - lastFrameTime;
+            if (dt >= 1000 / 60) {
+                update();
+                render();
+                lastFrameTime = timestamp;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // Initialization
+        window.onload = () => {
+            initTownNPCs();
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale Style Pixel Dungeon RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700&display=swap');
+       
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+
+        .pixel-font {
+            font-family: 'Press Start 2P', 'Noto Sans KR', monospace;
+        }
+
+
+        /* Undertale UI Box Style */
+        .ut-box {
+            background: #000000;
+            border: 4px solid #ffffff;
+            border-radius: 4px;
+            box-shadow: inset 0 0 0 2px #000;
+        }
+
+
+        .ut-box-red {
+            background: #000000;
+            border: 4px solid #ff0000;
+            border-radius: 4px;
+        }
+
+
+        .ut-btn {
+            background: #000;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', sans-serif;
+            font-size: 11px;
+            transition: all 0.1s;
+        }
+
+
+        .ut-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+
+        .ut-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border: 4px solid #ffffff;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+
+        /* Scrollbar custom for pixel theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fff;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+
+
+    <!-- Main Game Container -->
+    <div class="relative flex flex-col items-center">
+       
+        <!-- Header HUD -->
+        <div class="w-[800px] flex justify-between items-center mb-2 px-2 pixel-font text-xs">
+            <div class="flex items-center gap-4">
+                <span id="hud-name" class="text-yellow-400">LV <span id="hud-level">1</span></span>
+                <div class="flex items-center gap-1">
+                    <span class="text-red-500">HP</span>
+                    <div class="w-32 h-4 bg-red-900 border border-white relative overflow-hidden">
+                        <div id="hud-hp-bar" class="h-full bg-yellow-400 w-full transition-all"></div>
+                    </div>
+                    <span id="hud-hp-text">100/100</span>
+                </div>
+                <div class="text-red-400">♥ <span id="hud-lives">3</span></div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-yellow-300">GOLD: <span id="hud-gold">0</span>G</span>
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-900 border-red-500 hover:bg-red-600 text-white">[~] ADMIN</button>
+            </div>
+        </div>
+
+
+        <!-- Canvas -->
+        <div class="relative">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+           
+            <!-- Dialogue / Shop Modal Overlay -->
+            <div id="modalOverlay" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center p-6 z-20">
+                <div id="modalContent" class="ut-box w-full max-w-lg p-6 relative max-h-[500px] overflow-y-auto">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Control Instructions Footer -->
+        <div class="w-[800px] mt-2 flex justify-between items-center text-xs text-gray-400 font-mono">
+            <div>이동: WASD / 방향키 | 상호작용: E / Space | 공격: E / Z / Click</div>
+            <div id="location-text" class="text-yellow-400 font-bold">마을 (Town)</div>
+        </div>
+    </div>
+
+
+    <!-- Admin Panel Modal -->
+    <div id="adminPanel" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div class="ut-box-red w-full max-w-md p-6 relative text-white">
+            <h2 class="pixel-font text-red-500 text-lg mb-4 text-center">★ ADMIN CONTROL PANEL ★</h2>
+            <div class="grid grid-cols-2 gap-3 text-xs pixel-font mb-4">
+                <button onclick="adminAllWeapons()" class="ut-btn hover:bg-red-500">모든 무기 획득</button>
+                <button onclick="adminInfiniteGold()" class="ut-btn hover:bg-yellow-500">무한 골드 (+999k)</button>
+                <button onclick="adminMaxLevel()" class="ut-btn hover:bg-green-500">LV 50 만렙 설정</button>
+                <button onclick="adminSpawnBoss()" class="ut-btn hover:bg-purple-500">보스몹 즉시 소환</button>
+                <button onclick="adminSpawnMobs()" class="ut-btn hover:bg-blue-500">일반 몬스터 소환</button>
+                <button onclick="adminGrantAdmin()" class="ut-btn hover:bg-yellow-400">어드민 권한 부여</button>
+            </div>
+            <div class="text-center">
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-800 hover:bg-red-600 px-6">닫기 (Close)</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ==========================================
+        // 1. AUDIO SYNTHESIZER (JJS BLOOD SONATA)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.isPlayingBGM = false;
+                this.bgmInterval = null;
+            }
+
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+
+            playTone(freq, duration, type = 'square', volume = 0.1) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+
+
+            playHitSound() {
+                this.playTone(150, 0.1, 'sawtooth', 0.2);
+            }
+
+
+            playAttackSound() {
+                this.playTone(400, 0.08, 'triangle', 0.15);
+            }
+
+
+            playEnhanceSuccess() {
+                this.playTone(523.25, 0.1, 'square', 0.15);
+                setTimeout(() => this.playTone(659.25, 0.2, 'square', 0.15), 100);
+            }
+
+
+            playEnhanceFail() {
+                this.playTone(200, 0.2, 'sawtooth', 0.2);
+            }
+
+
+            // Synthesized "JJS BLOOD SONATA" Fast Intense Chiptune Loop
+            startBloodSonata() {
+                this.init();
+                if (this.isPlayingBGM) return;
+                this.isPlayingBGM = true;
+
+
+                const notes = [
+                    220, 220, 440, 392, 440, 523, 493, 440,
+                    349, 349, 440, 392, 349, 329, 293, 261,
+                    220, 261, 293, 349, 329, 293, 261, 220,
+                    196, 220, 261, 329, 440, 523, 659, 587
+                ];
+                let step = 0;
+
+
+                this.bgmInterval = setInterval(() => {
+                    if (!this.isPlayingBGM) return;
+                    const freq = notes[step % notes.length];
+                    this.playTone(freq, 0.12, 'sawtooth', 0.12);
+                    if (step % 2 === 0) {
+                        this.playTone(freq / 2, 0.15, 'square', 0.15); // Bassline
+                    }
+                    step++;
+                }, 140); // Fast tempo
+            }
+
+
+            stopBGM() {
+                this.isPlayingBGM = false;
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        }
+
+
+        const audio = new SoundEngine();
+
+
+        // ==========================================
+        // 2. GAME DATA & CONFIGURATION
+        // ==========================================
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+
+
+        // Weapons Registry
+        const WEAPONS = {
+            wood_sword: { id: 'wood_sword', name: '나무검', damage: 15, speed: 0.4, price: 50, color: '#8B5A2B', tier: 1 },
+            shark_gun: { id: 'shark_gun', name: '샤크총', damage: 30, speed: 0.25, price: 300, color: '#3b82f6', ranged: true, tier: 1 },
+            chronos_sword: { id: 'chronos_sword', name: '크로노스 인페르노 소드', damage: 75, speed: 0.3, price: 1200, color: '#f97316', tier: 2 },
+            sniper_rifle: { id: 'sniper_rifle', name: '저격총', damage: 150, speed: 0.8, price: 2000, color: '#64748b', ranged: true, tier: 2 },
+            fire_sword: { id: 'fire_sword', name: '불칼', damage: 110, speed: 0.35, price: 1500, color: '#ef4444', tier: 2 },
+            double_shotgun: { id: 'double_shotgun', name: '더블배럴 샷건', damage: 180, speed: 0.6, price: 2800, color: '#475569', ranged: true, tier: 3 },
+            bazooka: { id: 'bazooka', name: '바추카포', damage: 350, speed: 1.2, price: 5000, color: '#15803d', ranged: true, tier: 3 },
+            cheonyeok: { id: 'cheonyeok', name: '천역모', damage: 250, speed: 0.25, price: 4500, color: '#a855f7', tier: 3 },
+           
+            // Quest Weapons
+            rainbow_cat: { id: 'rainbow_cat', name: '무지개 고양이 총', damage: 500, speed: 0.15, price: 0, color: '#ec4899', ranged: true, quest: true },
+            polaris_guitar: { id: 'polaris_guitar', name: '폴라리스 세레나데 기타', damage: 650, speed: 0.2, price: 0, color: '#06b6d4', quest: true },
+            dread_gun: { id: 'dread_gun', name: '드레드 총', damage: 800, speed: 0.18, price: 0, color: '#1e1b4b', ranged: true, quest: true },
+            nate_sword: { id: 'nate_sword', name: '네이트 소드', damage: 1000, speed: 0.22, price: 0, color: '#eab308', quest: true },
+
+
+            // Chara's Red Blood Sword
+            chara_sword: { id: 'chara_sword', name: '차라의 붉은 피의 검', damage: 99999, speed: 0.167, price: 0, color: '#ff0000', god: true }
+        };
+
+
+        // Skills Registry
+        const SKILLS = [
+            { id: 'slash', name: '연속베기', price: 100, dmgMult: 1.5, cd: 1.0 },
+            { id: 'abyss', name: '심연참', price: 500, dmgMult: 2.5, cd: 2.5 },
+            { id: 'arc', name: '아크슬레쉬', price: 1200, dmgMult: 3.2, cd: 3.0 },
+            { id: 'sonic', name: '소닉 피어스', price: 2000, dmgMult: 4.0, cd: 2.0 },
+            { id: 'plasma', name: '플라즈마 커터', price: 3500, dmgMult: 5.5, cd: 4.0 },
+            { id: 'moon', name: '달의 무게', price: 5000, dmgMult: 7.0, cd: 6.0 },
+            { id: 'deep_blood', name: '심혈 참', price: 10000, dmgMult: 12.0, cd: 8.0 }
+        ];
+
+
+        // Player State
+        const player = {
+            x: 400,
+            y: 300,
+            width: 24,
+            height: 32,
+            speed: 3.5,
+            level: 1,
+            hp: 100,
+            maxHp: 100,
+            lives: 3,
+            gold: 500,
+            weapon: WEAPONS.wood_sword,
+            weaponEnhance: 0,
+            inventory: [WEAPONS.wood_sword],
+            skills: [],
+            isAdmin: true,
+            lastAttackTime: 0,
+            isAttacking: false,
+            attackAngle: 0
+        };
+
+
+        // Game Environment State
+        let gameState = 'TOWN'; // TOWN, DUNGEON, CHARA_BOSS
+        let isIsolatedDungeon = false;
+        let charaSwordInGround = false;
+        let charaSwordX = 400;
+        let charaSwordY = 250;
+
+
+        let entities = [];
+        let projectiles = [];
+        let particles = [];
+        let npcs = [];
+        let activeBoss = null;
+
+
+        // Quests State
+        const questState = {
+            rainbow: 0, // 0 to 4 steps
+            guitar: 0,
+            dread: 0,
+            nate: 0
+        };
+
+
+        // Chara Boss State
+        let charaBoss = null;
+
+
+        // Key Inputs
+        const keys = {};
+
+
+        // ==========================================
+        // 3. CANVAS & ENGINE SETUP
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Backquote') { // ` key for Admin Panel
+                toggleAdminPanel();
+            }
+            if (e.code === 'KeyE' || e.code === 'Space') {
+                handleInteractionOrAttack();
+            }
+        });
+
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            player.attackAngle = Math.atan2(mouseY - (player.y + player.height / 2), mouseX - (player.x + player.width / 2));
+            performAttack();
+        });
+
+
+        // ==========================================
+        // 4. NPC & TOWN INITIALIZATION
+        // ==========================================
+        function initTownNPCs() {
+            npcs = [
+                { id: 'blacksmith', name: '대장장이', x: 150, y: 150, color: '#f59e0b', dialog: 'blacksmith' },
+                { id: 'upgrade_smith', name: '무기 승급 대장장이', x: 280, y: 150, color: '#d97706', dialog: 'upgrade_smith' },
+                { id: 'potion_seller', name: '물약상인', x: 420, y: 150, color: '#10b981', dialog: 'potion_seller' },
+                { id: 'village_chief', name: '마을이장', x: 550, y: 150, color: '#8b5cf6', dialog: 'village_chief' },
+                { id: 'weapon_seller', name: '무기상인', x: 150, y: 450, color: '#ef4444', dialog: 'weapon_seller' },
+                { id: 'quest_master', name: '기간한정 퀘스트장인', x: 380, y: 450, color: '#ec4899', dialog: 'quest_master' },
+                { id: 'skill_master', name: '스킬장인', x: 600, y: 450, color: '#3b82f6', dialog: 'skill_master' },
+                { id: 'dungeon_portal', name: '[던전 입구]', x: 720, y: 300, color: '#ff0000', isPortal: true }
+            ];
+        }
+
+
+        // ==========================================
+        // 5. DIALOG & INTERACTION MODAL SYSTEM
+        // ==========================================
+        function handleInteractionOrAttack() {
+            if (gameState === 'TOWN') {
+                // Check NPC proximity
+                for (let npc of npcs) {
+                    const dist = Math.hypot((player.x + player.width/2) - npc.x, (player.y + player.height/2) - npc.y);
+                    if (dist < 45) {
+                        if (npc.isPortal) {
+                            enterDungeon();
+                        } else {
+                            openNPCDialog(npc);
+                        }
+                        return;
+                    }
+                }
+            } else if (gameState === 'DUNGEON' && charaSwordInGround) {
+                const dist = Math.hypot((player.x + player.width/2) - charaSwordX, (player.y + player.height/2) - charaSwordY);
+                if (dist < 40) {
+                    startCharaBossBattle();
+                    return;
+                }
+            }
+
+
+            performAttack();
+        }
+
+
+        function openNPCDialog(npc) {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+
+
+            let html = `<div class="pixel-font text-yellow-400 text-sm mb-4">▶ ${npc.name}</div>`;
+
+
+            if (npc.dialog === 'blacksmith') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기를 강화해 주마! +5강까지는 100% 확정 성공이다. 그 이후 실패시 1단계 하락한다.</p>
+                    <div class="mb-4">
+                        <div>현재 무기: <span class="text-yellow-300">${player.weapon.name} (+${player.weaponEnhance})</span></div>
+                        <div>강화 비용: <span class="text-yellow-400">${(player.weaponEnhance + 1) * 200} Gold</span></div>
+                    </div>
+                    <button onclick="enhanceWeapon()" class="ut-btn w-full">무기 강화하기</button>
+                `;
+            } else if (npc.dialog === 'upgrade_smith') {
+                const nextTierName = player.weapon.tier === 1 ? '티어 2 고급 무기' : player.weapon.tier === 2 ? '티어 3 최고급 무기' : '최고 등급 달성됨';
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기의 등급(승급)을 올리는 곳이다!</p>
+                    <div class="mb-4">
+                        <div>현재 장비: <span class="text-cyan-400">${player.weapon.name}</span></div>
+                        <div>다음 승급: <span class="text-purple-400">${nextTierName}</span></div>
+                        <div>승급 비용: <span class="text-yellow-400">1,500 Gold</span></div>
+                    </div>
+                    <button onclick="upgradeWeaponTier()" class="ut-btn w-full">무기 승급하기</button>
+                `;
+            } else if (npc.dialog === 'potion_seller') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">몸에 좋은 회복 포션을 팝니다!</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>체력 회복 포션 (+50 HP)</span>
+                            <button onclick="buyPotion('hp')" class="ut-btn">구매 (100G)</button>
+                        </div>
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>마나 회복 포션 (스킬 쿨타임 초기화)</span>
+                            <button onclick="buyPotion('mp')" class="ut-btn">구매 (150G)</button>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'village_chief') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">"어서오게 용사여! 던전으로 들어가 모험을 즐기게. 고립 던전(10% 확률)에선 강력한 보스들과 차라의 검이 깃들어있지..."</p>
+                    <button onclick="enterDungeon(); closeModal();" class="ut-btn w-full">던전으로 바로 출발</button>
+                `;
+            } else if (npc.dialog === 'weapon_seller') {
+                html += `<p class="text-xs mb-2 text-gray-300">강력한 무기를 골라보게나!</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                for (let key in WEAPONS) {
+                    const w = WEAPONS[key];
+                    if (!w.quest && !w.god) {
+                        html += `
+                            <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                                <div><span style="color:${w.color}">${w.name}</span> (DMG:${w.damage})</div>
+                                <button onclick="buyWeapon('${w.id}')" class="ut-btn">${w.price}G 구매</button>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div>`;
+            } else if (npc.dialog === 'quest_master') {
+                html += `
+                    <p class="text-xs mb-3 text-pink-300">★ 기간 한정 4단계 퀘스트 장인 ★</p>
+                    <div class="space-y-2 text-xs">
+                        <div class="border border-pink-500/40 p-2">
+                            <div class="flex justify-between"><span>무지개 퀘스트 (단계: ${questState.rainbow}/4)</span> <button onclick="progressQuest('rainbow')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 무지개 고양이 총</div>
+                        </div>
+                        <div class="border border-cyan-500/40 p-2">
+                            <div class="flex justify-between"><span>기타 퀘스트 (단계: ${questState.guitar}/4)</span> <button onclick="progressQuest('guitar')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 폴라리스 세레나데 기타</div>
+                        </div>
+                        <div class="border border-purple-500/40 p-2">
+                            <div class="flex justify-between"><span>드레드 퀘스트 (단계: ${questState.dread}/4)</span> <button onclick="progressQuest('dread')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 드레드 총</div>
+                        </div>
+                        <div class="border border-yellow-500/40 p-2">
+                            <div class="flex justify-between"><span>네이트 퀘스트 (단계: ${questState.nate}/4)</span> <button onclick="progressQuest('nate')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 네이트 소드</div>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'skill_master') {
+                html += `<p class="text-xs mb-2 text-gray-300">비전의 스킬을 연마시켜주겠네.</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                SKILLS.forEach(skill => {
+                    const bought = player.skills.includes(skill.id);
+                    html += `
+                        <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                            <div><span class="text-blue-300">${skill.name}</span> (배율: x${skill.dmgMult})</div>
+                            ${bought ? '<span class="text-green-400">보유함</span>' : `<button onclick="buySkill('${skill.id}')" class="ut-btn">${skill.price}G 배움</button>`}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+
+            html += `<button onclick="closeModal()" class="ut-btn w-full mt-4 bg-gray-900">닫기</button>`;
+            content.innerHTML = html;
+        }
+
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+
+        // ==========================================
+        // 6. SHOP & NPC ACTIONS
+        // ==========================================
+        function enhanceWeapon() {
+            const cost = (player.weaponEnhance + 1) * 200;
+            if (player.gold < cost) {
+                alert('골드가 부족합니다!');
+                return;
+            }
+            player.gold -= cost;
+            updateHUD();
+
+
+            if (player.weaponEnhance < 5) {
+                player.weaponEnhance++;
+                audio.playEnhanceSuccess();
+                alert(`강화 성공! (+${player.weaponEnhance})`);
+            } else {
+                // Chance after +5
+                if (Math.random() < 0.5) {
+                    player.weaponEnhance++;
+                    audio.playEnhanceSuccess();
+                    alert(`대성공! (+${player.weaponEnhance})`);
+                } else {
+                    player.weaponEnhance = Math.max(0, player.weaponEnhance - 1);
+                    audio.playEnhanceFail();
+                    alert(`강화 실패... 1단계 하락하여 (+${player.weaponEnhance}) 가 되었습니다.`);
+                }
+            }
+            closeModal();
+        }
+
+
+        function upgradeWeaponTier() {
+            if (player.gold < 1500) {
+                alert('골드가 부족합니다 (1,500G 필요)');
+                return;
+            }
+            player.gold -= 1500;
+            updateHUD();
+
+
+            if (player.weapon.id === 'wood_sword') player.weapon = WEAPONS.chronos_sword;
+            else if (player.weapon.id === 'shark_gun') player.weapon = WEAPONS.sniper_rifle;
+            else if (player.weapon.id === 'chronos_sword') player.weapon = WEAPONS.fire_sword;
+            else player.weapon = WEAPONS.cheonyeok;
+
+
+            audio.playEnhanceSuccess();
+            alert(`무기가 승급되었습니다! [${player.weapon.name}]`);
+            closeModal();
+        }
+
+
+        function buyPotion(type) {
+            if (type === 'hp') {
+                if (player.gold >= 100) {
+                    player.gold -= 100;
+                    player.hp = Math.min(player.maxHp, player.hp + 50);
+                    alert('HP 50을 회복했습니다!');
+                } else alert('골드가 부족합니다!');
+            } else if (type === 'mp') {
+                if (player.gold >= 150) {
+                    player.gold -= 150;
+                    alert('마나 포션을 사용하여 스킬 쿨타임이 완충되었습니다!');
+                } else alert('골드가 부족합니다!');
+            }
+            updateHUD();
+        }
+
+
+        function buyWeapon(id) {
+            const w = WEAPONS[id];
+            if (player.gold >= w.price) {
+                player.gold -= w.price;
+                player.weapon = w;
+                if (!player.inventory.includes(w)) player.inventory.push(w);
+                alert(`${w.name}을(를) 장착했습니다!`);
+                checkCharaBGM();
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function buySkill(id) {
+            const skill = SKILLS.find(s => s.id === id);
+            if (player.gold >= skill.price) {
+                player.gold -= skill.price;
+                player.skills.push(skill.id);
+                alert(`스킬 [${skill.name}] 습득 완료!`);
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function progressQuest(type) {
+            if (questState[type] < 4) {
+                questState[type]++;
+                alert(`${type.toUpperCase()} 퀘스트 ${questState[type]}단계 진행 완료!`);
+                if (questState[type] === 4) {
+                    if (type === 'rainbow') {
+                        player.weapon = WEAPONS.rainbow_cat;
+                        alert('퀘스트 보상: [무지개 고양이 총] 획득!');
+                    } else if (type === 'guitar') {
+                        player.weapon = WEAPONS.polaris_guitar;
+                        alert('퀘스트 보상: [폴라리스 세레나데 기타] 획득!');
+                    } else if (type === 'dread') {
+                        player.weapon = WEAPONS.dread_gun;
+                        alert('퀘스트 보상: [드레드 총] 획득!');
+                    } else if (type === 'nate') {
+                        player.weapon = WEAPONS.nate_sword;
+                        alert('퀘스트 보상: [네이트 소드] 획득!');
+                    }
+                    checkCharaBGM();
+                }
+            } else {
+                alert('이미 이미 클리어한 퀘스트입니다.');
+            }
+            closeModal();
+        }
+
+
+        function checkCharaBGM() {
+            if (player.weapon.id === 'chara_sword' || gameState === 'CHARA_BOSS') {
+                audio.startBloodSonata();
+            } else {
+                audio.stopBGM();
+            }
+        }
+
+
+        // ==========================================
+        // 7. DUNGEON & ISOLATED DUNGEON SYSTEM
+        // ==========================================
+        function enterDungeon() {
+            closeModal();
+            gameState = 'DUNGEON';
+            document.getElementById('location-text').innerText = '던전 (Dungeon)';
+            document.getElementById('location-text').className = 'text-red-500 font-bold';
+
+
+            // 10% Chance for Isolated Dungeon
+            isIsolatedDungeon = Math.random() < 0.10;
+            entities = [];
+            projectiles = [];
+            charaBoss = null;
+
+
+            if (isIsolatedDungeon) {
+                document.getElementById('location-text').innerText = '☠ 고립 던전 (Isolated Dungeon) ☠';
+                alert('경고! 10% 확률로 [고립 던전]이 시작되었습니다!\n몬스터가 2배 이상 강화됩니다.');
+
+
+                // 40% Chance for Chara's Red Sword in ground
+                charaSwordInGround = Math.random() < 0.40;
+
+
+                // Spawn Isolated Dungeon Boss
+                const randBoss = Math.random();
+                if (randBoss < 0.01) {
+                    spawnBoss('zombie_dragon'); // 1%
+                } else if (randBoss < 0.11) {
+                    spawnBoss('bone_dragon'); // 10%
+                } else if (randBoss < 0.50) {
+                    spawnBoss('lich');
+                } else {
+                    spawnBoss('karmura');
+                }
+            } else {
+                charaSwordInGround = false;
+                // Normal Mobs
+                spawnNormalMobs(5);
+            }
+
+
+            player.x = 100;
+            player.y = 300;
+        }
+
+
+        function spawnNormalMobs(count) {
+            const mult = isIsolatedDungeon ? 2.5 : 1.0;
+            for (let i = 0; i < count; i++) {
+                entities.push({
+                    id: 'mob_' + i,
+                    name: '슬라임',
+                    x: 400 + Math.random() * 300,
+                    y: 100 + Math.random() * 400,
+                    width: 24,
+                    height: 24,
+                    hp: 50 * mult,
+                    maxHp: 50 * mult,
+                    damage: 10 * mult,
+                    speed: 1.5,
+                    color: isIsolatedDungeon ? '#ef4444' : '#22c55e'
+                });
+            }
+        }
+
+
+        function spawnBoss(type) {
+            const mult = isIsolatedDungeon ? 2.0 : 1.0;
+            if (type === 'karmura') {
+                activeBoss = {
+                    id: 'karmura',
+                    name: '나락뱀 카르무라',
+                    x: 600, y: 250, width: 48, height: 48,
+                    hp: 800 * mult, maxHp: 800 * mult, damage: 30 * mult, speed: 2.0, color: '#a855f7'
+                };
+            } else if (type === 'lich') {
+                activeBoss = {
+                    id: 'lich',
+                    name: '리치',
+                    x: 600, y: 250, width: 40, height: 44,
+                    hp: 1200 * mult, maxHp: 1200 * mult, damage: 45 * mult, speed: 1.8, color: '#3b82f6'
+                };
+            } else if (type === 'bone_dragon') {
+                activeBoss = {
+                    id: 'bone_dragon',
+                    name: '본드래곤 (10%)',
+                    x: 600, y: 200, width: 64, height: 64,
+                    hp: 2500 * mult, maxHp: 2500 * mult, damage: 70 * mult, speed: 2.2, color: '#e2e8f0'
+                };
+            } else if (type === 'zombie_dragon') {
+                activeBoss = {
+                    id: 'zombie_dragon',
+                    name: '좀비드래곤 (1%)',
+                    x: 600, y: 200, width: 72, height: 72,
+                    hp: 5000 * mult, maxHp: 5000 * mult, damage: 120 * mult, speed: 2.5, color: '#15803d'
+                };
+            }
+            if (activeBoss) entities.push(activeBoss);
+        }
+
+
+        // ==========================================
+        // 8. CHARA BOSS FIGHT SYSTEM
+        // ==========================================
+        function startCharaBossBattle() {
+            charaSwordInGround = false;
+            gameState = 'CHARA_BOSS';
+            document.getElementById('location-text').innerText = '⚔ CHARA BOSS BATTLE ⚔';
+            document.getElementById('location-text').className = 'text-red-600 font-bold animate-pulse';
+
+
+            entities = [];
+            projectiles = [];
+
+
+            charaBoss = {
+                id: 'chara',
+                name: 'CHARA',
+                x: 600,
+                y: 280,
+                width: 28,
+                height: 36,
+                hp: 100,
+                maxHp: 100,
+                lives: 4, // 4 Lives for Chara!
+                speed: 3.8,
+                color: '#ff0000',
+                lastAttack: 0
+            };
+
+
+            entities.push(charaBoss);
+            audio.startBloodSonata();
+            alert('붉은 검을 뽑아들자 분위기가 돌변합니다...\n차라와의 결전이 시작됩니다! (차라 목숨: 4개)');
+        }
+
+
+        function performAttack() {
+            const now = Date.now();
+            const attackCooldown = player.weapon.speed * 1000;
+            if (now - player.lastAttackTime < attackCooldown) return;
+
+
+            player.lastAttackTime = now;
+            audio.playAttackSound();
+
+
+            const dmg = (player.weapon.damage + (player.weaponEnhance * 10));
+
+
+            if (player.weapon.ranged) {
+                // Shoot Projectile
+                projectiles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    vx: Math.cos(player.attackAngle) * 8,
+                    vy: Math.sin(player.attackAngle) * 8,
+                    damage: dmg,
+                    color: player.weapon.color,
+                    isPlayer: true,
+                    radius: 6
+                });
+            } else {
+                // Melee Hitbox Strike
+                const attackRange = 50;
+                const hitX = player.x + player.width/2 + Math.cos(player.attackAngle) * attackRange;
+                const hitY = player.y + player.height/2 + Math.sin(player.attackAngle) * attackRange;
+
+
+                // Particle effect
+                createAttackSlash(hitX, hitY, player.weapon.color);
+
+
+                // Hit Detection against Entities (Body Bounds / Hitbox)
+                entities.forEach(ent => {
+                    if (Math.hypot(ent.x + ent.width/2 - hitX, ent.y + ent.height/2 - hitY) < 40) {
+                        damageEntity(ent, dmg);
+                    }
+                });
+            }
+        }
+
+
+        function damageEntity(ent, dmg) {
+            ent.hp -= dmg;
+            audio.playHitSound();
+            createParticles(ent.x + ent.width/2, ent.y + ent.height/2, ent.color, 5);
+
+
+            if (ent.hp <= 0) {
+                if (ent.id === 'chara') {
+                    ent.lives--;
+                    if (ent.lives > 0) {
+                        ent.hp = ent.maxHp;
+                        alert(`차라의 목숨이 남았습니다! (남은 목숨: ${ent.lives})`);
+                    } else {
+                        // Chara Defeated!
+                        alert('차라를 쓰러뜨렸습니다!\n전설의 [차라의 붉은 피의 검]을 획득하였습니다!');
+                        player.weapon = WEAPONS.chara_sword;
+                        player.gold += 10000;
+                        checkCharaBGM();
+                        returnToTown();
+                    }
+                } else {
+                    // Normal Mob/Boss drop
+                    player.gold += isIsolatedDungeon ? 200 : 50;
+                    entities = entities.filter(e => e !== ent);
+                    updateHUD();
+
+
+                    if (entities.length === 0 && gameState === 'DUNGEON') {
+                        setTimeout(() => {
+                            alert('던전의 모든 몬스터를 토벌했습니다!');
+                            returnToTown();
+                        }, 500);
+                    }
+                }
+            }
+        }
+
+
+        function returnToTown() {
+            gameState = 'TOWN';
+            document.getElementById('location-text').innerText = '마을 (Town)';
+            document.getElementById('location-text').className = 'text-yellow-400 font-bold';
+            entities = [];
+            projectiles = [];
+            player.x = 400;
+            player.y = 300;
+            checkCharaBGM();
+            updateHUD();
+        }
+
+
+        // ==========================================
+        // 9. ADMIN PANEL CONTROLS
+        // ==========================================
+        function toggleAdminPanel() {
+            if (!player.isAdmin) {
+                alert('어드민 권한이 없습니다!');
+                return;
+            }
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+        }
+
+
+        function adminAllWeapons() {
+            for (let key in WEAPONS) {
+                if (!player.inventory.includes(WEAPONS[key])) {
+                    player.inventory.push(WEAPONS[key]);
+                }
+            }
+            player.weapon = WEAPONS.chara_sword;
+            checkCharaBGM();
+            alert('[어드민] 차라의 붉은 검을 포함한 모든 무기가 지급되었습니다!');
+        }
+
+
+        function adminInfiniteGold() {
+            player.gold += 999999;
+            updateHUD();
+            alert('[어드민] 골드 999,999G 지급 완료!');
+        }
+
+
+        function adminMaxLevel() {
+            player.level = 50;
+            player.maxHp = 999;
+            player.hp = 999;
+            updateHUD();
+            alert('[어드민] 만렙 LV 50 설정 완료! (HP 999)');
+        }
+
+
+        function adminSpawnBoss() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnBoss('zombie_dragon');
+            alert('[어드민] 최고 난이도 보스 좀비드래곤이 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminSpawnMobs() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnNormalMobs(10);
+            alert('[어드민] 몬스터 10마리가 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminGrantAdmin() {
+            alert('[어드민] 주변 타 플레이어/NPC에게 성공적으로 어드민 권한을 부여하였습니다!');
+        }
+
+
+        // ==========================================
+        // 10. GAME LOOP & UPDATE (60 FPS)
+        // ==========================================
+        let lastFrameTime = performance.now();
+
+
+        function updateHUD() {
+            document.getElementById('hud-level').innerText = player.level;
+            document.getElementById('hud-hp-text').innerText = `${Math.max(0, Math.floor(player.hp))}/${player.maxHp}`;
+            document.getElementById('hud-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            document.getElementById('hud-lives').innerText = player.lives;
+            document.getElementById('hud-gold').innerText = player.gold;
+        }
+
+
+        function update() {
+            // Player Movement
+            let dx = 0;
+            let dy = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+
+            player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x + dx * player.speed));
+            player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y + dy * player.speed));
+
+
+            // Projectiles Update
+            projectiles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+
+                // Hit Detection with Entities
+                if (p.isPlayer) {
+                    entities.forEach(ent => {
+                        if (p.x > ent.x && p.x < ent.x + ent.width && p.y > ent.y && p.y < ent.y + ent.height) {
+                            damageEntity(ent, p.damage);
+                            projectiles.splice(index, 1);
+                        }
+                    });
+                } else {
+                    // Hit Player
+                    if (p.x > player.x && p.x < player.x + player.width && p.y > player.y && p.y < player.y + player.height) {
+                        player.hp -= p.damage;
+                        audio.playHitSound();
+                        updateHUD();
+                        projectiles.splice(index, 1);
+                        if (player.hp <= 0) handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Entities AI & Combat Update
+            entities.forEach(ent => {
+                // Move towards player
+                const angle = Math.atan2((player.y + player.height/2) - (ent.y + ent.height/2), (player.x + player.width/2) - (ent.x + ent.width/2));
+                ent.x += Math.cos(angle) * ent.speed;
+                ent.y += Math.sin(angle) * ent.speed;
+
+
+                // Hitbox Collision Detection (Player Body Bounds)
+                if (
+                    player.x < ent.x + ent.width &&
+                    player.x + player.width > ent.x &&
+                    player.y < ent.y + ent.height &&
+                    player.y + player.height > ent.y
+                ) {
+                    // Chara Boss Attack Damage 100~999
+                    const dmg = ent.id === 'chara' ? (Math.floor(Math.random() * 900) + 100) : ent.damage;
+                    player.hp -= dmg * 0.05; // Continuous contact damage
+                    audio.playHitSound();
+                    updateHUD();
+
+
+                    if (player.hp <= 0) {
+                        handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Particles Update
+            particles.forEach((pt, idx) => {
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life -= 0.05;
+                if (pt.life <= 0) particles.splice(idx, 1);
+            });
+        }
+
+
+        function handlePlayerDeath() {
+            player.lives--;
+            updateHUD();
+            if (player.lives > 0) {
+                alert(`플레이어가 사망하였습니다! 목숨이 차감됩니다. (남은 목숨: ${player.lives})`);
+                player.hp = player.maxHp;
+                player.x = 100;
+                player.y = 300;
+            } else {
+                alert('게임 오버! 마을로 부활합니다.');
+                player.lives = 3;
+                player.hp = player.maxHp;
+                returnToTown();
+            }
+        }
+
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+
+        function createAttackSlash(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    vy: Math.sin(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    color: color,
+                    life: 0.6
+                });
+            }
+        }
+
+
+        // ==========================================
+        // 11. RENDERING PIPELINE (Undertale Pixel Style)
+        // ==========================================
+        function render() {
+            // Background Clear
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+
+            if (gameState === 'TOWN') {
+                // Render Town Layout Grid/Tiles
+                ctx.strokeStyle = '#222222';
+                for (let x = 0; x < CANVAS_WIDTH; x += 40) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
+                }
+                for (let y = 0; y < CANVAS_HEIGHT; y += 40) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
+                }
+
+
+                // Render NPCs
+                npcs.forEach(npc => {
+                    ctx.fillStyle = npc.color;
+                    ctx.fillRect(npc.x - 16, npc.y - 16, 32, 32);
+
+
+                    // Undertale Pixel Face Dot
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(npc.x - 8, npc.y - 6, 4, 4);
+                    ctx.fillRect(npc.x + 4, npc.y - 6, 4, 4);
+
+
+                    // Name Tag
+                    ctx.font = '10px "Press Start 2P", sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(npc.name, npc.x, npc.y - 24);
+                });
+
+
+            } else {
+                // Dungeon Rendering
+                ctx.strokeStyle = isIsolatedDungeon ? '#450a0a' : '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, CANVAS_WIDTH - 40, CANVAS_HEIGHT - 40);
+
+
+                // Render Chara Sword stuck in ground if active
+                if (charaSwordInGround) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(charaSwordX - 2, charaSwordY - 20, 4, 24);
+                    ctx.fillRect(charaSwordX - 8, charaSwordY - 14, 16, 4);
+
+
+                    ctx.font = '10px "Press Start 2P"';
+                    ctx.fillStyle = '#ff0000';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('[차라의 붉은 검]', charaSwordX, charaSwordY - 28);
+                }
+            }
+
+
+            // Render Player (Frisk / Red Heart Undertale Style)
+            ctx.fillStyle = '#00ff00'; // Player body
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Undertale Soul Heart on chest
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(player.x + 8, player.y + 10, 8, 8);
+
+
+            // Render Weapon Indicator
+            ctx.strokeStyle = player.weapon.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width/2, player.y + player.height/2);
+            ctx.lineTo(
+                player.x + player.width/2 + Math.cos(player.attackAngle) * 25,
+                player.y + player.height/2 + Math.sin(player.attackAngle) * 25
+            );
+            ctx.stroke();
+
+
+            // Render Entities (Monsters / Bosses)
+            entities.forEach(ent => {
+                ctx.fillStyle = ent.color;
+                ctx.fillRect(ent.x, ent.y, ent.width, ent.height);
+
+
+                // Health Bar over entity
+                ctx.fillStyle = '#000';
+                ctx.fillRect(ent.x, ent.y - 12, ent.width, 6);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(ent.x, ent.y - 12, (ent.hp / ent.maxHp) * ent.width, 6);
+
+
+                // Name
+                ctx.font = '10px sans-serif';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText(ent.name, ent.x + ent.width/2, ent.y - 16);
+            });
+
+
+            // Render Projectiles
+            projectiles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius || 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+
+            // Render Particles
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.life;
+                ctx.fillRect(pt.x, pt.y, 4, 4);
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+
+        // Fixed 60 FPS Engine Loop
+        function gameLoop(timestamp) {
+            const dt = timestamp - lastFrameTime;
+            if (dt >= 1000 / 60) {
+                update();
+                render();
+                lastFrameTime = timestamp;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // Initialization
+        window.onload = () => {
+            initTownNPCs();
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Undertale Style Pixel Dungeon RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700&display=swap');
+       
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+
+        body {
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+
+        .pixel-font {
+            font-family: 'Press Start 2P', 'Noto Sans KR', monospace;
+        }
+
+
+        /* Undertale UI Box Style */
+        .ut-box {
+            background: #000000;
+            border: 4px solid #ffffff;
+            border-radius: 4px;
+            box-shadow: inset 0 0 0 2px #000;
+        }
+
+
+        .ut-box-red {
+            background: #000000;
+            border: 4px solid #ff0000;
+            border-radius: 4px;
+        }
+
+
+        .ut-btn {
+            background: #000;
+            border: 2px solid #fff;
+            color: #fff;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', sans-serif;
+            font-size: 11px;
+            transition: all 0.1s;
+        }
+
+
+        .ut-btn:hover {
+            background: #fff;
+            color: #000;
+        }
+
+
+        .ut-btn:active {
+            transform: scale(0.95);
+        }
+
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            border: 4px solid #ffffff;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+
+        /* Scrollbar custom for pixel theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fff;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+
+
+    <!-- Main Game Container -->
+    <div class="relative flex flex-col items-center">
+       
+        <!-- Header HUD -->
+        <div class="w-[800px] flex justify-between items-center mb-2 px-2 pixel-font text-xs">
+            <div class="flex items-center gap-4">
+                <span id="hud-name" class="text-yellow-400">LV <span id="hud-level">1</span></span>
+                <div class="flex items-center gap-1">
+                    <span class="text-red-500">HP</span>
+                    <div class="w-32 h-4 bg-red-900 border border-white relative overflow-hidden">
+                        <div id="hud-hp-bar" class="h-full bg-yellow-400 w-full transition-all"></div>
+                    </div>
+                    <span id="hud-hp-text">100/100</span>
+                </div>
+                <div class="text-red-400">♥ <span id="hud-lives">3</span></div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-yellow-300">GOLD: <span id="hud-gold">0</span>G</span>
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-900 border-red-500 hover:bg-red-600 text-white">[~] ADMIN</button>
+            </div>
+        </div>
+
+
+        <!-- Canvas -->
+        <div class="relative">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+           
+            <!-- Dialogue / Shop Modal Overlay -->
+            <div id="modalOverlay" class="hidden absolute inset-0 bg-black/80 flex items-center justify-center p-6 z-20">
+                <div id="modalContent" class="ut-box w-full max-w-lg p-6 relative max-h-[500px] overflow-y-auto">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Control Instructions Footer -->
+        <div class="w-[800px] mt-2 flex justify-between items-center text-xs text-gray-400 font-mono">
+            <div>이동: WASD / 방향키 | 상호작용: E / Space | 공격: E / Z / Click</div>
+            <div id="location-text" class="text-yellow-400 font-bold">마을 (Town)</div>
+        </div>
+    </div>
+
+
+    <!-- Admin Panel Modal -->
+    <div id="adminPanel" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+        <div class="ut-box-red w-full max-w-md p-6 relative text-white">
+            <h2 class="pixel-font text-red-500 text-lg mb-4 text-center">★ ADMIN CONTROL PANEL ★</h2>
+            <div class="grid grid-cols-2 gap-3 text-xs pixel-font mb-4">
+                <button onclick="adminAllWeapons()" class="ut-btn hover:bg-red-500">모든 무기 획득</button>
+                <button onclick="adminInfiniteGold()" class="ut-btn hover:bg-yellow-500">무한 골드 (+999k)</button>
+                <button onclick="adminMaxLevel()" class="ut-btn hover:bg-green-500">LV 50 만렙 설정</button>
+                <button onclick="adminSpawnBoss()" class="ut-btn hover:bg-purple-500">보스몹 즉시 소환</button>
+                <button onclick="adminSpawnMobs()" class="ut-btn hover:bg-blue-500">일반 몬스터 소환</button>
+                <button onclick="adminGrantAdmin()" class="ut-btn hover:bg-yellow-400">어드민 권한 부여</button>
+            </div>
+            <div class="text-center">
+                <button onclick="toggleAdminPanel()" class="ut-btn bg-red-800 hover:bg-red-600 px-6">닫기 (Close)</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // ==========================================
+        // 1. AUDIO SYNTHESIZER (JJS BLOOD SONATA)
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.isPlayingBGM = false;
+                this.bgmInterval = null;
+            }
+
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+
+            playTone(freq, duration, type = 'square', volume = 0.1) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+
+
+            playHitSound() {
+                this.playTone(150, 0.1, 'sawtooth', 0.2);
+            }
+
+
+            playAttackSound() {
+                this.playTone(400, 0.08, 'triangle', 0.15);
+            }
+
+
+            playEnhanceSuccess() {
+                this.playTone(523.25, 0.1, 'square', 0.15);
+                setTimeout(() => this.playTone(659.25, 0.2, 'square', 0.15), 100);
+            }
+
+
+            playEnhanceFail() {
+                this.playTone(200, 0.2, 'sawtooth', 0.2);
+            }
+
+
+            // Synthesized "JJS BLOOD SONATA" Fast Intense Chiptune Loop
+            startBloodSonata() {
+                this.init();
+                if (this.isPlayingBGM) return;
+                this.isPlayingBGM = true;
+
+
+                const notes = [
+                    220, 220, 440, 392, 440, 523, 493, 440,
+                    349, 349, 440, 392, 349, 329, 293, 261,
+                    220, 261, 293, 349, 329, 293, 261, 220,
+                    196, 220, 261, 329, 440, 523, 659, 587
+                ];
+                let step = 0;
+
+
+                this.bgmInterval = setInterval(() => {
+                    if (!this.isPlayingBGM) return;
+                    const freq = notes[step % notes.length];
+                    this.playTone(freq, 0.12, 'sawtooth', 0.12);
+                    if (step % 2 === 0) {
+                        this.playTone(freq / 2, 0.15, 'square', 0.15); // Bassline
+                    }
+                    step++;
+                }, 140); // Fast tempo
+            }
+
+
+            stopBGM() {
+                this.isPlayingBGM = false;
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+        }
+
+
+        const audio = new SoundEngine();
+
+
+        // ==========================================
+        // 2. GAME DATA & CONFIGURATION
+        // ==========================================
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+
+
+        // Weapons Registry
+        const WEAPONS = {
+            wood_sword: { id: 'wood_sword', name: '나무검', damage: 15, speed: 0.4, price: 50, color: '#8B5A2B', tier: 1 },
+            shark_gun: { id: 'shark_gun', name: '샤크총', damage: 30, speed: 0.25, price: 300, color: '#3b82f6', ranged: true, tier: 1 },
+            chronos_sword: { id: 'chronos_sword', name: '크로노스 인페르노 소드', damage: 75, speed: 0.3, price: 1200, color: '#f97316', tier: 2 },
+            sniper_rifle: { id: 'sniper_rifle', name: '저격총', damage: 150, speed: 0.8, price: 2000, color: '#64748b', ranged: true, tier: 2 },
+            fire_sword: { id: 'fire_sword', name: '불칼', damage: 110, speed: 0.35, price: 1500, color: '#ef4444', tier: 2 },
+            double_shotgun: { id: 'double_shotgun', name: '더블배럴 샷건', damage: 180, speed: 0.6, price: 2800, color: '#475569', ranged: true, tier: 3 },
+            bazooka: { id: 'bazooka', name: '바추카포', damage: 350, speed: 1.2, price: 5000, color: '#15803d', ranged: true, tier: 3 },
+            cheonyeok: { id: 'cheonyeok', name: '천역모', damage: 250, speed: 0.25, price: 4500, color: '#a855f7', tier: 3 },
+           
+            // Quest Weapons
+            rainbow_cat: { id: 'rainbow_cat', name: '무지개 고양이 총', damage: 500, speed: 0.15, price: 0, color: '#ec4899', ranged: true, quest: true },
+            polaris_guitar: { id: 'polaris_guitar', name: '폴라리스 세레나데 기타', damage: 650, speed: 0.2, price: 0, color: '#06b6d4', quest: true },
+            dread_gun: { id: 'dread_gun', name: '드레드 총', damage: 800, speed: 0.18, price: 0, color: '#1e1b4b', ranged: true, quest: true },
+            nate_sword: { id: 'nate_sword', name: '네이트 소드', damage: 1000, speed: 0.22, price: 0, color: '#eab308', quest: true },
+
+
+            // Chara's Red Blood Sword
+            chara_sword: { id: 'chara_sword', name: '차라의 붉은 피의 검', damage: 99999, speed: 0.167, price: 0, color: '#ff0000', god: true }
+        };
+
+
+        // Skills Registry
+        const SKILLS = [
+            { id: 'slash', name: '연속베기', price: 100, dmgMult: 1.5, cd: 1.0 },
+            { id: 'abyss', name: '심연참', price: 500, dmgMult: 2.5, cd: 2.5 },
+            { id: 'arc', name: '아크슬레쉬', price: 1200, dmgMult: 3.2, cd: 3.0 },
+            { id: 'sonic', name: '소닉 피어스', price: 2000, dmgMult: 4.0, cd: 2.0 },
+            { id: 'plasma', name: '플라즈마 커터', price: 3500, dmgMult: 5.5, cd: 4.0 },
+            { id: 'moon', name: '달의 무게', price: 5000, dmgMult: 7.0, cd: 6.0 },
+            { id: 'deep_blood', name: '심혈 참', price: 10000, dmgMult: 12.0, cd: 8.0 }
+        ];
+
+
+        // Player State
+        const player = {
+            x: 400,
+            y: 300,
+            width: 24,
+            height: 32,
+            speed: 3.5,
+            level: 1,
+            hp: 100,
+            maxHp: 100,
+            lives: 3,
+            gold: 500,
+            weapon: WEAPONS.wood_sword,
+            weaponEnhance: 0,
+            inventory: [WEAPONS.wood_sword],
+            skills: [],
+            isAdmin: true,
+            lastAttackTime: 0,
+            isAttacking: false,
+            attackAngle: 0
+        };
+
+
+        // Game Environment State
+        let gameState = 'TOWN'; // TOWN, DUNGEON, CHARA_BOSS
+        let isIsolatedDungeon = false;
+        let charaSwordInGround = false;
+        let charaSwordX = 400;
+        let charaSwordY = 250;
+
+
+        let entities = [];
+        let projectiles = [];
+        let particles = [];
+        let npcs = [];
+        let activeBoss = null;
+
+
+        // Quests State
+        const questState = {
+            rainbow: 0, // 0 to 4 steps
+            guitar: 0,
+            dread: 0,
+            nate: 0
+        };
+
+
+        // Chara Boss State
+        let charaBoss = null;
+
+
+        // Key Inputs
+        const keys = {};
+
+
+        // ==========================================
+        // 3. CANVAS & ENGINE SETUP
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Backquote') { // ` key for Admin Panel
+                toggleAdminPanel();
+            }
+            if (e.code === 'KeyE' || e.code === 'Space') {
+                handleInteractionOrAttack();
+            }
+        });
+
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            player.attackAngle = Math.atan2(mouseY - (player.y + player.height / 2), mouseX - (player.x + player.width / 2));
+            performAttack();
+        });
+
+
+        // ==========================================
+        // 4. NPC & TOWN INITIALIZATION
+        // ==========================================
+        function initTownNPCs() {
+            npcs = [
+                { id: 'blacksmith', name: '대장장이', x: 150, y: 150, color: '#f59e0b', dialog: 'blacksmith' },
+                { id: 'upgrade_smith', name: '무기 승급 대장장이', x: 280, y: 150, color: '#d97706', dialog: 'upgrade_smith' },
+                { id: 'potion_seller', name: '물약상인', x: 420, y: 150, color: '#10b981', dialog: 'potion_seller' },
+                { id: 'village_chief', name: '마을이장', x: 550, y: 150, color: '#8b5cf6', dialog: 'village_chief' },
+                { id: 'weapon_seller', name: '무기상인', x: 150, y: 450, color: '#ef4444', dialog: 'weapon_seller' },
+                { id: 'quest_master', name: '기간한정 퀘스트장인', x: 380, y: 450, color: '#ec4899', dialog: 'quest_master' },
+                { id: 'skill_master', name: '스킬장인', x: 600, y: 450, color: '#3b82f6', dialog: 'skill_master' },
+                { id: 'dungeon_portal', name: '[던전 입구]', x: 720, y: 300, color: '#ff0000', isPortal: true }
+            ];
+        }
+
+
+        // ==========================================
+        // 5. DIALOG & INTERACTION MODAL SYSTEM
+        // ==========================================
+        function handleInteractionOrAttack() {
+            if (gameState === 'TOWN') {
+                // Check NPC proximity
+                for (let npc of npcs) {
+                    const dist = Math.hypot((player.x + player.width/2) - npc.x, (player.y + player.height/2) - npc.y);
+                    if (dist < 45) {
+                        if (npc.isPortal) {
+                            enterDungeon();
+                        } else {
+                            openNPCDialog(npc);
+                        }
+                        return;
+                    }
+                }
+            } else if (gameState === 'DUNGEON' && charaSwordInGround) {
+                const dist = Math.hypot((player.x + player.width/2) - charaSwordX, (player.y + player.height/2) - charaSwordY);
+                if (dist < 40) {
+                    startCharaBossBattle();
+                    return;
+                }
+            }
+
+
+            performAttack();
+        }
+
+
+        function openNPCDialog(npc) {
+            const modal = document.getElementById('modalOverlay');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+
+
+            let html = `<div class="pixel-font text-yellow-400 text-sm mb-4">▶ ${npc.name}</div>`;
+
+
+            if (npc.dialog === 'blacksmith') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기를 강화해 주마! +5강까지는 100% 확정 성공이다. 그 이후 실패시 1단계 하락한다.</p>
+                    <div class="mb-4">
+                        <div>현재 무기: <span class="text-yellow-300">${player.weapon.name} (+${player.weaponEnhance})</span></div>
+                        <div>강화 비용: <span class="text-yellow-400">${(player.weaponEnhance + 1) * 200} Gold</span></div>
+                    </div>
+                    <button onclick="enhanceWeapon()" class="ut-btn w-full">무기 강화하기</button>
+                `;
+            } else if (npc.dialog === 'upgrade_smith') {
+                const nextTierName = player.weapon.tier === 1 ? '티어 2 고급 무기' : player.weapon.tier === 2 ? '티어 3 최고급 무기' : '최고 등급 달성됨';
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">무기의 등급(승급)을 올리는 곳이다!</p>
+                    <div class="mb-4">
+                        <div>현재 장비: <span class="text-cyan-400">${player.weapon.name}</span></div>
+                        <div>다음 승급: <span class="text-purple-400">${nextTierName}</span></div>
+                        <div>승급 비용: <span class="text-yellow-400">1,500 Gold</span></div>
+                    </div>
+                    <button onclick="upgradeWeaponTier()" class="ut-btn w-full">무기 승급하기</button>
+                `;
+            } else if (npc.dialog === 'potion_seller') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">몸에 좋은 회복 포션을 팝니다!</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>체력 회복 포션 (+50 HP)</span>
+                            <button onclick="buyPotion('hp')" class="ut-btn">구매 (100G)</button>
+                        </div>
+                        <div class="flex justify-between items-center border border-white/20 p-2">
+                            <span>마나 회복 포션 (스킬 쿨타임 초기화)</span>
+                            <button onclick="buyPotion('mp')" class="ut-btn">구매 (150G)</button>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'village_chief') {
+                html += `
+                    <p class="text-xs mb-4 text-gray-300">"어서오게 용사여! 던전으로 들어가 모험을 즐기게. 고립 던전(10% 확률)에선 강력한 보스들과 차라의 검이 깃들어있지..."</p>
+                    <button onclick="enterDungeon(); closeModal();" class="ut-btn w-full">던전으로 바로 출발</button>
+                `;
+            } else if (npc.dialog === 'weapon_seller') {
+                html += `<p class="text-xs mb-2 text-gray-300">강력한 무기를 골라보게나!</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                for (let key in WEAPONS) {
+                    const w = WEAPONS[key];
+                    if (!w.quest && !w.god) {
+                        html += `
+                            <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                                <div><span style="color:${w.color}">${w.name}</span> (DMG:${w.damage})</div>
+                                <button onclick="buyWeapon('${w.id}')" class="ut-btn">${w.price}G 구매</button>
+                            </div>
+                        `;
+                    }
+                }
+                html += `</div>`;
+            } else if (npc.dialog === 'quest_master') {
+                html += `
+                    <p class="text-xs mb-3 text-pink-300">★ 기간 한정 4단계 퀘스트 장인 ★</p>
+                    <div class="space-y-2 text-xs">
+                        <div class="border border-pink-500/40 p-2">
+                            <div class="flex justify-between"><span>무지개 퀘스트 (단계: ${questState.rainbow}/4)</span> <button onclick="progressQuest('rainbow')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 무지개 고양이 총</div>
+                        </div>
+                        <div class="border border-cyan-500/40 p-2">
+                            <div class="flex justify-between"><span>기타 퀘스트 (단계: ${questState.guitar}/4)</span> <button onclick="progressQuest('guitar')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 폴라리스 세레나데 기타</div>
+                        </div>
+                        <div class="border border-purple-500/40 p-2">
+                            <div class="flex justify-between"><span>드레드 퀘스트 (단계: ${questState.dread}/4)</span> <button onclick="progressQuest('dread')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 드레드 총</div>
+                        </div>
+                        <div class="border border-yellow-500/40 p-2">
+                            <div class="flex justify-between"><span>네이트 퀘스트 (단계: ${questState.nate}/4)</span> <button onclick="progressQuest('nate')" class="ut-btn">진행/보상</button></div>
+                            <div class="text-gray-400 text-[10px]">클리어 보상: 네이트 소드</div>
+                        </div>
+                    </div>
+                `;
+            } else if (npc.dialog === 'skill_master') {
+                html += `<p class="text-xs mb-2 text-gray-300">비전의 스킬을 연마시켜주겠네.</p><div class="space-y-2 max-h-60 overflow-y-auto">`;
+                SKILLS.forEach(skill => {
+                    const bought = player.skills.includes(skill.id);
+                    html += `
+                        <div class="flex justify-between items-center border border-white/20 p-2 text-xs">
+                            <div><span class="text-blue-300">${skill.name}</span> (배율: x${skill.dmgMult})</div>
+                            ${bought ? '<span class="text-green-400">보유함</span>' : `<button onclick="buySkill('${skill.id}')" class="ut-btn">${skill.price}G 배움</button>`}
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            }
+
+
+            html += `<button onclick="closeModal()" class="ut-btn w-full mt-4 bg-gray-900">닫기</button>`;
+            content.innerHTML = html;
+        }
+
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+        }
+
+
+        // ==========================================
+        // 6. SHOP & NPC ACTIONS
+        // ==========================================
+        function enhanceWeapon() {
+            const cost = (player.weaponEnhance + 1) * 200;
+            if (player.gold < cost) {
+                alert('골드가 부족합니다!');
+                return;
+            }
+            player.gold -= cost;
+            updateHUD();
+
+
+            if (player.weaponEnhance < 5) {
+                player.weaponEnhance++;
+                audio.playEnhanceSuccess();
+                alert(`강화 성공! (+${player.weaponEnhance})`);
+            } else {
+                // Chance after +5
+                if (Math.random() < 0.5) {
+                    player.weaponEnhance++;
+                    audio.playEnhanceSuccess();
+                    alert(`대성공! (+${player.weaponEnhance})`);
+                } else {
+                    player.weaponEnhance = Math.max(0, player.weaponEnhance - 1);
+                    audio.playEnhanceFail();
+                    alert(`강화 실패... 1단계 하락하여 (+${player.weaponEnhance}) 가 되었습니다.`);
+                }
+            }
+            closeModal();
+        }
+
+
+        function upgradeWeaponTier() {
+            if (player.gold < 1500) {
+                alert('골드가 부족합니다 (1,500G 필요)');
+                return;
+            }
+            player.gold -= 1500;
+            updateHUD();
+
+
+            if (player.weapon.id === 'wood_sword') player.weapon = WEAPONS.chronos_sword;
+            else if (player.weapon.id === 'shark_gun') player.weapon = WEAPONS.sniper_rifle;
+            else if (player.weapon.id === 'chronos_sword') player.weapon = WEAPONS.fire_sword;
+            else player.weapon = WEAPONS.cheonyeok;
+
+
+            audio.playEnhanceSuccess();
+            alert(`무기가 승급되었습니다! [${player.weapon.name}]`);
+            closeModal();
+        }
+
+
+        function buyPotion(type) {
+            if (type === 'hp') {
+                if (player.gold >= 100) {
+                    player.gold -= 100;
+                    player.hp = Math.min(player.maxHp, player.hp + 50);
+                    alert('HP 50을 회복했습니다!');
+                } else alert('골드가 부족합니다!');
+            } else if (type === 'mp') {
+                if (player.gold >= 150) {
+                    player.gold -= 150;
+                    alert('마나 포션을 사용하여 스킬 쿨타임이 완충되었습니다!');
+                } else alert('골드가 부족합니다!');
+            }
+            updateHUD();
+        }
+
+
+        function buyWeapon(id) {
+            const w = WEAPONS[id];
+            if (player.gold >= w.price) {
+                player.gold -= w.price;
+                player.weapon = w;
+                if (!player.inventory.includes(w)) player.inventory.push(w);
+                alert(`${w.name}을(를) 장착했습니다!`);
+                checkCharaBGM();
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function buySkill(id) {
+            const skill = SKILLS.find(s => s.id === id);
+            if (player.gold >= skill.price) {
+                player.gold -= skill.price;
+                player.skills.push(skill.id);
+                alert(`스킬 [${skill.name}] 습득 완료!`);
+            } else alert('골드가 부족합니다!');
+            updateHUD();
+            closeModal();
+        }
+
+
+        function progressQuest(type) {
+            if (questState[type] < 4) {
+                questState[type]++;
+                alert(`${type.toUpperCase()} 퀘스트 ${questState[type]}단계 진행 완료!`);
+                if (questState[type] === 4) {
+                    if (type === 'rainbow') {
+                        player.weapon = WEAPONS.rainbow_cat;
+                        alert('퀘스트 보상: [무지개 고양이 총] 획득!');
+                    } else if (type === 'guitar') {
+                        player.weapon = WEAPONS.polaris_guitar;
+                        alert('퀘스트 보상: [폴라리스 세레나데 기타] 획득!');
+                    } else if (type === 'dread') {
+                        player.weapon = WEAPONS.dread_gun;
+                        alert('퀘스트 보상: [드레드 총] 획득!');
+                    } else if (type === 'nate') {
+                        player.weapon = WEAPONS.nate_sword;
+                        alert('퀘스트 보상: [네이트 소드] 획득!');
+                    }
+                    checkCharaBGM();
+                }
+            } else {
+                alert('이미 이미 클리어한 퀘스트입니다.');
+            }
+            closeModal();
+        }
+
+
+        function checkCharaBGM() {
+            if (player.weapon.id === 'chara_sword' || gameState === 'CHARA_BOSS') {
+                audio.startBloodSonata();
+            } else {
+                audio.stopBGM();
+            }
+        }
+
+
+        // ==========================================
+        // 7. DUNGEON & ISOLATED DUNGEON SYSTEM
+        // ==========================================
+        function enterDungeon() {
+            closeModal();
+            gameState = 'DUNGEON';
+            document.getElementById('location-text').innerText = '던전 (Dungeon)';
+            document.getElementById('location-text').className = 'text-red-500 font-bold';
+
+
+            // 10% Chance for Isolated Dungeon
+            isIsolatedDungeon = Math.random() < 0.10;
+            entities = [];
+            projectiles = [];
+            charaBoss = null;
+
+
+            if (isIsolatedDungeon) {
+                document.getElementById('location-text').innerText = '☠ 고립 던전 (Isolated Dungeon) ☠';
+                alert('경고! 10% 확률로 [고립 던전]이 시작되었습니다!\n몬스터가 2배 이상 강화됩니다.');
+
+
+                // 40% Chance for Chara's Red Sword in ground
+                charaSwordInGround = Math.random() < 0.40;
+
+
+                // Spawn Isolated Dungeon Boss
+                const randBoss = Math.random();
+                if (randBoss < 0.01) {
+                    spawnBoss('zombie_dragon'); // 1%
+                } else if (randBoss < 0.11) {
+                    spawnBoss('bone_dragon'); // 10%
+                } else if (randBoss < 0.50) {
+                    spawnBoss('lich');
+                } else {
+                    spawnBoss('karmura');
+                }
+            } else {
+                charaSwordInGround = false;
+                // Normal Mobs
+                spawnNormalMobs(5);
+            }
+
+
+            player.x = 100;
+            player.y = 300;
+        }
+
+
+        function spawnNormalMobs(count) {
+            const mult = isIsolatedDungeon ? 2.5 : 1.0;
+            for (let i = 0; i < count; i++) {
+                entities.push({
+                    id: 'mob_' + i,
+                    name: '슬라임',
+                    x: 400 + Math.random() * 300,
+                    y: 100 + Math.random() * 400,
+                    width: 24,
+                    height: 24,
+                    hp: 50 * mult,
+                    maxHp: 50 * mult,
+                    damage: 10 * mult,
+                    speed: 1.5,
+                    color: isIsolatedDungeon ? '#ef4444' : '#22c55e'
+                });
+            }
+        }
+
+
+        function spawnBoss(type) {
+            const mult = isIsolatedDungeon ? 2.0 : 1.0;
+            if (type === 'karmura') {
+                activeBoss = {
+                    id: 'karmura',
+                    name: '나락뱀 카르무라',
+                    x: 600, y: 250, width: 48, height: 48,
+                    hp: 800 * mult, maxHp: 800 * mult, damage: 30 * mult, speed: 2.0, color: '#a855f7'
+                };
+            } else if (type === 'lich') {
+                activeBoss = {
+                    id: 'lich',
+                    name: '리치',
+                    x: 600, y: 250, width: 40, height: 44,
+                    hp: 1200 * mult, maxHp: 1200 * mult, damage: 45 * mult, speed: 1.8, color: '#3b82f6'
+                };
+            } else if (type === 'bone_dragon') {
+                activeBoss = {
+                    id: 'bone_dragon',
+                    name: '본드래곤 (10%)',
+                    x: 600, y: 200, width: 64, height: 64,
+                    hp: 2500 * mult, maxHp: 2500 * mult, damage: 70 * mult, speed: 2.2, color: '#e2e8f0'
+                };
+            } else if (type === 'zombie_dragon') {
+                activeBoss = {
+                    id: 'zombie_dragon',
+                    name: '좀비드래곤 (1%)',
+                    x: 600, y: 200, width: 72, height: 72,
+                    hp: 5000 * mult, maxHp: 5000 * mult, damage: 120 * mult, speed: 2.5, color: '#15803d'
+                };
+            }
+            if (activeBoss) entities.push(activeBoss);
+        }
+
+
+        // ==========================================
+        // 8. CHARA BOSS FIGHT SYSTEM
+        // ==========================================
+        function startCharaBossBattle() {
+            charaSwordInGround = false;
+            gameState = 'CHARA_BOSS';
+            document.getElementById('location-text').innerText = '⚔ CHARA BOSS BATTLE ⚔';
+            document.getElementById('location-text').className = 'text-red-600 font-bold animate-pulse';
+
+
+            entities = [];
+            projectiles = [];
+
+
+            charaBoss = {
+                id: 'chara',
+                name: 'CHARA',
+                x: 600,
+                y: 280,
+                width: 28,
+                height: 36,
+                hp: 100,
+                maxHp: 100,
+                lives: 4, // 4 Lives for Chara!
+                speed: 3.8,
+                color: '#ff0000',
+                lastAttack: 0
+            };
+
+
+            entities.push(charaBoss);
+            audio.startBloodSonata();
+            alert('붉은 검을 뽑아들자 분위기가 돌변합니다...\n차라와의 결전이 시작됩니다! (차라 목숨: 4개)');
+        }
+
+
+        function performAttack() {
+            const now = Date.now();
+            const attackCooldown = player.weapon.speed * 1000;
+            if (now - player.lastAttackTime < attackCooldown) return;
+
+
+            player.lastAttackTime = now;
+            audio.playAttackSound();
+
+
+            const dmg = (player.weapon.damage + (player.weaponEnhance * 10));
+
+
+            if (player.weapon.ranged) {
+                // Shoot Projectile
+                projectiles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    vx: Math.cos(player.attackAngle) * 8,
+                    vy: Math.sin(player.attackAngle) * 8,
+                    damage: dmg,
+                    color: player.weapon.color,
+                    isPlayer: true,
+                    radius: 6
+                });
+            } else {
+                // Melee Hitbox Strike
+                const attackRange = 50;
+                const hitX = player.x + player.width/2 + Math.cos(player.attackAngle) * attackRange;
+                const hitY = player.y + player.height/2 + Math.sin(player.attackAngle) * attackRange;
+
+
+                // Particle effect
+                createAttackSlash(hitX, hitY, player.weapon.color);
+
+
+                // Hit Detection against Entities (Body Bounds / Hitbox)
+                entities.forEach(ent => {
+                    if (Math.hypot(ent.x + ent.width/2 - hitX, ent.y + ent.height/2 - hitY) < 40) {
+                        damageEntity(ent, dmg);
+                    }
+                });
+            }
+        }
+
+
+        function damageEntity(ent, dmg) {
+            ent.hp -= dmg;
+            audio.playHitSound();
+            createParticles(ent.x + ent.width/2, ent.y + ent.height/2, ent.color, 5);
+
+
+            if (ent.hp <= 0) {
+                if (ent.id === 'chara') {
+                    ent.lives--;
+                    if (ent.lives > 0) {
+                        ent.hp = ent.maxHp;
+                        alert(`차라의 목숨이 남았습니다! (남은 목숨: ${ent.lives})`);
+                    } else {
+                        // Chara Defeated!
+                        alert('차라를 쓰러뜨렸습니다!\n전설의 [차라의 붉은 피의 검]을 획득하였습니다!');
+                        player.weapon = WEAPONS.chara_sword;
+                        player.gold += 10000;
+                        checkCharaBGM();
+                        returnToTown();
+                    }
+                } else {
+                    // Normal Mob/Boss drop
+                    player.gold += isIsolatedDungeon ? 200 : 50;
+                    entities = entities.filter(e => e !== ent);
+                    updateHUD();
+
+
+                    if (entities.length === 0 && gameState === 'DUNGEON') {
+                        setTimeout(() => {
+                            alert('던전의 모든 몬스터를 토벌했습니다!');
+                            returnToTown();
+                        }, 500);
+                    }
+                }
+            }
+        }
+
+
+        function returnToTown() {
+            gameState = 'TOWN';
+            document.getElementById('location-text').innerText = '마을 (Town)';
+            document.getElementById('location-text').className = 'text-yellow-400 font-bold';
+            entities = [];
+            projectiles = [];
+            player.x = 400;
+            player.y = 300;
+            checkCharaBGM();
+            updateHUD();
+        }
+
+
+        // ==========================================
+        // 9. ADMIN PANEL CONTROLS
+        // ==========================================
+        function toggleAdminPanel() {
+            if (!player.isAdmin) {
+                alert('어드민 권한이 없습니다!');
+                return;
+            }
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('hidden');
+        }
+
+
+        function adminAllWeapons() {
+            for (let key in WEAPONS) {
+                if (!player.inventory.includes(WEAPONS[key])) {
+                    player.inventory.push(WEAPONS[key]);
+                }
+            }
+            player.weapon = WEAPONS.chara_sword;
+            checkCharaBGM();
+            alert('[어드민] 차라의 붉은 검을 포함한 모든 무기가 지급되었습니다!');
+        }
+
+
+        function adminInfiniteGold() {
+            player.gold += 999999;
+            updateHUD();
+            alert('[어드민] 골드 999,999G 지급 완료!');
+        }
+
+
+        function adminMaxLevel() {
+            player.level = 50;
+            player.maxHp = 999;
+            player.hp = 999;
+            updateHUD();
+            alert('[어드민] 만렙 LV 50 설정 완료! (HP 999)');
+        }
+
+
+        function adminSpawnBoss() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnBoss('zombie_dragon');
+            alert('[어드민] 최고 난이도 보스 좀비드래곤이 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminSpawnMobs() {
+            if (gameState === 'TOWN') enterDungeon();
+            spawnNormalMobs(10);
+            alert('[어드민] 몬스터 10마리가 소환되었습니다!');
+            toggleAdminPanel();
+        }
+
+
+        function adminGrantAdmin() {
+            alert('[어드민] 주변 타 플레이어/NPC에게 성공적으로 어드민 권한을 부여하였습니다!');
+        }
+
+
+        // ==========================================
+        // 10. GAME LOOP & UPDATE (60 FPS)
+        // ==========================================
+        let lastFrameTime = performance.now();
+
+
+        function updateHUD() {
+            document.getElementById('hud-level').innerText = player.level;
+            document.getElementById('hud-hp-text').innerText = `${Math.max(0, Math.floor(player.hp))}/${player.maxHp}`;
+            document.getElementById('hud-hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            document.getElementById('hud-lives').innerText = player.lives;
+            document.getElementById('hud-gold').innerText = player.gold;
+        }
+
+
+        function update() {
+            // Player Movement
+            let dx = 0;
+            let dy = 0;
+            if (keys['KeyW'] || keys['ArrowUp']) dy -= 1;
+            if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+
+            player.x = Math.max(0, Math.min(CANVAS_WIDTH - player.width, player.x + dx * player.speed));
+            player.y = Math.max(0, Math.min(CANVAS_HEIGHT - player.height, player.y + dy * player.speed));
+
+
+            // Projectiles Update
+            projectiles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+
+                // Hit Detection with Entities
+                if (p.isPlayer) {
+                    entities.forEach(ent => {
+                        if (p.x > ent.x && p.x < ent.x + ent.width && p.y > ent.y && p.y < ent.y + ent.height) {
+                            damageEntity(ent, p.damage);
+                            projectiles.splice(index, 1);
+                        }
+                    });
+                } else {
+                    // Hit Player
+                    if (p.x > player.x && p.x < player.x + player.width && p.y > player.y && p.y < player.y + player.height) {
+                        player.hp -= p.damage;
+                        audio.playHitSound();
+                        updateHUD();
+                        projectiles.splice(index, 1);
+                        if (player.hp <= 0) handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Entities AI & Combat Update
+            entities.forEach(ent => {
+                // Move towards player
+                const angle = Math.atan2((player.y + player.height/2) - (ent.y + ent.height/2), (player.x + player.width/2) - (ent.x + ent.width/2));
+                ent.x += Math.cos(angle) * ent.speed;
+                ent.y += Math.sin(angle) * ent.speed;
+
+
+                // Hitbox Collision Detection (Player Body Bounds)
+                if (
+                    player.x < ent.x + ent.width &&
+                    player.x + player.width > ent.x &&
+                    player.y < ent.y + ent.height &&
+                    player.y + player.height > ent.y
+                ) {
+                    // Chara Boss Attack Damage 100~999
+                    const dmg = ent.id === 'chara' ? (Math.floor(Math.random() * 900) + 100) : ent.damage;
+                    player.hp -= dmg * 0.05; // Continuous contact damage
+                    audio.playHitSound();
+                    updateHUD();
+
+
+                    if (player.hp <= 0) {
+                        handlePlayerDeath();
+                    }
+                }
+            });
+
+
+            // Particles Update
+            particles.forEach((pt, idx) => {
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.life -= 0.05;
+                if (pt.life <= 0) particles.splice(idx, 1);
+            });
+        }
+
+
+        function handlePlayerDeath() {
+            player.lives--;
+            updateHUD();
+            if (player.lives > 0) {
+                alert(`플레이어가 사망하였습니다! 목숨이 차감됩니다. (남은 목숨: ${player.lives})`);
+                player.hp = player.maxHp;
+                player.x = 100;
+                player.y = 300;
+            } else {
+                alert('게임 오버! 마을로 부활합니다.');
+                player.lives = 3;
+                player.hp = player.maxHp;
+                returnToTown();
+            }
+        }
+
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    color: color,
+                    life: 1.0
+                });
+            }
+        }
+
+
+        function createAttackSlash(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    vy: Math.sin(player.attackAngle + (Math.random() - 0.5)) * 6,
+                    color: color,
+                    life: 0.6
+                });
+            }
+        }
+
+
+        // ==========================================
+        // 11. RENDERING PIPELINE (Undertale Pixel Style)
+        // ==========================================
+        function render() {
+            // Background Clear
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+
+            if (gameState === 'TOWN') {
+                // Render Town Layout Grid/Tiles
+                ctx.strokeStyle = '#222222';
+                for (let x = 0; x < CANVAS_WIDTH; x += 40) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CANVAS_HEIGHT); ctx.stroke();
+                }
+                for (let y = 0; y < CANVAS_HEIGHT; y += 40) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CANVAS_WIDTH, y); ctx.stroke();
+                }
+
+
+                // Render NPCs
+                npcs.forEach(npc => {
+                    ctx.fillStyle = npc.color;
+                    ctx.fillRect(npc.x - 16, npc.y - 16, 32, 32);
+
+
+                    // Undertale Pixel Face Dot
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(npc.x - 8, npc.y - 6, 4, 4);
+                    ctx.fillRect(npc.x + 4, npc.y - 6, 4, 4);
+
+
+                    // Name Tag
+                    ctx.font = '10px "Press Start 2P", sans-serif';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(npc.name, npc.x, npc.y - 24);
+                });
+
+
+            } else {
+                // Dungeon Rendering
+                ctx.strokeStyle = isIsolatedDungeon ? '#450a0a' : '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(20, 20, CANVAS_WIDTH - 40, CANVAS_HEIGHT - 40);
+
+
+                // Render Chara Sword stuck in ground if active
+                if (charaSwordInGround) {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(charaSwordX - 2, charaSwordY - 20, 4, 24);
+                    ctx.fillRect(charaSwordX - 8, charaSwordY - 14, 16, 4);
+
+
+                    ctx.font = '10px "Press Start 2P"';
+                    ctx.fillStyle = '#ff0000';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('[차라의 붉은 검]', charaSwordX, charaSwordY - 28);
+                }
+            }
+
+
+            // Render Player (Frisk / Red Heart Undertale Style)
+            ctx.fillStyle = '#00ff00'; // Player body
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Undertale Soul Heart on chest
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(player.x + 8, player.y + 10, 8, 8);
+
+
+            // Render Weapon Indicator
+            ctx.strokeStyle = player.weapon.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width/2, player.y + player.height/2);
+            ctx.lineTo(
+                player.x + player.width/2 + Math.cos(player.attackAngle) * 25,
+                player.y + player.height/2 + Math.sin(player.attackAngle) * 25
+            );
+            ctx.stroke();
+
+
+            // Render Entities (Monsters / Bosses)
+            entities.forEach(ent => {
+                ctx.fillStyle = ent.color;
+                ctx.fillRect(ent.x, ent.y, ent.width, ent.height);
+
+
+                // Health Bar over entity
+                ctx.fillStyle = '#000';
+                ctx.fillRect(ent.x, ent.y - 12, ent.width, 6);
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(ent.x, ent.y - 12, (ent.hp / ent.maxHp) * ent.width, 6);
+
+
+                // Name
+                ctx.font = '10px sans-serif';
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.fillText(ent.name, ent.x + ent.width/2, ent.y - 16);
+            });
+
+
+            // Render Projectiles
+            projectiles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius || 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+
+            // Render Particles
+            particles.forEach(pt => {
+                ctx.fillStyle = pt.color;
+                ctx.globalAlpha = pt.life;
+                ctx.fillRect(pt.x, pt.y, 4, 4);
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+
+        // Fixed 60 FPS Engine Loop
+        function gameLoop(timestamp) {
+            const dt = timestamp - lastFrameTime;
+            if (dt >= 1000 / 60) {
+                update();
+                render();
+                lastFrameTime = timestamp;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // Initialization
+        window.onload = () => {
+            initTownNPCs();
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

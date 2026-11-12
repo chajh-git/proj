@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>승부차기 게임</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #eaf3ed;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+.container {
+  max-width: 550px;
+  margin: auto;
+  background: white;
+  padding: 22px;
+  border-radius: 18px;
+  box-shadow: 0 4px 15px #0002;
+}
+h1 { color: #176b3a; }
+select, button {
+  padding: 12px;
+  margin: 6px;
+  border-radius: 9px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+button {
+  cursor: pointer;
+  background: #176b3a;
+  color: white;
+}
+button:hover { background: #0d4c28; }
+button:disabled { opacity: .4; }
+.panel {
+  background: #f0f5f1;
+  padding: 15px;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+.score { font-size: 34px; font-weight: bold; }
+.hidden { display: none; }
+.shots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.shots button { flex: 1; }
+#result { font-size: 20px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>⚽ 승부차기 게임</h1>
+<p>나만의 축구 대회에서 우승하자!</p>
+
+<div id="setup">
+  <div class="panel">
+    <h3>🏆 대회 선택</h3>
+    <select id="mode">
+      <option>월드컵</option>
+      <option>챔피언스리그</option>
+      <option>프리미어리그</option>
+      <option>유로</option>
+      <option>코파 아메리카</option>
+    </select>
+
+    <h3>🎚️ 난이도</h3>
+    <select id="level">
+      <option value="0.85">쉬움</option>
+      <option value="0.65" selected>보통</option>
+      <option value="0.45">어려움</option>
+      <option value="0.25">전설</option>
+    </select>
+
+    <h3>👕 참가 팀</h3>
+    <select id="team"></select>
+  </div>
+  <button onclick="startGame()">경기 시작 ⚽</button>
+</div>
+
+<div id="game" class="hidden">
+  <div class="panel">
+    <h3 id="round">조별리그</h3>
+    <p id="match"></p>
+    <div class="score" id="score">0 : 0</div>
+    <p id="count">1번째 슛 / 5회</p>
+  </div>
+
+  <div class="panel">
+    <h2>🥅 골대 방향 선택</h2>
+    <div class="shots">
+      <button onclick="shoot('왼쪽')">⬅️ 왼쪽</button>
+      <button onclick="shoot('가운데')">⬆️ 가운데</button>
+      <button onclick="shoot('오른쪽')">➡️ 오른쪽</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p id="result">슛을 선택하세요!</p>
+    <p id="keeper"></p>
+  </div>
+
+  <div class="panel">
+    <h3>📋 슛 기록</h3>
+    <div id="history">기록 없음</div>
+  </div>
+
+  <button id="next" class="hidden" onclick="nextRound()">
+    다음 라운드
+  </button>
+  <button onclick="location.reload()">처음으로</button>
+</div>
+
+<div id="end" class="hidden">
+  <h1>🏆 우승!</h1>
+  <h2 id="winner"></h2>
+  <button onclick="location.reload()">다시 하기</button>
+</div>
+
+</div>
+
+<script>
+const teams = {
+  national: [
+    "대한민국","브라질","아르헨티나",
+    "프랑스","독일","스페인",
+    "잉글랜드","일본","포르투갈","이탈리아"
+  ],
+  club: [
+    "맨체스터 시티","레알 마드리드",
+    "바르셀로나","리버풀","아스널",
+    "맨체스터 유나이티드","바이에른 뮌헨",
+    "파리 생제르맹","첼시","인터 밀란"
+  ]
+};
+
+const stages = {
+  "월드컵":["조별리그","16강","8강","4강","결승전"],
+  "챔피언스리그":["리그 페이즈","16강","8강","4강","결승전"],
+  "프리미어리그":[
+    "리그 경기 1","리그 경기 2",
+    "리그 경기 3","리그 경기 4","최종 경기"
+  ],
+  "유로":["조별리그","16강","8강","4강","결승전"],
+  "코파 아메리카":["조별리그","8강","4강","결승전"]
+};
+
+let mode, team, opponent, level;
+let round = 0;
+let shots = 0;
+let score = 0;
+let history = [];
+
+const $ = id => document.getElementById(id);
+
+function updateTeams() {
+  let club = [
+    "챔피언스리그","프리미어리그"
+  ].includes($("mode").value);
+
+  $("team").innerHTML = "";
+  (club ? teams.club : teams.national).forEach(t => {
+    $("team").add(new Option(t,t));
+  });
+}
+
+$("mode").addEventListener("change",updateTeams);
+updateTeams();
+
+function startGame() {
+  mode = $("mode").value;
+  team = $("team").value;
+  level = Number($("level").value);
+
+  round = 0;
+  $("setup").classList.add("hidden");
+  $("game").classList.remove("hidden");
+
+  beginRound();
+}
+
+function beginRound() {
+  shots = 0;
+  score = 0;
+  history = [];
+
+  let club = [
+    "챔피언스리그","프리미어리그"
+  ].includes(mode);
+
+  let list = club ? teams.club : teams.national;
+  let rivals = list.filter(t => t !== team);
+
+  opponent = rivals[
+    Math.floor(Math.random()*rivals.length)
+  ];
+
+  $("round").textContent = stages[mode][round];
+  $("match").textContent = team+" VS "+opponent;
+  $("history").innerHTML = "기록 없음";
+  $("result").textContent = "슛 방향을 선택하세요!";
+  $("keeper").textContent = "골키퍼가 기다리고 있습니다.";
+
+  $("next").classList.add("hidden");
+  updateScore();
+
+  document.querySelectorAll(".shots button")
+    .forEach(b => b.disabled = false);
+}
+
+function updateScore() {
+  $("score").textContent =
+    score+" : "+(shots-score);
+
+  $("count").textContent =
+    Math.min(shots+1,5)+"번째 슛 / 5회";
+}
+
+function shoot(direction) {
+  if(shots >= 5) return;
+
+  let directions = ["왼쪽","가운데","오른쪽"];
+  let goalkeeper =
+    directions[Math.floor(Math.random()*3)];
+
+  let goal = direction !== goalkeeper &&
+             Math.random() < level;
+
+  shots++;
+
+  if(goal) score++;
+
+  $("result").textContent = goal
+    ? "⚽ 골인!"
+    : "🧤 골키퍼 선방 또는 슛 실패!";
+
+  $("keeper").textContent =
+    "나의 슛: "+direction+
+    " / 골키퍼: "+goalkeeper;
+
+  history.push(
+    shots+"번째 슛: "+
+    (goal ? "⚽ 골" : "❌ 실패")
+  );
+
+  $("history").innerHTML =
+    history.join("<br>");
+
+  updateScore();
+
+  if(shots === 5) finishRound();
+}
+
+function finishRound() {
+  document.querySelectorAll(".shots button")
+    .forEach(b => b.disabled = true);
+
+  if(score >= 3) {
+    $("result").textContent = "🎉 승리!";
+    if(round === stages[mode].length-1) {
+      $("game").classList.add("hidden");
+      $("end").classList.remove("hidden");
+      $("winner").textContent =
+        team+" 팀이 "+mode+" 우승!";
+    } else {
+      $("next").textContent =
+        "다음: "+stages[mode][round+1];
+      $("next").classList.remove("hidden");
+    }
+  } else {
+    $("result").textContent = "😢 패배! 탈락!";
+    $("next").textContent = "다시 도전하기";
+    $("next").classList.remove("hidden");
+  }
+}
+
+function nextRound() {
+  if(score < 3) {
+    startGame();
+    return;
+  }
+
+  round++;
+  beginRound();
+}
+</script>
+
+</body>
+</html>

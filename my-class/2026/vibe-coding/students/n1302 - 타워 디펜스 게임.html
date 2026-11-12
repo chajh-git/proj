@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense Master - Forest Guardians</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            background: radial-gradient(circle at top center, #1a2e1a 0%, #08120a 100%);
+            color: #f0fdf4;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #08120a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #166534;
+            border-radius: 4px;
+        }
+        .glass-panel {
+            background: rgba(12, 35, 18, 0.78);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 222, 128, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+        }
+        .glass-panel-glow {
+            background: rgba(16, 42, 22, 0.88);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(134, 239, 172, 0.35);
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.2);
+        }
+        .tower-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .tower-card:hover:not(.disabled) {
+            transform: translateY(-3px) scale(1.01);
+            border-color: #4ade80;
+            box-shadow: 0 8px 20px rgba(74, 222, 128, 0.3);
+        }
+        .tower-card.active {
+            border-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(20, 50, 25, 0.95) 100%);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);
+        }
+        .tower-card.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            filter: grayscale(90%);
+        }
+        .canvas-container {
+            box-shadow: 0 0 45px rgba(0, 0, 0, 0.95), 0 0 15px rgba(74, 222, 128, 0.15);
+        }
+
+        @keyframes startPulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+            50% { transform: scale(1.03); box-shadow: 0 0 25px rgba(34, 197, 94, 0.85); }
+        }
+        .btn-wave-pulse {
+            animation: startPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes forestGlow {
+            0% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.5); }
+            50% { box-shadow: 0 0 22px rgba(250, 204, 21, 0.95), 0 0 35px rgba(34, 197, 94, 0.7); }
+            100% { box-shadow: 0 0 5px rgba(245, 158, 11, 0.5); }
+        }
+        .max-upgrade-anim {
+            animation: forestGlow 1.5s infinite alternate;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between overflow-hidden">
+
+    <!-- START SCREEN OVERLAY -->
+    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-stone-950/95 backdrop-blur-xl p-4">
+        <div class="max-w-2xl w-full text-center space-y-6">
+            <div class="inline-flex items-center space-x-2 bg-gradient-to-r from-emerald-500/20 to-amber-500/20 border border-emerald-500/40 px-4 py-1.5 rounded-full text-emerald-300 text-xs font-cinzel tracking-wide shadow-lg">
+                <i class="fa-solid fa-tree text-emerald-400"></i>
+                <span>FOREST GUARDIANS vs DARK INVASION</span>
+            </div>
+
+            <h1 class="font-cinzel font-black text-4xl sm:text-6xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-300 to-lime-400 tracking-wider drop-shadow-2xl">
+                FOREST GUARDIANS
+            </h1>
+
+            <p class="text-emerald-100/80 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+                신비로운 태고의 숲을 오염시키는 어둠의 무리를 저지하세요!<br>
+                숲의 수호자들을 <span class="text-amber-300 font-bold underline decoration-amber-500/50">최대 5단계까지 강화(ENHANCE)</span>하고 <span class="text-emerald-400 font-bold">5개의 침략 웨이브</span>를 방어하세요!
+            </p>
+
+            <div class="glass-panel p-5 rounded-2xl max-w-lg mx-auto text-left text-xs space-y-3 text-emerald-100/90 border border-emerald-500/30">
+                <div class="font-cinzel font-bold text-amber-300 flex items-center justify-between border-b border-emerald-900/60 pb-2">
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-seedling"></i> 웨이브 침략 가이드</span>
+                    <span class="text-[10px] text-emerald-400/80 font-mono">5 STAGES</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div class="bg-emerald-950/60 p-2 rounded-lg border border-emerald-500/20"><span class="text-emerald-400 font-bold">Wave 1:</span> 숲의 독 슬라임 정찰</div>
+                    <div class="bg-emerald-950/60 p-2 rounded-lg border border-amber-500/20"><span class="text-amber-400 font-bold">Wave 2:</span> 고블린 도적단 & 늪 슬라임</div>
+                    <div class="bg-emerald-950/60 p-2 rounded-lg border border-yellow-500/20"><span class="text-yellow-400 font-bold">Wave 3:</span> 신속의 맹독 슬라임</div>
+                    <div class="bg-emerald-950/60 p-2 rounded-lg border border-purple-500/20"><span class="text-purple-400 font-bold">Wave 4:</span> 어둠의 가고일 & 오크 정예</div>
+                    <div class="col-span-1 sm:col-span-2 bg-gradient-to-r from-red-950/60 to-amber-950/60 p-2 rounded-lg border border-red-500/40 text-center font-bold text-red-300">
+                        Wave 5: FINAL BOSS - 타락한 다크 나이트
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-start-game" class="w-full sm:w-auto px-12 py-4 bg-gradient-to-r from-emerald-600 via-green-600 to-amber-600 hover:from-emerald-500 hover:to-amber-500 text-white font-cinzel font-bold text-lg rounded-2xl shadow-2xl hover:shadow-emerald-500/40 transition transform hover:-translate-y-1 active:translate-y-0 tracking-wider">
+                <i class="fa-solid fa-play mr-2"></i> 게임 시작하기
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN HEADER -->
+    <header class="glass-panel px-4 py-2 flex flex-wrap items-center justify-between border-b border-emerald-900/60 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="bg-gradient-to-tr from-emerald-600 to-lime-600 p-2 rounded-xl text-white shadow-lg shadow-emerald-600/30">
+                <i class="fa-solid fa-leaf text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-cinzel font-bold text-sm sm:text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-amber-200 to-lime-300">
+                    FOREST GUARDIANS
+                </h1>
+                <div class="flex items-center space-x-2 text-[10px] text-emerald-300/70">
+                    <span class="text-emerald-400 font-semibold"><i class="fa-solid fa-circle text-[6px] mr-1"></i>평화로운 숲</span>
+                    <span>•</span>
+                    <span>수호 디펜스</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS BAR -->
+        <div class="flex items-center space-x-3 sm:space-x-5 bg-stone-950/80 px-3 py-1.5 rounded-2xl border border-emerald-900/80 shadow-inner">
+            <div class="flex items-center space-x-2" title="숲의 생명력">
+                <div class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 text-xs">
+                    <i class="fa-solid fa-heart animate-pulse"></i>
+                </div>
+                <div>
+                    <div class="text-[8px] text-emerald-400 uppercase font-bold tracking-wider font-cinzel">HP</div>
+                    <div id="stat-lives" class="font-cinzel font-bold text-sm text-red-400">20</div>
+                </div>
+            </div>
+
+            <div class="h-5 w-px bg-emerald-900/60"></div>
+
+            <div class="flex items-center space-x-2" title="정령의 정수 (Gold)">
+                <div class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xs">
+                    <i class="fa-solid fa-gem"></i>
+                </div>
+                <div>
+                    <div class="text-[8px] text-emerald-400 uppercase font-bold tracking-wider font-cinzel">ESSENCE</div>
+                    <div id="stat-gold" class="font-cinzel font-bold text-sm text-amber-300">250</div>
+                </div>
+            </div>
+
+            <div class="h-5 w-px bg-emerald-900/60"></div>
+
+            <div class="flex items-center space-x-2" title="Current Wave">
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs">
+                    <i class="fa-solid fa-water"></i>
+                </div>
+                <div>
+                    <div class="text-[8px] text-emerald-400 uppercase font-bold tracking-wider font-cinzel">WAVE</div>
+                    <div id="stat-wave" class="font-cinzel font-bold text-sm text-emerald-300">0 / 5</div>
+                </div>
+            </div>
+
+            <div class="h-5 w-px bg-emerald-900/60 hidden md:block"></div>
+
+            <div class="flex items-center space-x-2 hidden md:flex" title="Total Score">
+                <div class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xs">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <div>
+                    <div class="text-[8px] text-emerald-400 uppercase font-bold tracking-wider font-cinzel">SCORE</div>
+                    <div id="stat-score" class="font-cinzel font-bold text-sm text-purple-300">0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <button id="btn-sound" class="w-8 h-8 rounded-xl bg-stone-900 hover:bg-stone-800 text-emerald-300 flex items-center justify-center transition border border-emerald-800/60 shadow-sm text-xs" title="사운드 토글">
+                <i id="icon-sound" class="fa-solid fa-volume-high"></i>
+            </button>
+            <button id="btn-menu" class="px-2.5 h-8 rounded-xl bg-stone-900 hover:bg-stone-800 text-[11px] font-cinzel font-bold text-emerald-300 flex items-center space-x-1.5 border border-emerald-800/60 shadow-sm transition">
+                <i class="fa-solid fa-house text-xs text-amber-400"></i>
+                <span class="hidden sm:inline">MENU</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN GAME AREA -->
+    <main class="flex-1 p-2 md:p-3 flex flex-col lg:flex-row gap-3 max-w-7xl mx-auto w-full items-stretch justify-center overflow-hidden min-h-0">
+        
+        <!-- Left: Game Canvas -->
+        <div class="flex-1 flex flex-col items-center justify-between min-h-0 h-full">
+            
+            <div class="relative canvas-container rounded-2xl overflow-hidden border border-emerald-900/80 bg-stone-950 w-full flex-1 flex items-center justify-center shadow-2xl min-h-0 max-h-full">
+                
+                <canvas id="gameCanvas" width="800" height="500" class="w-full h-full object-contain block cursor-crosshair max-h-full"></canvas>
+
+                <!-- Speed & Pause controls overlay -->
+                <div class="absolute top-2.5 right-2.5 flex space-x-1.5 glass-panel p-1 rounded-xl border border-emerald-800/60 shadow-lg">
+                    <button id="btn-speed-1x" class="px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-emerald-700 text-white shadow transition">1x</button>
+                    <button id="btn-speed-2x" class="px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-stone-900/80 text-emerald-400 hover:text-white transition">2x</button>
+                    <button id="btn-pause" class="w-6 h-6 flex items-center justify-center rounded-lg bg-stone-900/80 text-emerald-400 hover:text-white transition">
+                        <i id="icon-pause" class="fa-solid fa-pause text-[10px]"></i>
+                    </button>
+                </div>
+
+                <!-- Next Wave Trigger -->
+                <div class="absolute bottom-2.5 right-2.5">
+                    <button id="btn-start-wave" class="btn-wave-pulse px-4 py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-cinzel font-bold text-xs rounded-xl shadow-xl transition transform hover:-translate-y-0.5 flex items-center space-x-1.5 border border-emerald-400/40">
+                        <i class="fa-solid fa-play text-[10px]"></i>
+                        <span>WAVE START</span>
+                    </button>
+                </div>
+
+                <!-- Intro overlay -->
+                <div id="intro-overlay" class="hidden absolute inset-0 z-30 bg-stone-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 transition-opacity duration-500">
+                    <div class="glass-panel-glow p-4 rounded-2xl max-w-md w-full text-center border border-emerald-500/40 shadow-2xl space-y-2.5">
+                        <div class="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-500/40 px-3 py-0.5 rounded-full text-emerald-300 text-[11px] font-cinzel font-bold">
+                            <i class="fa-solid fa-feather"></i>
+                            <span>FOREST GUIDE</span>
+                        </div>
+                        <h3 class="font-cinzel font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 to-amber-300">
+                            숲의 수호 가이드
+                        </h3>
+                        <div class="bg-emerald-950/90 p-2.5 rounded-xl border border-emerald-900 text-left text-[11px] space-y-1.5 text-emerald-100">
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-tree text-emerald-400"></i> 오른쪽 패널에서 수호자를 선택 후 숲길 주변에 배치하세요.</p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-wand-sparkles text-amber-400"></i> 배치된 수호자 클릭 시 <span class="text-amber-300 font-bold">최대 5단계 각성(ENHANCE)</span> 가능!</p>
+                            <p class="flex items-center gap-2"><i class="fa-solid fa-sun text-yellow-400"></i> 정수가 모이면 자연 스킬(유성우, 빙결)을 사용하세요!</p>
+                        </div>
+                        <div class="w-full bg-stone-900 h-1.5 rounded-full overflow-hidden mt-1">
+                            <div id="intro-progress-bar" class="bg-gradient-to-r from-emerald-400 via-lime-400 to-amber-400 h-full w-full"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Over / Victory Modal -->
+                <div id="modal-overlay" class="hidden absolute inset-0 bg-stone-950/92 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20">
+                    <div id="modal-icon" class="text-5xl mb-2 text-emerald-400">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <h2 id="modal-title" class="font-cinzel font-bold text-2xl md:text-3xl text-white mb-1">VICTORY!</h2>
+                    <p id="modal-desc" class="text-emerald-200/80 text-xs max-w-md mb-4">숲의 평화를 무사히 수호해내었습니다!</p>
+                    <div id="modal-stats" class="glass-panel p-3 rounded-xl border border-emerald-800 w-full max-w-xs mb-4 space-y-1.5 text-xs font-cinzel">
+                        <div class="flex justify-between">
+                            <span class="text-emerald-400">최종 점수:</span>
+                            <span id="final-score" class="text-purple-300 font-bold">0</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-emerald-400">수호 웨이브:</span>
+                            <span id="final-wave" class="text-emerald-300 font-bold">5 / 5</span>
+                        </div>
+                    </div>
+                    <button id="btn-restart" class="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-amber-600 hover:from-emerald-500 hover:to-amber-500 text-white font-cinzel font-bold text-xs rounded-xl shadow-lg hover:shadow-emerald-500/30 transition transform hover:-translate-y-0.5">
+                        다시 수호하기
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Special Abilities Bar -->
+            <div class="w-full mt-2 glass-panel p-2 rounded-xl border border-emerald-900/80 flex items-center justify-between gap-2 shadow-lg shrink-0">
+                <div class="text-[11px] font-cinzel text-emerald-200 tracking-wider font-bold flex items-center pl-1">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400 mr-1.5 text-xs"></i>
+                    <span>숲의 마법 스킬</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button id="btn-ability-meteor" class="relative group flex items-center space-x-1.5 bg-emerald-950/80 border border-amber-500/40 hover:border-amber-400 px-2.5 py-1 rounded-lg transition disabled:opacity-40 shadow">
+                        <div class="w-5 h-5 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">
+                            <i class="fa-solid fa-meteor"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-[10px] font-bold text-amber-300 font-cinzel">STARFALL</div>
+                            <div class="text-[8px] text-emerald-400/80">정수: 100g</div>
+                        </div>
+                        <div id="meteor-cooldown" class="absolute inset-0 bg-stone-950/85 rounded-lg hidden flex items-center justify-center font-cinzel text-[10px] font-bold text-amber-400">10s</div>
+                    </button>
+
+                    <button id="btn-ability-freeze" class="relative group flex items-center space-x-1.5 bg-emerald-950/80 border border-emerald-500/40 hover:border-emerald-400 px-2.5 py-1 rounded-lg transition disabled:opacity-40 shadow">
+                        <div class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">
+                            <i class="fa-solid fa-snowflake"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-[10px] font-bold text-emerald-300 font-cinzel">FROST VINE</div>
+                            <div class="text-[8px] text-emerald-400/80">정수: 75g</div>
+                        </div>
+                        <div id="freeze-cooldown" class="absolute inset-0 bg-stone-950/85 rounded-lg hidden flex items-center justify-center font-cinzel text-[10px] font-bold text-emerald-400">15s</div>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Sidebar: Forest Towers Selection & Enhancement -->
+        <div class="w-full lg:w-72 flex flex-col gap-2 shrink-0 justify-between h-full overflow-y-auto">
+            
+            <!-- BUILD TOWER LIST -->
+            <div class="glass-panel p-2.5 rounded-xl border border-emerald-900/80">
+                <h3 class="font-cinzel font-bold text-[11px] text-emerald-200 mb-2 flex items-center justify-between tracking-wider">
+                    <span><i class="fa-solid fa-seedling text-emerald-400 mr-1"></i>수호자 소환 (SUMMON)</span>
+                    <span class="text-[9px] font-mono text-emerald-400/80 bg-emerald-950/80 px-1.5 py-0.5 rounded-full">클릭 후 배치</span>
+                </h3>
+
+                <div class="grid grid-cols-1 gap-1.5" id="tower-selection-list">
+                    <!-- Elf Archer -->
+                    <div data-type="archer" class="tower-card p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-900 flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-sm shadow-inner">
+                                <i class="fa-solid fa-bow-arrow"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-100 flex items-center gap-1">
+                                    엘프 궁수
+                                    <span class="text-[8px] px-1 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30 font-mono">속사</span>
+                                </div>
+                                <div class="text-[9px] text-emerald-300/60">정밀 화살</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-cinzel font-bold text-[11px] text-amber-300 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-500/30">100g</div>
+                        </div>
+                    </div>
+
+                    <!-- Druid Wizard -->
+                    <div data-type="wizard" class="tower-card p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-900 flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 text-sm shadow-inner">
+                                <i class="fa-solid fa-hat-wizard"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-100 flex items-center gap-1">
+                                    드루이드
+                                    <span class="text-[8px] px-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">마법</span>
+                                </div>
+                                <div class="text-[9px] text-emerald-300/60">정령 구체</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-cinzel font-bold text-[11px] text-amber-300 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-500/30">175g</div>
+                        </div>
+                    </div>
+
+                    <!-- Stone Golem -->
+                    <div data-type="cannoner" class="tower-card p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-900 flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-amber-700/20 border border-amber-600/40 flex items-center justify-center text-amber-400 text-sm shadow-inner">
+                                <i class="fa-solid fa-gem"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-100 flex items-center gap-1">
+                                    바위 고렘
+                                    <span class="text-[8px] px-1 bg-amber-500/20 text-amber-300 rounded border border-amber-500/30 font-mono">범위</span>
+                                </div>
+                                <div class="text-[9px] text-emerald-300/60">바위 충격파</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-cinzel font-bold text-[11px] text-amber-300 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-500/30">150g</div>
+                        </div>
+                    </div>
+
+                    <!-- Spirit Weaver -->
+                    <div data-type="frost" class="tower-card p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-900 flex items-center justify-between cursor-pointer">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-lg bg-teal-500/20 border border-teal-500/40 flex items-center justify-center text-teal-300 text-sm shadow-inner">
+                                <i class="fa-solid fa-snowflake"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-emerald-100 flex items-center gap-1">
+                                    정령술사
+                                    <span class="text-[8px] px-1 bg-teal-500/20 text-teal-300 rounded border border-teal-500/30 font-mono">속박</span>
+                                </div>
+                                <div class="text-[9px] text-emerald-300/60">서리 덩굴 감속</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-cinzel font-bold text-[11px] text-amber-300 bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-500/30">125g</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inspector / ENHANCEMENT Panel -->
+            <div id="inspector-panel" class="glass-panel p-2.5 rounded-xl border border-emerald-900/80">
+                <h3 class="font-cinzel font-bold text-[11px] text-emerald-200 mb-1.5 flex items-center justify-between tracking-wider">
+                    <span><i class="fa-solid fa-up-long text-amber-400 mr-1"></i>수호자 각성 & 정보</span>
+                    <span id="inspect-level-badge" class="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">★ Lvl 1</span>
+                </h3>
+
+                <div id="inspector-active" class="hidden">
+                    <div class="flex items-center justify-between mb-0.5">
+                        <span id="inspect-name" class="font-bold text-white text-xs">Archer</span>
+                        <div id="inspect-stars" class="text-amber-300 text-xs tracking-wider font-mono">★☆☆☆☆</div>
+                    </div>
+
+                    <!-- Level Indicator Dots Bar -->
+                    <div class="flex items-center gap-1 my-1.5" id="inspect-dots-container">
+                        <div class="h-1 flex-1 rounded-full bg-amber-400"></div>
+                        <div class="h-1 flex-1 rounded-full bg-stone-800"></div>
+                        <div class="h-1 flex-1 rounded-full bg-stone-800"></div>
+                        <div class="h-1 flex-1 rounded-full bg-stone-800"></div>
+                        <div class="h-1 flex-1 rounded-full bg-stone-800"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 my-2 text-[10px] bg-emerald-950/80 p-2 rounded-lg border border-emerald-900 font-mono">
+                        <div class="flex items-center justify-between">
+                            <span class="text-emerald-400">공격력:</span>
+                            <span id="inspect-dmg" class="text-amber-300 font-bold">15</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-emerald-400">사거리:</span>
+                            <span id="inspect-range" class="text-cyan-300 font-bold">130</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-emerald-400">공속:</span>
+                            <span id="inspect-rate" class="text-lime-300 font-bold">1.5/s</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-emerald-400">처치수:</span>
+                            <span id="inspect-kills" class="text-purple-300 font-bold">0</span>
+                        </div>
+                    </div>
+
+                    <div id="inspect-upgrade-preview" class="text-[9px] text-amber-300/90 text-center mb-2 bg-amber-950/40 p-1 rounded-md border border-amber-500/20 font-mono">
+                        각성 시: <span class="text-amber-300 font-bold">공격력 +55% | 사거리 +18</span>
+                    </div>
+
+                    <div class="flex gap-1.5">
+                        <button id="btn-upgrade" class="flex-1 py-1.5 bg-gradient-to-r from-emerald-500 via-green-500 to-amber-500 hover:from-emerald-400 hover:to-amber-400 text-stone-950 font-cinzel font-bold text-[10px] rounded-lg shadow-lg transition disabled:opacity-40 flex flex-col items-center justify-center border border-emerald-300/50">
+                            <span id="upgrade-btn-label">각성하기 (ENHANCE)</span>
+                            <span id="upgrade-cost" class="text-[9px] font-normal font-mono">75g</span>
+                        </button>
+
+                        <button id="btn-sell" class="w-16 py-1.5 bg-stone-900 hover:bg-red-950 hover:border-red-600 border border-stone-800 text-red-400 font-cinzel font-bold text-[10px] rounded-lg transition flex flex-col items-center justify-center">
+                            <span>해제</span>
+                            <span id="sell-value" class="text-[9px] font-normal text-stone-400 font-mono">50g</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="inspector-empty" class="py-4 text-center text-emerald-300/50 text-[11px]">
+                    <div class="w-8 h-8 rounded-full bg-emerald-950 border border-emerald-900 mx-auto flex items-center justify-center text-emerald-600 mb-1">
+                        <i class="fa-solid fa-arrow-pointer text-xs"></i>
+                    </div>
+                    <p>배치된 수호자를 클릭하면 <br><span class="text-amber-300 font-semibold">5단계까지 각성</span> 가능합니다.</p>
+                </div>
+            </div>
+
+            <!-- Enemy Briefing -->
+            <div class="glass-panel p-2 rounded-xl border border-emerald-900/80 text-[10px] text-emerald-300/70">
+                <div class="font-cinzel font-bold text-emerald-200 mb-1 flex items-center justify-between">
+                    <span><i class="fa-solid fa-skull text-red-400 mr-1"></i>침략자 정보</span>
+                    <span class="text-[9px] text-emerald-500 font-mono">Monsters</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1 text-[9px]">
+                    <span class="flex items-center bg-emerald-950/60 p-0.5 px-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1"></span> 독 슬라임 (W1~)</span>
+                    <span class="flex items-center bg-emerald-950/60 p-0.5 px-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-yellow-400 mr-1"></span> 맹독 슬라임 (W3~)</span>
+                    <span class="flex items-center bg-emerald-950/60 p-0.5 px-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-lime-400 mr-1"></span> 고블린</span>
+                    <span class="flex items-center bg-emerald-950/60 p-0.5 px-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-emerald-700 mr-1"></span> 오크 정예</span>
+                    <span class="flex items-center bg-emerald-950/60 p-0.5 px-1 rounded"><span class="w-1.5 h-1.5 rounded-full bg-sky-400 mr-1"></span> 가고일</span>
+                    <span class="flex items-center bg-red-950/40 p-0.5 px-1 rounded border border-red-500/30 font-bold text-red-300"><span class="w-1.5 h-1.5 rounded-full bg-red-600 mr-1"></span> 보스</span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <footer class="glass-panel py-1 text-center text-[10px] text-emerald-400/60 border-t border-emerald-900/80 shrink-0">
+        Forest Guardians &copy; 2026 - Sacred Grove Protection
+    </footer>
+
+    <!-- GAME ENGINE CODE -->
+    <script>
+        // DOM Elements & Canvas Initialization
+        const startScreen = document.getElementById('start-screen');
+        const btnStartGame = document.getElementById('btn-start-game');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Audio System Synth
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'shoot') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(110, now + 0.1);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'hit') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.linearRampToValueAtTime(40, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'upgrade') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'max_upgrade') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.linearRampToValueAtTime(800, now + 0.5);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                }
+            } catch (e) {}
+        }
+
+        // Game State Variables
+        let gold = 250;
+        let lives = 20;
+        let score = 0;
+        let currentWave = 0;
+        const maxWaves = 5;
+        let isPaused = false;
+        let gameSpeed = 1;
+        let gameLoopId = null;
+        let waveInProgress = false;
+        let selectedTowerType = null;
+        let selectedTowerInstance = null;
+
+        // Path coordinates for monsters
+        const pathPoints = [
+            { x: -20, y: 150 },
+            { x: 180, y: 150 },
+            { x: 180, y: 350 },
+            { x: 420, y: 350 },
+            { x: 420, y: 120 },
+            { x: 650, y: 120 },
+            { x: 650, y: 380 },
+            { x: 820, y: 380 }
+        ];
+
+        // Entities arrays
+        let towers = [];
+        let enemies = [];
+        let projectiles = [];
+        let particles = [];
+        let envParticles = []; // Background floating spores
+        let waveEnemiesToSpawn = [];
+        let spawnTimer = 0;
+        let screenShakeTime = 0;
+        let screenShakeIntensity = 0;
+        let baseImpactEffects = [];
+
+        // Stats UI elements
+        const statLives = document.getElementById('stat-lives');
+        const statGold = document.getElementById('stat-gold');
+        const statWave = document.getElementById('stat-wave');
+        const statScore = document.getElementById('stat-score');
+
+        // UI Inspector Elements
+        const inspectorActive = document.getElementById('inspector-active');
+        const inspectorEmpty = document.getElementById('inspector-empty');
+        const inspectName = document.getElementById('inspect-name');
+        const inspectLevelBadge = document.getElementById('inspect-level-badge');
+        const inspectStars = document.getElementById('inspect-stars');
+        const inspectDmg = document.getElementById('inspect-dmg');
+        const inspectRange = document.getElementById('inspect-range');
+        const inspectRate = document.getElementById('inspect-rate');
+        const inspectKills = document.getElementById('inspect-kills');
+        const upgradeCostEl = document.getElementById('upgrade-cost');
+        const upgradeBtnLabel = document.getElementById('upgrade-btn-label');
+        const btnUpgrade = document.getElementById('btn-upgrade');
+        const btnSell = document.getElementById('btn-sell');
+        const sellValueEl = document.getElementById('sell-value');
+        const dotsContainer = document.getElementById('inspect-dots-container');
+
+        // Tower Specs
+        const TOWER_SPECS = {
+            archer: { name: '엘프 궁수', cost: 100, dmg: 18, range: 140, rate: 1.2, color: '#4ade80' },
+            wizard: { name: '드루이드', cost: 175, dmg: 40, range: 120, rate: 0.8, color: '#c084fc' },
+            cannoner: { name: '바위 고렘', cost: 150, dmg: 55, range: 110, rate: 0.5, splash: 50, color: '#f59e0b' },
+            frost: { name: '정령술사', cost: 125, dmg: 10, range: 130, rate: 1.0, slow: 0.5, color: '#2dd4bf' }
+        };
+
+        // Tower Class
+        class Tower {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.level = 1;
+                this.maxLevel = 5;
+                this.kills = 0;
+                
+                const spec = TOWER_SPECS[type];
+                this.baseDmg = spec.dmg;
+                this.baseRange = spec.range;
+                this.baseRate = spec.rate;
+                this.color = spec.color;
+
+                this.cooldown = 0;
+            }
+
+            get dmg() {
+                return Math.round(this.baseDmg * (1 + (this.level - 1) * 0.45));
+            }
+
+            get range() {
+                return Math.round(this.baseRange + (this.level - 1) * 12);
+            }
+
+            get rate() {
+                return parseFloat((this.baseRate * (1 + (this.level - 1) * 0.12)).toFixed(1));
+            }
+
+            get upgradeCost() {
+                return Math.round(TOWER_SPECS[this.type].cost * 0.75 * this.level);
+            }
+
+            get sellValue() {
+                return Math.round((TOWER_SPECS[this.type].cost + (this.level - 1) * 60) * 0.6);
+            }
+
+            upgrade() {
+                if (this.level < this.maxLevel) {
+                    this.level++;
+                    if (this.level === 5) {
+                        playSound('max_upgrade');
+                        createShockwave(this.x, this.y);
+                    } else {
+                        playSound('upgrade');
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            update() {
+                if (this.cooldown > 0) {
+                    this.cooldown -= (1 / 60) * gameSpeed;
+                } else {
+                    let target = this.findTarget();
+                    if (target) {
+                        this.shoot(target);
+                        this.cooldown = 1 / this.rate;
+                    }
+                }
+            }
+
+            findTarget() {
+                let bestTarget = null;
+                let maxDistOnPath = -1;
+
+                for (let enemy of enemies) {
+                    let dist = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                    if (dist <= this.range) {
+                        if (enemy.distanceTraveled > maxDistOnPath) {
+                            maxDistOnPath = enemy.distanceTraveled;
+                            bestTarget = enemy;
+                        }
+                    }
+                }
+                return bestTarget;
+            }
+
+            shoot(target) {
+                projectiles.push(new Projectile(this.x, this.y, target, this));
+                playSound('shoot');
+            }
+
+            draw() {
+                ctx.save();
+
+                // Range circle if selected
+                if (selectedTowerInstance === this) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(74, 222, 128, 0.08)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(74, 222, 128, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Level 5 MAX Visual Aura
+                if (this.level === 5) {
+                    let angle = Date.now() * 0.003;
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 26, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(250, 204, 21, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 6]);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Outer pulse
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 28 + Math.sin(Date.now()*0.005)*3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+                    ctx.fill();
+                }
+
+                // Shadow
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 14, 18, 8, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+                ctx.fill();
+
+                // Base Stone Pedestal
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 8, 18, 10, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#1e293b';
+                ctx.fill();
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Runic ring
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + 8, 13, 7, 0, 0, Math.PI * 2);
+                ctx.fillStyle = this.color + '44';
+                ctx.fill();
+
+                // Character Renderer based on Type
+                ctx.save();
+                ctx.translate(this.x, this.y - 4);
+
+                if (this.type === 'archer') {
+                    // ELF ARCHER
+                    // Body / Cloak
+                    ctx.beginPath();
+                    ctx.arc(0, 2, 9, 0, Math.PI * 2);
+                    ctx.fillStyle = '#15803d';
+                    ctx.fill();
+                    // Hood/Face
+                    ctx.beginPath();
+                    ctx.arc(0, -6, 7, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fde047';
+                    ctx.fill();
+                    // Leaf Hood
+                    ctx.beginPath();
+                    ctx.arc(0, -8, 7.5, Math.PI, Math.PI * 2);
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fill();
+                    // Bow
+                    ctx.strokeStyle = '#78350f';
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.arc(7, -4, 10, -Math.PI*0.4, Math.PI*0.4);
+                    ctx.stroke();
+                } else if (this.type === 'wizard') {
+                    // DRUID WIZARD
+                    // Robes
+                    ctx.beginPath();
+                    ctx.moveTo(-9, 10);
+                    ctx.lineTo(0, -12);
+                    ctx.lineTo(9, 10);
+                    ctx.closePath();
+                    ctx.fillStyle = '#6b21a8';
+                    ctx.fill();
+                    // Glowing Staff
+                    ctx.strokeStyle = '#a855f7';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(9, 10);
+                    ctx.lineTo(9, -14);
+                    ctx.stroke();
+                    // Staff Gem
+                    ctx.beginPath();
+                    ctx.arc(9, -16, 4, 0, Math.PI*2);
+                    ctx.fillStyle = '#e9d5ff';
+                    ctx.fill();
+                    ctx.shadowColor = '#c084fc';
+                    ctx.shadowBlur = 10;
+                } else if (this.type === 'cannoner') {
+                    // STONE GOLEM
+                    // Rock Body
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = '#78350f';
+                    ctx.fill();
+                    ctx.strokeStyle = '#451a03';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    // Glowing Core
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fill();
+                    ctx.shadowColor = '#fbbf24';
+                    ctx.shadowBlur = 8;
+                } else if (this.type === 'frost') {
+                    // SPIRIT WEAVER
+                    // Floating Ice Spirit
+                    ctx.beginPath();
+                    ctx.arc(0, -3 + Math.sin(Date.now()*0.006)*2, 10, 0, Math.PI * 2);
+                    ctx.fillStyle = '#0d9488';
+                    ctx.fill();
+                    // Ice Crown
+                    ctx.beginPath();
+                    ctx.arc(0, -9, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#99f6e4';
+                    ctx.fill();
+                    ctx.shadowColor = '#2dd4bf';
+                    ctx.shadowBlur = 12;
+                }
+
+                ctx.restore();
+
+                // Level badge star tag
+                ctx.save();
+                ctx.fillStyle = this.level === 5 ? '#facc15' : '#065f46';
+                ctx.strokeStyle = '#fef08a';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(this.x - 14, this.y - 27, 28, 12, 4);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = this.level === 5 ? '#451a03' : '#ffffff';
+                ctx.font = 'bold 9px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.level === 5 ? '★MAX' : `Lvl ${this.level}`, this.x, this.y - 18);
+                ctx.restore();
+
+                ctx.restore();
+            }
+        }
+
+        // Enemy Class
+        class Enemy {
+            constructor(type) {
+                this.type = type;
+                this.pathIndex = 0;
+                this.x = pathPoints[0].x;
+                this.y = pathPoints[0].y;
+                this.distanceTraveled = 0;
+                this.slowTimer = 0;
+                this.slowFactor = 1;
+                this.animFrame = Math.random() * 100;
+
+                if (type === 'green_slime') {
+                    this.hp = 70;
+                    this.maxHp = 70;
+                    this.speed = 1.0;
+                    this.reward = 15;
+                    this.color = '#22c55e';
+                    this.radius = 13;
+                } else if (type === 'yellow_slime') {
+                    this.hp = 110;
+                    this.maxHp = 110;
+                    this.speed = 2.0;
+                    this.reward = 25;
+                    this.color = '#eab308';
+                    this.radius = 11;
+                } else if (type === 'goblin') {
+                    this.hp = 160;
+                    this.maxHp = 160;
+                    this.speed = 1.4;
+                    this.reward = 30;
+                    this.color = '#84cc16';
+                    this.radius = 12;
+                } else if (type === 'orc') {
+                    this.hp = 450;
+                    this.maxHp = 450;
+                    this.speed = 0.8;
+                    this.reward = 50;
+                    this.color = '#166534';
+                    this.radius = 17;
+                } else if (type === 'gargoyle') {
+                    this.hp = 300;
+                    this.maxHp = 300;
+                    this.speed = 1.6;
+                    this.reward = 45;
+                    this.color = '#0284c7';
+                    this.radius = 14;
+                } else if (type === 'boss') {
+                    this.hp = 2500;
+                    this.maxHp = 2500;
+                    this.speed = 0.6;
+                    this.reward = 250;
+                    this.color = '#dc2626';
+                    this.radius = 24;
+                }
+            }
+
+            update() {
+                this.animFrame += 0.1;
+                if (this.slowTimer > 0) {
+                    this.slowTimer -= (1 / 60) * gameSpeed;
+                    if (this.slowTimer <= 0) this.slowFactor = 1;
+                }
+
+                let currentTarget = pathPoints[this.pathIndex + 1];
+                if (!currentTarget) return;
+
+                let dx = currentTarget.x - this.x;
+                let dy = currentTarget.y - this.y;
+                let dist = Math.hypot(dx, dy);
+                let moveStep = this.speed * this.slowFactor * (gameSpeed * 1.5);
+
+                if (dist <= moveStep) {
+                    this.x = currentTarget.x;
+                    this.y = currentTarget.y;
+                    this.pathIndex++;
+                    if (this.pathIndex >= pathPoints.length - 1) {
+                        this.reachEnd();
+                    }
+                } else {
+                    this.x += (dx / dist) * moveStep;
+                    this.y += (dy / dist) * moveStep;
+                    this.distanceTraveled += moveStep;
+                }
+            }
+
+            reachEnd() {
+                let lostLives = (this.type === 'boss' ? 5 : 1);
+                lives -= lostLives;
+                if (lives < 0) lives = 0;
+                updateStats();
+                
+                // Trigger base damage visual impact
+                triggerBaseImpact(this.x, this.y, lostLives, this.type === 'boss');
+
+                this.hp = 0;
+
+                if (lives <= 0) {
+                    triggerGameOver();
+                }
+            }
+
+            draw() {
+                ctx.save();
+                
+                // Shadow
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y + this.radius * 0.7, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.type.includes('slime')) {
+                    // SLIME MONSTER
+                    let squish = Math.sin(this.animFrame * 2) * 2.5;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 2 + squish*0.3, this.radius + squish, this.radius - squish*0.8, 0, 0, Math.PI * 2);
+                    
+                    let grad = ctx.createRadialGradient(-3, -3, 2, 0, 0, this.radius);
+                    grad.addColorStop(0, '#ffffff');
+                    grad.addColorStop(0.4, this.color);
+                    grad.addColorStop(1, '#064e3b');
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    ctx.strokeStyle = '#022c22';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Cute Slime Eyes
+                    ctx.fillStyle = '#0f172a';
+                    ctx.beginPath();
+                    ctx.arc(-4, -2, 2.5, 0, Math.PI*2);
+                    ctx.arc(4, -2, 2.5, 0, Math.PI*2);
+                    ctx.fill();
+
+                    // Eye highlights
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(-5, -3, 1, 0, Math.PI*2);
+                    ctx.arc(3, -3, 1, 0, Math.PI*2);
+                    ctx.fill();
+
+                } else if (this.type === 'goblin') {
+                    // GOBLIN SCOUT
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#65a30d';
+                    ctx.fill();
+                    ctx.strokeStyle = '#1a2e05';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+
+                    // Pointy Ears
+                    ctx.beginPath();
+                    ctx.moveTo(-this.radius, -2);
+                    ctx.lineTo(-this.radius - 6, -6);
+                    ctx.lineTo(-this.radius + 2, 2);
+                    ctx.fillStyle = '#4d7c0f';
+                    ctx.fill();
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.radius, -2);
+                    ctx.lineTo(this.radius + 6, -6);
+                    ctx.lineTo(this.radius - 2, 2);
+                    ctx.fill();
+
+                    // Eyes
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(-3, -2, 2, 0, Math.PI*2);
+                    ctx.arc(3, -2, 2, 0, Math.PI*2);
+                    ctx.fill();
+
+                } else if (this.type === 'orc') {
+                    // ORC WARRIOR
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#14532d';
+                    ctx.fill();
+                    ctx.strokeStyle = '#052e16';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // Helmet
+                    ctx.beginPath();
+                    ctx.arc(0, -3, this.radius - 2, Math.PI, Math.PI*2);
+                    ctx.fillStyle = '#475569';
+                    ctx.fill();
+                } else if (this.type === 'gargoyle') {
+                    // FLYING GARGOYLE
+                    let wingSwing = Math.sin(this.animFrame * 3) * 10;
+                    // Wings
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-this.radius - 12, -8 + wingSwing);
+                    ctx.lineTo(-this.radius + 2, 6);
+                    ctx.fillStyle = '#0369a1';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(this.radius + 12, -8 + wingSwing);
+                    ctx.lineTo(this.radius - 2, 6);
+                    ctx.fill();
+
+                    // Body
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fill();
+                } else if (this.type === 'boss') {
+                    // DARK KNIGHT BOSS
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#7f1d1d';
+                    ctx.fill();
+                    ctx.strokeStyle = '#f87171';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Horns
+                    ctx.fillStyle = '#991b1b';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -15); ctx.lineTo(-18, -26); ctx.lineTo(-4, -18); ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(10, -15); ctx.lineTo(18, -26); ctx.lineTo(4, -18); ctx.fill();
+
+                    // Glowing Eyes
+                    ctx.fillStyle = '#fef08a';
+                    ctx.shadowColor = '#facc15';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(-7, -4, 3.5, 0, Math.PI*2);
+                    ctx.arc(7, -4, 3.5, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // Slow aura overlay
+                if (this.slowFactor < 1) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 3, 0, Math.PI * 2);
+                    ctx.strokeStyle = '#2dd4bf';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([3, 3]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Health bar
+                let hpPercent = Math.max(0, this.hp / this.maxHp);
+                let barW = this.radius * 2 + 4;
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                ctx.fillRect(this.x - barW/2, this.y - this.radius - 12, barW, 5);
+                ctx.fillStyle = hpPercent > 0.5 ? '#22c55e' : (hpPercent > 0.25 ? '#eab308' : '#ef4444');
+                ctx.fillRect(this.x - barW/2 + 1, this.y - this.radius - 11, (barW - 2) * hpPercent, 3);
+
+                ctx.restore();
+            }
+        }
+
+        // Projectile Class
+        class Projectile {
+            constructor(x, y, target, sourceTower) {
+                this.x = x;
+                this.y = y;
+                this.target = target;
+                this.tower = sourceTower;
+                this.speed = 8;
+                this.radius = 4;
+            }
+
+            update() {
+                if (!this.target || this.target.hp <= 0) {
+                    let index = projectiles.indexOf(this);
+                    if (index > -1) projectiles.splice(index, 1);
+                    return;
+                }
+
+                let dx = this.target.x - this.x;
+                let dy = this.target.y - this.y;
+                let dist = Math.hypot(dx, dy);
+
+                if (dist < this.speed * gameSpeed) {
+                    this.hit();
+                } else {
+                    this.x += (dx / dist) * this.speed * gameSpeed;
+                    this.y += (dy / dist) * this.speed * gameSpeed;
+                }
+            }
+
+            hit() {
+                playSound('hit');
+                if (this.tower.type === 'cannoner') {
+                    // Splash damage
+                    for (let enemy of enemies) {
+                        let d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                        if (d <= TOWER_SPECS.cannoner.splash) {
+                            this.applyDamage(enemy, this.tower.dmg);
+                        }
+                    }
+                    createExplosion(this.x, this.y, '#f59e0b');
+                } else {
+                    this.applyDamage(this.target, this.tower.dmg);
+                    if (this.tower.type === 'frost') {
+                        this.target.slowFactor = 0.5;
+                        this.target.slowTimer = 2.0;
+                    }
+                }
+
+                let index = projectiles.indexOf(this);
+                if (index > -1) projectiles.splice(index, 1);
+            }
+
+            applyDamage(enemy, dmg) {
+                enemy.hp -= dmg;
+                if (enemy.hp <= 0) {
+                    gold += enemy.reward;
+                    score += enemy.reward * 10;
+                    this.tower.kills++;
+                    updateStats();
+                    createExplosion(enemy.x, enemy.y, enemy.color);
+                    let idx = enemies.indexOf(enemy);
+                    if (idx > -1) enemies.splice(idx, 1);
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.tower.color;
+                ctx.shadowColor = this.tower.color;
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Visual Effects
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 5,
+                    vy: (Math.random() - 0.5) * 5,
+                    life: 1,
+                    color: color
+                });
+            }
+        }
+
+        function createShockwave(x, y) {
+            for (let i = 0; i < 25; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() - 0.5) * 9,
+                    life: 1.5,
+                    color: '#facc15'
+                });
+            }
+        }
+
+        function triggerBaseImpact(x, y, damage, isBoss) {
+            playSound('base_hit');
+
+            // Screen shake
+            screenShakeTime = isBoss ? 20 : 12;
+            screenShakeIntensity = isBoss ? 9 : 5;
+
+            // Explosion particles around sanctuary gate
+            for (let i = 0; i < (isBoss ? 35 : 18); i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.7) * (isBoss ? 10 : 6),
+                    vy: (Math.random() - 0.5) * (isBoss ? 10 : 6),
+                    life: 1.2,
+                    color: isBoss ? '#ef4444' : '#f97316'
+                });
+            }
+
+            // Expanding shockwave rings & floating text
+            baseImpactEffects.push({
+                x: x,
+                y: y,
+                radius: 10,
+                maxRadius: isBoss ? 65 : 40,
+                life: 1.0,
+                damageText: `-${damage} HP`,
+                color: isBoss ? '#ef4444' : '#f87171'
+            });
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.04;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // Update base hit shockwaves & damage text
+            for (let i = baseImpactEffects.length - 1; i >= 0; i--) {
+                let eff = baseImpactEffects[i];
+                eff.radius += (eff.maxRadius - eff.radius) * 0.15;
+                eff.y -= 0.8;
+                eff.life -= 0.025;
+                if (eff.life <= 0) {
+                    baseImpactEffects.splice(i, 1);
+                }
+            }
+
+            // Update background environmental spore floating
+            for(let ep of envParticles) {
+                ep.y += ep.vy;
+                ep.x += ep.vx;
+                if(ep.y < 0) ep.y = 500;
+                if(ep.x < 0) ep.x = 800;
+                if(ep.x > 800) ep.x = 0;
+            }
+
+            // Shake countdown
+            if (screenShakeTime > 0) {
+                screenShakeTime--;
+            }
+        }
+
+        function drawParticles() {
+            // Draw floating spirit spores
+            for(let ep of envParticles) {
+                ctx.save();
+                ctx.globalAlpha = ep.alpha;
+                ctx.fillStyle = '#86efac';
+                ctx.beginPath();
+                ctx.arc(ep.x, ep.y, ep.r, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // Draw base shockwave rings & floating damage text
+            for (let eff of baseImpactEffects) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, eff.life);
+
+                // Crimson shockwave ring
+                ctx.beginPath();
+                ctx.arc(eff.x, eff.y, eff.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = eff.color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Inner flash fill
+                ctx.beginPath();
+                ctx.arc(eff.x, eff.y, eff.radius * 0.7, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+                ctx.fill();
+
+                // Floating Damage text
+                ctx.fillStyle = eff.color;
+                ctx.font = 'bold 16px font-cinzel, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 6;
+                ctx.fillText(eff.damageText, eff.x, eff.y - 15);
+                ctx.restore();
+            }
+
+            // Draw active combat particles
+            for (let p of particles) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.life);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Draw Detailed Map Paths & Forest Graphics
+        function drawMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply screen shake transform
+            ctx.save();
+            if (screenShakeTime > 0) {
+                let dx = (Math.random() - 0.5) * screenShakeIntensity;
+                let dy = (Math.random() - 0.5) * screenShakeIntensity;
+                ctx.translate(dx, dy);
+            }
+
+            // 1. Forest Grass Base Gradient
+            let bgGrad = ctx.createRadialGradient(400, 250, 50, 400, 250, 500);
+            bgGrad.addColorStop(0, '#19381e');
+            bgGrad.addColorStop(0.6, '#0f2614');
+            bgGrad.addColorStop(1, '#08140a');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle Forest Patch Details
+            ctx.fillStyle = 'rgba(34, 197, 94, 0.05)';
+            for (let i = 0; i < 8; i++) {
+                let px = (i * 110 + 40) % canvas.width;
+                let py = (i * 80 + 30) % canvas.height;
+                ctx.beginPath();
+                ctx.arc(px, py, 40 + (i % 3) * 15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 2. Dirt Path Shadow/Outer Border
+            ctx.beginPath();
+            ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
+            for (let i = 1; i < pathPoints.length; i++) {
+                ctx.lineTo(pathPoints[i].x, pathPoints[i].y);
+            }
+            ctx.strokeStyle = 'rgba(5, 20, 8, 0.7)';
+            ctx.lineWidth = 44;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+
+            // Mossy Border Glow Edge
+            ctx.strokeStyle = 'rgba(74, 222, 128, 0.2)';
+            ctx.lineWidth = 40;
+            ctx.stroke();
+
+            // Main Cobblestone/Dirt Track
+            ctx.strokeStyle = '#573a1c';
+            ctx.lineWidth = 34;
+            ctx.stroke();
+
+            // Inner Path Dirt Highlight
+            ctx.strokeStyle = '#735029';
+            ctx.lineWidth = 26;
+            ctx.stroke();
+
+            // Path Center Stones Detail Line
+            ctx.strokeStyle = 'rgba(180, 140, 90, 0.25)';
+            ctx.lineWidth = 6;
+            ctx.setLineDash([12, 10]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 3. Spawning Dark Portal Gate (Start Point)
+            let pStart = pathPoints[0];
+            ctx.save();
+            ctx.translate(pStart.x + 30, pStart.y);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 16, 28, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+            ctx.fill();
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(0, 0, 10 + Math.sin(Date.now() * 0.008) * 3, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(220, 38, 38, 0.8)';
+            ctx.fill();
+            ctx.restore();
+
+            // 4. Sanctuary Forest Crystal Gateway (End Base)
+            let pEnd = pathPoints[pathPoints.length - 1];
+            ctx.save();
+            ctx.translate(pEnd.x - 30, pEnd.y);
+            
+            // Sacred Grove Aura
+            ctx.beginPath();
+            ctx.arc(0, 0, 32 + Math.sin(Date.now() * 0.004) * 4, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(96, 165, 250, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Base Castle/Shrine Crystal
+            ctx.beginPath();
+            ctx.polygon = function(x, y, radius, sides) {
+                ctx.beginPath();
+                for (let i = 0; i < sides; i++) {
+                    let a = (i * 2 * Math.PI / sides) - Math.PI/2;
+                    let px = x + radius * Math.cos(a);
+                    let py = y + radius * Math.sin(a);
+                    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+            };
+            ctx.polygon(0, -4, 16, 6);
+            ctx.fillStyle = '#3b82f6';
+            ctx.fill();
+            ctx.strokeStyle = '#93c5fd';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+
+            // 5. Decorative Trees
+            const treePositions = [
+                {x: 60, y: 70}, {x: 280, y: 70}, {x: 350, y: 220}, {x: 100, y: 260},
+                {x: 280, y: 440}, {x: 530, y: 250}, {x: 540, y: 450}, {x: 730, y: 220}, {x: 750, y: 70}
+            ];
+
+            for (let tree of treePositions) {
+                ctx.save();
+                ctx.translate(tree.x, tree.y);
+
+                // Tree Shadow
+                ctx.beginPath();
+                ctx.ellipse(0, 10, 14, 6, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.fill();
+
+                // Pine Leaves Layer 1
+                ctx.beginPath();
+                ctx.arc(0, 0, 16, 0, Math.PI * 2);
+                ctx.fillStyle = '#14532d';
+                ctx.fill();
+
+                // Leaves Layer 2 (Highlight)
+                ctx.beginPath();
+                ctx.arc(-2, -4, 11, 0, Math.PI * 2);
+                ctx.fillStyle = '#16a34a';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Wave Management
+        function startNextWave() {
+            if (waveInProgress) return;
+
+            if (currentWave >= maxWaves) {
+                triggerVictory();
+                return;
+            }
+
+            currentWave++;
+            waveInProgress = true;
+            updateStats();
+
+            waveEnemiesToSpawn = [];
+
+            if (currentWave === 1) {
+                // Wave 1: Basic Green Slimes ONLY
+                for (let i = 0; i < 10; i++) waveEnemiesToSpawn.push('green_slime');
+            } else if (currentWave === 2) {
+                for (let i = 0; i < 8; i++) waveEnemiesToSpawn.push('green_slime');
+                for (let i = 0; i < 5; i++) waveEnemiesToSpawn.push('goblin');
+            } else if (currentWave === 3) {
+                // Wave 3: Introduce Fast Yellow Slimes
+                for (let i = 0; i < 6; i++) waveEnemiesToSpawn.push('green_slime');
+                for (let i = 0; i < 8; i++) waveEnemiesToSpawn.push('yellow_slime');
+                for (let i = 0; i < 4; i++) waveEnemiesToSpawn.push('orc');
+            } else if (currentWave === 4) {
+                for (let i = 0; i < 10; i++) waveEnemiesToSpawn.push('yellow_slime');
+                for (let i = 0; i < 6; i++) waveEnemiesToSpawn.push('gargoyle');
+                for (let i = 0; i < 6; i++) waveEnemiesToSpawn.push('orc');
+            } else if (currentWave === 5) {
+                for (let i = 0; i < 10; i++) waveEnemiesToSpawn.push('yellow_slime');
+                for (let i = 0; i < 6; i++) waveEnemiesToSpawn.push('gargoyle');
+                waveEnemiesToSpawn.push('boss');
+            }
+        }
+
+        function updateWaveSpawner() {
+            if (!waveInProgress) return;
+
+            if (waveEnemiesToSpawn.length > 0) {
+                spawnTimer += (1 / 60) * gameSpeed;
+                if (spawnTimer >= 1.2) {
+                    let type = waveEnemiesToSpawn.shift();
+                    enemies.push(new Enemy(type));
+                    spawnTimer = 0;
+                }
+            } else if (enemies.length === 0) {
+                waveInProgress = false;
+                if (currentWave >= maxWaves) {
+                    triggerVictory();
+                }
+            }
+        }
+
+        // Stats UI Sync
+        function updateStats() {
+            statLives.innerText = lives;
+            statGold.innerText = gold;
+            statWave.innerText = `${currentWave} / ${maxWaves}`;
+            statScore.innerText = score;
+            updateTowerCardStates();
+            updateInspector();
+        }
+
+        function updateTowerCardStates() {
+            document.querySelectorAll('.tower-card').forEach(card => {
+                let type = card.dataset.type;
+                let cost = TOWER_SPECS[type].cost;
+                if (gold < cost) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+
+                if (selectedTowerType === type) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            });
+        }
+
+        // Inspector UI
+        function selectTowerInstance(tower) {
+            selectedTowerInstance = tower;
+            updateInspector();
+        }
+
+        function updateInspector() {
+            if (!selectedTowerInstance) {
+                inspectorActive.classList.add('hidden');
+                inspectorEmpty.classList.remove('hidden');
+                return;
+            }
+
+            inspectorActive.classList.remove('hidden');
+            inspectorEmpty.classList.add('hidden');
+
+            let t = selectedTowerInstance;
+            inspectName.innerText = TOWER_SPECS[t.type].name;
+            inspectLevelBadge.innerText = `★ Lvl ${t.level}`;
+            inspectStars.innerText = '★'.repeat(t.level) + '☆'.repeat(t.maxLevel - t.level);
+            inspectDmg.innerText = t.dmg;
+            inspectRange.innerText = t.range;
+            inspectRate.innerText = `${t.rate}/s`;
+            inspectKills.innerText = t.kills;
+
+            upgradeCostEl.innerText = t.level < t.maxLevel ? `${t.upgradeCost}g` : 'MAX';
+            sellValueEl.innerText = `${t.sellValue}g`;
+
+            btnUpgrade.disabled = (t.level >= t.maxLevel || gold < t.upgradeCost);
+        }
+
+        // Game Controls
+        btnStartGame.addEventListener('click', () => {
+            initAudio();
+            startScreen.classList.add('hidden');
+            resetGame();
+            startGameLoop();
+        });
+
+        document.getElementById('btn-start-wave').addEventListener('click', () => {
+            startNextWave();
+        });
+
+        document.getElementById('btn-speed-1x').addEventListener('click', () => {
+            gameSpeed = 1;
+            document.getElementById('btn-speed-1x').className = "px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-emerald-700 text-white shadow transition";
+            document.getElementById('btn-speed-2x').className = "px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-stone-900/80 text-emerald-400 hover:text-white transition";
+        });
+
+        document.getElementById('btn-speed-2x').addEventListener('click', () => {
+            gameSpeed = 2;
+            document.getElementById('btn-speed-2x').className = "px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-emerald-700 text-white shadow transition";
+            document.getElementById('btn-speed-1x').className = "px-2 py-0.5 text-[11px] font-cinzel font-bold rounded-lg bg-stone-900/80 text-emerald-400 hover:text-white transition";
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', () => {
+            isPaused = !isPaused;
+            document.getElementById('icon-pause').className = isPaused ? "fa-solid fa-play text-[10px]" : "fa-solid fa-pause text-[10px]";
+        });
+
+        document.getElementById('btn-menu').addEventListener('click', () => {
+            startScreen.classList.remove('hidden');
+        });
+
+        // Tower Card Selection
+        document.querySelectorAll('.tower-card').forEach(card => {
+            card.addEventListener('click', () => {
+                let type = card.dataset.type;
+                if (gold >= TOWER_SPECS[type].cost) {
+                    if (selectedTowerType === type) {
+                        selectedTowerType = null;
+                    } else {
+                        selectedTowerType = type;
+                        selectedTowerInstance = null;
+                    }
+                    updateStats();
+                }
+            });
+        });
+
+        // Canvas Click -> Place / Select Tower
+        canvas.addEventListener('click', (e) => {
+            let rect = canvas.getBoundingClientRect();
+            let x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            let y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // Check if existing tower clicked
+            let clickedTower = towers.find(t => Math.hypot(t.x - x, t.y - y) <= 20);
+            if (clickedTower) {
+                selectTowerInstance(clickedTower);
+                selectedTowerType = null;
+                updateStats();
+                return;
+            }
+
+            // Otherwise place tower if type selected
+            if (selectedTowerType) {
+                let cost = TOWER_SPECS[selectedTowerType].cost;
+                if (gold >= cost) {
+                    towers.push(new Tower(x, y, selectedTowerType));
+                    gold -= cost;
+                    selectedTowerType = null;
+                    updateStats();
+                    playSound('upgrade');
+                }
+            } else {
+                selectTowerInstance(null);
+            }
+        });
+
+        btnUpgrade.addEventListener('click', () => {
+            if (selectedTowerInstance && gold >= selectedTowerInstance.upgradeCost) {
+                let cost = selectedTowerInstance.upgradeCost;
+                if (selectedTowerInstance.upgrade()) {
+                    gold -= cost;
+                    updateStats();
+                }
+            }
+        });
+
+        btnSell.addEventListener('click', () => {
+            if (selectedTowerInstance) {
+                gold += selectedTowerInstance.sellValue;
+                let idx = towers.indexOf(selectedTowerInstance);
+                if (idx > -1) towers.splice(idx, 1);
+                selectTowerInstance(null);
+                updateStats();
+            }
+        });
+
+        // Game Over / Victory
+        function triggerGameOver() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "GAME OVER";
+            document.getElementById('modal-desc').innerText = "어둠의 침략군에게 숲의 경계가 무너졌습니다!";
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-wave').innerText = `${currentWave} / ${maxWaves}`;
+        }
+
+        function triggerVictory() {
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            document.getElementById('modal-title').innerText = "VICTORY!";
+            document.getElementById('modal-desc').innerText = "태고의 숲을 모든 위협으로부터 지켜내었습니다!";
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-wave').innerText = `${maxWaves} / ${maxWaves}`;
+        }
+
+        document.getElementById('btn-restart').addEventListener('click', () => {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            resetGame();
+        });
+
+        function resetGame() {
+            gold = 250;
+            lives = 20;
+            score = 0;
+            currentWave = 0;
+            waveInProgress = false;
+            towers = [];
+            enemies = [];
+            projectiles = [];
+            particles = [];
+            selectedTowerInstance = null;
+            selectedTowerType = null;
+            updateStats();
+        }
+
+        // Main Game Loop
+        function startGameLoop() {
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+
+            function loop() {
+                if (!isPaused) {
+                    updateWaveSpawner();
+
+                    // Update Entities
+                    for (let tower of towers) tower.update();
+                    for (let enemy of enemies) enemy.update();
+                    for (let proj of projectiles) proj.update();
+                    updateParticles();
+
+                    // Render
+                    drawMap();
+                    for (let tower of towers) tower.draw();
+                    for (let enemy of enemies) enemy.draw();
+                    for (let proj of projectiles) proj.draw();
+                    drawParticles();
+
+                    // Restore Screen Shake Transform
+                    ctx.restore();
+                }
+
+                gameLoopId = requestAnimationFrame(loop);
+            }
+
+            loop();
+        }
+    </script>
+</body>
+</html>

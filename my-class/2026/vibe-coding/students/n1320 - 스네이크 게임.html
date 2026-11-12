@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스네이크 게임</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #111827; color: #f9fafb; font-family: system-ui, sans-serif;
+  }
+  .game { text-align: center; }
+  h1 { margin: 0 0 10px; }
+  .info { display:flex; justify-content:space-between; margin: 0 auto 10px; max-width: 420px; font-weight:700; }
+  canvas {
+    display:block; width:min(90vw,420px); height:min(90vw,420px);
+    background:#1f2937; border:3px solid #374151; border-radius:12px;
+    touch-action:none;
+  }
+  button {
+    margin-top:14px; padding:10px 18px; border:0; border-radius:8px;
+    background:#22c55e; color:white; font-size:16px; font-weight:700; cursor:pointer;
+  }
+  p { color:#cbd5e1; margin:10px 0 0; }
+</style>
+</head>
+<body>
+<div class="game">
+  <h1>🐍 스네이크</h1>
+  <div class="info"><span>점수: <b id="score">0</b></span><span>최고점수: <b id="high">0</b></span></div>
+  <canvas id="game" width="420" height="420"></canvas>
+  <button id="restart">다시 시작</button>
+  <p>방향키 / WASD로 이동 · 먹이를 먹으면 길어집니다.</p>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const scoreEl = document.getElementById("score");
+const highEl = document.getElementById("high");
+const restartBtn = document.getElementById("restart");
+
+const CELL = 21, SIZE = 20;
+let snake, food, dir, nextDir, score, gameOver, timer;
+let high = Number(localStorage.getItem("snakeHigh") || 0);
+highEl.textContent = high;
+
+function reset() {
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = {x:1,y:0}; nextDir = {x:1,y:0};
+  score = 0; gameOver = false;
+  scoreEl.textContent = score;
+  placeFood();
+  clearInterval(timer);
+  timer = setInterval(tick, 105);
+  draw();
+}
+
+function placeFood() {
+  do {
+    food = {x:Math.floor(Math.random()*SIZE), y:Math.floor(Math.random()*SIZE)};
+  } while (snake.some(s => s.x === food.x && s.y === food.y));
+}
+
+function setDirection(x,y) {
+  if (x === -dir.x && y === -dir.y) return;
+  nextDir = {x,y};
+}
+
+function tick() {
+  if (gameOver) return;
+  dir = nextDir;
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+
+  if (head.x < 0 || head.x >= SIZE || head.y < 0 || head.y >= SIZE ||
+      snake.some((s,i) => i > 0 && s.x === head.x && s.y === head.y)) {
+    gameOver = true;
+    clearInterval(timer);
+    draw();
+    return;
+  }
+
+  snake.unshift(head);
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    scoreEl.textContent = score;
+    if (score > high) {
+      high = score;
+      highEl.textContent = high;
+      localStorage.setItem("snakeHigh", high);
+    }
+    placeFood();
+  } else {
+    snake.pop();
+  }
+  draw();
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = "#1f2937";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // 격자
+  ctx.strokeStyle = "rgba(255,255,255,.035)";
+  for(let i=0;i<=SIZE;i++) {
+    ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(canvas.width,i*CELL); ctx.stroke();
+  }
+
+  // 먹이
+  ctx.fillStyle = "#ef4444";
+  ctx.beginPath();
+  ctx.arc(food.x*CELL+CELL/2, food.y*CELL+CELL/2, CELL*0.35, 0, Math.PI*2);
+  ctx.fill();
+
+  // 뱀
+  snake.forEach((s,i) => {
+    ctx.fillStyle = i === 0 ? "#4ade80" : "#22c55e";
+    ctx.fillRect(s.x*CELL+2, s.y*CELL+2, CELL-4, CELL-4);
+  });
+
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0,0,0,.62)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.font = "bold 32px system-ui";
+    ctx.fillText("게임 오버!", canvas.width/2, canvas.height/2-10);
+    ctx.font = "18px system-ui";
+    ctx.fillText("다시 시작 버튼을 눌러주세요", canvas.width/2, canvas.height/2+28);
+  }
+}
+
+document.addEventListener("keydown", e => {
+  const keys = {
+    ArrowUp:[0,-1], w:[0,-1], W:[0,-1],
+    ArrowDown:[0,1], s:[0,1], S:[0,1],
+    ArrowLeft:[-1,0], a:[-1,0], A:[-1,0],
+    ArrowRight:[1,0], d:[1,0], D:[1,0]
+  };
+  if (keys[e.key]) { e.preventDefault(); setDirection(...keys[e.key]); }
+  if (e.key === " " && gameOver) reset();
+});
+restartBtn.addEventListener("click", reset);
+
+// 모바일/터치: 화면을 스와이프해서 조작
+let touchStart = null;
+canvas.addEventListener("touchstart", e => {
+  const t = e.changedTouches[0];
+  touchStart = {x:t.clientX, y:t.clientY};
+}, {passive:true});
+canvas.addEventListener("touchend", e => {
+  if (!touchStart) return;
+  const t = e.changedTouches[0], dx=t.clientX-touchStart.x, dy=t.clientY-touchStart.y;
+  if (Math.max(Math.abs(dx),Math.abs(dy)) > 20) {
+    if (Math.abs(dx) > Math.abs(dy)) setDirection(Math.sign(dx),0);
+    else setDirection(0,Math.sign(dy));
+  }
+  touchStart = null;
+}, {passive:true});
+
+reset();
+</script>
+</body>
+</html>

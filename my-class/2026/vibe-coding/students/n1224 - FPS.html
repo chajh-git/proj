@@ -1,0 +1,484 @@
+인공지능(A.I.) 윤리
+A.I. 윤리 포트폴리오
+학번
+1224
+이름
+하태호
+1번
+AI란 무엇인가요?
+스스로 생각을 할 수 있는 기계
+2번
+AI의 환각(할루시네이션)이란 무엇인가요?
+거짓을 실제처럼 말하는 것
+생성형 AI 도구의 답변을 그대로 사용해도 될까요?
+아니요
+위에서 그렇게 답변한 이유는 무엇인가요?
+AI가 거짓말을 할 수 도있기  때문에
+3번
+이 기사에 나타난 과거 데이터와 미래 결과 사이에 무슨 관계가 있을까요? AI를 올바로 학습시키기 위한 학습용 데이터를 어떻게 사용해야 할까요?
+(인과관계와 학습용 데이터 구성)
+관계:궁금한 것을 물어볼때
+
+학습용 데이터 사용:사용자가 말하는 범위 안에서 생각하게 만든다
+
+
+AI 윤리 문제를 예방하기 위해 우리가 할 수 있는 일은 무엇일까요?(2가지)
+ 범죄에 관한 내용을 쓰지 않는다.
+ 대화가 부적절하면 Ai가 직접 차단한다.
+
+
+
+AI와 프로그래밍
+AI를 활용한 나만의 프로그램 만들기
+학번
+1224
+이름
+하태호
+프로그램
+이름
+프로그램의 이름을 작성하세요.
+FPS
+프로그램
+개발 동기
+이 프로그램을 개발하여 해결하고 싶은 문제를 작성하세요.
+스트레스 해소를 하기 위해서
+프로그램
+소개
+프로그램 사용자에게 프로그램을 소개하는 글을 작성하세요.
+적을 처치해서 스트레스를 해소하세여
+추상화
+문제 해결을 위한 추상화를 작성하세요.
+현재 상태: 스트레스가 많이 쌓였다
+
+목표 상태: 스트레스 해소
+
+핵심요소: 총 디자인 
+
+입력:마우스로 총을 쏜다
+
+출력:적이 데미지를 입는다
+
+
+알고리즘
+이 프로그램의 알고리즘을 작성하세요.
+알고리즘:적 AI 알고리즘: 적이 플레이어를 발견하면 따라온다.
+총 알고리즘: 마우스를 클릭하면 총알이 발사된다.
+승리 알고리즘: 먼저 적 20명을 처치한 팀이 승리한다.
+맵 알고리즘: 게임을 시작할 때 랜덤으로 맵을 선택한다.
+
+코드:
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLOCK WAR 5 VS 5</title>
+<style>
+body{margin:0;background:#101827;color:white;font-family:Arial;text-align:center}
+main{max-width:1000px;margin:auto;padding:15px}
+canvas{width:100%;background:#456044;display:block;border-radius:10px;touch-action:none}
+button,select{padding:10px;background:#334155;color:white;border:1px solid #64748b;border-radius:8px;cursor:pointer}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+#cover{position:absolute;inset:0;background:#101827e8;display:flex;align-items:center;justify-content:center}
+.stage{position:relative;margin-top:12px}
+.blue{color:#60a5fa}.red{color:#f87171}
+.info{padding:12px;background:#172033;border-radius:10px;margin-top:10px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h2>BLOCK WAR <span class="blue">5 VS 5</span></h2>
+<h3><span class="blue">BLUE <b id="bscore">0</b></span> :
+<span class="red">RED <b id="rscore">0</b></span></h3>
+</header>
+<div class="info">
+맵: <b id="map">대기</b>
+<select id="gun">
+<option value="rifle">소총</option>
+<option value="pistol">권총</option>
+<option value="shotgun">산탄총</option>
+<option value="sniper">저격총</option>
+</select>
+<button id="go">경기 시작</button>
+</div>
+<div class="stage">
+<canvas id="view" width="960" height="540"></canvas>
+<div id="cover"><div>
+<h1>BLOCK WAR</h1>
+<p>파란 팀 5명 VS 빨간 팀 5명</p>
+<p>먼저 20킬을 달성하면 승리!</p>
+<button id="begin">게임 시작</button>
+</div></div>
+</div>
+<div class="info">
+내 처치: <b id="mykills">0</b> |
+생존 인원: <b id="alive">5 : 5</b> |
+체력: <b id="health">100</b>
+</div>
+<p>WASD 이동 · 마우스 조준 · 클릭 발사 · 1~4 무기 변경</p>
+<div id="status"></div>
+</main>
+<script>
+(()=>{
+const el=id=>document.getElementById(id);
+const canvas=el('view'),ctx=canvas.getContext('2d');
+const W=960,H=540;
+const maps=[
+['숲','#557a49','#315333'],
+['사막','#c5a36c','#8b704a'],
+['도시','#707b88','#424b58'],
+['설원','#d6e5ef','#879dad'],
+['화산','#594342','#302627']
+];
+const weapons={
+rifle:{damage:25,rate:220,spread:.035,count:1,speed:11},
+pistol:{damage:35,rate:390,spread:.02,count:1,speed:10},
+shotgun:{damage:13,rate:850,spread:.22,count:7,speed:9},
+sniper:{damage:100,rate:1200,spread:0,count:1,speed:16}
+};
+let players=[],walls=[],bullets=[],score=[0,0],kills=0;
+let playing=false,mouse={x:600,y:270},keys={};
+let weapon='rifle',last=0,world=maps[0];
+
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+function distance(a,b){
+return Math.hypot(a.x-b.x,a.y-b.y);
+}
+
+function makeWorld(){
+walls=[];
+for(let i=0;i<25;i++){
+let x=rnd(180,780),y=rnd(35,505),r=rnd(16,32);
+if(Math.abs(y-270)<65)continue;
+walls.push({x,y,r});
+}
+}
+
+function makePlayer(team,index){
+return{
+x:team===0?rnd(40,135):rnd(825,920),
+y:rnd(50,490),
+team,index,hp:100,alive:true,
+respawn:0,fire:rnd(0,1000),angle:0,
+speed:team===0&&index===0?3.4:2.5
+};
+}
+
+function start(){
+world=maps[Math.floor(Math.random()*maps.length)];
+makeWorld();
+players=[];
+bullets=[];
+score=[0,0];
+kills=0;
+
+for(let t=0;t<2;t++)
+for(let i=0;i<5;i++)
+players.push(makePlayer(t,i));
+
+playing=true;
+last=0;
+el('cover').style.display='none';
+el('map').textContent=world[0];
+el('bscore').textContent=0;
+el('rscore').textContent=0;
+el('mykills').textContent=0;
+el('status').textContent='전투 시작!';
+}
+
+function blocked(x,y){
+return walls.some(o=>Math.hypot(x-o.x,y-o.y)<o.r+12);
+}
+
+function move(p,dx,dy){
+let nx=clamp(p.x+dx,12,W-12);
+let ny=clamp(p.y+dy,12,H-12);
+if(!blocked(nx,p.y))p.x=nx;
+if(!blocked(p.x,ny))p.y=ny;
+}
+
+function targetFor(p){
+let enemies=players.filter(q=>q.alive&&q.team!==p.team);
+enemies.sort((a,b)=>distance(p,a)-distance(p,b));
+return enemies[0]||null;
+}
+
+function visible(a,b){
+for(const o of walls){
+let dx=b.x-a.x,dy=b.y-a.y;
+let t=clamp(((o.x-a.x)*dx+(o.y-a.y)*dy)/
+(dx*dx+dy*dy||1),0,1);
+if(Math.hypot(a.x+dx*t-o.x,a.y+dy*t-o.y)<o.r)
+return false;
+}
+return true;
+}
+
+function fire(p,target,now){
+let g=p===players[0]?weapons[weapon]:weapons.rifle;
+if(now-p.fire<g.rate)return;
+p.fire=now;
+let a=Math.atan2(target.y-p.y,target.x-p.x);
+
+for(let i=0;i<g.count;i++){
+let angle=a+rnd(-g.spread,g.spread);
+bullets.push({
+x:p.x+Math.cos(a)*16,
+y:p.y+Math.sin(a)*16,
+vx:Math.cos(angle)*g.speed,
+vy:Math.sin(angle)*g.speed,
+team:p.team,owner:p,
+damage:g.damage,life:65
+});
+}
+}
+
+function finish(team){
+playing=false;
+el('cover').style.display='flex';
+el('cover').innerHTML=
+'<div><h1>'+(team===0?'🏆 승리!':'패배!')+
+'</h1><p>최종 점수 '+score[0]+' : '+score[1]+
+'</p><button id="again">다시 플레이</button></div>';
+el('again').onclick=start;
+el('status').textContent=team===0?'BLUE TEAM WIN':'RED TEAM WIN';
+}
+
+function die(p,b){
+p.hp-=b.damage;
+if(p.hp>0)return;
+
+p.alive=false;
+p.respawn=2200;
+score[b.team]++;
+
+if(b.owner===players[0])kills++;
+
+el('bscore').textContent=score[0];
+el('rscore').textContent=score[1];
+el('mykills').textContent=kills;
+
+if(score[b.team]>=20)finish(b.team);
+}
+
+function update(dt,now){
+if(!playing)return;
+let me=players[0];
+
+if(me.alive){
+let dx=(keys.d?1:0)-(keys.a?1:0);
+let dy=(keys.s?1:0)-(keys.w?1:0);
+let n=Math.hypot(dx,dy)||1;
+
+move(me,dx/n*me.speed*dt/16.67,
+dy/n*me.speed*dt/16.67);
+
+me.angle=Math.atan2(mouse.y-me.y,mouse.x-me.x);
+
+if(keys.fire)fire(me,mouse,now);
+}
+
+for(const p of players){
+if(!p.alive){
+p.respawn-=dt;
+if(p.respawn<=0&&playing)
+Object.assign(p,makePlayer(p.team,p.index));
+continue;
+}
+
+if(p===me)continue;
+
+let target=targetFor(p);
+if(!target)continue;
+
+let d=distance(p,target);
+let a=Math.atan2(target.y-p.y,target.x-p.x);
+
+p.angle=a;
+
+if(d>125)
+move(p,Math.cos(a)*p.speed*dt/16.67,
+Math.sin(a)*p.speed*dt/16.67);
+
+if(d<520&&visible(p,target))
+fire(p,target,now);
+}
+
+for(let i=bullets.length-1;i>=0;i--){
+let b=bullets[i];
+b.x+=b.vx*dt/16.67;
+b.y+=b.vy*dt/16.67;
+b.life--;
+
+let wall=blocked(b.x,b.y);
+
+let victim=players.find(p=>
+p.alive&&p.team!==b.team&&
+Math.hypot(p.x-b.x,p.y-b.y)<14
+);
+
+if(victim)die(victim,b);
+
+if(wall||victim||b.life<=0||
+b.x<0||b.x>W||b.y<0||b.y>H)
+bullets.splice(i,1);
+}
+
+el('alive').textContent=
+players.filter(p=>p.team===0&&p.alive).length+
+' : '+
+players.filter(p=>p.team===1&&p.alive).length;
+
+el('health').textContent=
+me.alive?Math.max(0,me.hp):'부활 중';
+}
+
+function draw(){
+ctx.fillStyle=world[1];
+ctx.fillRect(0,0,W,H);
+
+ctx.strokeStyle=world[2];
+ctx.globalAlpha=.28;
+
+for(let x=0;x<W;x+=48){
+ctx.beginPath();
+ctx.moveTo(x,0);
+ctx.lineTo(x,H);
+ctx.stroke();
+}
+
+for(let y=0;y<H;y+=48){
+ctx.beginPath();
+ctx.moveTo(0,y);
+ctx.lineTo(W,y);
+ctx.stroke();
+}
+
+ctx.globalAlpha=1;
+
+for(const o of walls){
+ctx.fillStyle=world[2];
+ctx.beginPath();
+ctx.arc(o.x,o.y,o.r,0,Math.PI*2);
+ctx.fill();
+ctx.strokeStyle='#ffffff55';
+ctx.stroke();
+}
+
+for(const b of bullets){
+ctx.fillStyle=b.team===0?'#93c5fd':'#fca5a5';
+ctx.beginPath();
+ctx.arc(b.x,b.y,4,0,7);
+ctx.fill();
+}
+
+for(const p of players){
+if(!p.alive)continue;
+
+ctx.save();
+ctx.translate(p.x,p.y);
+ctx.rotate(p.angle);
+ctx.fillStyle='#242424';
+ctx.fillRect(3,-4,22,8);
+ctx.restore();
+
+ctx.fillStyle=p.team===0?'#2684ef':'#ef4444';
+ctx.beginPath();
+ctx.arc(p.x,p.y,12,0,7);
+ctx.fill();
+
+if(p===players[0]){
+ctx.strokeStyle='white';
+ctx.lineWidth=3;
+ctx.stroke();
+}
+
+ctx.fillStyle='#172033';
+ctx.fillRect(p.x-15,p.y-23,30,5);
+
+ctx.fillStyle=p.hp>50?'#4ade80':'#facc15';
+ctx.fillRect(p.x-15,p.y-23,
+30*clamp(p.hp/100,0,1),5);
+}
+
+if(playing){
+ctx.strokeStyle='white';
+ctx.beginPath();
+ctx.arc(mouse.x,mouse.y,8,0,7);
+ctx.moveTo(mouse.x-13,mouse.y);
+ctx.lineTo(mouse.x+13,mouse.y);
+ctx.moveTo(mouse.x,mouse.y-13);
+ctx.lineTo(mouse.x,mouse.y+13);
+ctx.stroke();
+}
+}
+
+function loop(now){
+let dt=last?Math.min(40,now-last):16.67;
+last=now;
+update(dt,now);
+draw();
+requestAnimationFrame(loop);
+}
+
+el('go').onclick=start;
+el('begin').onclick=start;
+
+el('gun').onchange=e=>weapon=e.target.value;
+
+canvas.addEventListener('mousemove',e=>{
+let r=canvas.getBoundingClientRect();
+mouse.x=(e.clientX-r.left)*W/r.width;
+mouse.y=(e.clientY-r.top)*H/r.height;
+});
+
+canvas.addEventListener('mousedown',e=>{
+if(e.button===0)keys.fire=true;
+});
+
+window.addEventListener('mouseup',()=>keys.fire=false);
+
+window.addEventListener('keydown',e=>{
+let k=e.key.toLowerCase();
+
+if(['w','a','s','d','1','2','3','4'].includes(k))
+e.preventDefault();
+
+keys[k]=true;
+
+if(k>='1'&&k<='4'){
+weapon=['rifle','pistol','shotgun','sniper'][Number(k)-1];
+el('gun').value=weapon;
+}
+});
+
+window.addEventListener('keyup',e=>{
+keys[e.key.toLowerCase()]=false;
+});
+
+draw();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
+프로그램
+개선
+AI를 활용해 프로그램을 어떻게 더 개선할 수 있는지에 대해 생각해보고 작성하세요.
+수업에 관한 내용을 이해하지 못했을 때 AI가 수업에 관한 내용을 요약할것 같습니다.
+바이브코딩
+활동소감
+AI를 활용한 나만의 프로그램 만들기 활동 소감을 작성하세요.
+제가 직접 게임을 만드니 재미있었습니다.
+
+
+

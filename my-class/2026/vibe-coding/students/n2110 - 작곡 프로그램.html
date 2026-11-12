@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Maker Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+   
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Custom Scrollbar Styling */
+        ::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Active note styling */
+        .note-active {
+            background-color: #10b981 !important;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+        /* Resize handle for note duration */
+        .resize-handle {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 8px;
+            cursor: e-resize;
+            background: rgba(255, 255, 255, 0.3);
+            border-top-right-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+        .resize-handle:hover {
+            background: rgba(255, 255, 255, 0.75);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+
+    <!-- Top Header Bar -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-lg z-30">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center text-slate-950 text-xl font-black shadow-lg shadow-emerald-500/20">
+                <i class="fa-solid fa-music"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-lg text-white tracking-tight">Music Maker Studio</h1>
+                <p class="text-[11px] text-slate-400 font-medium">중학생도 쉽게 만드는 나만의 음악 작곡소</p>
+            </div>
+        </div>
+
+
+        <!-- Master Controls -->
+        <div class="flex items-center space-x-4 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+            <button id="globalPlayBtn" onclick="togglePlay()" class="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center space-x-2 text-xs shadow">
+                <i id="globalPlayIcon" class="fa-solid fa-play"></i>
+                <span id="globalPlayText">재생</span>
+            </button>
+            <button onclick="stopAndRewind()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg transition text-xs">
+                <i class="fa-solid fa-backward-step"></i> 처음으로
+            </button>
+            <div class="flex items-center space-x-2 border-l border-slate-800 pl-4 text-xs font-semibold text-slate-400">
+                <span>템포 (BPM):</span>
+                <input type="range" id="bpmSlider" min="60" max="180" value="120" oninput="updateBPM(this.value)" class="w-24 accent-emerald-500">
+                <span id="bpmDisplay" class="font-mono text-emerald-400 w-8">120</span>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex overflow-hidden">
+       
+        <!-- Left Sidebar: Part Navigation & Saved Lists -->
+        <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col p-4 space-y-4 shrink-0">
+            <!-- Main 3 Category Buttons -->
+            <div class="space-y-2">
+                <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">작업 파트 선택</label>
+                <div class="grid grid-cols-1 gap-2">
+                    <button id="btn-beat" onclick="switchTab('beat')" class="w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-slate-800 bg-slate-800 text-white">
+                        <span class="flex items-center space-x-2"><i class="fa-solid fa-drum text-emerald-400"></i><span>비트 파트</span></span>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500"></i>
+                    </button>
+                    <button id="btn-bass" onclick="switchTab('bass')" class="w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/50">
+                        <span class="flex items-center space-x-2"><i class="fa-solid fa-wave-square text-purple-400"></i><span>베이스 파트</span></span>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500"></i>
+                    </button>
+                    <button id="btn-melody" onclick="switchTab('melody')" class="w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/50">
+                        <span class="flex items-center space-x-2"><i class="fa-solid fa-guitar text-blue-400"></i><span>멜로디 파트</span></span>
+                        <i class="fa-solid fa-chevron-right text-xs text-slate-500"></i>
+                    </button>
+                    <button id="btn-song" onclick="switchTab('song')" class="w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 mt-2">
+                        <span class="flex items-center space-x-2"><i class="fa-solid fa-compact-disc"></i><span>곡 만들기 & 완성함</span></span>
+                        <i class="fa-solid fa-sliders text-xs"></i>
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Saved Part Items Section -->
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+                <div class="border-t border-slate-800 pt-3">
+                    <h3 class="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                        <span>저장된 비트 파트</span>
+                        <span id="beatCount" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-emerald-400">0</span>
+                    </h3>
+                    <div id="savedBeatList" class="space-y-1.5"></div>
+                </div>
+
+
+                <div class="border-t border-slate-800 pt-3">
+                    <h3 class="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                        <span>저장된 베이스 파트</span>
+                        <span id="bassCount" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-purple-400">0</span>
+                    </h3>
+                    <div id="savedBassList" class="space-y-1.5"></div>
+                </div>
+
+
+                <div class="border-t border-slate-800 pt-3">
+                    <h3 class="text-xs font-bold text-slate-400 mb-2 flex items-center justify-between">
+                        <span>저장된 멜로디 파트</span>
+                        <span id="melodyCount" class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-blue-400">0</span>
+                    </h3>
+                    <div id="savedMelodyList" class="space-y-1.5"></div>
+                </div>
+            </div>
+        </aside>
+
+
+        <!-- Main Workspace Editor View -->
+        <main class="flex-1 bg-slate-950 flex flex-col overflow-hidden relative">
+           
+            <!-- Contextual Toolbar -->
+            <div class="bg-slate-900/60 border-b border-slate-800 px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span id="currentPartTitle" class="font-extrabold text-base text-white">비트 파트 제작</span>
+                   
+                    <!-- Instrument Selectors (For Bass and Melody) -->
+                    <div id="instrumentSelectorGroup" class="hidden flex items-center space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                        <button id="inst-piano" onclick="setInstrument('piano')" class="px-3 py-1 text-xs rounded-lg font-bold transition bg-emerald-600 text-white">피아노</button>
+                        <button id="inst-synth" onclick="setInstrument('synth')" class="px-3 py-1 text-xs rounded-lg font-bold transition text-slate-400 hover:text-white">신디사이저</button>
+                        <button id="inst-guitar" onclick="setInstrument('guitar')" class="px-3 py-1 text-xs rounded-lg font-bold transition text-slate-400 hover:text-white">기타</button>
+                        <button id="inst-violin" onclick="setInstrument('violin')" class="px-3 py-1 text-xs rounded-lg font-bold transition text-slate-400 hover:text-white">바이올린</button>
+                    </div>
+                </div>
+
+
+                <div class="flex items-center space-x-3">
+                    <!-- Part Playback Button -->
+                    <button id="playCurrentPartBtn" onclick="playCurrentPartOnly()" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1.5 shadow">
+                        <i class="fa-solid fa-circle-play"></i>
+                        <span id="playPartText">비트 파트 재생</span>
+                    </button>
+
+
+                    <!-- Save & Reset buttons -->
+                    <button id="savePartBtn" onclick="saveCurrentPart()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1.5 shadow">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>파트 저장</span>
+                    </button>
+                    <button onclick="clearCurrentGrid()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white font-semibold rounded-lg text-xs transition">
+                        초기화
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Sequencer & Piano Roll Section -->
+            <div id="editorContainer" class="flex-1 flex overflow-hidden">
+                <!-- Instrument Header / Piano Keys Column (Left Side) -->
+                <div id="leftHeaderColumn" class="w-48 bg-slate-900/90 border-r border-slate-800 flex flex-col shrink-0 z-20 shadow-md">
+                    <div class="h-8 border-b border-slate-800 bg-slate-900 flex items-center px-3 font-bold text-xs text-slate-400">
+                        악기 / 건반
+                    </div>
+                    <div id="leftHeaderContent" class="flex-1 overflow-hidden"></div>
+                </div>
+
+
+                <!-- Grid Canvas Area (Endless Horizontal Step Sequencer) -->
+                <div id="gridScrollArea" class="flex-1 overflow-x-auto overflow-y-hidden relative bg-slate-950">
+                    <!-- Step Numbers Header -->
+                    <div id="timelineHeader" class="h-8 border-b border-slate-800 flex bg-slate-900/40 sticky top-0 z-10"></div>
+                   
+                    <!-- Playhead Pointer -->
+                    <div id="playhead" class="absolute top-8 bottom-0 w-1 bg-emerald-400 z-30 pointer-events-none transition-all duration-75 shadow-[0_0_12px_#10b981]"></div>
+
+
+                    <!-- Grid Rows -->
+                    <div id="gridRows" class="relative"></div>
+                </div>
+            </div>
+
+
+            <!-- Song Composition Tab View -->
+            <div id="songStudioContainer" class="hidden flex-1 p-8 overflow-y-auto bg-slate-950">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl space-y-4">
+                        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                            <span>저장된 파트로 곡 만들기</span>
+                        </h2>
+                        <p class="text-xs text-slate-400">만들어둔 비트, 베이스, 멜로디 파트를 결합하여 하나의 곡으로 합성하세요.</p>
+
+
+                        <div class="grid grid-cols-3 gap-4 pt-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">비트 파트 선택</label>
+                                <select id="selectSongBeat" class="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">베이스 파트 선택</label>
+                                <select id="selectSongBass" class="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-purple-500"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-400 mb-1">멜로디 파트 선택</label>
+                                <select id="selectSongMelody" class="w-full bg-slate-950 border border-slate-800 text-white rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"></select>
+                            </div>
+                        </div>
+
+
+                        <button onclick="saveCurrentSong()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold rounded-xl text-sm transition shadow-lg shadow-amber-500/20">
+                            합성된 곡 저장하기
+                        </button>
+                    </div>
+
+
+                    <!-- Saved Songs List -->
+                    <div class="space-y-3">
+                        <h3 class="text-sm font-bold text-slate-300">저장된 곡 목록</h3>
+                        <div id="savedSongsList" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- Custom Save Modal UI -->
+    <div id="saveModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                </div>
+                <h3 id="modalTitle" class="font-extrabold text-white text-base">파트 저장</h3>
+            </div>
+           
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1.5">저장할 이름</label>
+                <input type="text" id="saveNameInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm font-medium text-white focus:outline-none focus:border-emerald-500">
+                <p class="text-[11px] text-slate-500 mt-1">※ 이미 존재하는 이름일 경우 자동으로 뒤에 숫자가 붙습니다.</p>
+            </div>
+
+
+            <div class="flex items-center space-x-2 pt-2">
+                <button onclick="closeSaveModal()" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition">취소</button>
+                <button onclick="confirmSaveModal()" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl text-xs transition shadow-lg shadow-emerald-500/20">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Web Audio Engine and UI Controller Script -->
+    <script>
+        // --- Configuration & Constants ---
+        const TOTAL_STEPS = 32;
+        const STEP_WIDTH = 32;
+        const ROW_HEIGHT = 36;
+
+
+        const DRUMS = [
+            { id: 'kick', name: '킥드럼', icon: 'fa-drum' },
+            { id: 'snare', name: '스네어드럼', icon: 'fa-circle-dot' },
+            { id: 'openhat', name: '하이햇 (오픈)', icon: 'fa-sun' },
+            { id: 'closedhat', name: '하이햇 (클로즈)', icon: 'fa-circle-notch' }
+        ];
+
+
+        const PIANO_NOTES = [
+            { note: 'C5', freq: 523.25, isBlack: false },
+            { note: 'B4', freq: 493.88, isBlack: false },
+            { note: 'A#4', freq: 466.16, isBlack: true },
+            { note: 'A4', freq: 440.00, isBlack: false },
+            { note: 'G#4', freq: 415.30, isBlack: true },
+            { note: 'G4', freq: 392.00, isBlack: false },
+            { note: 'F#4', freq: 369.99, isBlack: true },
+            { note: 'F4', freq: 349.23, isBlack: false },
+            { note: 'E4', freq: 329.63, isBlack: false },
+            { note: 'D#4', freq: 311.13, isBlack: true },
+            { note: 'D4', freq: 293.66, isBlack: false },
+            { note: 'C#4', freq: 277.18, isBlack: true },
+            { note: 'C4', freq: 261.63, isBlack: false },
+            { note: 'B3', freq: 246.94, isBlack: false },
+            { note: 'A3', freq: 220.00, isBlack: false }
+        ];
+
+
+        // --- Application State ---
+        let currentTab = 'beat'; // beat, bass, melody, song
+        let isPlaying = false;
+        let isPartOnlyPlaying = false;
+        let playheadStep = 0;
+        let bpm = 120;
+        let timerId = null;
+
+
+        let editorState = {
+            beat: {
+                grid: Array(4).fill(null).map(() => Array(TOTAL_STEPS).fill(false))
+            },
+            bass: {
+                activeInst: 'piano',
+                instruments: {
+                    piano: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    synth: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    guitar: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    violin: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0))
+                }
+            },
+            melody: {
+                activeInst: 'piano',
+                instruments: {
+                    piano: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    synth: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    guitar: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0)),
+                    violin: Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0))
+                }
+            }
+        };
+
+
+        let savedStorage = {
+            beat: [],
+            bass: [],
+            melody: [],
+            song: []
+        };
+
+
+        // --- Web Audio Synthesizer ---
+        let audioCtx = null;
+
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+
+        function playSound(type, param, instrument = 'piano', durationSteps = 1) {
+            const ctx = getAudioContext();
+            const now = ctx.currentTime;
+            const durationSec = (60 / bpm / 4) * durationSteps;
+
+
+            if (type === 'beat') {
+                if (param === 'kick') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.frequency.setValueAtTime(130, now);
+                    osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    gain.gain.setValueAtTime(1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (param === 'snare') {
+                    const noise = ctx.createBufferSource();
+                    const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < buffer.length; i++) output[i] = Math.random() * 2 - 1;
+                    noise.buffer = buffer;
+
+
+                    const noiseGain = ctx.createGain();
+                    noiseGain.gain.setValueAtTime(0.7, now);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    noise.connect(noiseGain);
+                    noiseGain.connect(ctx.destination);
+                    noise.start(now);
+                } else if (param === 'openhat' || param === 'closedhat') {
+                    const isClosed = param === 'closedhat';
+                    const len = isClosed ? 0.05 : 0.25;
+                    const noise = ctx.createBufferSource();
+                    const buffer = ctx.createBuffer(1, ctx.sampleRate * len, ctx.sampleRate);
+                    const output = buffer.getChannelData(0);
+                    for (let i = 0; i < buffer.length; i++) output[i] = Math.random() * 2 - 1;
+                    noise.buffer = buffer;
+
+
+                    const filter = ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.frequency.value = 7000;
+
+
+                    const gain = ctx.createGain();
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + len);
+
+
+                    noise.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(ctx.destination);
+                    noise.start(now);
+                }
+            } else if (type === 'tone') {
+                const freq = param;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+
+                if (instrument === 'piano') {
+                    osc.type = 'triangle';
+                    gain.gain.setValueAtTime(0.8, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + Math.max(0.2, durationSec));
+                } else if (instrument === 'synth') {
+                    osc.type = 'sawtooth';
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec);
+                } else if (instrument === 'guitar') {
+                    osc.type = 'square';
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec * 0.8);
+                } else if (instrument === 'violin') {
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.01, now);
+                    gain.gain.linearRampToValueAtTime(0.6, now + 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + durationSec + 0.1);
+                }
+
+
+                osc.frequency.setValueAtTime(freq, now);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now);
+                osc.stop(now + durationSec + 0.1);
+            }
+        }
+
+
+        function playSingleInstrument(instId, freq = null) {
+            getAudioContext();
+            if (currentTab === 'beat') {
+                playSound('beat', instId);
+            } else {
+                const activeInst = editorState[currentTab].activeInst;
+                playSound('tone', freq || 261.63, activeInst, 2);
+            }
+        }
+
+
+        // --- Tab Navigation ---
+        function switchTab(tab) {
+            currentTab = tab;
+            stopAndRewind();
+
+
+            ['beat', 'bass', 'melody', 'song'].forEach(t => {
+                const btn = document.getElementById(`btn-${t}`);
+                if (!btn) return;
+                if (t === tab) {
+                    btn.className = "w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-slate-700 bg-slate-800 text-white shadow-md";
+                } else {
+                    btn.className = "w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-between transition border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/50";
+                }
+            });
+
+
+            const titleMap = {
+                beat: '비트 파트 제작',
+                bass: '베이스 파트 제작',
+                melody: '멜로디 파트 제작',
+                song: '곡 조합 & 완성 스튜디오'
+            };
+            document.getElementById('currentPartTitle').innerText = titleMap[tab];
+
+
+            const editorCont = document.getElementById('editorContainer');
+            const songCont = document.getElementById('songStudioContainer');
+            const instSelector = document.getElementById('instrumentSelectorGroup');
+
+
+            if (tab === 'song') {
+                editorCont.classList.add('hidden');
+                songCont.classList.remove('hidden');
+                instSelector.classList.add('hidden');
+                document.getElementById('playCurrentPartBtn').classList.add('hidden');
+                document.getElementById('savePartBtn').classList.add('hidden');
+                updateSongStudioSelectors();
+                renderSongList();
+            } else {
+                editorCont.classList.remove('hidden');
+                songCont.classList.add('hidden');
+                document.getElementById('playCurrentPartBtn').classList.remove('hidden');
+                document.getElementById('savePartBtn').classList.remove('hidden');
+
+
+                const playTextMap = {
+                    beat: '비트 파트 재생',
+                    bass: '베이스 파트 재생',
+                    melody: '멜로디 파트 재생'
+                };
+                document.getElementById('playPartText').innerText = playTextMap[tab];
+
+
+                if (tab === 'beat') {
+                    instSelector.classList.add('hidden');
+                } else {
+                    instSelector.classList.remove('hidden');
+                    updateInstrumentButtons(editorState[tab].activeInst);
+                }
+
+
+                renderLeftHeader();
+                renderTimelineHeader();
+                renderEditor();
+            }
+        }
+
+
+        function renderLeftHeader() {
+            const container = document.getElementById('leftHeaderContent');
+            container.innerHTML = '';
+
+
+            if (currentTab === 'beat') {
+                DRUMS.forEach(drum => {
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between px-3 border-b border-slate-800/80 bg-slate-900/40 font-semibold text-xs text-slate-300";
+                    row.style.height = `${ROW_HEIGHT}px`;
+                    row.innerHTML = `
+                        <span class="flex items-center space-x-2 truncate">
+                            <i class="fa-solid ${drum.icon} text-emerald-400 text-xs"></i>
+                            <span class="truncate">${drum.name}</span>
+                        </span>
+                        <button onclick="playSingleInstrument('${drum.id}')" title="이 악기만 들어보기" class="p-1 text-slate-400 hover:text-emerald-400 transition">
+                            <i class="fa-solid fa-play text-xs"></i>
+                        </button>
+                    `;
+                    container.appendChild(row);
+                });
+            } else {
+                PIANO_NOTES.forEach(noteObj => {
+                    const row = document.createElement('div');
+                    const isBlack = noteObj.isBlack;
+                    row.className = `flex items-center justify-between px-3 border-b border-slate-800/80 font-mono text-xs ${
+                        isBlack ? 'bg-slate-950 text-slate-400' : 'bg-slate-900 text-slate-200'
+                    }`;
+                    row.style.height = `${ROW_HEIGHT}px`;
+                    row.innerHTML = `
+                        <span class="font-bold">${noteObj.note}</span>
+                        <button onclick="playSingleInstrument('', ${noteObj.freq})" title="음 듣기" class="p-1 text-slate-400 hover:text-emerald-400 transition">
+                            <i class="fa-solid fa-play text-[10px]"></i>
+                        </button>
+                    `;
+                    container.appendChild(row);
+                });
+            }
+        }
+
+
+        // --- Sequencer & Loop Logic ---
+        function togglePlay() {
+            getAudioContext();
+            isPlaying = !isPlaying;
+            isPartOnlyPlaying = false;
+            updatePlayBtnUI();
+
+
+            if (isPlaying) {
+                startSequencer();
+            } else {
+                stopSequencer();
+            }
+        }
+
+
+        function playCurrentPartOnly() {
+            getAudioContext();
+            if (isPlaying && isPartOnlyPlaying) {
+                togglePlay();
+                return;
+            }
+            isPlaying = true;
+            isPartOnlyPlaying = true;
+            updatePlayBtnUI();
+            startSequencer();
+        }
+
+
+        function updatePlayBtnUI() {
+            const btn = document.getElementById('globalPlayBtn');
+            const icon = document.getElementById('globalPlayIcon');
+            const text = document.getElementById('globalPlayText');
+
+
+            if (isPlaying) {
+                btn.className = "px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg transition flex items-center space-x-2 text-xs shadow";
+                icon.className = "fa-solid fa-pause";
+                text.innerText = "일시정지";
+            } else {
+                btn.className = "px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg transition flex items-center space-x-2 text-xs shadow";
+                icon.className = "fa-solid fa-play";
+                text.innerText = "재생";
+            }
+        }
+
+
+        function stopAndRewind() {
+            isPlaying = false;
+            isPartOnlyPlaying = false;
+            stopSequencer();
+            playheadStep = 0;
+            updatePlayheadPosition();
+            updatePlayBtnUI();
+        }
+
+
+        function updateBPM(val) {
+            bpm = parseInt(val);
+            document.getElementById('bpmDisplay').innerText = bpm;
+            if (isPlaying) {
+                stopSequencer();
+                startSequencer();
+            }
+        }
+
+
+        function startSequencer() {
+            if (timerId) clearInterval(timerId);
+            const intervalMs = (60 / bpm / 4) * 1000;
+            timerId = setInterval(() => {
+                stepTrigger();
+                playheadStep = (playheadStep + 1) % TOTAL_STEPS;
+            }, intervalMs);
+        }
+
+
+        function stopSequencer() {
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+        }
+
+
+        function updatePlayheadPosition() {
+            const playhead = document.getElementById('playhead');
+            if (playhead) {
+                playhead.style.left = `${playheadStep * STEP_WIDTH}px`;
+            }
+        }
+
+
+        function stepTrigger() {
+            updatePlayheadPosition();
+
+
+            if (currentTab !== 'song') {
+                if (currentTab === 'beat') {
+                    for (let r = 0; r < DRUMS.length; r++) {
+                        if (editorState.beat.grid[r][playheadStep]) {
+                            playSound('beat', DRUMS[r].id);
+                        }
+                    }
+                } else {
+                    const activeInst = editorState[currentTab].activeInst;
+                    const grid = editorState[currentTab].instruments[activeInst];
+                    for (let r = 0; r < PIANO_NOTES.length; r++) {
+                        const dur = grid[r][playheadStep];
+                        if (dur > 0) {
+                            playSound('tone', PIANO_NOTES[r].freq, activeInst, dur);
+                        }
+                    }
+                }
+            } else if (activePlayingSong) {
+                if (activePlayingSong.beat) {
+                    activePlayingSong.beat.data.forEach((row, r) => {
+                        if (row[playheadStep]) playSound('beat', DRUMS[r].id);
+                    });
+                }
+                if (activePlayingSong.bass) {
+                    const inst = activePlayingSong.bass.data.instrument;
+                    activePlayingSong.bass.data.grid.forEach((row, r) => {
+                        const dur = row[playheadStep];
+                        if (dur > 0) playSound('tone', PIANO_NOTES[r].freq, inst, dur);
+                    });
+                }
+                if (activePlayingSong.melody) {
+                    const inst = activePlayingSong.melody.data.instrument;
+                    activePlayingSong.melody.data.grid.forEach((row, r) => {
+                        const dur = row[playheadStep];
+                        if (dur > 0) playSound('tone', PIANO_NOTES[r].freq, inst, dur);
+                    });
+                }
+            }
+        }
+
+
+        // --- Timeline & Grid Rendering Functions ---
+        function renderTimelineHeader() {
+            const header = document.getElementById('timelineHeader');
+            header.innerHTML = '';
+            for (let i = 0; i < TOTAL_STEPS; i++) {
+                const stepCell = document.createElement('div');
+                stepCell.className = `flex items-center justify-center border-r border-slate-800 text-[10px] font-mono font-bold shrink-0 ${
+                    i % 4 === 0 ? 'bg-slate-800 text-emerald-400' : 'text-slate-500'
+                }`;
+                stepCell.style.width = `${STEP_WIDTH}px`;
+                stepCell.innerText = i + 1;
+                header.appendChild(stepCell);
+            }
+        }
+
+
+        function updateInstrumentButtons(active) {
+            ['piano', 'synth', 'guitar', 'violin'].forEach(inst => {
+                const btn = document.getElementById(`inst-${inst}`);
+                if (!btn) return;
+                if (inst === active) {
+                    btn.className = "px-3 py-1 text-xs rounded-lg font-bold transition bg-emerald-600 text-white shadow";
+                } else {
+                    btn.className = "px-3 py-1 text-xs rounded-lg font-bold transition text-slate-400 hover:text-white";
+                }
+            });
+        }
+
+
+        function setInstrument(inst) {
+            if (currentTab === 'bass' || currentTab === 'melody') {
+                editorState[currentTab].activeInst = inst;
+                updateInstrumentButtons(inst);
+                renderEditor();
+            }
+        }
+
+
+        function renderEditor() {
+            renderLeftHeader();
+            const gridRows = document.getElementById('gridRows');
+            gridRows.innerHTML = '';
+
+
+            const numRows = currentTab === 'beat' ? DRUMS.length : PIANO_NOTES.length;
+            const playhead = document.getElementById('playhead');
+            if (playhead) playhead.style.height = `${numRows * ROW_HEIGHT}px`;
+
+
+            for (let r = 0; r < numRows; r++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = "flex border-b border-slate-800/60 relative shrink-0";
+                rowDiv.style.height = `${ROW_HEIGHT}px`;
+
+
+                if (currentTab === 'beat') {
+                    for (let c = 0; c < TOTAL_STEPS; c++) {
+                        const cell = document.createElement('div');
+                        const isNoteActive = editorState.beat.grid[r][c];
+                        cell.className = `border-r border-slate-800/60 cursor-pointer transition flex items-center justify-center shrink-0 ${
+                            isNoteActive ? 'note-active' : (c % 4 === 0 ? 'bg-slate-900/60 hover:bg-slate-800' : 'bg-slate-950 hover:bg-slate-900')
+                        }`;
+                        cell.style.width = `${STEP_WIDTH}px`;
+                        cell.onclick = () => toggleBeatCell(r, c);
+                        rowDiv.appendChild(cell);
+                    }
+                } else {
+                    const activeInst = editorState[currentTab].activeInst;
+                    const grid = editorState[currentTab].instruments[activeInst];
+                   
+                    for (let c = 0; c < TOTAL_STEPS; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = `border-r border-slate-800/60 cursor-pointer transition shrink-0 ${
+                            c % 4 === 0 ? 'bg-slate-900/60 hover:bg-slate-800' : 'bg-slate-950 hover:bg-slate-900'
+                        }`;
+                        cell.style.width = `${STEP_WIDTH}px`;
+                        cell.onclick = () => addPianoNote(r, c);
+                        rowDiv.appendChild(cell);
+                    }
+
+
+                    let c = 0;
+                    while (c < TOTAL_STEPS) {
+                        const dur = grid[r][c];
+                        if (dur > 0) {
+                            const noteCol = c;
+                            const noteBlock = document.createElement('div');
+                            noteBlock.className = "absolute rounded-md note-active flex items-center justify-between px-1 text-[10px] font-bold text-slate-950 shadow z-10 cursor-pointer hover:opacity-90 transition";
+                            noteBlock.style.left = `${c * STEP_WIDTH + 2}px`;
+                            noteBlock.style.top = '3px';
+                            noteBlock.style.width = `${dur * STEP_WIDTH - 4}px`;
+                            noteBlock.style.height = `${ROW_HEIGHT - 6}px`;
+                            noteBlock.title = "클릭하여 노트 삭제";
+
+
+                            noteBlock.onclick = (e) => {
+                                e.stopPropagation();
+                                deletePianoNote(r, noteCol);
+                            };
+
+
+                            const resizeHandle = document.createElement('div');
+                            resizeHandle.className = "resize-handle";
+                            resizeHandle.onclick = (e) => e.stopPropagation();
+                            resizeHandle.onmousedown = (e) => startResizingNote(e, r, noteCol);
+
+
+                            noteBlock.appendChild(resizeHandle);
+                            rowDiv.appendChild(noteBlock);
+                            c += dur;
+                        } else {
+                            c++;
+                        }
+                    }
+                }
+
+
+                gridRows.appendChild(rowDiv);
+            }
+        }
+
+
+        function toggleBeatCell(row, col) {
+            getAudioContext();
+            const newVal = !editorState.beat.grid[row][col];
+            editorState.beat.grid[row][col] = newVal;
+            if (newVal) {
+                playSound('beat', DRUMS[row].id);
+            }
+            renderEditor();
+        }
+
+
+        function addPianoNote(row, col) {
+            getAudioContext();
+            const activeInst = editorState[currentTab].activeInst;
+            const grid = editorState[currentTab].instruments[activeInst];
+           
+            if (grid[row][col] === 0) {
+                grid[row][col] = 1;
+                playSound('tone', PIANO_NOTES[row].freq, activeInst, 1);
+            }
+            renderEditor();
+        }
+
+
+        function deletePianoNote(row, col) {
+            const activeInst = editorState[currentTab].activeInst;
+            const grid = editorState[currentTab].instruments[activeInst];
+            grid[row][col] = 0;
+            renderEditor();
+        }
+
+
+        function startResizingNote(e, row, startCol) {
+            e.stopPropagation();
+            e.preventDefault();
+
+
+            const activeInst = editorState[currentTab].activeInst;
+            const grid = editorState[currentTab].instruments[activeInst];
+            const startX = e.clientX;
+            const initialDur = grid[row][startCol];
+
+
+            function onMouseMove(moveEvent) {
+                const diffX = moveEvent.clientX - startX;
+                const addedSteps = Math.round(diffX / STEP_WIDTH);
+                let newDur = Math.max(1, Math.min(TOTAL_STEPS - startCol, initialDur + addedSteps));
+
+
+                for (let k = 1; k < newDur; k++) {
+                    if (grid[row][startCol + k] > 0 && initialDur <= k) {
+                        newDur = k;
+                        break;
+                    }
+                }
+
+
+                if (grid[row][startCol] !== newDur) {
+                    grid[row][startCol] = newDur;
+                    renderEditor();
+                }
+            }
+
+
+            function onMouseUp() {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            }
+
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+
+
+        function clearCurrentGrid() {
+            if (currentTab === 'beat') {
+                editorState.beat.grid = Array(4).fill(null).map(() => Array(TOTAL_STEPS).fill(false));
+            } else if (currentTab === 'bass' || currentTab === 'melody') {
+                const activeInst = editorState[currentTab].activeInst;
+                editorState[currentTab].instruments[activeInst] = Array(15).fill(null).map(() => Array(TOTAL_STEPS).fill(0));
+            }
+            renderEditor();
+        }
+
+
+        // --- Save & Modal Naming Logic ---
+        let pendingSaveCategory = null;
+
+
+        function saveCurrentPart() {
+            if (currentTab === 'song') return;
+            pendingSaveCategory = currentTab;
+
+
+            let defaultName = "비트 파트";
+            if (currentTab === 'bass') defaultName = "베이스 파트";
+            if (currentTab === 'melody') defaultName = "멜로디 파트";
+
+
+            document.getElementById('modalTitle').innerText = `${defaultName} 저장`;
+            document.getElementById('saveNameInput').value = defaultName;
+            document.getElementById('saveModal').classList.remove('hidden');
+            document.getElementById('saveNameInput').focus();
+            document.getElementById('saveNameInput').select();
+        }
+
+
+        function closeSaveModal() {
+            document.getElementById('saveModal').classList.add('hidden');
+            pendingSaveCategory = null;
+        }
+
+
+        function confirmSaveModal() {
+            const rawName = document.getElementById('saveNameInput').value.trim();
+            let defaultName = "비트 파트";
+            if (pendingSaveCategory === 'bass') defaultName = "베이스 파트";
+            if (pendingSaveCategory === 'melody') defaultName = "멜로디 파트";
+            if (pendingSaveCategory === 'song') defaultName = "곡";
+
+
+            const baseName = rawName || defaultName;
+            const category = pendingSaveCategory;
+
+
+            if (category === 'song') {
+                executeSongSave(baseName);
+            } else {
+                executePartSave(category, baseName);
+            }
+
+
+            closeSaveModal();
+        }
+
+
+        function executePartSave(category, baseName) {
+            const list = savedStorage[category];
+            let finalName = baseName;
+            let counter = 1;
+
+
+            while (list.some(item => item.name === finalName)) {
+                finalName = `${baseName} ${counter}`;
+                counter++;
+            }
+
+
+            let dataCopy;
+            if (category === 'beat') {
+                dataCopy = JSON.parse(JSON.stringify(editorState.beat.grid));
+            } else {
+                const activeInst = editorState[category].activeInst;
+                dataCopy = {
+                    instrument: activeInst,
+                    grid: JSON.parse(JSON.stringify(editorState[category].instruments[activeInst]))
+                };
+            }
+
+
+            savedStorage[category].push({
+                id: Date.now(),
+                name: finalName,
+                data: dataCopy
+            });
+
+
+            updateSavedListsUI();
+        }
+
+
+        function deletePart(category, id) {
+            savedStorage[category] = savedStorage[category].filter(item => item.id !== id);
+            updateSavedListsUI();
+            if (currentTab === 'song') updateSongStudioSelectors();
+        }
+
+
+        function updateSavedListsUI() {
+            ['beat', 'bass', 'melody'].forEach(cat => {
+                const container = document.getElementById(`saved${cat.charAt(0).toUpperCase() + cat.slice(1)}List`);
+                const countBadge = document.getElementById(`${cat}Count`);
+                if (countBadge) countBadge.innerText = savedStorage[cat].length;
+                if (!container) return;
+                container.innerHTML = '';
+
+
+                if (savedStorage[cat].length === 0) {
+                    container.innerHTML = `<span class="text-[11px] text-slate-500 block italic">저장 항목 없음</span>`;
+                    return;
+                }
+
+
+                savedStorage[cat].forEach(item => {
+                    const badge = document.createElement('div');
+                    badge.className = "flex items-center justify-between bg-slate-950 hover:bg-slate-800 px-2.5 py-1.5 rounded-lg border border-slate-800 text-xs transition shadow-sm";
+                    badge.innerHTML = `
+                        <span class="font-bold text-slate-300 truncate">${item.name}</span>
+                        <button onclick="deletePart('${cat}', ${item.id})" class="text-slate-500 hover:text-rose-400 ml-2 p-0.5">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                    container.appendChild(badge);
+                });
+            });
+        }
+
+
+        // --- Song Studio Operations ---
+        let activePlayingSong = null;
+
+
+        function updateSongStudioSelectors() {
+            const beatSel = document.getElementById('selectSongBeat');
+            const bassSel = document.getElementById('selectSongBass');
+            const melodySel = document.getElementById('selectSongMelody');
+
+
+            beatSel.innerHTML = '<option value="">-- 비트 파트 없음 --</option>';
+            savedStorage.beat.forEach(item => {
+                beatSel.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+            });
+
+
+            bassSel.innerHTML = '<option value="">-- 베이스 파트 없음 --</option>';
+            savedStorage.bass.forEach(item => {
+                bassSel.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+            });
+
+
+            melodySel.innerHTML = '<option value="">-- 멜로디 파트 없음 --</option>';
+            savedStorage.melody.forEach(item => {
+                melodySel.innerHTML += `<option value="${item.id}">${item.name}</option>`;
+            });
+        }
+
+
+        function saveCurrentSong() {
+            const beatId = parseInt(document.getElementById('selectSongBeat').value);
+            const bassId = parseInt(document.getElementById('selectSongBass').value);
+            const melodyId = parseInt(document.getElementById('selectSongMelody').value);
+
+
+            if (!beatId && !bassId && !melodyId) {
+                alert("최소 1개 이상의 파트를 선택해주세요.");
+                return;
+            }
+
+
+            pendingSaveCategory = 'song';
+            document.getElementById('modalTitle').innerText = `곡 저장`;
+            document.getElementById('saveNameInput').value = "곡";
+            document.getElementById('saveModal').classList.remove('hidden');
+            document.getElementById('saveNameInput').focus();
+            document.getElementById('saveNameInput').select();
+        }
+
+
+        function executeSongSave(baseName) {
+            const beatId = parseInt(document.getElementById('selectSongBeat').value);
+            const bassId = parseInt(document.getElementById('selectSongBass').value);
+            const melodyId = parseInt(document.getElementById('selectSongMelody').value);
+
+
+            const list = savedStorage.song;
+            let finalName = baseName;
+            let counter = 1;
+
+
+            while (list.some(item => item.name === finalName)) {
+                finalName = `${baseName} ${counter}`;
+                counter++;
+            }
+
+
+            const newSong = {
+                id: Date.now(),
+                name: finalName,
+                beat: savedStorage.beat.find(item => item.id === beatId) || null,
+                bass: savedStorage.bass.find(item => item.id === bassId) || null,
+                melody: savedStorage.melody.find(item => item.id === melodyId) || null
+            };
+
+
+            savedStorage.song.push(newSong);
+            renderSongList();
+        }
+
+
+        function playSong(songId) {
+            const song = savedStorage.song.find(s => s.id === songId);
+            if (!song) return;
+
+
+            activePlayingSong = song;
+            stopAndRewind();
+            togglePlay();
+        }
+
+
+        function deleteSong(songId) {
+            savedStorage.song = savedStorage.song.filter(s => s.id !== songId);
+            renderSongList();
+        }
+
+
+        function renderSongList() {
+            const listContainer = document.getElementById('savedSongsList');
+            if (!listContainer) return;
+            listContainer.innerHTML = '';
+
+
+            if (savedStorage.song.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">저장된 곡이 없습니다.</p>`;
+                return;
+            }
+
+
+            savedStorage.song.forEach(song => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 p-3.5 rounded-xl border border-slate-800 flex items-center justify-between shadow";
+                card.innerHTML = `
+                    <div class="space-y-1">
+                        <h4 class="font-bold text-amber-400 text-sm">${song.name}</h4>
+                        <div class="flex space-x-1.5 text-[10px]">
+                            ${song.beat ? `<span class="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-semibold">${song.beat.name}</span>` : ''}
+                            ${song.bass ? `<span class="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded font-semibold">${song.bass.name}</span>` : ''}
+                            ${song.melody ? `<span class="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded font-semibold">${song.melody.name}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="playSong(${song.id})" class="p-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition shadow">
+                            <i class="fa-solid fa-play"></i>
+                        </button>
+                        <button onclick="deleteSong(${song.id})" class="p-2.5 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg text-xs transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            });
+        }
+
+
+        // Initialize application on window load
+        window.onload = function() {
+            switchTab('beat');
+        };
+    </script>
+</body>
+</html>

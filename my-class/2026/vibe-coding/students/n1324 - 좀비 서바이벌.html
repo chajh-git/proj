@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zombie Arena</title>
+<style>
+* { box-sizing:border-box }
+body {
+  margin:0;background:#101510;color:white;
+  font-family:Arial;text-align:center;
+}
+h2 { color:#8aff65;margin:12px }
+canvas {
+  background:#252e27;
+  border:4px solid #91b85d;
+  max-width:96vw;
+  cursor:crosshair;
+}
+#info { margin:10px;font-size:18px }
+</style>
+</head>
+<body>
+<h2>🧟 ZOMBIE ARENA</h2>
+<div id="info">❤️ 100 | 처치: 0 | 웨이브: 1</div>
+<canvas id="game" width="900" height="600"></canvas>
+<p>WASD 이동 · 마우스 조준 · 클릭 발사 · R 재시작</p>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const W=900,H=600;
+const keys={};
+let player, zombies, bullets, walls, kills, wave, gameOver;
+let mouse={x:450,y:300};
+let lastSpawn=0;
+
+function reset(){
+ player={x:450,y:300,r:14,hp:100,speed:3.2};
+ zombies=[];bullets=[];kills=0;wave=1;
+ gameOver=false;lastSpawn=0;
+ walls=[
+  {x:180,y:100,w:120,h:25},
+  {x:600,y:100,w:120,h:25},
+  {x:180,y:470,w:120,h:25},
+  {x:600,y:470,w:120,h:25},
+  {x:400,y:160,w:100,h:25},
+  {x:400,y:420,w:100,h:25},
+  {x:100,y:270,w:100,h:25},
+  {x:700,y:270,w:100,h:25}
+ ];
+}
+
+function circleRect(x,y,r,w){
+ let nx=Math.max(w.x,Math.min(x,w.x+w.w));
+ let ny=Math.max(w.y,Math.min(y,w.y+w.h));
+ let dx=x-nx,dy=y-ny;
+ return dx*dx+dy*dy<r*r;
+}
+
+// 벽 충돌: 축을 분리해서 모서리 끼임 방지
+function move(obj,dx,dy){
+ obj.x+=dx;
+ for(let w of walls){
+  if(circleRect(obj.x,obj.y,obj.r,w)) obj.x-=dx;
+ }
+ obj.y+=dy;
+ for(let w of walls){
+  if(circleRect(obj.x,obj.y,obj.r,w)) obj.y-=dy;
+ }
+ obj.x=Math.max(obj.r,Math.min(W-obj.r,obj.x));
+ obj.y=Math.max(obj.r,Math.min(H-obj.r,obj.y));
+}
+
+function spawnZombie(){
+ let side=Math.floor(Math.random()*4);
+ let x=side===0?15:side===1?W-15:Math.random()*W;
+ let y=side===2?15:side===3?H-15:Math.random()*H;
+ let z={x,y,r:13,hp:2,speed:0.65+wave*.06,attack:0};
+ if(!walls.some(w=>circleRect(x,y,z.r,w)) &&
+ Math.hypot(x-player.x,y-player.y)>150) zombies.push(z);
+}
+
+function shoot(){
+ if(gameOver)return;
+ let a=Math.atan2(mouse.y-player.y,mouse.x-player.x);
+ bullets.push({
+  x:player.x,y:player.y,
+  vx:Math.cos(a)*9,vy:Math.sin(a)*9,
+  life:90
+ });
+}
+
+canvas.addEventListener("mousemove",e=>{
+ let r=canvas.getBoundingClientRect();
+ mouse.x=(e.clientX-r.left)*W/r.width;
+ mouse.y=(e.clientY-r.top)*H/r.height;
+});
+canvas.addEventListener("click",shoot);
+document.addEventListener("keydown",e=>{
+ keys[e.key.toLowerCase()]=true;
+ if(e.key.toLowerCase()==="r")reset();
+});
+document.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+function update(){
+ if(gameOver)return;
+
+ let dx=0,dy=0;
+ if(keys.w)dy--;
+ if(keys.s)dy++;
+ if(keys.a)dx--;
+ if(keys.d)dx++;
+ let len=Math.hypot(dx,dy)||1;
+ move(player,dx/len*player.speed,dy/len*player.speed);
+
+ wave=1+Math.floor(kills/10);
+
+ if(Date.now()-lastSpawn>Math.max(350,1500-wave*100)){
+  spawnZombie();lastSpawn=Date.now();
+ }
+
+ // 좀비 이동 및 공격
+ for(let z of zombies){
+  let a=Math.atan2(player.y-z.y,player.x-z.x);
+  let vx=Math.cos(a)*z.speed;
+  let vy=Math.sin(a)*z.speed;
+  move(z,vx,vy);
+
+  if(Math.hypot(player.x-z.x,player.y-z.y)<player.r+z.r){
+   z.attack++;
+   if(z.attack%25===0)player.hp-=5;
+  }else z.attack=0;
+ }
+
+ // 총알
+ for(let b of bullets){
+  b.x+=b.vx;b.y+=b.vy;b.life--;
+  for(let w of walls){
+   if(b.x>w.x&&b.x<w.x+w.w&&b.y>w.y&&b.y<w.y+w.h)
+    b.life=0;
+  }
+  for(let z of zombies){
+   if(z.hp>0&&Math.hypot(b.x-z.x,b.y-z.y)<z.r+4){
+    z.hp--;b.life=0;
+    if(z.hp<=0)kills++;
+   }
+  }
+ }
+ bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<W&&b.y>0&&b.y<H);
+ zombies=zombies.filter(z=>z.hp>0);
+
+ if(player.hp<=0)gameOver=true;
+
+ document.getElementById("info").textContent=
+ `❤️ ${Math.max(0,player.hp)} | 처치: ${kills} | 웨이브: ${wave}`;
+}
+
+function draw(){
+ ctx.clearRect(0,0,W,H);
+
+ // 바닥 격자
+ ctx.strokeStyle="#303c32";
+ for(let x=0;x<W;x+=40){
+  ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();
+ }
+ for(let y=0;y<H;y+=40){
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+ }
+
+ // 벽
+ for(let w of walls){
+  ctx.fillStyle="#89968a";
+  ctx.fillRect(w.x,w.y,w.w,w.h);
+  ctx.strokeStyle="#d0dbca";
+  ctx.lineWidth=3;ctx.strokeRect(w.x,w.y,w.w,w.h);
+ }
+
+ // 플레이어
+ ctx.fillStyle="#55aaff";
+ ctx.beginPath();ctx.arc(player.x,player.y,player.r,0,Math.PI*2);ctx.fill();
+ let a=Math.atan2(mouse.y-player.y,mouse.x-player.x);
+ ctx.strokeStyle="white";ctx.lineWidth=5;
+ ctx.beginPath();
+ ctx.moveTo(player.x,player.y);
+ ctx.lineTo(player.x+Math.cos(a)*27,player.y+Math.sin(a)*27);
+ ctx.stroke();
+
+ // 좀비
+ for(let z of zombies){
+  ctx.fillStyle="#80d34e";
+  ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#222";
+  ctx.fillRect(z.x-6,z.y-3,4,4);
+  ctx.fillRect(z.x+3,z.y-3,4,4);
+ }
+
+ // 총알
+ ctx.fillStyle="#ffed76";
+ for(let b of bullets){
+  ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();
+ }
+
+ // 체력바
+ ctx.fillStyle="#444";ctx.fillRect(15,15,150,13);
+ ctx.fillStyle="#50ed66";
+ ctx.fillRect(15,15,150*Math.max(0,player.hp)/100,13);
+
+ if(gameOver){
+  ctx.fillStyle="#000b";
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle="red";ctx.textAlign="center";
+  ctx.font="bold 55px Arial";
+  ctx.fillText("GAME OVER",W/2,H/2);
+  ctx.fillStyle="white";ctx.font="24px Arial";
+  ctx.fillText(`처치한 좀비: ${kills}  |  R 키로 재시작`,W/2,H/2+50);
+ }
+}
+
+function loop(){
+ update();draw();
+ requestAnimationFrame(loop);
+}
+reset();
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>자동차 강화 게임</title>
+<style>
+body{background:#111827;color:white;text-align:center;font-family:Arial;padding:20px}
+button{padding:12px;margin:5px;border:0;border-radius:8px;cursor:pointer}
+#car{font-size:90px;margin:25px}
+</style>
+<h1>🚗 자동차 강화</h1>
+<h2 id="gold"></h2>
+<h2 id="level"></h2>
+<div id="car">🚗</div>
+<p id="name">기본 자동차</p>
+<button onclick="up()">강화하기</button>
+<button onclick="sell()">판매하기</button>
+<button onclick="reset()">초기화</button>
+<p id="msg"></p>
+<script>
+let g=10000,l=0;
+function show(){
+gold.innerText="골드: "+g.toLocaleString()+" G";
+level.innerText="강화: +"+l;
+car.innerText=l>=15?"🏆🚘":l>=10?"🏎️":l>=5?"🚘":l>=3?"🚙":"🚗";
+name.innerText=l>=15?"전설의 자동차":l>=10?"하이퍼카":l>=5?"레이싱카":l>=3?"튜닝카":"기본 자동차";
+}
+function up(){
+let c=Math.round(100*1.6**l);
+if(g<c){msg.innerText="골드 부족!";return}
+g-=c;
+if(Math.random()*100<Math.max(10,100-l*8)){l++;msg.innerText="강화 성공!"}
+else{if(l>=5)l=Math.max(0,l-1);msg.innerText="강화 실패!"}
+show();
+}
+function sell(){
+if(!l)return;
+g+=Math.round(300*1.8**l);l=0;
+msg.innerText="판매 완료!";show();
+}
+function reset(){g=10000;l=0;msg.innerText="초기화 완료!";show()}
+show();
+</script>
+</html>

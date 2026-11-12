@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>일곱 섬의 낚시꾼</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#09283a;color:white;font-family:system-ui}
+header{padding:12px;text-align:center;background:#103d50}
+canvas{display:block;width:100%;height:65vh;min-height:350px;touch-action:none}
+.controls{display:flex;flex-wrap:wrap;gap:8px;padding:12px}
+button{background:#17627a;color:white;border:1px solid #65a9b9;border-radius:8px;padding:10px;cursor:pointer}
+#info{padding:10px;background:#103d50;line-height:1.7}
+#shop{padding:12px;background:#17495a;display:none}
+</style>
+</head>
+<body>
+<header><h2>🎣 일곱 섬의 낚시꾼</h2></header>
+<canvas id="game"></canvas>
+<div id="info"></div>
+<div class="controls">
+<button onclick="toggleBoat()">F 배 타기/내리기</button>
+<button onclick="catchFish()">Space 낚시</button>
+<button onclick="openShop()">E 상점</button>
+<button onclick="resetGame()">처음부터</button>
+</div>
+<div id="shop">
+<h3>🏝️ 섬 상점</h3>
+<button onclick="buyRod()">낚싯대 강화 50G</button>
+<button onclick="buyBait()">미끼 20G</button>
+<button onclick="sellFish()">물고기 판매</button>
+<button onclick="closeShop()">닫기</button>
+<p id="shopmsg"></p>
+</div>
+<script>
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+const islands=[
+ ['산호섬','#39a98b','야자수'],
+ ['소나무섬','#347c59','소나무'],
+ ['단풍섬','#bd7540','단풍나무'],
+ ['설원섬','#d4e8ee','눈나무'],
+ ['화산섬','#584b49','검은 나무'],
+ ['벚꽃섬','#d98cac','벚나무'],
+ ['유리섬','#68cbd0','수정 나무']
+];
+let island=0,boat=true,yaw=0,money=100;
+let fish=0,rod=1,bait=3,keys={},drag=false,lastX=0;
+function resize(){
+ const d=devicePixelRatio||1;
+ canvas.width=canvas.clientWidth*d;
+ canvas.height=canvas.clientHeight*d;
+ ctx.setTransform(d,0,0,d,0,0);
+}
+window.addEventListener('resize',resize);resize();
+function tree(x,y,s,type,color){
+ ctx.save();ctx.translate(x,y);ctx.scale(s,s);
+ ctx.fillStyle='#594735';ctx.fillRect(-4,0,8,35);
+ ctx.fillStyle=color;
+ if(type==='소나무'){
+  for(let i=0;i<4;i++){
+   ctx.beginPath();ctx.moveTo(0,-48+i*13);
+   ctx.lineTo(-22+i*3,8+i*5);
+   ctx.lineTo(22-i*3,8+i*5);ctx.fill();
+  }
+ }else{
+  ctx.beginPath();ctx.arc(0,-18,25,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+}
+function draw(){
+ const w=canvas.clientWidth,h=canvas.clientHeight;
+ ctx.clearRect(0,0,w,h);
+ let sky=ctx.createLinearGradient(0,0,0,h*.6);
+ sky.addColorStop(0,'#5ca5c8');sky.addColorStop(1,'#d0e8e8');
+ ctx.fillStyle=sky;ctx.fillRect(0,0,w,h*.6);
+ ctx.fillStyle='#fff4c9';ctx.beginPath();
+ ctx.arc(w*.8,h*.18,27,0,7);ctx.fill();
+ let sea=ctx.createLinearGradient(0,h*.48,0,h);
+ sea.addColorStop(0,'#287f98');sea.addColorStop(1,'#07354d');
+ ctx.fillStyle=sea;ctx.fillRect(0,h*.48,w,h*.52);
+ for(let i=0;i<55;i++){
+  let yy=h*.5+i*h*.5/55;
+  let xx=(i*83+Date.now()*.012)%(w+80)-40;
+  ctx.strokeStyle='rgba(210,245,245,.22)';
+  ctx.beginPath();ctx.moveTo(xx,yy);ctx.lineTo(xx+35,yy);ctx.stroke();
+ }
+ let a=islands[island],cx=w*.5+Math.sin(yaw)*w*.18,base=h*.59;
+ ctx.fillStyle='#173d36';ctx.beginPath();
+ ctx.ellipse(cx,base,w*.29,h*.13,0,Math.PI,0);ctx.fill();
+ ctx.fillStyle=a[1];ctx.beginPath();
+ ctx.ellipse(cx,base-3,w*.27,h*.115,0,Math.PI,0);ctx.fill();
+ for(let i=0;i<9;i++){
+  tree(cx-w*.23+i*w*.057,base-12-(i%3)*9,
+   .48+(i%3)*.13,a[2],a[1]);
+ }
+ ctx.fillStyle='#9b7651';ctx.fillRect(cx-18,base-53,36,43);
+ ctx.fillStyle='#5a3c2d';ctx.beginPath();
+ ctx.moveTo(cx-25,base-53);ctx.lineTo(cx,base-75);
+ ctx.lineTo(cx+25,base-53);ctx.fill();
+ ctx.fillStyle='white';ctx.font='12px sans-serif';
+ ctx.fillText('상점',cx-13,base-28);
+ if(boat){
+  ctx.save();ctx.translate(w*.5,h*.78);
+  ctx.fillStyle='#4d3324';ctx.beginPath();
+  ctx.moveTo(-65,0);ctx.lineTo(65,0);
+  ctx.lineTo(48,28);ctx.lineTo(-45,28);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#b7c6c4';ctx.fillRect(-25,-22,50,24);
+  ctx.restore();
+ }else{
+  ctx.fillStyle='#f0d6b2';ctx.beginPath();
+  ctx.ellipse(w*.5,h*.87,12,6,0,0,7);ctx.fill();
+ }
+ document.getElementById('info').innerHTML=
+ (boat?'🚤 배 모드':'👣 1인칭 탐험')+
+ '<br>섬: '+a[0]+'<br>소지금: '+money+
+ 'G<br>물고기: '+fish+'마리 · 낚싯대 Lv.'+rod+
+ '<br>미끼: '+bait;
+ requestAnimationFrame(draw);
+}
+function say(t){document.getElementById('info').innerHTML=t}
+function toggleBoat(){boat=!boat;say(boat?'배에 탔어요!':'섬에 내렸어요! WASD로 이동하세요.')}
+function catchFish(){
+ if(boat){say('섬에 내려서 낚시하세요!');return}
+ if(!bait){say('미끼가 없어요. 상점에서 구매하세요.');return}
+ bait--;fish++;
+ let names=['멸치','고등어','도미','참치','황금 물고기'];
+ let n=Math.random(),i=n>.96?4:n>.75?3:n>.42?2:n>.15?1:0;
+ say(names[i]+'를 잡았어요! 총 '+fish+'마리');
+}
+function openShop(){
+ if(boat){say('먼저 배에서 내리세요!');return}
+ document.getElementById('shop').style.display='block';
+}
+function closeShop(){document.getElementById('shop').style.display='none'}
+function buyRod(){
+ if(money>=50){money-=50;rod++;msg('낚싯대를 강화했어요!')}
+ else msg('돈이 부족해요.');
+}
+function buyBait(){
+ if(money>=20){money-=20;bait+=5;msg('미끼 5개 구매!')}
+ else msg('돈이 부족해요.');
+}
+function sellFish(){
+ if(fish){money+=fish*20;msg(fish+'마리를 팔았어요!');fish=0}
+ else msg('팔 물고기가 없어요.');
+}
+function msg(t){document.getElementById('shopmsg').textContent=t}
+function resetGame(){
+ island=0;boat=true;yaw=0;money=100;fish=0;rod=1;bait=3;closeShop();
+}
+window.addEventListener('keydown',e=>{
+ let k=e.key.toLowerCase();keys[k]=true;
+ if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+ if(k==='f')toggleBoat();
+ if(k==='e')openShop();
+ if(k===' ')catchFish();
+ if('1234567'.includes(k)){island=Number(k)-1;say(islands[island][0]+' 도착!')}
+});
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+canvas.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointerup',()=>drag=false);
+canvas.addEventListener('pointermove',e=>{
+ if(drag){yaw+=(e.clientX-lastX)*.006;lastX=e.clientX}
+});
+let previous=0;
+function move(t){
+ let dt=Math.min((t-previous)/1000,.04);previous=t;
+ let f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+ let q=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+ if(f||q){
+  yaw+=q*dt*(boat?.8:1.6);
+  if(!boat&&Math.random()<.003)island=(island+1)%7;
+ }
+ requestAnimationFrame(move);
+}
+requestAnimationFrame(move);draw();
+</script>
+</body>
+</html>
+

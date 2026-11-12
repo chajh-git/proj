@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>주식 게임</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1d22;--sub:#6b7280;--up:#e5383b;--down:#2563eb;--bd:#e2e4e9;--ac:#111827;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1115;--card:#1a1d24;--tx:#eef0f3;--sub:#9aa1ad;--bd:#2a2e38;--ac:#eef0f3;--up:#ff5a5f;--down:#5b9bff}}
+:root[data-theme="dark"]{--bg:#0f1115;--card:#1a1d24;--tx:#eef0f3;--sub:#9aa1ad;--bd:#2a2e38;--ac:#eef0f3;--up:#ff5a5f;--down:#5b9bff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0}
+.stats{display:flex;gap:18px;flex-wrap:wrap}
+.stat small{display:block;color:var(--sub);font-size:11px}
+.stat b{font-size:16px}
+.timer{font-variant-numeric:tabular-nums}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:7px 10px}
+button:hover{border-color:var(--ac)}
+button:disabled{opacity:.35;cursor:not-allowed}
+#news{padding:10px 16px;font-size:14px;background:var(--card);border-bottom:1px solid var(--bd);min-height:42px;display:flex;gap:10px;overflow-x:auto}
+.nc{flex:0 0 auto;width:min(320px,80vw);height:96px;border-radius:12px;color:#fff;display:flex;align-items:center;gap:12px;padding:10px 14px;position:relative;overflow:hidden}
+.nc.g{background:linear-gradient(135deg,#ff5a5f,#a4161a)}.nc.b{background:linear-gradient(135deg,#5b9bff,#1e3a8a)}
+.nc .em{font-size:40px;line-height:1}
+.nc .tg{font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(255,255,255,.25);border-radius:4px;padding:1px 6px;display:inline-block;margin-bottom:4px}
+.nc .hd{font-weight:700;font-size:14px;line-height:1.35;position:relative}
+.nc svg.bg{position:absolute;right:0;bottom:0;width:60%;height:60%;opacity:.3}
+.nc:first-child{box-shadow:0 0 0 2px var(--ac)}
+.pos{color:var(--up)}.neg{color:var(--down)}
+main{flex:1;overflow:auto;padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;align-content:start}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.name{font-weight:700;font-size:17px}
+.price{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.chg{font-size:13px}
+svg{width:100%;height:60px}
+.own{font-size:13px;color:var(--sub)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.buy{color:var(--up)}.sell{color:var(--down)}
+.card{position:relative}
+.card.flash{animation:flash .7s ease-out}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(229,56,61,.8);transform:scale(1)}30%{transform:scale(1.04)}100%{box-shadow:0 0 0 26px rgba(229,56,61,0);transform:scale(1)}}
+.pop{position:absolute;left:50%;top:28%;white-space:nowrap;font-weight:800;font-size:18px;color:var(--up);pointer-events:none;animation:rise 1s forwards}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,10px)}20%{opacity:1}100%{opacity:0;transform:translate(-50%,-44px)}}
+.pt{position:absolute;left:50%;top:40%;font-size:20px;pointer-events:none;animation:fly .9s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--x),var(--y)) scale(.5);opacity:0}}
+#invp{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10;padding:16px}
+#invp[hidden]{display:none}
+.ip{background:var(--card);border:1px solid var(--bd);border-radius:14px;width:min(460px,100%);max-height:80%;overflow:auto;padding:14px}
+.ih{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.ir{display:grid;grid-template-columns:1.4fr 1fr 1.2fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-size:14px;align-items:center}
+.ir small{display:block;color:var(--sub);font-size:11px}
+.ir .r{text-align:right}
+#ic{background:var(--ac);color:var(--bg);border-radius:10px;padding:0 7px;font-size:12px}
+footer{padding:8px 16px;font-size:12px;color:var(--sub);background:var(--card);border-top:1px solid var(--bd)}
+</style>
+</head>
+<body>
+<header>
+  <h1>📈 주식 게임</h1>
+  <div class="stats">
+    <div class="stat"><small>보유 현금</small><b id="cash"></b></div>
+    <div class="stat"><small>총 자산</small><b id="total"></b></div>
+    <div class="stat"><small>손익</small><b id="pl"></b></div>
+    <div class="stat"><small>다음 변동까지</small><b class="timer" id="cd">10초</b></div>
+  </div>
+  <div><button id="inv">🎒 인벤토리 <b id="ic">0</b></button> <button id="fs">⛶ 전체화면</button> <button id="rs">다시 시작</button></div>
+</header>
+<div id="news">뉴스를 기다리는 중...</div>
+<div id="invp" hidden><div class="ip"><div class="ih"><b>🎒 내 인벤토리</b><button id="ix">닫기</button></div><div id="ib"></div></div></div>
+<main id="grid"></main>
+<footer>주가는 10초마다 -100,000원 ~ +100,000원 범위에서 변동하며 최저가는 -100,000원입니다. 주가가 0원 이하이면 거래가 정지됩니다. 뉴스가 뜨면 해당 기업의 다음 변동 방향이 정해집니다.</footer>
+<script>
+const NAMES=[["삼성","📱"],["LG","📺"],["맥도날드","🍟"],["호정이집","🏠"],["T1","🎮"],["버거킹","🍔"],["쳇지피티","🤖"],["부산남중","🏫"],["남도여중","🎒"],["엠비디아","💾"],["애플","🍎"],["테슬라","🚗"],["구글","🔍"],["네이버","🟢"],["카카오","💬"],["현대자동차","🚙"],["스타벅스","☕"],["넷플릭스","🎬"],["닌텐도","🕹️"]];
+const GOOD=["{n}, 신제품 대박 흥행!","{n}, 역대 최고 실적 발표","{n}, 해외 대형 계약 체결","{n}, 유명 투자자가 대량 매수","{n}, 호재 소식에 기대감 폭발"];
+const BAD=["{n}, 대규모 리콜 사태 발생","{n}, 실적 쇼크로 시장 충격","{n}, 핵심 인물 이탈 논란","{n}, 경영진 스캔들 보도","{n}, 악재 소식에 투자자 불안"];
+let S;
+const $=id=>document.getElementById(id);
+const f=n=>Number(n).toLocaleString("ko-KR");
+const ri=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+function init(){
+  S={cash:100000,cd:10,pending:null,news:[],co:NAMES.map(([n,e])=>({n,e,p:100,q:0,ch:0,h:[100]}))};
+  $("news").textContent="뉴스를 기다리는 중...";
+  render();
+}
+function tick(){
+  S.co.forEach((c,i)=>{
+    let d=ri(-100000,100000);
+    if(S.pending&&S.pending.i===i)d=S.pending.dir*ri(20000,100000);
+    const np=Math.max(-100000,c.p+d);
+    c.ch=np-c.p;c.p=np;c.h.push(np);
+    if(c.h.length>30)c.h.shift();
+  });
+  S.pending=null;
+  if(Math.random()<0.75){
+    const i=ri(0,S.co.length-1),dir=Math.random()<0.5?1:-1,n=S.co[i].n;
+    const arr=dir>0?GOOD:BAD;
+    const t=arr[ri(0,arr.length-1)].replace("{n}",n);
+    S.pending={i,dir};
+    S.news.unshift({t,dir,i});S.news=S.news.slice(0,4);
+    $("news").innerHTML=S.news.map(x=>`<div class="nc 
+x.dir>0?"g":"b""><svgclass="bg"viewBox="0010050"preserveAspectRatio="none"><polylinefill="none"stroke="#fff"stroke-width="4"points="{x.dir>0?"0,45 25,35 45,40 70,15 100,3":"0,3 25,15 45,10 70,35 100,46"}"/></svg><div class="em">S.co[x.i].e</div><div><spanclass="tg">{x.dir>0?"🔺 속보 · 호재":"🔻 속보 · 악재"}</span><div class="hd">${x.t}</div></div></div>`).join("");
+  }
+  render();
+}
+function spark(h){
+  const mx=Math.max(...h),mn=Math.min(...h),r=mx-mn||1;
+  const pts=h.map((v,i)=>`(i/Math.max(1,h.length-1))*200,{56-((v-mn)/r)*52}`).join(" ");
+  const up=h[h.length-1]>=h[0];
+  return `<svg viewBox="0 0 200 60" preserveAspectRatio="none"><polyline fill="none" stroke="up?"var(--up)":"var(--down)""stroke-width="2"points="{pts}"/></svg>`;
+}
+function render(){
+  const total=S.cash+S.co.reduce((s,c)=>s+c.q*c.p,0),pl=total-100000;
+  $("cash").textContent=f(S.cash)+"원";
+  $("total").textContent=f(total)+"원";
+  ("pl").innerHTML=`<spanclass="{pl>=0?"pos":"neg"}">pl>=0?"+":""{f(pl)}원</span>`;
+  $("grid").innerHTML=S.co.map((c,i)=>{
+    const cls=c.ch>=0?"pos":"neg";
+    return `<div class="card" data-i="${i}">
+      <div class="top"><span class="name">${c.e} ${c.n}</span><span class="chg cls">{c.ch>=0?"▲":"▼"} ${f(Math.abs(c.ch))}</span></div>
+      <div class="price">f(c.p)원</div>{spark(c.h)}
+      <div class="own">보유 ${f(c.q)}주 · 평가 ${f(c.q*c.p)}원</div>
+      <div class="btns">
+        <button class="buy" onclick="buy(${i},1)" ${S.cash<c.p||c.p<=0?"disabled":""}>매수 1주</button>
+        <button class="buy" onclick="buy(i,Math.floor(S.cash/{c.p}))" ${S.cash<c.p||c.p<=0?"disabled":""}>최대 매수</button>
+        <button class="sell" onclick="sell(${i},1)" ${c.q<1||c.p<=0?"disabled":""}>매도 1주</button>
+        <button class="sell" onclick="sell(i,{c.q})" ${c.q<1||c.p<=0?"disabled":""}>전량 매도</button>
+      </div></div>`;
+  }).join("");
+  renderInv();
+}
+function renderInv(){
+  const h=S.co.filter(c=>c.q>0);
+  $("ic").textContent=h.length;
+  const tv=h.reduce((s,c)=>s+c.q*c.p,0);
+  ("ib").innerHTML=h.length?h.map(c=>`<divclass="ir"><div>{c.e} <b>${c.n}</b><small>현재가 f(c.p)원</small></div><divclass="r"><b>{f(c.q)}주</b></div><div class="r c.p>=0?"pos":"neg""><b>{f(c.q*c.p)}원</b><small>평가액</small></div></div>`).join("")+`<div class="ir"><div><b>주식 합계</b></div><div></div><div class="r"><b>f(tv)원</b></div></div><divclass="ir"><div><b>보유현금</b></div><div></div><divclass="r"><b>{f(S.cash)}원</b></div></div>`:`<div style="padding:20px 0;text-align:center;color:var(--sub)">아직 보유한 주식이 없어요.</div>`;
+}
+$("inv").onclick=()=>{$("invp").hidden=false};
+$("ix").onclick=()=>{$("invp").hidden=true};
+$("invp").onclick=e=>{if(e.target.id==="invp")$("invp").hidden=true};
+function buy(i,n){const c=S.co[i];n=Math.min(n,Math.floor(S.cash/c.p));if(n<1||c.p<=0)return;S.cash-=n*c.p;c.q+=n;render();fx(i,n);}
+function fx(i,n){
+  const el=document.querySelector(`.card[data-i="${i}"]`);if(!el)return;
+  el.classList.add("flash");
+  const pop=document.createElement("div");pop.className="pop";pop.textContent=`+${f(n)}주 매수! 🎉`;el.appendChild(pop);
+  const em=[S.co[i].e,"💰","✨","🎉"];
+  for(let k=0;k<10;k++){const t=document.createElement("span");t.className="pt";t.textContent=em[k%4];const a=Math.PI*2*k/10,d=50+Math.random()*40;t.style.setProperty("--x",Math.cos(a)*d+"px");t.style.setProperty("--y",Math.sin(a)*d+"px");el.appendChild(t);}
+  setTimeout(()=>el.querySelectorAll(".pop,.pt").forEach(x=>x.remove()),1000);
+}
+function sell(i,n){const c=S.co[i];n=Math.min(n,c.q);if(n<1||c.p<=0)return;S.cash+=n*c.p;c.q-=n;render();}
+setInterval(()=>{S.cd--;if(S.cd<=0){S.cd=10;tick();}$("cd").textContent=S.cd+"초";},1000);
+$("fs").onclick=()=>{
+  try{
+    if(document.fullscreenElement)document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }catch(e){}
+};
+$("rs").onclick=()=>{if(confirm("처음부터 다시 시작할까요?")){init();$("cd").textContent="10초";}};
+init();
+</script>
+</body>
+</html>

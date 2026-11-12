@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>탕탕 메카 특공대</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07111f;color:#eef8ff;font-family:Arial,"Noto Sans KR",sans-serif}
+canvas{display:block;width:100%;height:100%;background:#0b1c30}
+#hud{position:fixed;top:12px;left:12px;right:12px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;pointer-events:none}
+.pill{padding:9px 13px;border:1px solid #6bcfff55;border-radius:12px;background:#081a2ddd;box-shadow:0 5px 18px #0007;font-weight:800;font-size:13px}
+#wave{color:#ffe28a;font-size:16px}
+#stats{position:fixed;top:72px;left:14px;width:min(270px,55vw);pointer-events:none}
+.label{font-size:10px;letter-spacing:1.4px;color:#b8d8ed;font-weight:900;margin:4px 0}
+.bar{height:12px;border-radius:20px;background:#07101d;border:1px solid #ffffff30;overflow:hidden;margin-bottom:7px}
+.fill{height:100%;width:100%;transition:width .12s}
+#hp{background:linear-gradient(90deg,#ff456e,#ffad72)}#xp{background:linear-gradient(90deg,#29d8ff,#9b8cff);width:0%}
+#bossUI{display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);width:min(480px,75vw);text-align:center;color:#ffb6c5;font-size:11px;font-weight:900;letter-spacing:2px;pointer-events:none}
+#bossHP{background:linear-gradient(90deg,#a20e3e,#ff426d,#ffc078)}
+#help{position:fixed;bottom:12px;left:12px;max-width:calc(100% - 24px);font-size:11px;line-height:1.55;color:#c5ddef;background:#07182bd9;border:1px solid #69cfff44;border-radius:10px;padding:9px 12px;pointer-events:none}
+#skills{position:fixed;right:12px;bottom:12px;display:flex;gap:6px;pointer-events:none}
+.skill{background:#07182be8;border:1px solid #69cfff55;border-radius:10px;padding:7px 10px;text-align:center;font-size:10px;color:#b8d8ed;min-width:56px}
+.skill b{display:block;font-size:16px;color:#ffe28a}
+#overlay{position:fixed;inset:0;display:grid;place-items:center;padding:16px;background:radial-gradient(ellipse at center,#173b5b99,#020812ed);z-index:5}
+.panel{width:min(520px,95vw);padding:28px 24px;border-radius:22px;text-align:center;background:linear-gradient(145deg,#153653f5,#071426f8);border:1px solid #71d7ff77;box-shadow:0 24px 80px #000b;position:relative}
+.panel:before{content:"";position:absolute;top:0;left:12%;width:76%;height:3px;background:linear-gradient(90deg,transparent,#5ceaff,transparent)}
+.kicker{color:#6fe7ff;font-size:10px;font-weight:900;letter-spacing:4px}
+h1{font-size:clamp(32px,7vw,54px);line-height:1.1;margin:12px 0;color:#f3fbff;text-shadow:0 0 25px #4bcfff77}
+h1 span{color:#69e8ff}p{color:#c8deed;line-height:1.65;font-size:14px}
+button{cursor:pointer;border:1px solid #a2f2ff88;border-radius:12px;padding:13px 24px;color:white;font-weight:900;font-size:16px;background:linear-gradient(135deg,#10bddd,#3568ed);box-shadow:0 8px 24px #087cba66}
+button:hover{filter:brightness(1.13);transform:translateY(-1px)}
+.hidden{display:none!important}
+.upgrades{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.upgrades button{font-size:13px;min-width:135px;max-width:48%;padding:12px;background:linear-gradient(145deg,#24527a,#142e4c)}
+@media(max-width:600px){#help{bottom:8px;font-size:10px}#skills{bottom:65px}.pill{font-size:11px;padding:7px 9px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+ <div class="pill">✦ TANGTANG MECHA SQUAD</div>
+ <div class="pill" id="wave">작전 단계 1 / 5</div>
+ <div class="pill">등급 <span id="level">1</span></div>
+ <div class="pill">격파 <span id="kills">0</span></div>
+ <div class="pill">보급품 <span id="chests">0</span></div>
+ <div class="pill">무기 <span id="weaponName">펄스 라이플</span> · 스킬 Lv.<span id="skillLevel">1</span></div>
+</div>
+<div id="stats"><div class="label">ARMOR / HP</div><div class="bar"><div id="hp" class="fill"></div></div><div class="label">COMBAT EXPERIENCE</div><div class="bar"><div id="xp" class="fill"></div></div></div>
+<div id="bossUI">⚠ TITAN-X 강화형 보스<div class="bar"><div id="bossHP" class="fill"></div></div></div>
+<div id="help">이동: WASD / 방향키 · 긴급 대시: SPACE · Q: 충격파 · E: EMP 폭발 · R: 수리 · 공격: 자동 조준 사격 · 보물상자: 잔당 격파 시 5% 확률 · 상자 획득 시 무기/스킬 강화</div>
+<div id="skills"><div class="skill"><b>Q</b>충격파</div><div class="skill"><b>E</b>EMP</div><div class="skill"><b>R</b>수리</div><div class="skill"><b>SPACE</b>대시</div></div>
+<div id="overlay"><div class="panel" id="startPanel">
+ <div class="kicker">PROJECT: LAST FRONTIER</div><h1>탕탕 <span>메카 특공대</span></h1>
+ <div class="kicker">최후의 웨이브 · 기계 군단 섬멸 작전</div>
+ <p>AI 전투 로봇의 침공을 막아라!<br>10단계에서 거대 병기 <b>TITAN-X</b>가 출현한다.<br>적을 격파해 경험치와 보급 상자를 모으고 더 강해져라.</p>
+ <p><b>조작:</b> WASD 이동 / SPACE 대시 / Q 충격파 / E EMP / R 수리</p>
+ <button id="startBtn">작전 시작</button>
+</div><div class="panel hidden" id="levelPanel"><div class="kicker">SYSTEM UPGRADE</div><h1>장비 강화</h1><p>강화할 능력을 선택하세요.</p><div class="upgrades" id="upgradeChoices"></div></div>
+<div class="panel hidden" id="endPanel"><div class="kicker">MISSION REPORT</div><h1 id="endTitle">작전 종료</h1><p id="endText"></p><button id="restartBtn">다시 출격</button></div></div>
+<script>
+(()=>{
+"use strict";
+const canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+const $=id=>document.getElementById(id);
+let W=innerWidth,H=innerHeight,dpr=1;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=Math.floor(W*dpr);canvas.height=Math.floor(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener("resize",resize);resize();
+const keys={};addEventListener("keydown",e=>{keys[e.key.toLowerCase()]=true;if([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();if(!e.repeat)useSkill(e.key.toLowerCase())});
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let state="menu",last=0,elapsed=0,spawnTimer=0,shotTimer=0,wave=1,kills=0,chestCount=0,level=1,xp=0,xpNeed=8,postBoss=false,minionsSpawned=false,weapon="pulse",weaponLv=1,skillLv=1;
+let player={x:innerWidth/2,y:innerHeight/2,r:16,hp:100,maxHp:100,speed:220,damage:22,fireRate:.25,bulletSpeed:570,armor:0},enemies=[],bullets=[],enemyBullets=[],loot=[],particles=[],boss=null,skillCD={q:0,e:0,r:0,space:0},shake=0;
+function reset(){
+ player={x:W/2,y:H/2,r:16,hp:100,maxHp:100,speed:220,damage:22,fireRate:.25,bulletSpeed:570,armor:0};
+ enemies=[];bullets=[];enemyBullets=[];loot=[];particles=[];boss=null;wave=1;kills=0;chestCount=0;level=1;xp=0;xpNeed=8;postBoss=false;minionsSpawned=false;weapon="pulse";weaponLv=1;skillLv=1;elapsed=0;spawnTimer=.6;shotTimer=0;skillCD={q:0,e:0,r:0,space:0};shake=0;state="play";
+("overlay").classList.add("hidden");("bossUI").style.display="none";updateHUD();
+}
+("startBtn").onclick=reset;("restartBtn").onclick=reset;
+function target(){let all=enemies.concat(boss?[boss]:[]);let best=null,bd=Infinity;for(const e of all){let d=dist(player,e);if(d<bd){bd=d;best=e}}return best}
+function burst(x,y,color,n=12){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),v=rand(45,220);particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.25,.65),max:.65,color})}}
+function spawnEnemy(){
+ const side=Math.floor(rand(0,4));let x=side===0?-30:side===1?W+30:rand(0,W),y=side===2?-30:side===3?H+30:rand(0,H);
+ const hp=42+wave*9;enemies.push({x,y,r:17,hp,maxHp:hp,speed:rand(48,72)+wave*3,fire:rand(.8,2),cool:rand(.6,1.8),big:false});
+}
+function spawnBoss(){boss={x:W/2,y:-90,r:57,hp:4200,maxHp:4200,speed:55,fire:1.1,cool:1.4,phase:0,big:true};$("bossUI").style.display="block"}
+function fireAt(from,to,hostile=false){
+ let dx=to.x-from.x,dy=to.y-from.y,d=Math.hypot(dx,dy)||1;
+ if(hostile){
+  const sp=boss?285:245;
+  enemyBullets.push({x:from.x,y:from.y,vx:dx/d*sp,vy:dy/d*sp,r:boss?7:5,damage:boss?16:9+wave,life:3.5});
+  return;
+ }
+ const base=Math.atan2(dy,dx),shots=weapon==="scatter"?3:1;
+ for(let i=0;i<shots;i++){
+  const spread=shots===1?0:(i-1)*.16,ang=base+spread;
+  const sp=weapon==="heavy"?player.bulletSpeed*.72:player.bulletSpeed;
+  const dmg=player.damage*(weapon==="heavy"?2.25:weapon==="scatter"?.72:1)*(1+(weaponLv-1)*.18);
+  bullets.push({x:from.x,y:from.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:weapon==="heavy"?6:4,damage:dmg,life:3});
+ }
+}
+function useSkill(k){
+ if(state!=="play")return;
+ if(k===" "&&skillCD.space<=0){let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);let d=Math.hypot(dx,dy)||1;player.x=clamp(player.x+dx/d*115,20,W-20);player.y=clamp(player.y+dy/d*115,20,H-20);skillCD.space=3;burst(player.x,player.y,"#70eaff",18)}
+ if(k==="q"&&skillCD.q<=0){for(const e of enemies){if(dist(player,e)<200)e.hp-=95*skillLv}if(boss&&dist(player,boss)<210)boss.hp-=145*skillLv;burst(player.x,player.y,"#61eaff",40);skillCD.q=8;shake=.2}
+ if(k==="e"&&skillCD.e<=0){for(const e of enemies){if(dist(player,e)<250)e.hp-=145*skillLv}if(boss&&dist(player,boss)<260)boss.hp-=190*skillLv;burst(player.x,player.y,"#b38cff",55);skillCD.e=13;shake=.3}
+ if(k==="r"&&skillCD.r<=0){player.hp=Math.min(player.maxHp,player.hp+35);burst(player.x,player.y,"#70ffae",20);skillCD.r=18}
+}
+function addLoot(x,y,type=null){loot.push({x,y,r:12,type:type||"xp",life:22})}
+function defeatEnemy(e){kills++;burst(e.x,e.y,e.minion?"#ffcf70":"#65dfff",15);addLoot(e.x,e.y);if(postBoss&&e.minion&&Math.random()<0.05){addLoot(e.x+rand(-12,12),e.y+rand(-12,12),"chest");}}
+function gainXP(n){xp+=n;while(xp>=xpNeed){xp-=xpNeed;level++;xpNeed=Math.floor(xpNeed*1.35+3);pauseUpgrade()}}
+function pauseUpgrade(){state="upgrade";const choices=[["강화 장갑","최대 체력 +20",()=>{player.maxHp+=20;player.hp+=20}],["고속 연사","공격 속도 +15%",()=>player.fireRate=Math.max(.09,player.fireRate*.85)],["강화 탄환","공격력 +25%",()=>player.damage*=1.25],["엔진 튜닝","이동 속도 +12%",()=>player.speed*=1.12],["응급 수리","체력 45 회복",()=>player.hp=Math.min(player.maxHp,player.hp+45)]];
+ let shuffled=choices.sort(()=>Math.random()-.5).slice(0,3);$("upgradeChoices").innerHTML="";
+ for(const c of shuffled){let b=document.createElement("button");b.innerHTML="<b>"+c[0]+"</b><br>"+c[1];b.onclick=()=>{c[2]();$("overlay").classList.add("hidden");state="play";last=performance.now();updateHUD()};$("upgradeChoices").appendChild(b)}
+ ("overlay").classList.remove("hidden");("startPanel").classList.add("hidden");("levelPanel").classList.remove("hidden");("endPanel").classList.add("hidden");
+}
+function finish(win){state="end";("overlay").classList.remove("hidden");("startPanel").classList.add("hidden");("levelPanel").classList.add("hidden");("endPanel").classList.remove("hidden");("endTitle").textContent=win?"작전성공!":"작전실패";("endText").textContent=win?"TITAN-X를 격파하고 기계 군단의 침공을 막아냈다!":"전투 불능 상태가 되었습니다. 장비를 강화해 다시 도전하세요.";}
+function updateHUD(){
+ ("wave").textContent="작전단계"+wave+"/5";("level").textContent=level;("kills").textContent=kills;("chests").textContent=chestCount;("skillLevel").textContent=skillLv;("weaponName").textContent=weapon==="pulse"?"펄스 라이플":weapon==="heavy"?"헤비 캐논":"산탄 블래스터";
+ ("hp").style.width=(player.hp/player.maxHp*100)+"%";("xp").style.width=(xp/xpNeed*100)+"%";
+ if(boss){("bossUI").style.display="block";("bossHP").style.width=(Math.max(0,boss.hp)/boss.maxHp*100)+"%"}else $("bossUI").style.display="none";
+}
+function update(dt){
+ if(state!=="play")return;
+ elapsed+=dt;for(const k in skillCD)skillCD[k]=Math.max(0,skillCD[k]-dt);
+ let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0),len=Math.hypot(dx,dy)||1;
+ player.x=clamp(player.x+dx/len*player.speed*dt,18,W-18);player.y=clamp(player.y+dy/len*player.speed*dt,18,H-18);
+ let nextWave=Math.min(5,Math.floor(elapsed/12)+1);
+ if(nextWave>wave){wave=nextWave;if(wave===5&&!boss&&!postBoss)spawnBoss();else if(wave<5)burst(player.x,player.y,"#ffe18a",25)}
+ if(!boss&&wave<5&&!postBoss){spawnTimer-=dt;if(spawnTimer<=0){spawnEnemy();spawnTimer=Math.max(.28,1.25-wave*.075)}}
+ shotTimer-=dt;let t=target();if(t&&shotTimer<=0){fireAt(player,t);shotTimer=weapon==="heavy"?player.fireRate*1.75:weapon==="scatter"?player.fireRate*1.35:player.fireRate}
+ for(const e of enemies){
+  let vx=player.x-e.x,vy=player.y-e.y,d=Math.hypot(vx,vy)||1;
+  let desired=d>220?1:d<145?-.65:0;e.x+=vx/d*e.speed*desired*dt;e.y+=vy/d*e.speed*desired*dt;
+  e.cool-=dt;if(e.cool<=0&&d<520){fireAt(e,player,true);e.cool=rand(1.35,2.2)-Math.min(.5,wave*.035)}
+ }
+ if(boss){
+  let vx=player.x-boss.x,vy=player.y-boss.y,d=Math.hypot(vx,vy)||1;
+  if(boss.y<125){boss.y+=70*dt}else{boss.x+=Math.sin(elapsed*1.2)*boss.speed*dt;boss.x=clamp(boss.x,90,W-90)}
+  boss.cool-=dt;if(boss.cool<=0){for(let a=-2;a<=2;a++){let ang=Math.atan2(vy,vx)+a*.22;enemyBullets.push({x:boss.x,y:boss.y,vx:Math.cos(ang)*270,vy:Math.sin(ang)*270,r:7,damage:14,life:4})}boss.cool=1.15}
+ }
+ for(const b of bullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;for(const e of enemies){if(!b.hit&&dist(b,e)<e.r+b.r){e.hp-=b.damage;b.hit=true;burst(b.x,b.y,"#fff0a0",3)}}if(boss&&!b.hit&&dist(b,boss)<boss.r+b.r){boss.hp-=b.damage;b.hit=true;burst(b.x,b.y,"#ff8aa4",4)}}
+ bullets=bullets.filter(b=>b.life>0&&!b.hit);
+ for(const b of enemyBullets){b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;if(dist(b,player)<player.r+b.r){player.hp-=b.damage*dt*5;b.life=0;burst(player.x,player.y,"#ff6688",3)}}
+ enemyBullets=enemyBullets.filter(b=>b.life>0);
+ const dead=enemies.filter(e=>e.hp<=0);for(const e of dead)defeatEnemy(e);enemies=enemies.filter(e=>e.hp>0);
+ if(boss&&boss.hp<=0){
+  const bx=boss.x,by=boss.y;burst(bx,by,"#ff7395",90);boss=null;postBoss=true;minionsSpawned=true;
+  for(let i=0;i<12;i++)spawnEnemy(true);
+  $("bossUI").style.display="none";
+  $("wave").textContent="최종전: 잔당 로봇 "+enemies.length+"기";
+ }
+ for(const l of loot){l.life-=dt;if(dist(l,player)<l.r+player.r+9){if(l.type==="xp")gainXP(2);else{
+ chestCount++;let r=Math.random();
+ if(r<.5){
+  const weapons=["pulse","heavy","scatter"];let idx=weapons.indexOf(weapon);weapon=weapons[(idx+1)%weapons.length];weaponLv++;
+  $("weaponName").textContent=weapon==="pulse"?"펄스 라이플":weapon==="heavy"?"헤비 캐논":"산탄 블래스터";
+  burst(l.x,l.y,"#ffd36e",26);
+ }else{
+  skillLv++;player.damage*=1.08;
+  $("skillLevel").textContent=skillLv;
+  burst(l.x,l.y,"#b99aff",26);
+ }
+ }l.life=0}}
+ loot=loot.filter(l=>l.life>0);
+ for(const p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt}particles=particles.filter(p=>p.life>0);
+ if(player.hp<=0)finish(false);if(shake>0)shake-=dt;updateHUD();
+}
+function roundRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke()}}
+function drawRobot(e,isBoss=false){
+ ctx.save();ctx.translate(e.x,e.y);if(isBoss){ctx.shadowColor="#ff426d";ctx.shadowBlur=25;roundRect(-48,-48,96,96,18,"#641b39","#ff9db4");roundRect(-34,-34,68,68,13,"#28182c","#ff6d91");ctx.fillStyle="#ff3d69";ctx.beginPath();ctx.arc(0,0,17,0,7);ctx.fill();ctx.fillStyle="#fff0b2";ctx.beginPath();ctx.arc(0,0,7,0,7);ctx.fill();roundRect(-70,-25,28,48,9,"#852342","#ffb1c1");roundRect(42,-25,28,48,9,"#852342","#ffb1c1");ctx.fillStyle="#ff8ca7";ctx.beginPath();ctx.moveTo(-22,-40);ctx.lineTo(-43,-76);ctx.lineTo(-5,-47);ctx.fill();ctx.beginPath();ctx.moveTo(22,-40);ctx.lineTo(43,-76);ctx.lineTo(5,-47);ctx.fill();ctx.restore();return}
+ ctx.fillStyle="#0008";ctx.beginPath();ctx.ellipse(0,15,22,9,0,0,7);ctx.fill();roundRect(-12,7,9,17,3,"#344a62","#9bb6cc");roundRect(4,7,9,17,3,"#344a62","#9bb6cc");roundRect(-16,-10,32,25,6,"#536d86","#c5e4f4");roundRect(-11,-6,22,16,4,"#1a334d","#6bdfff");ctx.shadowColor="#49eaff";ctx.shadowBlur=12;ctx.fillStyle="#65eaff";ctx.beginPath();ctx.arc(0,2,4,0,7);ctx.fill();ctx.shadowBlur=0;roundRect(-12,-25,24,17,5,"#8199ad","#e0f5ff");roundRect(-8,-20,16,5,2,"#09243a","#48e8ff");ctx.fillStyle="#71f5ff";ctx.fillRect(-6,-19,4,2);ctx.fillRect(2,-19,4,2);roundRect(14,-4,24,6,2,"#172c40","#8acde8");ctx.fillStyle="#ffb85c";ctx.fillRect(35,-3,4,4);ctx.restore();
+}
+function render(){
+ ctx.clearRect(0,0,W,H);let g=ctx.createRadialGradient(W/2,H/2,10,W/2,H/2,Math.max(W,H)*.8);g.addColorStop(0,"#193653");g.addColorStop(1,"#050c18");ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.save();ctx.strokeStyle="#58a4d51b";ctx.lineWidth=1;for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.strokeStyle="#5bdcff30";ctx.lineWidth=2;ctx.strokeRect(10,10,W-20,H-20);ctx.restore();
+ for(const l of loot){if(l.type==="chest"){ctx.shadowColor="#ffc857";ctx.shadowBlur=18;roundRect(l.x-12,l.y-10,24,20,4,"#c1842c","#ffe6a0");ctx.shadowBlur=0;ctx.fillStyle="#fff1ae";ctx.fillRect(l.x-2,l.y-10,4,20)}else{ctx.shadowColor="#47e8ff";ctx.shadowBlur=13;ctx.fillStyle="#59eaff";ctx.beginPath();ctx.arc(l.x,l.y,5,0,7);ctx.fill();ctx.shadowBlur=0}}
+ for(const e of enemies){drawRobot(e);ctx.fillStyle="#071321";ctx.fillRect(e.x-17,e.y-39,34,4);ctx.fillStyle="#ff607f";ctx.fillRect(e.x-17,e.y-39,34*Math.max(0,e.hp/e.maxHp),4)}
+ if(boss){drawRobot(boss,true);ctx.fillStyle="#ffb5c4";ctx.font="900 12px Arial";ctx.textAlign="center";ctx.fillText("TITAN-X",boss.x,boss.y-88)}
+ for(const b of bullets){ctx.shadowColor="#ffe66b";ctx.shadowBlur=13;ctx.fillStyle="#fff2a8";ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();ctx.shadowBlur=0}
+ for(const b of enemyBullets){ctx.shadowColor="#ff557c";ctx.shadowBlur=13;ctx.fillStyle="#ff557c";ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();ctx.shadowBlur=0}
+ for(const p of particles){ctx.globalAlpha=Math.max(0,p.life/.65);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,4,4)}ctx.globalAlpha=1;
+ if(player){
+  ctx.save();ctx.translate(player.x,player.y);
+  ctx.fillStyle="#000b";ctx.beginPath();ctx.ellipse(0,20,27,12,0,0,Math.PI*2);ctx.fill();
+  roundRect(-15,10,11,18,4,"#153b61","#8deaff");roundRect(4,10,11,18,4,"#153b61","#8deaff");
+  roundRect(-18,23,14,7,3,"#091b30","#62dfff");roundRect(4,23,14,7,3,"#091b30","#62dfff");
+  roundRect(-19,-10,38,29,8,"#1268b9","#b5efff");
+  roundRect(-25,-8,12,19,5,"#1b4773","#91eaff");roundRect(13,-8,12,19,5,"#1b4773","#91eaff");
+  ctx.shadowColor="#55edff";ctx.shadowBlur=20;ctx.fillStyle="#a9fbff";ctx.beginPath();ctx.arc(0,3,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#21bde8";ctx.beginPath();ctx.arc(0,3,3.5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  roundRect(-14,-29,28,21,7,"#d9efff","#ffffff");roundRect(-10,-23,20,7,3,"#06233c","#4ff1ff");
+  ctx.fillStyle="#c8ffff";ctx.fillRect(-7,-21,5,3);ctx.fillRect(2,-21,5,3);
+  ctx.strokeStyle="#78f5ff";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-29);ctx.lineTo(0,-37);ctx.stroke();
+  ctx.fillStyle="#ffcf68";ctx.beginPath();ctx.arc(0,-39,3,0,Math.PI*2);ctx.fill();
+  const aim=target();const angle=aim?Math.atan2(aim.y-player.y,aim.x-player.x):-.25;ctx.rotate(angle);
+  roundRect(10,-5,31,8,3,"#102b46","#9cecff");roundRect(35,-3,9,4,2,"#ffe49a","#fff4c7");
+  ctx.restore();
+ }
+}
+function frame(now){
+ let dt=Math.min(.033,(now-last)/1000||0);last=now;
+ try{update(dt);render()}
+ catch(err){console.error("게임 프레임 오류:",err);state="error"}
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

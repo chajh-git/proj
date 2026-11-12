@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대통령 되기 - 중학생 정치·경제 시뮬레이션</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700;800&display=swap');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .tab-btn-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #60a5fa;
+            font-weight: 700;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-landmark text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-extrabold tracking-tight text-white">대통령 되기</h1>
+                    <p class="text-xs text-slate-400">중학교 수행평가 연계 정치·경제 시뮬레이터</p>
+                </div>
+            </div>
+            
+            <div id="header-status" class="hidden flex items-center gap-2 md:gap-3 text-xs md:text-sm font-semibold">
+                <button onclick="toggleGlossaryModal()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-amber-400 transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-book-open"></i> 📖 용어 사전
+                </button>
+                <span class="bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-blue-400 flex items-center gap-1.5">
+                    <i class="fa-solid fa-calendar-alt text-xs"></i>
+                    <span id="quarter-display">제 1분기 (1년차 봄)</span>
+                </span>
+                <span id="party-badge" class="px-3 py-1.5 rounded-lg text-xs font-bold border">
+                    정당
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-grow">
+
+        <!-- STEP 1: Setup & Character Creation -->
+        <div id="setup-screen" class="max-w-3xl mx-auto space-y-6">
+            <div class="text-center space-y-2">
+                <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+                    대한민국 제21대 대통령 취임준비위원회
+                </h2>
+                <p class="text-slate-400 text-sm">
+                    국민의 선택을 받아 국정을 이끌어갈 대통령의 이름과 여당(가상 정당)을 선택하세요.
+                </p>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl space-y-6 shadow-xl border border-slate-800">
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">1. 대통령 이름 / 국정 슬로건</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" id="player-name" value="홍길동" placeholder="대통령 이름" class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 text-sm">
+                        <input type="text" id="player-slogan" value="함께 만드는 번영과 공정" placeholder="국정 슬로건" class="bg-slate-800 border border-slate-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">2. 여당(소속 가상 정당) 선택</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3" id="party-selection">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-300 mb-2">3. 국정운영 리더십 유형 선택</label>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="trait-selection">
+                        <!-- Rendered via JS -->
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-lg rounded-xl shadow-lg shadow-blue-600/30 transition duration-200 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-flag"></i> 국정 운영 개시 (임기 시작)
+                </button>
+            </div>
+        </div>
+
+        <!-- STEP 2: Main Dashboard (Gameplay Screen) -->
+        <div id="game-screen" class="hidden space-y-6">
+
+            <!-- Educational Concept Card News Banner -->
+            <div id="concept-tip-box" class="bg-indigo-950/70 border border-indigo-700/50 rounded-xl p-4 flex items-start gap-3 shadow-lg">
+                <div class="bg-indigo-600/30 p-2.5 rounded-lg text-indigo-400 mt-0.5 shrink-0">
+                    <i class="fa-solid fa-lightbulb text-xl"></i>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold bg-indigo-500/30 text-indigo-300 px-2 py-0.5 rounded border border-indigo-500/40">수행평가 쏙쏙! 핵심 개념</span>
+                        <span id="concept-title" class="text-xs font-bold text-indigo-200">개념 제목</span>
+                    </div>
+                    <p id="concept-tip-text" class="text-xs md:text-sm text-indigo-100 leading-relaxed">
+                        개념 설명 로딩 중...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Top Dashboard 4 Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-blue-500">
+                    <div class="flex justify-between items-center text-slate-400 text-xs mb-1">
+                        <span>국민 지지도</span>
+                        <i class="fa-solid fa-users text-blue-400"></i>
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold text-white flex items-baseline gap-1">
+                        <span id="stat-approval">50</span><span class="text-sm font-normal">%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="bar-approval" class="bg-blue-500 h-1.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-emerald-500">
+                    <div class="flex justify-between items-center text-slate-400 text-xs mb-1">
+                        <span>경제 안정도</span>
+                        <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold text-white flex items-baseline gap-1">
+                        <span id="stat-economy">50</span><span class="text-sm font-normal">점</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="bar-economy" class="bg-emerald-500 h-1.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-amber-500">
+                    <div class="flex justify-between items-center text-slate-400 text-xs mb-1">
+                        <span>국가 예산</span>
+                        <i class="fa-solid fa-wallet text-amber-400"></i>
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold text-white flex items-baseline gap-1">
+                        <span id="stat-budget">500</span><span class="text-sm font-normal">조원</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="bar-budget" class="bg-amber-500 h-1.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-4 rounded-xl border-l-4 border-l-purple-500">
+                    <div class="flex justify-between items-center text-slate-400 text-xs mb-1">
+                        <span>여야 협치 지수</span>
+                        <i class="fa-solid fa-handshake text-purple-400"></i>
+                    </div>
+                    <div class="text-2xl md:text-3xl font-extrabold text-white flex items-baseline gap-1">
+                        <span id="stat-bipartisan">50</span><span class="text-sm font-normal">점</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="bar-bipartisan" class="bg-purple-500 h-1.5 rounded-full" style="width: 50%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Panel -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Left Column: Parliament Arc Chart & Status -->
+                <div class="glass-card p-5 rounded-2xl space-y-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-700/60 pb-3 mb-3">
+                            <h3 class="font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-building-columns text-amber-400"></i>
+                                제22대 국회 의석 현황
+                            </h3>
+                            <span class="text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded border border-slate-700">총 300석 (과반 150석)</span>
+                        </div>
+
+                        <div class="relative w-full flex flex-col items-center justify-center pt-2">
+                            <svg id="svg-assembly" viewBox="0 0 300 160" class="w-full max-w-[260px] h-auto">
+                                <!-- Rendered dynamically -->
+                            </svg>
+                            <div class="text-center mt-2">
+                                <span id="assembly-status-badge" class="px-2.5 py-1 rounded-full text-xs font-bold">
+                                    판세 계산 중...
+                                </span>
+                            </div>
+                        </div>
+
+                        <div id="assembly-legend" class="grid grid-cols-2 gap-2 text-xs mt-4 border-t border-slate-800 pt-3">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/70 text-xs text-slate-300 space-y-1.5">
+                        <div class="font-bold text-amber-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation"></i> 현실적 입법 통과 시스템
+                        </div>
+                        <p id="assembly-edu-tip" class="leading-relaxed text-slate-300">
+                            <strong>여소야대</strong> 정국에서는 야당과의 협치 지수가 낮으면 정책 법안이 <strong>국회에서 부결</strong>될 수 있습니다!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Center & Right Column: Policy Events & Press Briefing -->
+                <div class="lg:col-span-2 glass-card p-6 rounded-2xl flex flex-col justify-between space-y-6">
+
+                    <!-- Mode 1: Event Policy Card -->
+                    <div id="event-card-container" class="space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                            <span id="event-category" class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-xs font-bold px-2.5 py-1 rounded-full">
+                                분야: 경제/사회
+                            </span>
+                            <span id="event-quarter" class="text-xs text-slate-400 font-semibold">
+                                제 1분기 안건
+                            </span>
+                        </div>
+
+                        <div>
+                            <h2 id="event-title" class="text-xl md:text-2xl font-black text-white mb-2">
+                                안건 제목 로딩 중...
+                            </h2>
+                            <p id="event-description" class="text-slate-300 text-sm md:text-base leading-relaxed">
+                                안건 상세 설명이 들어가는 자리입니다.
+                            </p>
+                        </div>
+
+                        <!-- Policy Options Selection -->
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">대통령의 정책 선택</h4>
+                            <div id="event-options" class="grid grid-cols-1 gap-2.5">
+                                <!-- Option buttons rendered dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- 3 Stakeholders Tab Section -->
+                        <div class="border-t border-slate-700/80 pt-4 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">3대 이해관계자 관점 사전 분석 브리핑</h4>
+                            
+                            <div class="flex border-b border-slate-800 text-xs font-semibold gap-2">
+                                <button onclick="switchTab('citizen')" id="tab-citizen" class="py-2 px-3 text-slate-400 hover:text-white tab-btn-active transition">
+                                    👤 국민의 입장
+                                </button>
+                                <button onclick="switchTab('business')" id="tab-business" class="py-2 px-3 text-slate-400 hover:text-white transition">
+                                    🏢 기업의 입장
+                                </button>
+                                <button onclick="switchTab('opposition')" id="tab-opposition" class="py-2 px-3 text-slate-400 hover:text-white transition">
+                                    🏛️ 야당의 입장
+                                </button>
+                            </div>
+
+                            <div id="tab-content" class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/60 text-xs md:text-sm text-slate-300 min-h-[90px] leading-relaxed">
+                                선택지를 눌러 각 이해관계자의 세부 입장을 확인해 보세요.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mode 2: Press Briefing (3 Answers System) -->
+                    <div id="press-card-container" class="hidden space-y-5">
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+                            <span class="bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <i class="fa-solid fa-microphone-lines"></i> 대통령 춘추관 언론 브리핑
+                            </span>
+                            <span class="text-xs text-slate-400 font-semibold">기자회견 진행 중</span>
+                        </div>
+
+                        <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-2">
+                            <div class="flex items-center gap-2 text-xs text-amber-400 font-bold">
+                                <i class="fa-solid fa-circle-user"></i> 정치부 출입 기자 질문
+                            </div>
+                            <p id="press-question-text" class="text-base font-bold text-white leading-snug">
+                                질문 내용 로딩 중...
+                            </p>
+                        </div>
+
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">대통령의 공식 답변 선택 (단 1개만 선택 가능)</h4>
+                            <div id="press-answers" class="grid grid-cols-1 gap-2.5">
+                                <!-- Press 3 Answer buttons -->
+                            </div>
+                        </div>
+
+                        <!-- Press Reaction Box -->
+                        <div id="press-reaction-box" class="hidden border-t border-slate-700/80 pt-4 space-y-3">
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">발표 직후 각 진영별 실시간 반응</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-xs">
+                                <div class="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700">
+                                    <span class="font-bold text-blue-400 block mb-1">👤 국민 반응</span>
+                                    <p id="press-res-citizen" class="text-slate-300 leading-relaxed">...</p>
+                                </div>
+                                <div class="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700">
+                                    <span class="font-bold text-emerald-400 block mb-1">🏢 기업 반응</span>
+                                    <p id="press-res-business" class="text-slate-300 leading-relaxed">...</p>
+                                </div>
+                                <div class="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700">
+                                    <span class="font-bold text-purple-400 block mb-1">🏛️ 야당 반응</span>
+                                    <p id="press-res-opposition" class="text-slate-300 leading-relaxed">...</p>
+                                </div>
+                            </div>
+                            <button onclick="nextQuarterFromPress()" class="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold rounded-xl text-sm transition shadow-lg">
+                                다음 분기 국정 진행하기 <i class="fa-solid fa-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Final Ending Screen -->
+        <div id="ending-screen" class="hidden max-w-4xl mx-auto space-y-6">
+            <div class="text-center space-y-2">
+                <div class="inline-block px-4 py-1.5 rounded-full text-xs font-black bg-blue-500/20 text-blue-400 border border-blue-500/40 mb-2">
+                    4년 임기 마감 - 12분기 국정 완수
+                </div>
+                <h2 id="ending-title" class="text-3xl md:text-4xl font-extrabold text-white">
+                    대통령 국정 운영 최종 평가서
+                </h2>
+                <p class="text-slate-400 text-sm">
+                    국민, 기업, 야당의 시각에서 평가한 대통령의 최종 성적표입니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <span class="text-xs text-slate-400 block mb-1">최종 지지도</span>
+                    <span id="final-stat-approval" class="text-2xl md:text-3xl font-black text-blue-400">0%</span>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <span class="text-xs text-slate-400 block mb-1">최종 경제 안정도</span>
+                    <span id="final-stat-economy" class="text-2xl md:text-3xl font-black text-emerald-400">0점</span>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <span class="text-xs text-slate-400 block mb-1">남은 국가 예산</span>
+                    <span id="final-stat-budget" class="text-2xl md:text-3xl font-black text-amber-400">0조원</span>
+                </div>
+                <div class="glass-card p-4 rounded-xl text-center">
+                    <span class="text-xs text-slate-400 block mb-1">최종 여야 협치</span>
+                    <span id="final-stat-bipartisan" class="text-2xl md:text-3xl font-black text-purple-400">0점</span>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 rounded-2xl space-y-4 border border-slate-700">
+                <h3 class="text-lg font-bold text-white border-b border-slate-700 pb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-check text-blue-400"></i>
+                    3대 이해관계자 진영별 최종 총평
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <div class="flex items-center gap-2 font-bold text-blue-400">
+                            <i class="fa-solid fa-users"></i> 👤 국민 총평
+                        </div>
+                        <p id="final-eval-citizen" class="text-xs text-slate-300 leading-relaxed">
+                            평가 분석 중...
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <div class="flex items-center gap-2 font-bold text-emerald-400">
+                            <i class="fa-solid fa-building"></i> 🏢 기업 총평
+                        </div>
+                        <p id="final-eval-business" class="text-xs text-slate-300 leading-relaxed">
+                            평가 분석 중...
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 space-y-2">
+                        <div class="flex items-center gap-2 font-bold text-purple-400">
+                            <i class="fa-solid fa-landmark"></i> 🏛️ 야당 총평
+                        </div>
+                        <p id="final-eval-opposition" class="text-xs text-slate-300 leading-relaxed">
+                            평가 분석 중...
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center pt-2">
+                <button onclick="location.reload()" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-base rounded-xl shadow-lg transition">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> 새로운 대통령으로 다시 도전하기
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal: Economics & Politics Glossary -->
+    <div id="glossary-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass-card max-w-2xl w-full max-h-[85vh] rounded-2xl p-6 flex flex-col justify-between border border-slate-700 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-3 mb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-amber-400"></i>
+                    중학생 필수 정치·경제 용어 사전 (13개 핵심 개념)
+                </h3>
+                <button onclick="toggleGlossaryModal()" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div id="glossary-list" class="overflow-y-auto space-y-3 pr-2 text-xs md:text-sm">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <div class="pt-4 border-t border-slate-700 mt-4 text-right">
+                <button onclick="toggleGlossaryModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg border border-slate-600">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500 bg-slate-900/50">
+        <p>대통령 되기: 정치·경제 시뮬레이터 | 중학교 사회 및 경제 교과 수행평가 연계 학습용 웹 앱</p>
+    </footer>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        let gameState = {
+            playerName: "홍길동",
+            slogan: "",
+            party: null,
+            trait: null,
+            quarter: 1,
+            approval: 50,
+            economy: 50,
+            budget: 500,
+            bipartisan: 50,
+            selectedOptionIndex: 0,
+            usedPressQuestionIndices: []
+        };
+
+        const PARTIES = [
+            {
+                id: "future",
+                name: "미래혁신당",
+                color: "#3b82f6",
+                desc: "첨단 기술 성장에 집중하는 정당 (여당 의석: 165석 / 여대야소 과반)",
+                seats: 165,
+                oppSeats: 135
+            },
+            {
+                id: "welfare",
+                name: "희망복지당",
+                color: "#10b981",
+                desc: "복지 확대와 분배를 중시하는 정당 (여당 의석: 140석 / 여소야대)",
+                seats: 140,
+                oppSeats: 160
+            },
+            {
+                id: "people",
+                name: "바른위민당",
+                color: "#f59e0b",
+                desc: "중도 실용주의와 협치를 추구하는 정당 (여당 의석: 152석 / 과반 확보)",
+                seats: 152,
+                oppSeats: 148
+            },
+            {
+                id: "liberty",
+                name: "자유시민당",
+                color: "#ef4444",
+                desc: "규제 완화와 시장 자율을 중시하는 정당 (여당 의석: 130석 / 여소야대)",
+                seats: 130,
+                oppSeats: 170
+            },
+            {
+                id: "independent",
+                name: "무소속 (시민연대)",
+                color: "#8b5cf6",
+                desc: "시민 중심 무소속 연대 정당 (여당 의석: 110석 / 여소야대 험난)",
+                seats: 110,
+                oppSeats: 190
+            }
+        ];
+
+        const TRAITS = [
+            { id: "growth", name: "📈 경제 성장형", desc: "초기 경제 안정도 +10점, 기업 반응 우호적" },
+            { id: "welfare", name: "🤝 복지 포용형", desc: "초기 지지도 +10%, 국민 반응 우호적" },
+            { id: "harmony", name: "🏛️ 여야 협치형", desc: "초기 여야 협치 지수 +15점, 야당 비판 완화" }
+        ];
+
+        // 13 Middle School Economics & Politics Glossary Items
+        const GLOSSARY = [
+            {
+                term: "포퓰리즘 (선심성 정치)",
+                category: "정치학 개념",
+                desc: "장기적인 국가 재정이나 경제에 미칠 충격은 생각하지 않고, 당장 대중의 표를 얻기 위해 달콤한 선심성 공약만 남발하는 정치 행태입니다."
+            },
+            {
+                term: "여대야소 / 여소야대",
+                category: "정치·국회",
+                desc: "대통령 소속 정당(여당)의 의석수가 과반(150석) 이상이면 '여대야소'(법안 추진이 수월함), 야당 의석이 더 많으면 '여소야대'(야당과의 협치가 필수)라고 부릅니다."
+            },
+            {
+                term: "공공재의 비경합성",
+                category: "경제학 기초",
+                desc: "내가 써도 다른 사람 몫이 줄어들지 않고 다 함께 쓸 수 있는 성질입니다. 예: 치안, 국방, 도로, 공원."
+            },
+            {
+                term: "공공재의 비배타성",
+                category: "경제학 기초",
+                desc: "대가(돈)를 내지 않은 사람이라도 이용하는 것을 막을 수 없는 성질입니다."
+            },
+            {
+                term: "기준금리",
+                category: "금융·통화",
+                desc: "중앙은행(한국은행)이 정하는 금리의 기준입니다. 금리를 올리면 물가가 안정되지만 대출 이자 부담이 커져 소비가 줄어듭니다."
+            },
+            {
+                term: "인플레이션 (물가 상승)",
+                category: "거시 경제",
+                desc: "물가가 지속적으로 올라 화폐의 구매 가치가 떨어지는 현상입니다."
+            },
+            {
+                term: "기회비용",
+                category: "합리적 선택",
+                desc: "어떤 하나를 선택함으로 인해 포기해야 하는 다른 선택지 중 가장 가치가 큰 것입니다."
+            },
+            {
+                term: "외부효과 (양의 / 음의 외부성)",
+                category: "시장 실패",
+                desc: "한 사람의 행동이 다른 사람에게 대가 없이 이익을 주거나(양의 외부성) 손해를 입히는(음의 외부성) 현상입니다."
+            },
+            {
+                term: "님비 (NIMBY) 현상",
+                category: "사회·지역",
+                desc: "쓰레기 매립장처럼 사회에는 필요하지만 '우리 동네에는 안 된다'며 거부하는 현상입니다."
+            },
+            {
+                term: "탄소세",
+                category: "환경·조세",
+                desc: "온실가스를 배출하는 기업이나 주체에 부과하여 오염을 줄이도록 유도하는 환경 세금입니다."
+            },
+            {
+                term: "실질소득",
+                category: "가계 경제",
+                desc: "통장에 찍히는 돈의 액수가 아닌, 물가 상승률을 고려하여 실제로 물건을 살 수 있는 구매력입니다."
+            },
+            {
+                term: "재정 적자 및 국채",
+                category: "국가 재정",
+                desc: "정부가 거둬들인 세금보다 써야 할 돈이 많아 빚을 지는 상태를 재정 적자라 하며, 이를 메우기 위해 국가가 발행하는 빚 보증서를 국채라고 합니다."
+            },
+            {
+                term: "모럴 해저드 (도덕적 해이)",
+                category: "시장 금융",
+                desc: "정부의 과도한 구제금융이나 지원을 믿고, 기업이나 국민들이 위험한 행동을 하거나 안일해지는 현상입니다."
+            }
+        ];
+
+        // 12 Realistic Event Scenarios
+        const EVENTS = [
+            {
+                quarter: 1,
+                category: "금융·물가",
+                title: "급등하는 물가 잡기: '기준금리' 인상 여부",
+                desc: "장바구니 물가가 8% 급등하여 서민 살림이 위태롭습니다. 기준금리를 올려 물가를 잡을지 결정해야 합니다.",
+                tipTitle: "기준금리와 실질소득",
+                tipText: "물가가 폭등하면 통장에 찍히는 돈이 같아도 실제로 살 수 있는 물건이 줄어드는 '실질소득 감소'가 일어납니다.",
+                options: [
+                    {
+                        text: "기준금리 1.0%p 빅스텝 인상 (물가 긴급 방어)",
+                        stat: { approval: -8, economy: +12, budget: 0, bipartisan: +5 },
+                        citizen: "대출 이자가 급증해 영끌족과 소상공인 고통이 심하지만, 물가가 장기적으로 잡힌다면 다행입니다.",
+                        business: "기업 대출 이자 비용이 늘어나 신규 공장 투자 및 채용 계획을 축소할 수밖에 없습니다.",
+                        opposition: "물가 조정을 위한 선택임을 인정하나 고금리로 고통받는 서민 이자 지원책을 요구합니다."
+                    },
+                    {
+                        text: "기준금리 동결 (경기 침체 우려 방지)",
+                        stat: { approval: +4, economy: -15, budget: 0, bipartisan: -5 },
+                        citizen: "당장 대출 이자는 안 오르지만 장바구니 물가가 계속 올라 생활비 지출 폭탄을 맞습니다.",
+                        business: "자금 조달 금리 부담이 유지되어 당장의 영업활동을 이어갈 수 있습니다.",
+                        opposition: "인플레이션을 방치해 서민 실질소득을 깎아먹는 무책임한 경제 방관이라 질타합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 2,
+                category: "환경·조세",
+                title: "기후위기 대응 '탄소세' 도입 강행 안건",
+                desc: "탄소 배출량이 많은 대기업들에 세금을 매기는 탄소세를 도입하여 환경오염이라는 음의 외부효과를 바로잡으려 합니다.",
+                tipTitle: "탄소세와 외부효과",
+                tipText: "기업의 공장 오염물질 배출은 사회 전체에 손해를 입히는 '음의 외부효과'입니다. 탄소세는 이를 교정하는 조세입니다.",
+                options: [
+                    {
+                        text: "탄소세 전격 부과 (세수 확충 및 친환경 전환)",
+                        stat: { approval: +5, economy: -8, budget: +30, bipartisan: -8 },
+                        citizen: "환경을 보호하고 탄소중립으로 나아가는 미래지향적 결정입니다.",
+                        business: "생산 원가가 증가하여 수출 경쟁력이 떨어지고 제품 가격 인상이 불가피합니다.",
+                        opposition: "기업들의 발목을 잡고 세금만 늘리는 징벌적 과세라며 반대합니다."
+                    },
+                    {
+                        text: "탄소세 도입 전면 유예 (기업 부담 경감)",
+                        stat: { approval: -5, economy: +6, budget: -15, bipartisan: +5 },
+                        citizen: "기후위기 대응에 소극적인 태도를 보인 점은 아쉽습니다.",
+                        business: "어려운 경제 여건 속에서 세금 부담을 덜고 생산 활동을 유지할 수 있어 안도합니다.",
+                        opposition: "국제 친환경 규제 흐름을 외면하는 소극적 국정이라 평합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 3,
+                category: "지역·사회",
+                title: "수도권 신규 쓰레기 매립지 지정 (님비 현상)",
+                desc: "쓰레기 대란을 막으려면 신규 매립지가 필수적이지만, 후보지 주민들의 극심한 반발(NIMBY)이 일어났습니다.",
+                tipTitle: "님비(NIMBY) 현상",
+                tipText: "사회 전체에 꼭 필요한 공공시설이라도 '우리 동네에는 절대 안 된다'며 거부하는 현상입니다.",
+                options: [
+                    {
+                        text: "주민 보상 예산 증액 후 매립지 지정 강행",
+                        stat: { approval: -12, economy: +2, budget: -40, bipartisan: +5 },
+                        citizen: "해당 지역 주민들의 반발은 크지만, 수도권 전체의 쓰레기 대란을 막는 필수 조치입니다.",
+                        business: "산업 폐기물 처리 차질 우려가 해소되어 사업 안정성이 올라갑니다.",
+                        opposition: "막대한 예산을 투입한 보상책이나 국가적 쓰레기 대란을 막기 위해 수용합니다."
+                    },
+                    {
+                        text: "지정 전면 재검토 및 타 지역 자율 공모",
+                        stat: { approval: +4, economy: -10, budget: -10, bipartisan: -8 },
+                        citizen: "주민 의견을 존중하는 듯하나, 당장 쓰레기 대란이 일어날까 봐 불안해합니다.",
+                        business: "폐기물 처리 인프라 불확실성으로 관련 산업 생산 차질이 우려됩니다.",
+                        opposition: "결정을 미루고 시간만 끄는 우유부단한 리더십이라며 결단을 요구합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 4,
+                category: "공공재·복지",
+                title: "전국 무료 Wi-Fi망 및 통신 인프라 확충",
+                desc: "돈을 안 내도 이용할 수 있고, 내가 써도 남의 몫이 줄지 않는 디지털 공공재를 국가 예산으로 전국에 구축하려 합니다.",
+                tipTitle: "공공재의 비경합성",
+                tipText: "'내가 써도 다른 사람 몫이 줄어들지 않고 다 함께 쓸 수 있음'을 뜻하는 공공재의 대표적 특징입니다.",
+                options: [
+                    {
+                        text: "대규모 국가 예산 40조 원 투입 및 전면 구축",
+                        stat: { approval: +12, economy: +5, budget: -40, bipartisan: -2 },
+                        citizen: "누구나 데이터 부담 없이 인터넷을 다 함께 공짜로 쓸 수 있어 생활비가 절감됩니다.",
+                        business: "민간 통신사의 시장 영역이 일부 축소될 수 있으나 전반적인 IT 산업 인프라는 강화됩니다.",
+                        opposition: "국민 편의는 높으나 재정 지출이 과도하므로 예산 낭비 여부를 철저히 감시하겠다고 밝힙니다."
+                    },
+                    {
+                        text: "민간 자율 통신 시장에 맡기고 사업 규모 축소",
+                        stat: { approval: -5, economy: 0, budget: +10, bipartisan: +5 },
+                        citizen: "저소득층의 정보 접근성이 떨어져 디지털 양극화가 지속될 수 있습니다.",
+                        business: "민간 통신사의 수익성과 시장 요금제 통제권이 유지됩니다.",
+                        opposition: "국가의 기본 공공 재화 공급 의무를 미루는 소극 행정이라 비판합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 5,
+                category: "부동산·주거",
+                title: "청년·서민을 위한 반값 공공임대주택 20만 호 공급",
+                desc: "치솟는 집값을 잡기 위해 도심 핵심 요지에 공공 임대주택을 대량 건립하려 합니다.",
+                tipTitle: "부동산과 주거비",
+                tipText: "주거비 부담이 줄어들면 가계의 여유 자금이 늘어나 다른 소비를 늘릴 수 있는 실질 소득 증가 효과가 나타납니다.",
+                options: [
+                    {
+                        text: "도심 공공임대 20만 호 즉시 건립 단행",
+                        stat: { approval: +10, economy: -5, budget: -50, bipartisan: -10 },
+                        citizen: "청년과 무주택 서민들에게 든든한 주거 사다리가 생겨 주거 불안이 크게 해소됩니다.",
+                        business: "주변 집값 하락 우려 및 민간 분양 건설 시장 위축을 우려합니다.",
+                        opposition: "시장 자율 조절 기능을 무시한 선심성 포퓰리즘 주택 정책이라며 반대합니다."
+                    },
+                    {
+                        text: "민간 재개발 규제 완화로 자율 공급 유도",
+                        stat: { approval: -5, economy: +8, budget: +10, bipartisan: +8 },
+                        citizen: "민간 아파트는 분양가가 높아 무주택 서민들에겐 여전히 그림의 떡입니다.",
+                        business: "건설 경기가 살아나고 투자 유입으로 부동산 시장 활력에 도움 됩니다.",
+                        opposition: "투기 수요를 자극할 우려가 있지만, 민간 주도 방식 자체엔 협조 의사를 밝힙니다."
+                    }
+                ]
+            },
+            {
+                quarter: 6,
+                category: "노동·고용",
+                title: "내년도 최저임금 인상률 결정 안건",
+                desc: "근로자의 최저 생활 보장을 위한 인상안(8%)과 자영업자의 고용 부담을 줄이기 위한 동결안이 대립하고 있습니다.",
+                tipTitle: "최저임금 제도",
+                tipText: "근로자의 최소 생계를 보장하는 제도이지만, 급격한 인상은 소상공인의 아르바이트 고용 축소를 부를 수 있습니다.",
+                options: [
+                    {
+                        text: "최저임금 8% 인상 (근로자 소득 보장)",
+                        stat: { approval: +6, economy: -10, budget: 0, bipartisan: -5 },
+                        citizen: "물가 상승 속에서 월급이 올라 저임금 근로자들의 생계에 큰 도움이 됩니다.",
+                        business: "아르바이트생을 쓰는 소상공인과 중소기업의 인건비 부담이 한계에 다다릅니다.",
+                        opposition: "자영업자를 폐업으로 내몰고 알바 자리를 줄이는 현실과 떨어진 정책이라 비판합니다."
+                    },
+                    {
+                        text: "최저임금 1.5% 최소 인상 (자영업자 보호)",
+                        stat: { approval: -10, economy: +6, budget: 0, bipartisan: +5 },
+                        citizen: "물가는 뛰는데 임금은 제자리라 실질 소득이 크게 줄어듭니다.",
+                        business: "인건비 폭등 위험을 덜고 직원을 유지할 여력이 생깁니다.",
+                        opposition: "저임금 근로자들의 고통을 외면한 편향적 결정이라 지적합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 7,
+                category: "사회보장·재정",
+                title: "고령화 사회 '기초연금' 확대 안건",
+                desc: "노인 빈곤율을 낮추기 위해 어르신 기초연금을 월 30만 원에서 40만 원으로 상향하려 합니다.",
+                tipTitle: "재정 적자와 복지",
+                tipText: "복지 예산 증액은 당장의 삶을 돕지만, 국가 재정 적자를 늘려 미래 세대의 세금 부담으로 이어질 수 있습니다.",
+                options: [
+                    {
+                        text: "기초연금 40만 원 인상 (복지 국가 실현)",
+                        stat: { approval: +10, economy: -6, budget: -45, bipartisan: -8 },
+                        citizen: "어르신들의 노후 생계가 보장되고 사회적 약자를 배려하는 따뜻한 정책입니다.",
+                        business: "복지 지출 폭증으로 국가 재정 적자가 늘어나 기업과 청년들의 세금 부담이 올라갑니다.",
+                        opposition: "재원 확보 대책도 없이 나랏돈을 풀어 표를 사려는 typical한 '포퓰리즘'이라 비판합니다."
+                    },
+                    {
+                        text: "기초연금 동결 및 극빈층 선별 지원",
+                        stat: { approval: -6, economy: +6, budget: +20, bipartisan: +5 },
+                        citizen: "노인 빈곤 문제가 심각한데 적극적인 복지가 이뤄지지 않아 서운합니다.",
+                        business: "국가 빚(국채) 작성을 줄이고 국가 신용도를 지키는 건전한 선택입니다.",
+                        opposition: "재정 건전성을 고려한 타협안으로 평가하며 극빈층 핀셋 지원 강화를 촉구합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 8,
+                category: "과학·R&D",
+                title: "국가 첨단 AI·반도체 R&D 예산 30조 투입",
+                desc: "미래 먹거리인 인공지능과 반도체 기술을 위해 대규모 예산을 투자하는 안건입니다.",
+                tipTitle: "기회비용",
+                tipText: "R&D에 30조 원을 쓰면 그 돈으로 당장 복지나 지원금을 줄 수 없는 '기회비용'이 발생합니다.",
+                options: [
+                    {
+                        text: "R&D 예산 30조 원 전격 증액",
+                        stat: { approval: +4, economy: +15, budget: -30, bipartisan: +4 },
+                        citizen: "미래 먹거리 기술이 확보되고 청년들에게 고급 일자리가 늘어날 것으로 기대합니다.",
+                        business: "글로벌 기술 전쟁에서 주도권을 잡을 수 있는 국가적 지원이라 환호합니다.",
+                        opposition: "미래 성장을 위한 필수 투자이므로 초당적으로 협조합니다."
+                    },
+                    {
+                        text: "R&D 예산 동결 및 긴축 재정",
+                        stat: { approval: -4, economy: -12, budget: +30, bipartisan: -4 },
+                        citizen: "핵심 과학기술 인재들이 해외로 유출될까 우려스럽습니다.",
+                        business: "첨단 기술 격차를 넓힐 기회를 놓치고 경쟁력이 약화됩니다.",
+                        opposition: "대한민국의 미래 성장 동력을 스스로 깎아먹는 무책임한 예산 삭감이라 비판합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 9,
+                category: "통상·무역",
+                title: "해외 원자재값 폭등 및 수입 관세 인하 안건",
+                desc: "글로벌 수입 원자재 가격이 급등하여 기업들의 생산 비용이 치솟고 수입 물가 폭등이 우려됩니다.",
+                tipTitle: "비관세 장벽과 관세",
+                tipText: "관세(세금)를 낮추면 수입 물가가 낮아져 물가 안정에 도움을 주지만 국내 자국 산업 보호 효과는 줄어듭니다.",
+                options: [
+                    {
+                        text: "원자재 관세 전면 인하 및 기업 긴급 보조금",
+                        stat: { approval: +4, economy: +6, budget: -25, bipartisan: +4 },
+                        citizen: "생산 원가가 깎여 생필품 및 전기요금 인상 폭이 둔화되어 살림에 보탬이 됩니다.",
+                        business: "원자재 수입 가공 비용을 덜어 공장 부도 위기를 넘길 수 있습니다.",
+                        opposition: "경제 위기 속 비상 조치임을 감안하여 찬성하나 혜택이 대기업에 편중되지 않도록 감시합니다."
+                    },
+                    {
+                        text: "시장 자율에 맡기고 관세 및 예산 유지",
+                        stat: { approval: -5, economy: -8, budget: +10, bipartisan: -4 },
+                        citizen: "원자재 가격 인상이 최종 소비자 가격으로 넘어가 생활비가 껑충 땁니다.",
+                        business: "생산 비용 폭등으로 제품 가격을 올릴 수밖에 없어 판매량이 줄어듭니다.",
+                        opposition: "고물가 위기에서 정부가 손을 놓고 방관한다는 소극 행정을 질타합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 10,
+                category: "인구·교육",
+                title: "저출생 극복 '육아휴직 급여 인상 및 무상 돌봄'",
+                desc: "인구 절벽 위기를 극복하기 위해 육아휴직 급여를 대폭 올리고 돌봄 교실을 무상 전면 확대하려 합니다.",
+                tipTitle: "양의 외부성과 저출생",
+                tipText: "출산율 안정은 사회 전체의 지속 가능성을 높여주는 대표적인 '양의 외부성'을 가진 핵심 과제입니다.",
+                options: [
+                    {
+                        text: "육아휴직 급여 인상 및 무상 돌봄 전면 시행",
+                        stat: { approval: +10, economy: -2, budget: -35, bipartisan: +5 },
+                        citizen: "아이를 키우며 일할 수 있는 환경이 조성되어 부모들의 경력 단절 우려가 줄어듭니다.",
+                        business: "육아휴직자 증가로 대체 인력을 구해야 하는 중소기업의 인력난이 단기적으로 심화됩니다.",
+                        opposition: "인구 위기 극복을 위한 필수 과제이므로 초당적으로 지지하고 협조합니다."
+                    },
+                    {
+                        text: "민간 보육에 맡기고 정부 예산 투입 최소화",
+                        stat: { approval: -6, economy: +4, budget: +10, bipartisan: -5 },
+                        citizen: "맞벌이 부모들의 돌봄 부담이 해결되지 않아 출산을 꺼리는 분위기가 계속됩니다.",
+                        business: "직원들의 휴직으로 인한 업무 공백과 대체 채용 부담을 단기적으로 덜 수 있습니다.",
+                        opposition: "인구 소멸 위기 속에서 국가의 의무를 미루는 안일한 대책이라 비판합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 11,
+                category: "지역·균형발전",
+                title: "지방 소멸 방지 '공공기관 100곳 지방 이전'",
+                desc: "수도권 인구 쏠림을 막고 지역 균형 발전을 위해 서울의 주요 공공기관을 지방 도시로 이전하려 합니다.",
+                tipTitle: "지방 소멸과 지역 경제",
+                tipText: "공공기관 이전은 지방 도시의 인구를 늘리고 소비를 활성화하여 지역 경제를 살리는 조치입니다.",
+                options: [
+                    {
+                        text: "공공기관 100곳 지방 전격 이전 추진",
+                        stat: { approval: +5, economy: 0, budget: -25, bipartisan: -2 },
+                        citizen: "지방에도 양질의 일자리가 생기고 지역 균형 발전이 이루어져 건강한 국토가 됩니다.",
+                        business: "지방 이전 초기 인프라 부족으로 인한 업무 효율 저하를 걱정합니다.",
+                        opposition: "취지에는 동의하나 이주하는 직원들의 거주·교육 여건 마련책을 촉구합니다."
+                    },
+                    {
+                        text: "지방 이전 유예 및 인센티브 자율 유도",
+                        stat: { approval: -5, economy: +4, budget: +10, bipartisan: +2 },
+                        citizen: "지방 도시들의 청년 유출과 소멸 위기가 가속화될까 걱정합니다.",
+                        business: "수도권의 인재 채용과 업무 접근성을 그대로 유지할 수 있어 안도합니다.",
+                        opposition: "지방 균형 발전을 사실상 포기한 수도권 위주 국정이라 경고합니다."
+                    }
+                ]
+            },
+            {
+                quarter: 12,
+                category: "국가 총총평",
+                title: "임기 마감 대규모 구조 개혁안 최종 처리",
+                desc: "4년 임기를 마무리하며 미래 세대를 위한 연금 및 노동 구조 개혁안을 최종 의결해야 합니다.",
+                tipTitle: "구조 개혁과 고통 분담",
+                tipText: "장기적 국가 개혁은 당장은 고통스럽지만, 미래 세대의 빚을 줄여주는 책임감 있는 정치적 선택입니다.",
+                options: [
+                    {
+                        text: "미래 세대를 위한 과감한 구조 개혁 의결",
+                        stat: { approval: +5, economy: +10, budget: +10, bipartisan: +5 },
+                        citizen: "당장은 부담되지만 미래 청년 세대의 짐을 덜어주는 용기 있는 리더십입니다.",
+                        business: "국가 재정 건전성과 노동 유연성이 확보되어 한국의 글로벌 국가 신용도가 높아집니다.",
+                        opposition: "임기 말까지 책임감 있게 개혁을完完한 점을 평가하며 수용합니다."
+                    },
+                    {
+                        text: "개혁안 유예 및 차기 정부 이관",
+                        stat: { approval: -5, economy: -6, budget: -10, bipartisan: -5 },
+                        citizen: "민감한 과제를 다음 정부로 미루는 폭탄 돌리기라며 아쉬워합니다.",
+                        business: "제도적 불확실성이 지속되어 장기 투자를 망설이게 됩니다.",
+                        opposition: "표를 의식해 핵심 개혁을 회피한 무책임한 퇴임이라고 질타합니다."
+                    }
+                ]
+            }
+        ];
+
+        // 12 Diverse Press Briefing Questions
+        const PRESS_QUESTIONS = [
+            {
+                q: "기자: '대통령님, 고물가와 경기 침체 속에서 정부의 가장 핵심적인 경제 국정 기조는 무엇입니까?'",
+                answers: [
+                    {
+                        type: "기업·성장 중심",
+                        text: "무엇보다 경제 성장이 최우선입니다. 기업 규제를 풀어 일자리를 만들겠습니다.",
+                        stat: { approval: -3, economy: +6, bipartisan: -3 },
+                        citizen: "기업 위주 정책으로 서민 살림살이 지원이 소외될까 우려합니다.",
+                        business: "정부의 성장의지와 규제 완화를 적극 환영하며 투자를 확대하겠습니다.",
+                        opposition: "양극화를 심화시키는 대기업 편향적 정책 기조라고 날을 세웠습니다."
+                    },
+                    {
+                        type: "서민·복지 중심",
+                        text: "서민과 사회적 약자의 삶을 든든히 지키는 복지 정책에 국가 예산을 집중하겠습니다.",
+                        stat: { approval: +6, economy: -4, bipartisan: -2 },
+                        citizen: "서민들의 살림살이를 먼저 챙겨주는 정부의 민생 의지에 우호적입니다.",
+                        business: "복지 예산 확대로 인한 기업 세금 부담 증가를 걱정합니다.",
+                        opposition: "재원 마련책 없는 선심성 복지 살포라며 국가 재정을 우려합니다."
+                    },
+                    {
+                        type: "원칙·협치 중심",
+                        text: "원칙을 지키며 여야 간의 대화와 협치로 국정 균형을 이루어 나가겠습니다.",
+                        stat: { approval: +2, economy: +2, bipartisan: +6 },
+                        citizen: "치우침 없는 차분한 국정 운영 태도에 긍정적인 신뢰를 보냅니다.",
+                        business: "예측 가능성이 높아져 안정적인 경영 환경이 만들어집니다.",
+                        opposition: "말뿐인 협치가 되지 않도록 야당의 목소리를 실제 반영하라고 촉구합니다."
+                    }
+                ]
+            },
+            {
+                q: "기자: '기후위기 대응과 에너지 정책을 두고 논란이 큽니다. 대통령님의 명확한 입장은 무엇입니까?'",
+                answers: [
+                    {
+                        type: "친환경 전환 속도전",
+                        text: "신재생 에너지 비중을 대폭 늘리고 친환경 산업 전환을 가속화하겠습니다.",
+                        stat: { approval: +4, economy: -4, bipartisan: -2 },
+                        citizen: "기후위기 대응을 위한 확실한 결단에 환영의 뜻을 표합니다.",
+                        business: "에너지 단가 상승으로 제조공장 가동 부담이 커진다는 고충을 토로합니다.",
+                        opposition: "산업계의 준비 상태를 고려하지 않은 무리한 속도전이라고 지적합니다."
+                    },
+                    {
+                        type: "원전 및 기존 에너지 조화",
+                        text: "원전과 신재생의 현실적 조화를 통해 저렴하고 안정적인 전력을 공급하겠습니다.",
+                        stat: { approval: -2, economy: +6, bipartisan: +2 },
+                        citizen: "전기요금 인상 압박이 줄어들 수 있어 다행입니다.",
+                        business: "저렴한 전력 수급으로 공장 운영 불안 요소가 해소됩니다.",
+                        opposition: "탄소중립 국제 기준에 부합하는지 면밀히 감시하겠다고 합니다."
+                    },
+                    {
+                        type: "국민 참여형 절약 기조",
+                        text: "에너지 효율화 기술 개발과 국민 절약 캠페인을 병행하겠습니다.",
+                        stat: { approval: +1, economy: +1, bipartisan: +2 },
+                        citizen: "근본적인 해결책으로는 다소 아쉽다는 평가입니다.",
+                        business: "급격한 제도 변경이 없어 안도하며 기술 개발에 참여하려 합니다.",
+                        opposition: "명확한 에너지 로드맵의 부재를 질타합니다."
+                    }
+                ]
+            },
+            {
+                q: "기자: '저출생으로 인한 인구 절벽 위기가 심각합니다. 출생률 반전을 위한 대책은 무엇입니까?'",
+                answers: [
+                    {
+                        type: "현금 수당 직접 지원",
+                        text: "부모급여와 아동수당을 파격 증액하여 아이를 키우는 경제적 부담을 없애겠습니다.",
+                        stat: { approval: +6, economy: -4, bipartisan: -2 },
+                        citizen: "육아비 부담이 직접 줄어들어 양육 가구에 유의미한 도움이 됩니다.",
+                        business: "복지 예산 증가로 인한 향후 세금 인상 압박을 우려합니다.",
+                        opposition: "단발성 현금 살포보다 돌봄 인프라 구축이 시급하다고 비판합니다."
+                    },
+                    {
+                        type: "육아휴직 강제 및 근로 개혁",
+                        text: "육아휴직을 의무화하고 칼퇴근 문화를 정착시켜 일·가정 양립 환경을 만들겠습니다.",
+                        stat: { approval: +4, economy: -2, bipartisan: +2 },
+                        citizen: "눈치 보지 않고 육아휴직을 쓸 수 있는 여건에 기대가 큽니다.",
+                        business: "중소기업의 대체 인력 난항과 인건비 고충을 호소합니다.",
+                        opposition: "취지에 공감하며 중소기업 대안 지원책 병행을 당부합니다."
+                    },
+                    {
+                        type: "공공 돌봄 완비",
+                        text: "늘봄학교와 국공립 어린이집을 전면 확대하여 국가 책임 돌봄을 완성하겠습니다.",
+                        stat: { approval: +3, economy: +1, bipartisan: +3 },
+                        citizen: "맞벌이 부부의 보육 부담이 실질적으로 줄어듭니다.",
+                        business: "돌봄 산업 관련 신규 일자리 창출 효과를 긍정적으로 봅니다.",
+                        opposition: "초당적 협력이 필요한 과제이므로 보육 인력 여건 개선을 함께 당부합니다."
+                    }
+                ]
+            }
+        ];
+
+        // ------------------------------------------------------------------
+        // INITIALIZATION
+        // ------------------------------------------------------------------
+        window.onload = function() {
+            renderPartyCards();
+            renderTraitCards();
+            renderGlossaryList();
+        };
+
+        function renderPartyCards() {
+            const container = document.getElementById('party-selection');
+            container.innerHTML = PARTIES.map((p, idx) => `
+                <div onclick="selectParty(
+idx)"id="party-card-{idx}" 
+                     class="cursor-pointer p-3.5 rounded-xl border-2 border-slate-700 bg-slate-800/80 transition hover:border-blue-500 space-y-1">
+                    <div class="flex justify-between items-center">
+                        <span class="font-extrabold text-white text-sm">${p.name}</span>
+                        <span class="text-[11px] px-2 py-0.5 rounded text-white font-bold" style="background-color:p.color">{p.seats}석</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">${p.desc}</p>
+                </div>
+            `).join('');
+            selectParty(0);
+        }
+
+        function renderTraitCards() {
+            const container = document.getElementById('trait-selection');
+            container.innerHTML = TRAITS.map((t, idx) => `
+                <div onclick="selectTrait(idx)"id="trait-card-{idx}"
+                     class="cursor-pointer p-3 rounded-xl border-2 border-slate-700 bg-slate-800/80 transition hover:border-blue-500 space-y-1">
+                    <span class="font-bold text-white text-xs md:text-sm block">${t.name}</span>
+                    <p class="text-[11px] text-slate-400">${t.desc}</p>
+                </div>
+            `).join('');
+            selectTrait(0);
+        }
+
+        function renderGlossaryList() {
+            const container = document.getElementById('glossary-list');
+            container.innerHTML = GLOSSARY.map(g => `
+                <div class="bg-slate-800/90 p-3.5 rounded-xl border border-slate-700/80 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-amber-300 text-sm">${g.term}</span>
+                        <span class="text-[10px] bg-slate-700 text-slate-300 px-2 py-0.5 rounded">${g.category}</span>
+                    </div>
+                    <p class="text-xs text-slate-200 leading-relaxed">${g.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function selectParty(index) {
+            gameState.party = PARTIES[index];
+            PARTIES.forEach((_, i) => {
+                const card = document.getElementById(`party-card-${i}`);
+                if (i === index) {
+                    card.classList.add('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    card.classList.remove('border-slate-700');
+                } else {
+                    card.classList.remove('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    card.classList.add('border-slate-700');
+                }
+            });
+        }
+
+        function selectTrait(index) {
+            gameState.trait = TRAITS[index];
+            TRAITS.forEach((_, i) => {
+                const card = document.getElementById(`trait-card-${i}`);
+                if (i === index) {
+                    card.classList.add('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    card.classList.remove('border-slate-700');
+                } else {
+                    card.classList.remove('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    card.classList.add('border-slate-700');
+                }
+            });
+        }
+
+        function toggleGlossaryModal() {
+            document.getElementById('glossary-modal').classList.toggle('hidden');
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            const sloganInput = document.getElementById('player-slogan').value.trim();
+            if (nameInput) gameState.playerName = nameInput;
+            if (sloganInput) gameState.slogan = sloganInput;
+
+            if (gameState.trait.id === "growth") gameState.economy += 10;
+            if (gameState.trait.id === "welfare") gameState.approval += 10;
+            if (gameState.trait.id === "harmony") gameState.bipartisan += 15;
+
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('header-status').classList.remove('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            const partyBadge = document.getElementById('party-badge');
+            partyBadge.innerText = `gameState.party.name({gameState.party.seats}석)`;
+            partyBadge.style.borderColor = gameState.party.color;
+            partyBadge.style.color = gameState.party.color;
+
+            renderAssemblySVG();
+            loadQuarterEvent();
+            updateStatsUI();
+        }
+
+        // SVG Arc Chart with 150-seat threshold
+        function renderAssemblySVG() {
+            const svg = document.getElementById('svg-assembly');
+            const seats = gameState.party.seats;
+            const oppSeats = gameState.party.oppSeats;
+
+            let dotsHTML = '';
+            const rows = 5;
+            const dotsPerRow = 60;
+            let currentSeat = 0;
+
+            for (let r = 0; r < rows; r++) {
+                const radius = 60 + r * 16;
+                for (let i = 0; i < dotsPerRow / rows; i++) {
+                    const angle = Math.PI + (i / ((dotsPerRow / rows) - 1)) * Math.PI;
+                    const cx = 150 + radius * Math.cos(angle);
+                    const cy = 140 + radius * Math.sin(angle);
+                    currentSeat++;
+                    const isRulingParty = currentSeat <= seats;
+                    const fillColor = isRulingParty ? gameState.party.color : '#64748b';
+                    dotsHTML += `<circle cx="cx.toFixed(1)"cy="{cy.toFixed(1)}" r="4" fill="${fillColor}" />`;
+                }
+            }
+
+            dotsHTML += `<line x1="150" y1="20" x2="150" y2="140" stroke="#f59e0b" stroke-dasharray="3 3" stroke-width="1.5"/>`;
+            dotsHTML += `<text x="150" y="15" fill="#f59e0b" font-size="10" font-weight="bold" text-anchor="middle">과반 150석</text>`;
+
+            svg.innerHTML = dotsHTML;
+
+            const isMajority = seats >= 150;
+            const badge = document.getElementById('assembly-status-badge');
+            const eduTip = document.getElementById('assembly-edu-tip');
+
+            if (isMajority) {
+                badge.innerText = `여대야소 국회 (${seats}석 / 과반 확보)`;
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/40";
+                eduTip.innerHTML = `소속 정당이 과반을 확보한 <strong>여대야소</strong> 국회입니다. 법안이 국회에서 수월하게 통과됩니다.`;
+            } else {
+                badge.innerText = `여소야대 국회 (${seats}석 / 소수 여당)`;
+                badge.className = "px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40";
+                eduTip.innerHTML = `야당 의석이 더 많은 <strong>여소야대</strong> 정국입니다. 협치 지수가 40점 미만이면 강경 정책이 <strong>국회에서 부결</strong>될 수 있습니다!`;
+            }
+
+            const legend = document.getElementById('assembly-legend');
+            legend.innerHTML = `
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background-color:${gameState.party.color}"></span>
+                    <span class="text-slate-200">여당 (gameState.party.name):<strong>{seats}석</strong></span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span class="text-slate-200">야당 및 무소속: <strong>${oppSeats}석</strong></span>
+                </div>
+            `;
+        }
+
+        function updateStatsUI() {
+            gameState.approval = Math.min(100, Math.max(0, gameState.approval));
+            gameState.economy = Math.min(100, Math.max(0, gameState.economy));
+            gameState.bipartisan = Math.min(100, Math.max(0, gameState.bipartisan));
+
+            document.getElementById('stat-approval').innerText = gameState.approval;
+            document.getElementById('bar-approval').style.width = gameState.approval + '%';
+
+            document.getElementById('stat-economy').innerText = gameState.economy;
+            document.getElementById('bar-economy').style.width = gameState.economy + '%';
+
+            document.getElementById('stat-budget').innerText = gameState.budget;
+            document.getElementById('bar-budget').style.width = Math.min(100, (gameState.budget / 1000) * 100) + '%';
+
+            document.getElementById('stat-bipartisan').innerText = gameState.bipartisan;
+            document.getElementById('bar-bipartisan').style.width = gameState.bipartisan + '%';
+
+            const year = Math.ceil(gameState.quarter / 4);
+            const season = (gameState.quarter - 1) % 4 + 1;
+            const seasonNames = ["봄", "여름", "가을", "겨울"];
+            document.getElementById('quarter-display').innerText = `제 gameState.quarter분기({year}년차 ${seasonNames[season - 1]})`;
+        }
+
+        function loadQuarterEvent() {
+            if (gameState.quarter > 12) {
+                endGame();
+                return;
+            }
+
+            document.getElementById('event-card-container').classList.remove('hidden');
+            document.getElementById('press-card-container').classList.add('hidden');
+
+            const currentEvent = EVENTS[gameState.quarter - 1];
+
+            document.getElementById('concept-title').innerText = currentEvent.tipTitle;
+            document.getElementById('concept-tip-text').innerText = currentEvent.tipText;
+
+            document.getElementById('event-category').innerText = `분야: ${currentEvent.category}`;
+            document.getElementById('event-quarter').innerText = `제 ${gameState.quarter}/12분기 안건`;
+            document.getElementById('event-title').innerText = currentEvent.title;
+            document.getElementById('event-description').innerText = currentEvent.desc;
+
+            const optionsContainer = document.getElementById('event-options');
+            optionsContainer.innerHTML = currentEvent.options.map((opt, idx) => `
+                <button onclick="selectEventOption(idx)"id="event-opt-btn-{idx}"
+                        class="text-left p-3.5 rounded-xl border border-slate-700 bg-slate-800/90 hover:border-blue-500 transition flex items-center justify-between group">
+                    <span class="font-bold text-slate-200 text-xs md:text-sm group-hover:text-blue-400 transition">${idx + 1}. ${opt.text}</span>
+                    <i class="fa-solid fa-chevron-right text-xs text-slate-500 group-hover:text-blue-400"></i>
+                </button>
+            `).join('');
+
+            selectEventOption(0);
+        }
+
+        function selectEventOption(optionIdx) {
+            gameState.selectedOptionIndex = optionIdx;
+            const currentEvent = EVENTS[gameState.quarter - 1];
+
+            currentEvent.options.forEach((_, idx) => {
+                const btn = document.getElementById(`event-opt-btn-${idx}`);
+                if (idx === optionIdx) {
+                    btn.classList.add('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    btn.classList.remove('border-slate-700', 'bg-slate-800/90');
+                } else {
+                    btn.classList.remove('border-blue-500', 'bg-blue-950/40', 'ring-2', 'ring-blue-500/50');
+                    btn.classList.add('border-slate-700', 'bg-slate-800/90');
+                }
+            });
+
+            const activeTab = document.querySelector('.tab-btn-active').id.replace('tab-', '');
+            switchTab(activeTab);
+
+            let execBtn = document.getElementById('exec-policy-btn');
+            if (!execBtn) {
+                execBtn = document.createElement('button');
+                execBtn.id = 'exec-policy-btn';
+                execBtn.className = "w-full mt-4 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm";
+                execBtn.onclick = applyPolicyDecision;
+                document.getElementById('event-card-container').appendChild(execBtn);
+            }
+            execBtn.innerHTML = `<i class="fa-solid fa-file-signature"></i> 선택한 정책 최종 의결 및 시행`;
+        }
+
+        function switchTab(tabKey) {
+            const currentEvent = EVENTS[gameState.quarter - 1];
+            const opt = currentEvent.options[gameState.selectedOptionIndex];
+
+            ['citizen', 'business', 'opposition'].forEach(key => {
+                const tabBtn = document.getElementById(`tab-${key}`);
+                if (key === tabKey) {
+                    tabBtn.classList.add('tab-btn-active');
+                } else {
+                    tabBtn.classList.remove('tab-btn-active');
+                }
+            });
+
+            const contentBox = document.getElementById('tab-content');
+            if (tabKey === 'citizen') {
+                contentBox.innerHTML = `<span class="font-bold text-blue-400 block mb-1">👤 국민의 시선:</span> ${opt.citizen}`;
+            } else if (tabKey === 'business') {
+                contentBox.innerHTML = `<span class="font-bold text-emerald-400 block mb-1">🏢 기업 및 경제계 분석:</span> ${opt.business}`;
+            } else if (tabKey === 'opposition') {
+                contentBox.innerHTML = `<span class="font-bold text-purple-400 block mb-1">🏛️ 야당 논평:</span> ${opt.opposition}`;
+            }
+        }
+
+        function applyPolicyDecision() {
+            const currentEvent = EVENTS[gameState.quarter - 1];
+            const selectedOpt = currentEvent.options[gameState.selectedOptionIndex];
+
+            // Legislative Check for Minority Government (여소야대 부결 시스템)
+            const isMinority = gameState.party.seats < 150;
+            if (isMinority && gameState.bipartisan < 35 && gameState.selectedOptionIndex === 0) {
+                alert(`⚠️ [국회 법안 부결 안내]\n\n현재 여소야대 상태에서 야당과의 '협치 지수(${gameState.bipartisan}점)'가 너무 낮아, 야당의 거센 반대로 해당 법안이 국회 본회의에서 부결되었습니다!\n\n(협치 지수 -5점, 국민 지지도 -3점)`);
+                gameState.bipartisan -= 5;
+                gameState.approval -= 3;
+                updateStatsUI();
+                loadPressConference();
+                return;
+            }
+
+            gameState.approval += selectedOpt.stat.approval;
+            gameState.economy += selectedOpt.stat.economy;
+            gameState.budget += selectedOpt.stat.budget;
+            gameState.bipartisan += selectedOpt.stat.bipartisan;
+
+            updateStatsUI();
+            loadPressConference();
+        }
+
+        function loadPressConference() {
+            document.getElementById('event-card-container').classList.add('hidden');
+            document.getElementById('press-card-container').classList.remove('hidden');
+            document.getElementById('press-reaction-box').classList.add('hidden');
+
+            let availableIndices = [];
+            for (let i = 0; i < PRESS_QUESTIONS.length; i++) {
+                if (!gameState.usedPressQuestionIndices.includes(i)) {
+                    availableIndices.push(i);
+                }
+            }
+
+            if (availableIndices.length === 0) {
+                gameState.usedPressQuestionIndices = [];
+                for (let i = 0; i < PRESS_QUESTIONS.length; i++) {
+                    availableIndices.push(i);
+                }
+            }
+
+            const randIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            gameState.usedPressQuestionIndices.push(randIndex);
+            gameState.currentPressQuestion = PRESS_QUESTIONS[randIndex];
+
+            const qData = gameState.currentPressQuestion;
+            document.getElementById('press-question-text').innerText = qData.q;
+
+            const answersContainer = document.getElementById('press-answers');
+            answersContainer.innerHTML = qData.answers.map((ans, idx) => `
+                <button onclick="selectPressAnswer(idx)"id="press-ans-btn-{idx}"
+                        class="text-left p-3.5 rounded-xl border border-slate-700 bg-slate-800/90 hover:border-blue-500 transition space-y-1 group">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-extrabold text-blue-400">[답변 ${idx + 1}] ${ans.type}</span>
+                        <i class="fa-solid fa-check text-xs text-transparent group-hover:text-blue-400"></i>
+                    </div>
+                    <p class="text-xs md:text-sm font-semibold text-slate-200">"${ans.text}"</p>
+                </button>
+            `).join('');
+        }
+
+        function selectPressAnswer(ansIdx) {
+            const qData = gameState.currentPressQuestion;
+            const ans = qData.answers[ansIdx];
+
+            qData.answers.forEach((_, idx) => {
+                const btn = document.getElementById(`press-ans-btn-${idx}`);
+                btn.disabled = true;
+                if (idx === ansIdx) {
+                    btn.classList.add('border-blue-500', 'bg-blue-950/50', 'ring-2', 'ring-blue-500/50');
+                } else {
+                    btn.classList.add('opacity-40');
+                }
+            });
+
+            gameState.approval += ans.stat.approval;
+            gameState.economy += ans.stat.economy;
+            gameState.bipartisan += ans.stat.bipartisan;
+            updateStatsUI();
+
+            document.getElementById('press-res-citizen').innerText = ans.citizen;
+            document.getElementById('press-res-business').innerText = ans.business;
+            document.getElementById('press-res-opposition').innerText = ans.opposition;
+            document.getElementById('press-reaction-box').classList.remove('hidden');
+        }
+
+        function nextQuarterFromPress() {
+            gameState.quarter++;
+            loadQuarterEvent();
+        }
+
+        function endGame() {
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('ending-screen').classList.remove('hidden');
+
+            document.getElementById('final-stat-approval').innerText = gameState.approval + '%';
+            document.getElementById('final-stat-economy').innerText = gameState.economy + '점';
+            document.getElementById('final-stat-budget').innerText = gameState.budget + '조원';
+            document.getElementById('final-stat-bipartisan').innerText = gameState.bipartisan + '점';
+
+            let citizenEval = "";
+            if (gameState.approval >= 60) {
+                citizenEval = "높은 지지율이 증명하듯, 국민의 민생 고통을 적극 헤아리고 삶의 질을 높여준 훌륭한 지도자로 평가받았습니다.";
+            } else if (gameState.approval >= 40) {
+                citizenEval = "국민들은 무난한 국정 운영이었다고 평가하지만, 일부 고물가와 사회적 갈등에 대해서는 아쉬움을 표했습니다.";
+            } else {
+                citizenEval = "낮은 지지율로 임기를 마감했습니다. 포퓰리즘이나 불통에 대한 경각심과 소통의 중요성이 지적되었습니다.";
+            }
+
+            let businessEval = "";
+            if (gameState.economy >= 60) {
+                businessEval = "과감한 R&D 투자와 규제 완화로 국가 체질을 개선하고 경제 성장을 이끈 우수한 정부였습니다.";
+            } else if (gameState.economy >= 40) {
+                businessEval = "경제 체질 개선 노력은 적절했으나, 대외 불확실성 속에서 큰 비약적 성장을 이끌지는 못했습니다.";
+            } else {
+                businessEval = "원자재값 폭등과 국가 재정 적자 누적으로 경제 활력을 잃었다는 아쉬운 평가를 받았습니다.";
+            }
+
+            let oppEval = "";
+            if (gameState.bipartisan >= 60) {
+                oppEval = "여소야대 국회 상황에서도 대화와 타협을 통해 초당적 협치를 완성한 모범적 정치를 선보였습니다.";
+            } else if (gameState.bipartisan >= 40) {
+                oppEval = "주요 안건에서는 야당과 타협안을 찾았으나, 일부 안건 처리에서 정쟁의 아쉬움을 남겼습니다.";
+            } else {
+                oppEval = "야당과의 소통 부족으로 국회 부결이 속출하는 등 정치적 갈등이 깊었던 임기였다고 평가했습니다.";
+            }
+
+            document.getElementById('final-eval-citizen').innerText = citizenEval;
+            document.getElementById('final-eval-business').innerText = businessEval;
+            document.getElementById('final-eval-opposition').innerText = oppEval;
+        }
+    </script>
+</body>
+</html>

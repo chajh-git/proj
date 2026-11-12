@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SKYBOUND: 차원의 탑</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:12px;background:#10172d;color:white;font-family:system-ui;text-align:center}
+main{max-width:960px;margin:auto}
+canvas{width:100%;height:auto;display:block;touch-action:none;border-radius:14px}
+.screen{overflow:hidden;border:1px solid #647cad;border-radius:14px}
+.bar{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0}
+button{background:#293b64;color:white;border:1px solid #7185b4;border-radius:10px;padding:10px 15px;font-weight:bold;touch-action:none}
+</style>
+</head>
+<body>
+<main>
+<h2>SKYBOUND: 차원의 탑</h2>
+<div class="bar"><span id="stage">STAGE 1 / 5</span><span id="stars">★ 0</span><span id="lives">♥ 3</span></div>
+<div class="screen"><canvas id="game" width="960" height="540"></canvas></div>
+<div class="bar">
+<div><button id="left">◀</button><button id="right">▶</button></div>
+<div><button id="jump">점프</button><button id="dash">대시</button></div>
+</div>
+<div class="bar"><button id="retry">재시작</button><button id="full">전체 화면</button></div>
+<p id="message">장애물을 피하고 별을 모아 포털로 가자!</p>
+<p>A/D 또는 방향키 이동 · Space 점프 · Shift 대시 · R 재시작</p>
+</main>
+<script>
+const c=document.getElementById("game"),ctx=c.getContext("2d");
+const $=id=>document.getElementById(id);
+const W=960,H=540;
+const stages=[
+{speed:3.55,bg:["#101d43","#493568"],type:"spike",p:[[0,470,330,70],[390,405,180,22],[650,345,180,22],[910,405,180,22],[1180,330,180,22],[1450,400,200,22],[1730,470,260,70]],s:[[450,365],[710,305],[970,365],[1240,290],[1510,360],[1810,425]],h:[[335,470,55],[580,470,55],[840,470,55],[1110,470,55],[1380,470,55]],portal:1830},
+{speed:3.72,bg:["#152447","#315a79"],type:"saw",p:[[0,470,250,70],[310,390,145,22],[520,315,145,22],[730,385,145,22],[940,300,145,22],[1150,370,145,22],[1360,290,145,22],[1570,385,145,22],[1790,470,280,70]],s:[[350,350],[560,275],[770,345],[980,260],[1190,330],[1400,250],[1610,345],[1870,425]],h:[[270,420,34],[650,335,34],[1050,420,34],[1480,320,34]],portal:1900},
+{speed:3.9,bg:["#211b4b","#683f78"],type:"orb",p:[[0,470,220,70],[280,380,130,22],[475,300,130,22],[670,375,130,22],[865,285,130,22],[1060,365,130,22],[1255,275,130,22],[1450,370,130,22],[1645,290,130,22],[1850,470,270,70]],s:[[320,340],[515,260],[710,335],[905,245],[1100,325],[1295,235],[1490,330],[1685,250],[1920,425]],h:[[370,325,24],[750,290,24],[1050,290,24],[1430,290,24],[1720,320,24]],portal:1960},
+{speed:4.05,bg:["#17294a","#416e87"],type:"laser",p:[[0,470,220,70],[280,385,125,22],[465,310,125,22],[650,380,125,22],[835,295,125,22],[1020,375,125,22],[1205,285,125,22],[1390,370,125,22],[1575,280,125,22],[1760,370,125,22],[1950,470,270,70]],s:[[320,345],[505,270],[690,340],[875,255],[1060,335],[1245,245],[1430,330],[1615,240],[1800,330],[2030,425]],h:[[410,395,80],[785,305,80],[1155,385,80],[1525,295,80],[1850,395,70]],portal:2070},
+{speed:4.18,bg:["#271943","#75456d"],type:"mix",p:[[0,470,210,70],[270,385,120,22],[445,295,120,22],[620,370,120,22],[795,275,120,22],[970,355,120,22],[1145,260,120,22],[1320,350,120,22],[1495,255,120,22],[1670,350,120,22],[1845,280,120,22],[2020,390,120,22],[2190,470,260,70]],s:[[310,345],[485,255],[660,330],[835,235],[1010,315],[1185,220],[1360,310],[1535,215],[1710,310],[1885,240],[2060,350],[2250,425]],h:[[230,470,45],[520,360,32],[870,245,32],[1090,470,50],[1390,330,30],[1610,470,50],[1900,260,32],[2110,470,45]],portal:2270}
+];
+let stage=0,player,camera=0,cameraY=0,stars=[],frame=0,lives=3,checkpoint=0,won=false,transition=0;
+let keys={},touch={l:false,r:false},particles=[];
+function load(n){
+ stage=n;let s=stages[n];
+ player={x:35,y:410,vx:0,vy:0,w:29,h:40,ground:false,face:1,dash:0,inv:0};
+ camera=0;cameraY=0;stars=s.s.map(([x,y])=>({x,y,got:false}));
+ lives=3;checkpoint=0;won=false;particles=[];transition=24;
+ $("stage").textContent=`STAGE ${n+1} / 5`;
+ $("message").textContent=["가시 함정을 피해 포털로!","움직이는 톱날을 조심해!","전기 구체를 피해 이동해!","레이저가 꺼졌을 때 통과해!","최종 장애물 구간에 도전해!"][n];
+ hud();
+}
+function hud(){
+ $("stars").textContent=`★ ${stars.filter(a=>a.got).length} / ${stars.length}`;
+ $("lives").textContent="♥ "+lives;
+}
+function burst(x,y,color,count=10){
+ for(let i=0;i<count;i++){let a=Math.random()*6.28,v=1+Math.random()*4;particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:25,color})}
+}
+function die(){
+ if(player.inv>0)return;
+ lives--;burst(player.x,player.y,"#ff668c",18);
+ if(lives<=0){$("message").textContent="다시 도전해 보자!";setTimeout(()=>load(stage),650)}
+ else{player.x=checkpoint;player.y=370;player.vx=0;player.vy=0;player.inv=90}
+ hud();
+}
+function jump(){if(player.ground){player.vy=-14.2;player.ground=false;burst(player.x+14,player.y+38,"#8de7e5",5)}}
+function dash(){if(player.dash<=0){player.dash=13;player.vx=player.face*13.2;player.vy*=.25;burst(player.x+14,player.y+20,"#8de7e5",8)}}
+function bind(id,fn){
+ let b=$(id);
+ b.addEventListener("pointerdown",e=>{e.preventDefault();fn(true)});
+ ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,e=>{e.preventDefault();fn(false)}));
+}
+bind("left",v=>touch.l=v);bind("right",v=>touch.r=v);
+bind("jump",v=>{if(v)jump()});bind("dash",v=>{if(v)dash()});
+window.addEventListener("keydown",e=>{
+ if(["Space","ArrowLeft","ArrowRight","Shift"].includes(e.code))e.preventDefault();
+ keys[e.code]=true;
+ if(e.code==="Space"&&!e.repeat)jump();
+ if(e.code==="Shift"&&!e.repeat)dash();
+ if(e.code==="KeyR")load(stage);
+});
+window.addEventListener("keyup",e=>keys[e.code]=false);
+$("retry").onclick=()=>load(stage);
+$("full").onclick=()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.()};
+function box(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
+function obstacle(h,type){
+ let [x,y,size]=h,t=frame;
+ if(type==="spike"||(type==="mix"&&size>35&&y>=460)){
+  ctx.fillStyle="#ff557c";ctx.beginPath();ctx.moveTo(x,y+20);ctx.lineTo(x+size/2,y);ctx.lineTo(x+size,y+20);ctx.fill();
+ }else if(type==="saw"||(type==="mix"&&size<35&&x<1000)){
+  let yy=y+Math.sin(t*.055+x)*35;
+  ctx.save();ctx.translate(x+size/2,yy);ctx.rotate(t*.08);ctx.fillStyle="#b9c9db";
+  for(let i=0;i<12;i++){ctx.rotate(Math.PI/6);ctx.fillRect(-3,-size/2-5,6,12)}
+  ctx.beginPath();ctx.arc(0,0,size/2,0,7);ctx.fill();ctx.restore();
+ }else if(type==="orb"||(type==="mix"&&size<35&&x<1800)){
+  let yy=y+Math.sin(t*.06+x)*28;
+  ctx.shadowBlur=22;ctx.shadowColor="#d16cff";ctx.fillStyle="#dc8cff";
+  ctx.beginPath();ctx.arc(x+size/2,yy,size/2+3,0,7);ctx.fill();ctx.shadowBlur=0;
+ }else{
+  let active=Math.sin(t*.045+x*.01)>.15;
+  box(x,y,size,8,"#657b9d");
+  if(active){ctx.shadowBlur=18;ctx.shadowColor="#ff527e";box(x,y+8,size,5,"#ff4b79");ctx.shadowBlur=0}
+ }
+}
+function obstacleHit(h,type){
+ let [x,y,size]=h,t=frame;
+ if(type==="spike"||(type==="mix"&&size>35&&y>=460))
+  return player.x+player.w>x&&player.x<x+size&&player.y+player.h>y+5;
+ if(type==="saw"||(type==="mix"&&size<35&&x<1000)){
+  let yy=y+Math.sin(t*.055+x)*35;
+  return Math.hypot(player.x+14-x-size/2,player.y+20-yy)<size/2+18;
+ }
+ if(type==="orb"||(type==="mix"&&size<35&&x<1800)){
+  let yy=y+Math.sin(t*.06+x)*28;
+  return Math.hypot(player.x+14-x-size/2,player.y+20-yy)<size/2+19;
+ }
+ let active=Math.sin(t*.045+x*.01)>.15;
+ return active&&player.x+player.w>x&&player.x<x+size&&player.y+player.h>y+5&&player.y<y+18;
+}
+function draw(){
+ let s=stages[stage],g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,s.bg[0]);g.addColorStop(1,s.bg[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<90;i++){
+  let x=((i*139-camera*.18)%W+W)%W,y=(i*83)%410;
+  ctx.fillStyle=`rgba(255,255,255,${.2+(i%4)*.1})`;ctx.fillRect(x,y,2,2);
+ }
+ ctx.save();ctx.translate(-camera,-cameraY);
+ s.p.forEach(p=>{
+  let gr=ctx.createLinearGradient(0,p[1],0,p[1]+p[3]);
+  gr.addColorStop(0,"#8299c5");gr.addColorStop(1,"#28395f");
+  box(p[0],p[1],p[2],p[3],gr);box(p[0],p[1],p[2],5,"#a2fff0");
+  for(let x=p[0]+15;x<p[0]+p[2]-8;x+=34)box(x,p[1]+12,2,3,"rgba(255,255,255,.2)");
+ });
+ s.h.forEach(h=>obstacle(h,s.type));
+ stars.forEach(a=>{
+  if(a.got)return;
+  let y=a.y+Math.sin(frame*.07+a.x)*5;
+  ctx.shadowBlur=18;ctx.shadowColor="#ffe77a";ctx.fillStyle="#ffe77a";
+  ctx.beginPath();
+  for(let i=0;i<10;i++){let r=i%2?5:12,ang=i*Math.PI/5-Math.PI/2;ctx.lineTo(a.x+Math.cos(ang)*r,y+Math.sin(ang)*r)}
+  ctx.closePath();ctx.fill();ctx.shadowBlur=0;
+ });
+ ctx.shadowBlur=25;ctx.shadowColor="#a88bff";ctx.strokeStyle="#c7aaff";ctx.lineWidth=7;
+ ctx.beginPath();ctx.ellipse(s.portal+23,405,23,53,0,0,7);ctx.stroke();ctx.shadowBlur=0;
+ if(player.inv%8<5||player.inv<=0){
+  ctx.shadowBlur=15;ctx.shadowColor="#58f4e2";
+  let gr=ctx.createLinearGradient(player.x,player.y,player.x+30,player.y+40);
+  gr.addColorStop(0,"#a8fff4");gr.addColorStop(1,"#35a9ca");
+  box(player.x,player.y,player.w,player.h,gr);ctx.shadowBlur=0;
+  box(player.x+(player.face>0?19:6),player.y+10,5,6,"#182447");
+ }
+ particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/25);box(p.x,p.y,4,4,p.color);ctx.globalAlpha=1});
+ ctx.restore();
+ if(transition>0){ctx.fillStyle=`rgba(5,8,25,${transition/24*.7})`;ctx.fillRect(0,0,W,H);transition--}
+}
+function update(){
+ if(won)return;
+ let s=stages[stage],left=keys.KeyA||keys.ArrowLeft||touch.l,right=keys.KeyD||keys.ArrowRight||touch.r;
+ if(player.dash>0)player.dash--;
+ else{
+  if(left){player.vx-=.78;player.face=-1}
+  if(right){player.vx+=.78;player.face=1}
+  if(!left&&!right)player.vx*=.82;
+  player.vx=Math.max(-s.speed,Math.min(s.speed,player.vx));
+ }
+ player.x+=player.vx;player.vy+=.62;player.y+=player.vy;player.ground=false;
+ for(let p of s.p){
+  if(player.x+player.w>p[0]&&player.x<p[0]+p[2]&&player.y+player.h>p[1]&&player.y+player.h-player.vy<=p[1]+9&&player.vy>=0){
+   player.y=p[1]-player.h;player.vy=0;player.ground=true;
+  }
+ }
+ for(let h of s.h)if(obstacleHit(h,s.type))die();
+ if(player.y>580||player.x<0)die();
+ if(player.x>checkpoint+380)checkpoint=Math.max(checkpoint,player.x-80);
+ stars.forEach(a=>{
+  if(!a.got&&player.x<a.x+13&&player.x+player.w>a.x-13&&player.y<a.y+13&&player.y+player.h>a.y-13){
+   a.got=true;burst(a.x,a.y,"#ffe77a",12);hud();
+  }
+ });
+ if(player.x+player.w>s.portal&&player.x<s.portal+50&&player.y+player.h>350&&player.y<460){
+  if(stage<4)load(stage+1);
+  else{won=true;
+("message").textContent="🏆차원의탑정복성공!";("stage").textContent="ALL CLEAR";burst(player.x,player.y,"#ffe77a",60)}
+ }
+ if(player.inv>0)player.inv--;
+ // 카메라가 캐릭터를 부드럽게 따라간다.
+ let targetX=Math.max(0,Math.min(player.x-380,s.p[s.p.length-1][0]-W+200));
+ let targetY=Math.max(-100,Math.min(0,player.y-270));
+ camera+=(targetX-camera)*.12;
+ cameraY+=(targetY-cameraY)*.1;
+ particles=particles.filter(p=>p.life-->0);
+ particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.1});
+}
+function loop(){frame++;update();draw();requestAnimationFrame(loop)}
+load(0);loop();
+</script>
+</body>
+</html>

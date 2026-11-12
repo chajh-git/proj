@@ -1,0 +1,3964 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>플레리어: 네온 차원전쟁</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050714;color:#eef2ff;font-family:system-ui,"Malgun Gothic",sans-serif}
+#wrap{max-width:1250px;margin:auto;padding:12px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;border:1px solid #6656ff;border-radius:15px;background:linear-gradient(110deg,#111b42,#21103d);box-shadow:0 0 28px #643aff38}
+h1{font-size:clamp(18px,2.5vw,27px);margin:0;color:#e4d9ff;text-shadow:0 0 15px #8d5cff}
+.stats{display:flex;gap:7px;flex-wrap:wrap}
+.stat,.pill{padding:7px 10px;background:#080e28;border:1px solid #283b77;border-radius:9px;font-size:13px;font-weight:800;white-space:nowrap}
+#arena{position:relative;margin-top:10px;border:2px solid #594aff;border-radius:15px;overflow:hidden;box-shadow:0 0 32px #5037ff35}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;cursor:crosshair;touch-action:none}
+#toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,28px);font-weight:1000;text-shadow:0 0 12px white,0 0 28px #9b59ff;pointer-events:none;white-space:nowrap;text-align:center}
+.overlay{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:#040615eF;overflow:auto}
+.panel{width:min(760px,100%);padding:clamp(15px,3vw,28px);border:1px solid #8d72ff;border-radius:22px;text-align:center;background:linear-gradient(145deg,#151c49,#090d25);box-shadow:0 0 45px #7545ff55}
+.panel h2{font-size:clamp(27px,5vw,48px);margin:0;color:#e7dcff;text-shadow:0 0 22px #a15cff}
+.panel p{line-height:1.65;color:#cbd5ff}
+button{font:inherit;font-weight:850;color:white;padding:10px 15px;border:1px solid #c6baff;border-radius:11px;background:linear-gradient(120deg,#914bff,#3730bf);cursor:pointer;margin:4px}
+button:hover{filter:brightness(1.2)}
+#cards{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.card{flex:1 1 145px;max-width:210px;padding:14px 8px;border:1px solid #626fff;border-radius:14px;background:linear-gradient(150deg,#172653,#170f3c);cursor:pointer}
+.card:hover{box-shadow:0 0 22px #7d55ff}
+.card.selected{border:2px solid #58f4ff;box-shadow:0 0 24px #38dfff88;background:linear-gradient(150deg,#17415a,#28205b)}
+#skillArea{margin-top:18px;padding-top:14px;border-top:1px solid #555da8}
+#skillArea h3{margin:4px 0 10px;color:#a9f5ff}
+#skillSlots,#skillChoices{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.skill-slot{min-width:145px;max-width:190px;flex:1 1 145px;padding:10px;border:1px solid #48cce8;border-radius:12px;background:linear-gradient(145deg,#102b49,#201342);color:#fff}
+.skill-slot b{display:block;font-size:15px}
+.skill-slot span{display:block;font-size:12px;color:#b9d7ff;margin-top:4px}
+.skill-choice{min-width:130px;max-width:180px;flex:1 1 130px;padding:10px;border:1px solid #b17cff;border-radius:11px;background:#21163f;color:#fff}
+.skill-choice:disabled{opacity:.35;cursor:not-allowed}
+.desc{font-size:13px;color:#c9d4ff;margin:7px 0}
+#help{text-align:center;padding:10px 5px;color:#c5d0ff;font-size:13px;line-height:1.7}
+#bottom{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+kbd{padding:2px 6px;border:1px solid #7f8dff;border-radius:5px;background:#151e46;color:#fff}
+.small{font-size:12px!important;color:#9daedc!important}
+@media(max-width:600px){
+#wrap{padding:6px}
+.stat{font-size:11px;padding:6px}
+.panel{padding:12px}
+.panel p{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header>
+<h1>✦ 플레리어 : 네온 차원전쟁 ✦</h1>
+<div class="stats">
+<div class="stat">플레이어 <span id="className">플레리어</span></div>
+<div class="stat">ROUND <span id="round">1</span>/20</div>
+<div class="stat">❤️ <span id="hp">100</span>/<span id="maxhp">100</span></div>
+<div class="stat">⚔ <span id="atk">18</span></div>
+<div class="stat">👾 <span id="count">0</span></div>
+<div class="stat">처치 <span id="progress">0/8</span></div>
+<div class="stat">궁극기 <span id="ult">0</span>%</div>
+</div>
+</header>
+
+<div id="arena">
+<canvas id="game" width="1200" height="675"></canvas>
+<div id="toast"></div>
+
+<div class="overlay" id="upgrade" style="display:none">
+<div class="panel">
+<h2>✧ 차원 강화 ✧</h2>
+<p>강화와 스킬 변경은 선택 사항입니다. 아무것도 고르지 않고 넘어가도 몬스터 능력치는 강해지지 않습니다.</p>
+<div id="cards"></div>
+<div id="skillArea">
+<h3>⚙ 스킬 장착 / 변경</h3>
+<div id="skillSlots"></div>
+<p class="small" id="skillHint">Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.</p>
+<div id="skillChoices"></div>
+</div>
+<button id="continueRound" disabled>강화를 선택하세요</button>
+</div>
+</div>
+
+<div class="overlay" id="finish" style="display:none">
+<div class="panel">
+<h2 id="finishTitle">GAME OVER</h2>
+<p id="finishText"></p>
+<button id="restartBtn">다시 도전</button>
+</div>
+</div>
+</div>
+
+<div id="help">
+이동 <kbd>WASD</kbd> · 수동 조준 <b>마우스</b> · 자동 사격 <b>켜짐</b><br>
+회복 코어 <b>초록색</b> · <kbd>Q</kbd> 스킬 1 · <kbd>E</kbd> 스킬 2 · <kbd>R</kbd> 스킬 3<br>
+<kbd>F</kbd> 특수 스킬 · <kbd>SPACE</kbd> 궁극기
+</div>
+
+<div id="bottom">
+<span class="pill">🟣 Q: <b id="qcd">준비 완료</b></span>
+<span class="pill">🔴 E: <b id="ecd">준비 완료</b></span>
+<span class="pill">🔵 R: <b id="rcd">준비 완료</b></span>
+<span class="pill">🌌 궁극기: <b id="ultready">충전 중</b></span>
+<span class="pill">✨ 특수 스킬(F): <b id="powercd">준비 완료</b></span>
+<button id="autoBtn" aria-pressed="true">자동 사격: 켜짐</button>
+</div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+window.addEventListener('error',function(ev){
+const toast=document.getElementById('toast');
+if(toast)toast.textContent='게임 오류: '+(ev.message||'페이지를 새로고침해 주세요.');
+});
+
+const c=document.getElementById('game');
+const x=c.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=1200,H=675,MW=3600,MH=2600;
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+let camX=0,camY=0;
+let running=false,paused=false,last=0,round=1,kills=0,ult=0;
+let spawn=0,fireT=0,slow=0,shake=0,auto=true;
+let mouse={x:850,y:330,sx:780,sy:337};
+let keys={},p,enemies=[],bullets=[],particles=[],rings=[],floats=[],pickups=[],turrets=[];
+let droneTime=0,droneFire=0,classStrike=null,eid=1;
+let chosenUpgrade=null,selectedSlot=null;
+let waveGoal=8,waveSpawned=0,selectedClass=null;
+
+const equipped={q:'dash',e:'blast',r:'warp'};
+
+const classDefs={
+fighter:{
+color:'#d6a8ff',icon:'⚔️',name:'플레리어',
+desc:'공격력이 높고 균형 잡힌 근접 전투형',
+hp:140,atk:24,speed:280,rate:.17,crit:.06,cdFactor:1,
+skills:{q:'dash',e:'blade',r:'shield'},
+passive:'공격력 우수 · 체력 140',
+power:{name:'차원 각성',desc:'검기가 폭발하며 공격 강화',cd:19,color:'#d9b4ff'}
+},
+soldier:{
+color:'#8cf4ff',icon:'🪖',name:'군인',
+desc:'빠른 연사와 설치형 포탑을 활용하는 사격형',
+hp:128,atk:20,speed:270,rate:.115,crit:.04,cdFactor:1,
+skills:{q:'grenade',e:'turret',r:'warp'},
+passive:'연사 속도 우수 · 포탑 시작 장착',
+power:{name:'전술 공습',desc:'마우스 위치에 폭격',cd:21,color:'#8cf4ff'}
+},
+dragon:{
+color:'#ff9865',icon:'🐉',name:'용기사',
+desc:'높은 체력과 강한 한 발로 버티는 돌격형',
+hp:170,atk:25,speed:252,rate:.18,crit:.06,cdFactor:1.05,
+skills:{q:'shield',e:'blast',r:'meteor'},
+passive:'최대 체력 우수 · 공격력 보너스',
+power:{name:'용의 힘',desc:'용의 화염으로 공격 강화',cd:23,color:'#ff9865'}
+},
+mage:{
+color:'#8ab8ff',icon:'🔮',name:'마법사',
+desc:'스킬을 자주 사용해 적 무리를 제어하는 마법형',
+hp:118,atk:21,speed:265,rate:.16,crit:.03,cdFactor:.82,
+skills:{q:'frost',e:'lightning',r:'warp'},
+passive:'스킬 쿨타임 감소',
+power:{name:'마나 방출',desc:'넓은 범위에 마법 피해',cd:22,color:'#8ab8ff'}
+},
+assassin:{
+color:'#ff79be',icon:'🗡️',name:'암살자',
+desc:'빠른 이동과 치명타로 약점을 노리는 기동형',
+hp:112,atk:22,speed:325,rate:.145,crit:.2,cdFactor:.94,
+skills:{q:'dash',e:'blade',r:'lightning'},
+passive:'이동 속도 우수 · 치명타 확률 높음',
+power:{name:'그림자 분신',desc:'분신과 함께 공격',cd:20,color:'#ff79be'}
+}
+};
+
+const skillDefs={
+dash:{icon:'⚡',name:'순간 돌진',desc:'마우스 방향으로 돌진하고 잠시 무적',cd:4},
+shield:{icon:'🛡️',name:'차원 보호막',desc:'2.8초 무적 + 체력 30 회복',cd:9},
+blast:{icon:'💥',name:'플라즈마 폭발',desc:'주변 적에게 강력한 광역 피해',cd:7},
+lightning:{icon:'🌩️',name:'연쇄 번개',desc:'가까운 적 최대 7명에게 번개 피해',cd:8},
+warp:{icon:'🌀',name:'시간 왜곡',desc:'모든 적을 5.2초 동안 둔화',cd:14},
+meteor:{icon:'☄️',name:'운석 낙하',desc:'마우스 위치에 거대 운석 공격',cd:11},
+grenade:{icon:'🧨',name:'충격 수류탄',desc:'마우스 위치에 폭발 공격',cd:8},
+heal:{icon:'💚',name:'응급 회복',desc:'체력을 최대 55 회복',cd:16},
+frost:{icon:'❄️',name:'빙결 파동',desc:'적에게 피해를 주고 느리게 함',cd:12},
+turret:{icon:'🤖',name:'자동 포탑',desc:'12초 동안 주변 적을 자동 공격',cd:18},
+blade:{icon:'🌪️',name:'검기 회오리',desc:'전방 넓은 범위에 강한 검격',cd:8},
+drone:{icon:'🛸',name:'지원 드론',desc:'10초 동안 적을 자동 공격',cd:17}
+};
+
+function say(s){
+$('toast').textContent=s;
+clearTimeout(say.t);
+say.t=setTimeout(()=>$('toast').textContent='',1400);
+}
+
+function reset(){
+selectedClass=selectedClass||'fighter';
+const job=classDefs[selectedClass];
+
+round=1;
+kills=0;
+ult=0;
+waveGoal=8;
+waveSpawned=0;
+spawn=.8;
+fireT=slow=shake=0;
+
+enemies=[];
+bullets=[];
+particles=[];
+rings=[];
+floats=[];
+pickups=[];
+turrets=[];
+droneTime=droneFire=0;
+classStrike=null;
+keys={};
+eid=1;
+
+Object.assign(equipped,job.skills);
+chosenUpgrade=null;
+selectedSlot=null;
+
+p={
+x:MW/2,y:MH/2,r:17,
+hp:job.hp,maxHp:job.hp,
+atk:job.atk,speed:job.speed,
+inv:0,regenWait:0,
+cd:{q:0,e:0,r:0},
+rate:job.rate,crit:job.crit,
+cdFactor:job.cdFactor,
+job:selectedClass,
+damageBonus:selectedClass==='dragon'?1.1:1,
+powerCd:0,powerTime:0,powerPulse:0
+};
+
+camX=cl(p.x-W/2,0,MW-W);
+camY=cl(p.y-H/2,0,MH-H);
+mouse.sx=780;
+mouse.sy=H/2;
+mouse.x=mouse.sx+camX;
+mouse.y=mouse.sy+camY;
+
+$('className').textContent=job.name;
+$('round').textContent=round;
+$('hp').textContent=p.hp;
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+
+running=true;
+paused=false;
+$('upgrade').style.display='none';
+$('finish').style.display='none';
+say(job.name+' 출전!');
+last=performance.now();
+requestAnimationFrame(loop);
+}
+
+$('restartBtn').addEventListener('click',reset);
+
+$('autoBtn').onclick=()=>{
+auto=!auto;
+$('autoBtn').textContent='자동 사격: '+(auto?'켜짐':'꺼짐');
+$('autoBtn').setAttribute('aria-pressed',String(auto));
+say(auto?'자동 사격 ON':'자동 사격 OFF');
+};
+
+function pointer(e){
+let b=c.getBoundingClientRect();
+mouse.sx=cl((e.clientX-b.left)/b.width*W,0,W);
+mouse.sy=cl((e.clientY-b.top)/b.height*H,0,H);
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+}
+
+c.addEventListener('pointermove',pointer);
+c.addEventListener('pointerdown',e=>{
+pointer(e);
+if(e.pointerType==='mouse'&&e.button===0&&!auto)fire();
+});
+c.addEventListener('contextmenu',e=>e.preventDefault());
+
+window.addEventListener('keydown',e=>{
+let k=e.key.toLowerCase();
+keys[k]=true;
+if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+if(e.repeat||!running||paused||!p)return;
+if(k==='q')castSkill('q');
+if(k==='e')castSkill('e');
+if(k==='r')castSkill('r');
+if(k==='f')classPower();
+if(e.code==='Space')ultimate();
+});
+
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function burst(a,b,col,n=20,pow=200){
+for(let i=0;i<n;i++){
+let ang=rand(0,Math.PI*2),s=rand(30,pow);
+particles.push({
+x:a,y:b,
+vx:Math.cos(ang)*s,
+vy:Math.sin(ang)*s,
+life:rand(.25,.8),max:.8,
+col,r:rand(1.5,4.5),glow:rand(5,17)
+});
+}
+}
+
+function ring(a,b,col,max=120,width=5,life=.55){
+rings.push({x:a,y:b,col,r:4,max,life,maxLife:life,width});
+}
+
+function txt(a,b,t,col='#fff'){
+floats.push({x:a,y:b,t,col,life:.75});
+}
+
+function dash(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let ox=p.x,oy=p.y;
+p.x=cl(p.x+Math.cos(a)*210,22,MW-22);
+p.y=cl(p.y+Math.sin(a)*210,22,MH-22);
+for(let i=0;i<7;i++){
+particles.push({
+x:ox+(p.x-ox)*i/7,
+y:oy+(p.y-oy)*i/7,
+vx:rand(-70,70),vy:rand(-70,70),
+life:.45,max:.45,col:'#b15cff',r:7,glow:20
+});
+}
+p.inv=1.0;
+ring(p.x,p.y,'#c477ff',105,8);
+burst(p.x,p.y,'#a85bff',36,230);
+shake=7;
+say('순간 돌진!');
+}
+
+function shield(){
+p.inv=Math.max(p.inv,2.8);
+p.hp=Math.min(p.maxHp,p.hp+30);
+ring(p.x,p.y,'#72f5ff',190,11,.8);
+ring(p.x,p.y,'#ffffff',125,4,.65);
+burst(p.x,p.y,'#72f5ff',55,250);
+say('차원 보호막! 무적 + 회복');
+}
+
+function blast(){
+ring(p.x,p.y,'#ff376c',295,13);
+ring(p.x,p.y,'#ffbd4a',220,6);
+burst(p.x,p.y,'#ff3b70',105,380);
+shake=14;
+for(let e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<295){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ff9bcb');
+}
+}
+say('플라즈마 폭발!');
+}
+
+function lightning(){
+let targets=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+).slice(0,7);
+let ox=p.x,oy=p.y;
+for(let e of targets){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+for(let j=0;j<8;j++){
+particles.push({
+x:ox+(e.x-ox)*j/8+rand(-12,12),
+y:oy+(e.y-oy)*j/8+rand(-12,12),
+vx:rand(-45,45),vy:rand(-45,45),
+life:.3,max:.3,col:'#7af8ff',r:rand(2,5),glow:22
+});
+}
+ring(e.x,e.y,'#67efff',48,5,.35);
+burst(e.x,e.y,'#7af8ff',14,160);
+txt(e.x,e.y-20,'-'+d,'#a9ffff');
+ox=e.x;
+oy=e.y;
+}
+say(targets.length?'연쇄 번개!':'번개 발동!');
+}
+
+function warp(){
+slow=5.2;
+ring(p.x,p.y,'#31eaff',420,9,1);
+burst(p.x,p.y,'#35dfff',65,260);
+for(let e of enemies)txt(e.x,e.y-18,'SLOW','#80f7ff');
+say('시간 왜곡!');
+}
+
+function meteor(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9d42',230,14,.85);
+ring(tx,ty,'#fff0a0',145,7,.65);
+burst(tx,ty,'#ff8b38',75,300);
+burst(tx,ty,'#fff0a0',35,200);
+shake=10;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<225){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd28b');
+}
+}
+say('운석 낙하!');
+}
+
+function grenade(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9e45',210,12,.8);
+burst(tx,ty,'#ff9e45',62,280);
+shake=8;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<155){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd095');
+}
+}
+say('충격 수류탄!');
+}
+
+function heal(){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+55);
+ring(p.x,p.y,'#65ffac',125,8,.8);
+burst(p.x,p.y,'#65ffac',42,210);
+txt(p.x,p.y-30,'+'+Math.round(p.hp-before),'#8dffbd');
+say('응급 회복!');
+}
+
+function frost(){
+let tx=mouse.x,ty=mouse.y;
+slow=5.2;
+ring(tx,ty,'#8ceaff',245,11,1);
+burst(tx,ty,'#8ceaff',75,280);
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<235){
+let d=Math.round(p.atk*2.15*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#a8f4ff');
+}
+}
+say('빙결 파동!');
+}
+
+function turret(){
+if(turrets.length>=2)turrets.shift();
+turrets.push({x:p.x,y:p.y,life:12,fire:.15});
+ring(p.x,p.y,'#ffce75',70,6,.55);
+burst(p.x,p.y,'#ffce75',28,150);
+say('자동 포탑 설치!');
+}
+
+function blade(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+ring(p.x+Math.cos(a)*72,p.y+Math.sin(a)*72,'#aefcff',175,12,.55);
+burst(p.x+Math.cos(a)*75,p.y+Math.sin(a)*75,'#d5fbff',45,250);
+for(let e of enemies){
+let da=Math.atan2(e.y-p.y,e.x-p.x)-a;
+while(da>Math.PI)da-=Math.PI*2;
+while(da<-Math.PI)da+=Math.PI*2;
+if(Math.hypot(e.x-p.x,e.y-p.y)<225&&Math.abs(da)<1.3){
+let d=Math.round(p.atk*3.0*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#e2ffff');
+}
+}
+shake=6;
+say('검기 회오리!');
+}
+
+function drone(){
+droneTime=10;
+droneFire=.1;
+ring(p.x,p.y,'#84eaff',85,6,.6);
+burst(p.x,p.y,'#84eaff',28,160);
+say('지원 드론 출격!');
+}
+
+function castSkill(slot){
+if(!p||p.cd[slot]>0)return;
+let id=equipped[slot],def=skillDefs[id];
+p.cd[slot]=def.cd*(p.cdFactor||1);
+({dash,shield,blast,lightning,warp,meteor,grenade,heal,frost,turret,blade,drone})[id]();
+}
+
+function classPower(){
+if(!p||p.powerCd>0)return;
+const job=classDefs[p.job],color=job.power.color;
+p.powerCd=job.power.cd*(p.cdFactor||1);
+
+if(p.job==='fighter'){
+p.powerTime=7;
+p.powerPulse=.12;
+p.inv=Math.max(p.inv,.45);
+ring(p.x,p.y,color,235,13,.85);
+ring(p.x,p.y,'#ffffff',165,5,.7);
+burst(p.x,p.y,color,80,310);
+shake=9;
+say('🌌 차원 각성! 7초간 공격 강화');
+}else if(p.job==='soldier'){
+classStrike={x:mouse.x,y:mouse.y,time:3.4,delay:.25,tick:.25,color};
+ring(classStrike.x,classStrike.y,color,190,8,.8);
+burst(classStrike.x,classStrike.y,color,28,140);
+say('🪖 전술 공습 요청!');
+}else if(p.job==='dragon'){
+p.powerTime=8;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,.65);
+ring(p.x,p.y,color,275,14,.9);
+ring(p.x,p.y,'#ffd69b',190,6,.8);
+burst(p.x,p.y,color,100,340);
+shake=11;
+say('🐉 용의 힘 개방!');
+}else if(p.job==='mage'){
+ring(p.x,p.y,color,365,15,1);
+ring(p.x,p.y,'#ffffff',275,6,.8);
+burst(p.x,p.y,color,125,390);
+burst(p.x,p.y,'#d8f6ff',65,290);
+shake=13;
+slow=6.2;
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<430){
+const d=Math.round(p.atk*4.6*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-24,'-'+d,'#c7ddff');
+}
+}
+say('🔮 마나 방출!');
+}else if(p.job==='assassin'){
+p.powerTime=6;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,1.35);
+ring(p.x,p.y,color,205,11,.8);
+burst(p.x,p.y,color,75,330);
+shake=7;
+say('🗡️ 그림자 분신!');
+}
+}
+
+function ultimate(){
+if(ult<100){
+say('궁극기 게이지가 부족해!');
+return;
+}
+ult=0;
+ring(p.x,p.y,'#e16bff',455,14,.9);
+ring(p.x,p.y,'#fff',350,4,.75);
+burst(p.x,p.y,'#e16bff',145,430);
+burst(p.x,p.y,'#58eaff',90,330);
+shake=17;
+for(let e of enemies){
+let d=Math.round(p.atk*3.25*p.damageBonus+45);
+e.hp-=d;
+txt(e.x,e.y-25,'-'+d,'#ffcbff');
+}
+say('🌌 차원 붕괴! 광역 피해!');
+}
+
+function fire(){
+if(!p||fireT>0)return;
+let boosted=p.powerTime>0;
+fireT=p.rate*(boosted&&p.job==='assassin'?.58:boosted&&p.job==='fighter'?.72:1);
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let sx=p.x+Math.cos(a)*23,sy=p.y+Math.sin(a)*23;
+let crit=Math.random()<(p.crit||0);
+let dmg=p.atk*(p.damageBonus||1)*
+(boosted&&p.job==='fighter'?1.85:
+boosted&&p.job==='dragon'?1.85:
+boosted&&p.job==='assassin'?1.55:1)*
+(crit?1.8:1);
+bullets.push({
+x:sx,y:sy,
+vx:Math.cos(a)*850,vy:Math.sin(a)*850,
+life:1.25,dmg,r:crit?5:4,crit
+});
+burst(sx,sy,crit?'#ffd56c':'#6df5ff',3,50);
+}
+
+function spawnEnemy(){
+let ang=rand(0,Math.PI*2),dist=rand(520,790);
+let ex=cl(p.x+Math.cos(ang)*dist,40,MW-40);
+let ey=cl(p.y+Math.sin(ang)*dist,40,MH-40);
+let boss=(round%5===0)&&waveSpawned===0;
+let type='normal';
+
+if(!boss){
+let roll=Math.random();
+if(round>=3&&roll<.24)type='runner';
+else if(round>=4&&roll>.77)type='tank';
+}
+
+let hp=boss?(340+Math.floor(round/5)*65):
+type==='tank'?78:
+type==='runner'?31:38;
+
+let radius=boss?31:
+type==='tank'?22:
+type==='runner'?12:rand(13,17);
+
+let speed=boss?42:
+type==='tank'?35:
+type==='runner'?72:47;
+
+enemies.push({
+id:eid++,x:ex,y:ey,r:radius,hp,maxHp:hp,
+speed,boss,type,phase:rand(0,7),touch:0
+});
+waveSpawned++;
+
+if(boss){
+say('☠ 차원 보스 출현!');
+ring(ex,ey,'#ff247c',120,8);
+burst(ex,ey,'#ff247c',40,200);
+}
+}
+
+function update(dt){
+p.inv=Math.max(0,p.inv-dt);
+p.regenWait=Math.max(0,(p.regenWait||0)-dt);
+
+if(p.regenWait<=0&&p.hp<p.maxHp)
+p.hp=Math.min(p.maxHp,p.hp+0.8*dt);
+
+fireT-=dt;
+slow=Math.max(0,slow-dt);
+
+for(let k of ['q','e','r'])
+p.cd[k]=Math.max(0,p.cd[k]-dt);
+
+p.powerCd=Math.max(0,(p.powerCd||0)-dt);
+
+if(p.powerTime>0){
+p.powerTime=Math.max(0,p.powerTime-dt);
+p.powerPulse-=dt;
+
+if(p.powerPulse<=0){
+p.powerPulse=p.job==='dragon'?.82:.95;
+
+if(p.job==='fighter'||p.job==='dragon'){
+const radius=p.job==='dragon'?235:195;
+const dmg=p.atk*(p.job==='dragon'?1.65:1.3)*p.damageBonus;
+ring(p.x,p.y,p.job==='dragon'?'#ff8a45':'#d9b4ff',radius,5,.35);
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<radius){
+e.hp-=dmg;
+txt(e.x,e.y-e.r,'-'+Math.round(dmg),p.job==='dragon'?'#ffb56d':'#e6caff');
+}
+}
+}else if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+let a=rand(0,Math.PI*2);
+let tx=p.x+Math.cos(a)*rand(70,155);
+let ty=p.y+Math.sin(a)*rand(70,155);
+ring(tx,ty,'#ff79be',55,4,.28);
+for(const e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<74){
+let d=p.atk*1.15;
+e.hp-=d;
+txt(e.x,e.y-15,'-'+Math.round(d),'#ffb4db');
+}
+}
+}
+}
+}
+}
+
+if(classStrike){
+classStrike.time-=dt;
+classStrike.delay-=dt;
+classStrike.tick-=dt;
+if(classStrike.delay<=0&&classStrike.tick<=0){
+classStrike.tick=.58;
+ring(classStrike.x,classStrike.y,classStrike.color,160,9,.55);
+burst(classStrike.x,classStrike.y,classStrike.color,22,180);
+shake=6;
+for(const e of enemies){
+if(Math.hypot(e.x-classStrike.x,e.y-classStrike.y)<205){
+let d=Math.round(p.atk*1.9*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#bffaff');
+}
+}
+}
+if(classStrike.time<=0)classStrike=null;
+}
+
+let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+let len=Math.hypot(dx,dy)||1;
+
+p.x=cl(p.x+dx/len*p.speed*dt,24,MW-24);
+p.y=cl(p.y+dy/len*p.speed*dt,24,MH-24);
+
+camX+=(cl(p.x-W/2,0,MW-W)-camX)*Math.min(1,dt*10);
+camY+=(cl(p.y-H/2,0,MH-H)-camY)*Math.min(1,dt*10);
+
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+
+if(auto)fire();
+
+for(let t of turrets){
+t.life-=dt;
+t.fire-=dt;
+if(t.fire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y)
+)[0];
+let a=Math.atan2(target.y-t.y,target.x-t.x);
+bullets.push({
+x:t.x,y:t.y,
+vx:Math.cos(a)*740,vy:Math.sin(a)*740,
+life:1.2,dmg:p.atk*.95,r:3.5
+});
+t.fire=.38;
+}
+}
+turrets=turrets.filter(t=>t.life>0);
+
+if(droneTime>0){
+droneTime=Math.max(0,droneTime-dt);
+droneFire-=dt;
+if(droneFire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+)[0];
+let a=Math.atan2(target.y-p.y,target.x-p.x);
+bullets.push({
+x:p.x+Math.cos(a)*38,y:p.y+Math.sin(a)*38,
+vx:Math.cos(a)*820,vy:Math.sin(a)*820,
+life:1.1,dmg:p.atk*1.15,r:3.5
+});
+droneFire=.46;
+}
+}
+
+spawn+=dt;
+if(waveSpawned<waveGoal&&spawn>=1.32&&enemies.length<10){
+spawn=0;
+spawnEnemy();
+}
+
+for(let b of bullets){
+b.x+=b.vx*dt;
+b.y+=b.vy*dt;
+b.life-=dt;
+if(b.life<=0)continue;
+
+for(let e of enemies){
+if(e.hp>0&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+b.r){
+e.hp-=b.dmg;
+b.life=0;
+burst(b.x,b.y,'#72f5ff',7,75);
+txt(e.x,e.y-e.r,'-'+Math.round(b.dmg),'#b7ffff');
+break;
+}
+}
+}
+
+bullets=bullets.filter(b=>
+b.life>0&&b.x>-30&&b.x<MW+30&&b.y>-30&&b.y<MH+30
+);
+
+for(let e of enemies){
+let a=Math.atan2(p.y-e.y,p.x-e.x);
+let sf=slow>0?.32:1;
+e.x+=Math.cos(a)*e.speed*sf*dt;
+e.y+=Math.sin(a)*e.speed*sf*dt;
+e.phase+=dt*4;
+
+if(Math.hypot(p.x-e.x,p.y-e.y)<p.r+e.r&&p.inv<=0&&e.touch<=0){
+let dmg=e.boss?9:e.type==='tank'?6:e.type==='runner'?3:4;
+p.hp-=dmg;
+p.regenWait=2.4;
+p.inv=.88;
+e.touch=.9;
+shake=5;
+burst(p.x,p.y,'#ff4d86',13,125);
+txt(p.x,p.y-28,'-'+dmg,'#ff7fae');
+if(p.hp<=0){
+finish(false);
+return;
+}
+}
+e.touch=Math.max(0,e.touch-dt);
+}
+
+for(let e of enemies.filter(e=>e.hp<=0)){
+kills++;
+ult=Math.min(100,ult+(e.boss?32:6));
+burst(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?70:22,e.boss?300:160);
+ring(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?105:42,4);
+if(Math.random()<(e.boss?.9:.16)){
+pickups.push({x:e.x,y:e.y,r:11,life:12,phase:rand(0,6)});
+}
+}
+enemies=enemies.filter(e=>e.hp>0);
+
+for(let h of pickups){
+h.life-=dt;
+h.phase+=dt*4;
+if(Math.hypot(p.x-h.x,p.y-h.y)<p.r+h.r+7){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+20);
+let healed=Math.round(p.hp-before);
+if(healed>0)txt(p.x,p.y-25,'+'+healed,'#7dffb0');
+burst(h.x,h.y,'#7dffb0',22,150);
+h.life=0;
+}
+}
+pickups=pickups.filter(h=>h.life>0);
+
+for(let q of particles){
+q.x+=q.vx*dt;
+q.y+=q.vy*dt;
+q.vx*=Math.pow(.985,dt*60);
+q.vy*=Math.pow(.985,dt*60);
+q.life-=dt;
+}
+particles=particles.filter(q=>q.life>0);
+
+for(let r of rings){
+r.life-=dt;
+r.r=r.max*(1-r.life/r.maxLife);
+}
+rings=rings.filter(r=>r.life>0);
+
+for(let t of floats){
+t.y-=29*dt;
+t.life-=dt;
+}
+floats=floats.filter(t=>t.life>0);
+
+if(waveSpawned>=waveGoal&&kills>=waveGoal&&enemies.length===0){
+if(round>=20){
+finish(true);
+return;
+}else{
+paused=true;
+upgrade();
+return;
+}
+}
+
+$('round').textContent=round;
+$('hp').textContent=Math.max(0,Math.ceil(p.hp));
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+$('count').textContent=enemies.length;
+$('progress').textContent=kills+'/'+waveGoal;
+$('ult').textContent=Math.floor(ult);
+$('qcd').textContent=skillDefs[equipped.q].name+' · '+(p.cd.q?p.cd.q.toFixed(1)+'초':'준비 완료');
+$('ecd').textContent=skillDefs[equipped.e].name+' · '+(p.cd.e?p.cd.e.toFixed(1)+'초':'준비 완료');
+$('rcd').textContent=skillDefs[equipped.r].name+' · '+(p.cd.r?p.cd.r.toFixed(1)+'초':'준비 완료');
+$('ultready').textContent=ult>=100?'사용 가능!':'충전 중';
+$('powercd').textContent=p.powerCd>0?p.powerCd.toFixed(1)+'초':'준비 완료';
+}
+
+function renderSkillSlots(){
+let box=$('skillSlots');
+box.innerHTML='';
+for(let slot of ['q','e','r']){
+let d=skillDefs[equipped[slot]];
+let b=document.createElement('button');
+b.className='skill-slot';
+b.innerHTML=`<b>${slot.toUpperCase()} · ${d.icon} 
+d.name</b><span>{d.desc}</span><span>쿨타임 ${d.cd}초 · 눌러서 변경</span>`;
+b.onclick=()=>showSkillChoices(slot);
+box.appendChild(b);
+}
+}
+
+function showSkillChoices(slot){
+selectedSlot=slot;
+$('skillHint').textContent=slot.toUpperCase()+' 슬롯에 장착할 스킬을 선택하세요.';
+let box=$('skillChoices');
+box.innerHTML='';
+
+for(let [id,d] of Object.entries(skillDefs)){
+let used=['q','e','r'].some(s=>s!==slot&&equipped[s]===id);
+let b=document.createElement('button');
+b.className='skill-choice';
+b.disabled=used;
+b.innerHTML=`<div>d.icon</div><b>{d.name}</b><div class="desc">${d.desc}</div><div class="small">쿨타임 d.cd초{used?' · 다른 슬롯 장착 중':''}</div>`;
+b.onclick=()=>{
+equipped[slot]=id;
+renderSkillSlots();
+showSkillChoices(slot);
+say(slot.toUpperCase()+' 스킬 변경: '+d.name);
+};
+box.appendChild(b);
+}
+}
+
+function upgrade(){
+chosenUpgrade=null;
+selectedSlot=null;
+
+let a=[
+{i:'⚔️',n:'초고속 탄환',d:'공격력 +7',f:()=>p.atk+=7},
+{i:'💖',n:'생명력 회복',d:'체력 완전 회복',f:()=>p.hp=p.maxHp},
+{i:'⚡',n:'신속 강화',d:'이동 속도 +15%',f:()=>p.speed*=1.15},
+{i:'🌌',n:'궁극기 충전',d:'게이지 +45%',f:()=>ult=Math.min(100,ult+45)},
+{i:'🛡️',n:'차원 갑옷',d:'최대 체력 +25',f:()=>{p.maxHp+=25;p.hp=Math.min(p.maxHp,p.hp+25)}},
+{i:'💠',n:'연사 코어',d:'발사 속도 +18%',f:()=>p.rate=Math.max(.065,p.rate*.82)}
+].sort(()=>Math.random()-.5);
+
+$('cards').innerHTML='';
+
+a.slice(0,3).forEach(o=>{
+let b=document.createElement('button');
+b.className='card';
+b.innerHTML=`<div>o.i</div><b>{o.n}</b><div class="desc">${o.d}</div><div class="small">강화 선택</div>`;
+b.onclick=()=>{
+chosenUpgrade=o;
+[...$('cards').children].forEach(el=>el.classList.remove('selected'));
+b.classList.add('selected');
+$('continueRound').disabled=false;
+$('continueRound').textContent='선택한 강화 받고 다음 라운드';
+say(o.n+' 선택됨');
+};
+$('cards').appendChild(b);
+});
+
+renderSkillSlots();
+$('skillChoices').innerHTML='';
+$('skillHint').textContent='Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.';
+$('continueRound').disabled=false;
+$('continueRound').textContent='보상 없이 다음 라운드';
+$('upgrade').style.display='flex';
+}
+
+$('continueRound').onclick=()=>{
+if(chosenUpgrade)chosenUpgrade.f();
+round++;
+kills=0;
+waveGoal=Math.min(18,8+Math.floor((round-1)*.55));
+waveSpawned=0;
+spawn=.45;
+p.hp=Math.min(p.maxHp,p.hp+12);
+paused=false;
+$('upgrade').style.display='none';
+say('ROUND '+round+' START!');
+last=performance.now();
+};
+
+function finish(win){
+if(!running)return;
+running=false;
+paused=true;
+$('finishTitle').textContent=win?'차원 정복 성공!':'GAME OVER';
+$('finishText').textContent=win?
+'20라운드 클리어! 플레리어가 차원을 구했습니다!':
+'ROUND '+round+'에서 쓰러졌습니다. 다시 도전해 보세요!';
+$('finish').style.display='flex';
+}
+
+function draw(now){
+x.save();
+
+if(shake>0){
+x.translate(rand(-shake,shake),rand(-shake,shake));
+shake*=.86;
+if(shake<.35)shake=0;
+}
+
+x.translate(-camX,-camY);
+
+let g=x.createLinearGradient(camX,camY,camX+W,camY+H);
+g.addColorStop(0,'#07152c');
+g.addColorStop(.5,'#111039');
+g.addColorStop(1,'#061d2b');
+x.fillStyle=g;
+x.fillRect(camX,camY,W,H);
+
+x.strokeStyle='#182b54';
+let gx0=Math.floor(camX/60)*60;
+let gy0=Math.floor(camY/60)*60;
+
+for(let a=gx0;a<camX+W+60;a+=60){
+x.beginPath();
+x.moveTo(a,camY);
+x.lineTo(a,camY+H);
+x.stroke();
+}
+
+for(let b=gy0;b<camY+H+60;b+=60){
+x.beginPath();
+x.moveTo(camX,b);
+x.lineTo(camX+W,b);
+x.stroke();
+}
+
+x.strokeStyle='#6d62ff';
+x.lineWidth=8;
+x.strokeRect(0,0,MW,MH);
+x.lineWidth=1;
+
+for(let i=0;i<55;i++){
+let a=camX+((i*173+now*.014)%(W));
+let b=camY+((i*97+Math.sin(now*.001+i)*24)%(H));
+x.fillStyle=`rgba(105,145,255,${.15+(i%4)*.1})`;
+x.fillRect(a,b,2,2);
+}
+
+for(let r of rings){
+x.save();
+x.globalAlpha=Math.max(0,r.life/r.maxLife);
+x.strokeStyle=r.col;
+x.shadowColor=r.col;
+x.shadowBlur=27;
+x.lineWidth=r.width;
+x.beginPath();
+x.arc(r.x,r.y,r.r,0,Math.PI*2);
+x.stroke();
+x.restore();
+}
+
+if(p&&p.powerTime>0){
+x.save();
+x.globalAlpha=.22+.12*Math.sin(now*.02);
+x.strokeStyle=classDefs[p.job].power.color;
+x.shadowColor=classDefs[p.job].power.color;
+x.shadowBlur=26;
+x.lineWidth=5;
+x.beginPath();
+x.arc(p.x,p.y,p.job==='dragon'?48:35,0,Math.PI*2);
+x.stroke();
+
+if(p.job==='dragon'){
+x.strokeStyle='#ffb45c';
+x.lineWidth=3;
+x.beginPath();
+x.arc(p.x,p.y,62+Math.sin(now*.012)*8,now*.003,now*.003+Math.PI*1.35);
+x.stroke();
+}
+
+if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+x.globalAlpha=.18;
+x.fillStyle='#ff79be';
+x.beginPath();
+x.arc(p.x-28-i*18,p.y+13+i*9,14,0,Math.PI*2);
+x.fill();
+}
+}
+x.restore();
+}
+
+if(classStrike){
+x.save();
+x.globalAlpha=.45+.25*Math.sin(now*.025);
+x.strokeStyle='#8cf4ff';
+x.shadowColor='#8cf4ff';
+x.shadowBlur=22;
+x.lineWidth=4;
+x.beginPath();
+x.arc(classStrike.x,classStrike.y,classStrike.delay>0?165:145,0,Math.PI*2);
+x.stroke();
+x.beginPath();
+x.moveTo(classStrike.x-18,classStrike.y);
+x.lineTo(classStrike.x+18,classStrike.y);
+x.moveTo(classStrike.x,classStrike.y-18);
+x.lineTo(classStrike.x,classStrike.y+18);
+x.stroke();
+x.restore();
+}
+
+for(let b of bullets){
+x.save();
+x.strokeStyle=b.crit?'#ffd56c':'#73f7ff';
+x.shadowColor=b.crit?'#ffbd4a':'#3af4ff';
+x.shadowBlur=19;
+x.lineWidth=5;
+x.beginPath();
+x.moveTo(b.x-b.vx*.022,b.y-b.vy*.022);
+x.lineTo(b.x,b.y);
+x.stroke();
+x.restore();
+}
+
+for(let e of enemies){
+x.save();
+x.translate(e.x,e.y);
+x.rotate(e.phase*.12);
+let ec=e.boss?'#ff237b':e.type==='runner'?'#bd73ff':e.type==='tank'?'#ffb84d':'#3ceeff';
+x.shadowColor=ec;
+x.shadowBlur=e.boss?31:18;
+x.fillStyle=e.boss?'#8e174f':e.type==='runner'?'#4c287a':e.type==='tank'?'#755023':'#14617b';
+x.strokeStyle=e.boss?'#ff73b6':e.type==='runner'?'#d5a2ff':e.type==='tank'?'#ffd17c':'#70f5ff';
+x.lineWidth=e.boss?4:2.5;
+x.beginPath();
+
+for(let i=0;i<8;i++){
+let a=i*Math.PI/4;
+let r=e.r*(i%2?.78:1.18);
+if(i)x.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+else x.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+}
+
+x.closePath();
+x.fill();
+x.stroke();
+x.shadowBlur=0;
+x.fillStyle='#fff';
+x.beginPath();
+x.arc(-e.r*.28,-2,2.8,0,7);
+x.arc(e.r*.28,-2,2.8,0,7);
+x.fill();
+
+x.fillStyle='#25152e';
+x.fillRect(-e.r,e.r+6,e.r*2,5);
+x.fillStyle=e.boss?'#ff2e80':e.type==='tank'?'#ffbd54':e.type==='runner'?'#c68bff':'#57f0b8';
+x.fillRect(-e.r,e.r+6,e.r*2*Math.max(0,e.hp/e.maxHp),5);
+
+if(e.boss){
+x.fillStyle='#ffadd9';
+x.font='bold 14px sans-serif';
+x.textAlign='center';
+x.fillText('DIMENSION BOSS',0,-e.r-13);
+}
+x.restore();
+}
+
+for(let h of pickups){
+x.save();
+let pulse=1+Math.sin(h.phase)*.16;
+x.translate(h.x,h.y);
+x.scale(pulse,pulse);
+x.shadowColor='#65ff9a';
+x.shadowBlur=22;
+x.fillStyle='#143d2b';
+x.strokeStyle='#7dffad';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,h.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#aaffc8';
+x.fillRect(-2,-7,4,14);
+x.fillRect(-7,-2,14,4);
+x.restore();
+}
+
+for(let t of turrets){
+x.save();
+x.translate(t.x,t.y);
+x.shadowColor='#ffd078';
+x.shadowBlur=18;
+x.fillStyle='#6b4d21';
+x.strokeStyle='#ffe1a0';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,13,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#fff0bb';
+x.fillRect(0,-4,21,8);
+x.restore();
+}
+
+if(droneTime>0&&p){
+let dx=p.x+Math.cos(now*.004)*37;
+let dy=p.y-35+Math.sin(now*.004)*13;
+x.save();
+x.translate(dx,dy);
+x.shadowColor='#83efff';
+x.shadowBlur=22;
+x.fillStyle='#277da5';
+x.strokeStyle='#b8f8ff';
+x.lineWidth=2.5;
+x.beginPath();
+x.arc(0,0,10,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.restore();
+}
+
+for(let q of particles){
+x.save();
+x.globalAlpha=cl(q.life/q.max,0,1);
+x.fillStyle=q.col;
+x.shadowColor=q.col;
+x.shadowBlur=q.glow;
+x.beginPath();
+x.arc(q.x,q.y,q.r,0,Math.PI*2);
+x.fill();
+x.restore();
+}
+
+for(let t of floats){
+x.save();
+x.globalAlpha=cl(t.life/.75,0,1);
+x.font='bold 16px system-ui';
+x.textAlign='center';
+x.fillStyle=t.col;
+x.shadowColor=t.col;
+x.shadowBlur=12;
+x.fillText(t.t,t.x,t.y);
+x.restore();
+}
+
+if(p){
+x.save();
+x.translate(p.x,p.y);
+x.rotate(Math.atan2(mouse.y-p.y,mouse.x-p.x));
+
+let pc=classDefs[p.job]?.color||'#a58bff';
+x.shadowColor=p.inv>0?'#fff':pc;
+x.shadowBlur=28;
+x.fillStyle=p.inv>0?'#fff':pc;
+x.strokeStyle='#f4eaff';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,p.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#d5ffff';
+x.fillRect(3,-6,31,12);
+x.fillStyle='#5233c5';
+x.fillRect(9,-3,22,6);
+x.restore();
+
+x.save();
+x.strokeStyle='#a4faff';
+x.shadowColor='#63efff';
+x.shadowBlur=12;
+x.lineWidth=1.5;
+x.beginPath();
+x.arc(mouse.x,mouse.y,10,0,Math.PI*2);
+x.moveTo(mouse.x-17,mouse.y);
+x.lineTo(mouse.x-5,mouse.y);
+x.moveTo(mouse.x+5,mouse.y);
+x.lineTo(mouse.x+17,mouse.y);
+x.moveTo(mouse.x,mouse.y-17);
+x.lineTo(mouse.x,mouse.y-5);
+x.moveTo(mouse.x,mouse.y+5);
+x.lineTo(mouse.x,mouse.y+17);
+x.stroke();
+x.restore();
+}
+
+x.restore();
+drawMiniMap();
+}
+
+function drawMiniMap(){
+x.save();
+x.setTransform(1,0,0,1,0,0);
+
+const mw=176,mh=127;
+const mx=W-mw-16,my=16;
+const sx=mw/MW,sy=mh/MH;
+
+x.fillStyle='rgba(3,8,28,.82)';
+x.fillRect(mx,my,mw,mh);
+x.strokeStyle='#8d83ff';
+x.lineWidth=2;
+x.strokeRect(mx,my,mw,mh);
+
+x.strokeStyle='rgba(160,180,255,.65)';
+x.lineWidth=1;
+x.strokeRect(mx+camX*sx,my+camY*sy,W*sx,H*sy);
+
+for(const e of enemies){
+x.fillStyle=e.boss?'#ff438d':
+e.type==='tank'?'#ffc15f':
+e.type==='runner'?'#d49aff':'#65efff';
+x.beginPath();
+x.arc(mx+e.x*sx,my+e.y*sy,e.boss?3.5:2,0,Math.PI*2);
+x.fill();
+}
+
+if(p){
+x.fillStyle='#fff';
+x.shadowColor='#70f6ff';
+x.shadowBlur=8;
+x.beginPath();
+x.arc(mx+p.x*sx,my+p.y*sy,4,0,Math.PI*2);
+x.fill();
+}
+
+x.shadowBlur=0;
+x.fillStyle='#d8dcff';
+x.font='bold 10px sans-serif';
+x.textAlign='left';
+x.fillText('WORLD MAP',mx+6,my+11);
+x.font='8px sans-serif';
+x.fillStyle='#aeeeff';
+x.fillText('청록 일반 · 보라 빠름 · 노랑 탱커 · 분홍 보스',mx+4,my+mh+12);
+x.restore();
+}
+
+function loop(now){
+if(!running)return;
+let dt=Math.min(.033,Math.max(0,(now-last)/1000||.016));
+last=now;
+if(!paused)update(dt);
+draw(now);
+if(running)requestAnimationFrame(loop);
+}
+
+// 직업 선택 없이 플레리어로 자동 시작
+selectedClass='fighter';
+camX=MW/2-W/2;
+camY=MH/2-H/2;
+reset();
+draw(0);
+
+})();
+</script>
+</body>
+</html>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>플레리어: 네온 차원전쟁</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050714;color:#eef2ff;font-family:system-ui,"Malgun Gothic",sans-serif}
+#wrap{max-width:1250px;margin:auto;padding:12px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;border:1px solid #6656ff;border-radius:15px;background:linear-gradient(110deg,#111b42,#21103d);box-shadow:0 0 28px #643aff38}
+h1{font-size:clamp(18px,2.5vw,27px);margin:0;color:#e4d9ff;text-shadow:0 0 15px #8d5cff}
+.stats{display:flex;gap:7px;flex-wrap:wrap}
+.stat,.pill{padding:7px 10px;background:#080e28;border:1px solid #283b77;border-radius:9px;font-size:13px;font-weight:800;white-space:nowrap}
+#arena{position:relative;margin-top:10px;border:2px solid #594aff;border-radius:15px;overflow:hidden;box-shadow:0 0 32px #5037ff35}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;cursor:crosshair;touch-action:none}
+#toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,28px);font-weight:1000;text-shadow:0 0 12px white,0 0 28px #9b59ff;pointer-events:none;white-space:nowrap;text-align:center}
+.overlay{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:#040615eF;overflow:auto}
+.panel{width:min(760px,100%);padding:clamp(15px,3vw,28px);border:1px solid #8d72ff;border-radius:22px;text-align:center;background:linear-gradient(145deg,#151c49,#090d25);box-shadow:0 0 45px #7545ff55}
+.panel h2{font-size:clamp(27px,5vw,48px);margin:0;color:#e7dcff;text-shadow:0 0 22px #a15cff}
+.panel p{line-height:1.65;color:#cbd5ff}
+button{font:inherit;font-weight:850;color:white;padding:10px 15px;border:1px solid #c6baff;border-radius:11px;background:linear-gradient(120deg,#914bff,#3730bf);cursor:pointer;margin:4px}
+button:hover{filter:brightness(1.2)}
+#cards{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.card{flex:1 1 145px;max-width:210px;padding:14px 8px;border:1px solid #626fff;border-radius:14px;background:linear-gradient(150deg,#172653,#170f3c);cursor:pointer}
+.card:hover{box-shadow:0 0 22px #7d55ff}
+.card.selected{border:2px solid #58f4ff;box-shadow:0 0 24px #38dfff88;background:linear-gradient(150deg,#17415a,#28205b)}
+#skillArea{margin-top:18px;padding-top:14px;border-top:1px solid #555da8}
+#skillArea h3{margin:4px 0 10px;color:#a9f5ff}
+#skillSlots,#skillChoices{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.skill-slot{min-width:145px;max-width:190px;flex:1 1 145px;padding:10px;border:1px solid #48cce8;border-radius:12px;background:linear-gradient(145deg,#102b49,#201342);color:#fff}
+.skill-slot b{display:block;font-size:15px}
+.skill-slot span{display:block;font-size:12px;color:#b9d7ff;margin-top:4px}
+.skill-choice{min-width:130px;max-width:180px;flex:1 1 130px;padding:10px;border:1px solid #b17cff;border-radius:11px;background:#21163f;color:#fff}
+.skill-choice:disabled{opacity:.35;cursor:not-allowed}
+.desc{font-size:13px;color:#c9d4ff;margin:7px 0}
+#help{text-align:center;padding:10px 5px;color:#c5d0ff;font-size:13px;line-height:1.7}
+#bottom{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+kbd{padding:2px 6px;border:1px solid #7f8dff;border-radius:5px;background:#151e46;color:#fff}
+.small{font-size:12px!important;color:#9daedc!important}
+@media(max-width:600px){
+#wrap{padding:6px}
+.stat{font-size:11px;padding:6px}
+.panel{padding:12px}
+.panel p{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header>
+<h1>✦ 플레리어 : 네온 차원전쟁 ✦</h1>
+<div class="stats">
+<div class="stat">플레이어 <span id="className">플레리어</span></div>
+<div class="stat">ROUND <span id="round">1</span>/20</div>
+<div class="stat">❤️ <span id="hp">100</span>/<span id="maxhp">100</span></div>
+<div class="stat">⚔ <span id="atk">18</span></div>
+<div class="stat">👾 <span id="count">0</span></div>
+<div class="stat">처치 <span id="progress">0/8</span></div>
+<div class="stat">궁극기 <span id="ult">0</span>%</div>
+</div>
+</header>
+
+<div id="arena">
+<canvas id="game" width="1200" height="675"></canvas>
+<div id="toast"></div>
+
+<div class="overlay" id="upgrade" style="display:none">
+<div class="panel">
+<h2>✧ 차원 강화 ✧</h2>
+<p>강화와 스킬 변경은 선택 사항입니다. 아무것도 고르지 않고 넘어가도 몬스터 능력치는 강해지지 않습니다.</p>
+<div id="cards"></div>
+<div id="skillArea">
+<h3>⚙ 스킬 장착 / 변경</h3>
+<div id="skillSlots"></div>
+<p class="small" id="skillHint">Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.</p>
+<div id="skillChoices"></div>
+</div>
+<button id="continueRound" disabled>강화를 선택하세요</button>
+</div>
+</div>
+
+<div class="overlay" id="finish" style="display:none">
+<div class="panel">
+<h2 id="finishTitle">GAME OVER</h2>
+<p id="finishText"></p>
+<button id="restartBtn">다시 도전</button>
+</div>
+</div>
+</div>
+
+<div id="help">
+이동 <kbd>WASD</kbd> · 수동 조준 <b>마우스</b> · 자동 사격 <b>켜짐</b><br>
+회복 코어 <b>초록색</b> · <kbd>Q</kbd> 스킬 1 · <kbd>E</kbd> 스킬 2 · <kbd>R</kbd> 스킬 3<br>
+<kbd>F</kbd> 특수 스킬 · <kbd>SPACE</kbd> 궁극기
+</div>
+
+<div id="bottom">
+<span class="pill">🟣 Q: <b id="qcd">준비 완료</b></span>
+<span class="pill">🔴 E: <b id="ecd">준비 완료</b></span>
+<span class="pill">🔵 R: <b id="rcd">준비 완료</b></span>
+<span class="pill">🌌 궁극기: <b id="ultready">충전 중</b></span>
+<span class="pill">✨ 특수 스킬(F): <b id="powercd">준비 완료</b></span>
+<button id="autoBtn" aria-pressed="true">자동 사격: 켜짐</button>
+</div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+window.addEventListener('error',function(ev){
+const toast=document.getElementById('toast');
+if(toast)toast.textContent='게임 오류: '+(ev.message||'페이지를 새로고침해 주세요.');
+});
+
+const c=document.getElementById('game');
+const x=c.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=1200,H=675,MW=3600,MH=2600;
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+let camX=0,camY=0;
+let running=false,paused=false,last=0,round=1,kills=0,ult=0;
+let spawn=0,fireT=0,slow=0,shake=0,auto=true;
+let mouse={x:850,y:330,sx:780,sy:337};
+let keys={},p,enemies=[],bullets=[],particles=[],rings=[],floats=[],pickups=[],turrets=[];
+let droneTime=0,droneFire=0,classStrike=null,eid=1;
+let chosenUpgrade=null,selectedSlot=null;
+let waveGoal=8,waveSpawned=0,selectedClass=null;
+
+const equipped={q:'dash',e:'blast',r:'warp'};
+
+const classDefs={
+fighter:{
+color:'#d6a8ff',icon:'⚔️',name:'플레리어',
+desc:'공격력이 높고 균형 잡힌 근접 전투형',
+hp:140,atk:24,speed:280,rate:.17,crit:.06,cdFactor:1,
+skills:{q:'dash',e:'blade',r:'shield'},
+passive:'공격력 우수 · 체력 140',
+power:{name:'차원 각성',desc:'검기가 폭발하며 공격 강화',cd:19,color:'#d9b4ff'}
+},
+soldier:{
+color:'#8cf4ff',icon:'🪖',name:'군인',
+desc:'빠른 연사와 설치형 포탑을 활용하는 사격형',
+hp:128,atk:20,speed:270,rate:.115,crit:.04,cdFactor:1,
+skills:{q:'grenade',e:'turret',r:'warp'},
+passive:'연사 속도 우수 · 포탑 시작 장착',
+power:{name:'전술 공습',desc:'마우스 위치에 폭격',cd:21,color:'#8cf4ff'}
+},
+dragon:{
+color:'#ff9865',icon:'🐉',name:'용기사',
+desc:'높은 체력과 강한 한 발로 버티는 돌격형',
+hp:170,atk:25,speed:252,rate:.18,crit:.06,cdFactor:1.05,
+skills:{q:'shield',e:'blast',r:'meteor'},
+passive:'최대 체력 우수 · 공격력 보너스',
+power:{name:'용의 힘',desc:'용의 화염으로 공격 강화',cd:23,color:'#ff9865'}
+},
+mage:{
+color:'#8ab8ff',icon:'🔮',name:'마법사',
+desc:'스킬을 자주 사용해 적 무리를 제어하는 마법형',
+hp:118,atk:21,speed:265,rate:.16,crit:.03,cdFactor:.82,
+skills:{q:'frost',e:'lightning',r:'warp'},
+passive:'스킬 쿨타임 감소',
+power:{name:'마나 방출',desc:'넓은 범위에 마법 피해',cd:22,color:'#8ab8ff'}
+},
+assassin:{
+color:'#ff79be',icon:'🗡️',name:'암살자',
+desc:'빠른 이동과 치명타로 약점을 노리는 기동형',
+hp:112,atk:22,speed:325,rate:.145,crit:.2,cdFactor:.94,
+skills:{q:'dash',e:'blade',r:'lightning'},
+passive:'이동 속도 우수 · 치명타 확률 높음',
+power:{name:'그림자 분신',desc:'분신과 함께 공격',cd:20,color:'#ff79be'}
+}
+};
+
+const skillDefs={
+dash:{icon:'⚡',name:'순간 돌진',desc:'마우스 방향으로 돌진하고 잠시 무적',cd:4},
+shield:{icon:'🛡️',name:'차원 보호막',desc:'2.8초 무적 + 체력 30 회복',cd:9},
+blast:{icon:'💥',name:'플라즈마 폭발',desc:'주변 적에게 강력한 광역 피해',cd:7},
+lightning:{icon:'🌩️',name:'연쇄 번개',desc:'가까운 적 최대 7명에게 번개 피해',cd:8},
+warp:{icon:'🌀',name:'시간 왜곡',desc:'모든 적을 5.2초 동안 둔화',cd:14},
+meteor:{icon:'☄️',name:'운석 낙하',desc:'마우스 위치에 거대 운석 공격',cd:11},
+grenade:{icon:'🧨',name:'충격 수류탄',desc:'마우스 위치에 폭발 공격',cd:8},
+heal:{icon:'💚',name:'응급 회복',desc:'체력을 최대 55 회복',cd:16},
+frost:{icon:'❄️',name:'빙결 파동',desc:'적에게 피해를 주고 느리게 함',cd:12},
+turret:{icon:'🤖',name:'자동 포탑',desc:'12초 동안 주변 적을 자동 공격',cd:18},
+blade:{icon:'🌪️',name:'검기 회오리',desc:'전방 넓은 범위에 강한 검격',cd:8},
+drone:{icon:'🛸',name:'지원 드론',desc:'10초 동안 적을 자동 공격',cd:17}
+};
+
+function say(s){
+$('toast').textContent=s;
+clearTimeout(say.t);
+say.t=setTimeout(()=>$('toast').textContent='',1400);
+}
+
+function reset(){
+selectedClass=selectedClass||'fighter';
+const job=classDefs[selectedClass];
+
+round=1;
+kills=0;
+ult=0;
+waveGoal=8;
+waveSpawned=0;
+spawn=.8;
+fireT=slow=shake=0;
+
+enemies=[];
+bullets=[];
+particles=[];
+rings=[];
+floats=[];
+pickups=[];
+turrets=[];
+droneTime=droneFire=0;
+classStrike=null;
+keys={};
+eid=1;
+
+Object.assign(equipped,job.skills);
+chosenUpgrade=null;
+selectedSlot=null;
+
+p={
+x:MW/2,y:MH/2,r:17,
+hp:job.hp,maxHp:job.hp,
+atk:job.atk,speed:job.speed,
+inv:0,regenWait:0,
+cd:{q:0,e:0,r:0},
+rate:job.rate,crit:job.crit,
+cdFactor:job.cdFactor,
+job:selectedClass,
+damageBonus:selectedClass==='dragon'?1.1:1,
+powerCd:0,powerTime:0,powerPulse:0
+};
+
+camX=cl(p.x-W/2,0,MW-W);
+camY=cl(p.y-H/2,0,MH-H);
+mouse.sx=780;
+mouse.sy=H/2;
+mouse.x=mouse.sx+camX;
+mouse.y=mouse.sy+camY;
+
+$('className').textContent=job.name;
+$('round').textContent=round;
+$('hp').textContent=p.hp;
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+
+running=true;
+paused=false;
+$('upgrade').style.display='none';
+$('finish').style.display='none';
+say(job.name+' 출전!');
+last=performance.now();
+requestAnimationFrame(loop);
+}
+
+$('restartBtn').addEventListener('click',reset);
+
+$('autoBtn').onclick=()=>{
+auto=!auto;
+$('autoBtn').textContent='자동 사격: '+(auto?'켜짐':'꺼짐');
+$('autoBtn').setAttribute('aria-pressed',String(auto));
+say(auto?'자동 사격 ON':'자동 사격 OFF');
+};
+
+function pointer(e){
+let b=c.getBoundingClientRect();
+mouse.sx=cl((e.clientX-b.left)/b.width*W,0,W);
+mouse.sy=cl((e.clientY-b.top)/b.height*H,0,H);
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+}
+
+c.addEventListener('pointermove',pointer);
+c.addEventListener('pointerdown',e=>{
+pointer(e);
+if(e.pointerType==='mouse'&&e.button===0&&!auto)fire();
+});
+c.addEventListener('contextmenu',e=>e.preventDefault());
+
+window.addEventListener('keydown',e=>{
+let k=e.key.toLowerCase();
+keys[k]=true;
+if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+if(e.repeat||!running||paused||!p)return;
+if(k==='q')castSkill('q');
+if(k==='e')castSkill('e');
+if(k==='r')castSkill('r');
+if(k==='f')classPower();
+if(e.code==='Space')ultimate();
+});
+
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function burst(a,b,col,n=20,pow=200){
+for(let i=0;i<n;i++){
+let ang=rand(0,Math.PI*2),s=rand(30,pow);
+particles.push({
+x:a,y:b,
+vx:Math.cos(ang)*s,
+vy:Math.sin(ang)*s,
+life:rand(.25,.8),max:.8,
+col,r:rand(1.5,4.5),glow:rand(5,17)
+});
+}
+}
+
+function ring(a,b,col,max=120,width=5,life=.55){
+rings.push({x:a,y:b,col,r:4,max,life,maxLife:life,width});
+}
+
+function txt(a,b,t,col='#fff'){
+floats.push({x:a,y:b,t,col,life:.75});
+}
+
+function dash(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let ox=p.x,oy=p.y;
+p.x=cl(p.x+Math.cos(a)*210,22,MW-22);
+p.y=cl(p.y+Math.sin(a)*210,22,MH-22);
+for(let i=0;i<7;i++){
+particles.push({
+x:ox+(p.x-ox)*i/7,
+y:oy+(p.y-oy)*i/7,
+vx:rand(-70,70),vy:rand(-70,70),
+life:.45,max:.45,col:'#b15cff',r:7,glow:20
+});
+}
+p.inv=1.0;
+ring(p.x,p.y,'#c477ff',105,8);
+burst(p.x,p.y,'#a85bff',36,230);
+shake=7;
+say('순간 돌진!');
+}
+
+function shield(){
+p.inv=Math.max(p.inv,2.8);
+p.hp=Math.min(p.maxHp,p.hp+30);
+ring(p.x,p.y,'#72f5ff',190,11,.8);
+ring(p.x,p.y,'#ffffff',125,4,.65);
+burst(p.x,p.y,'#72f5ff',55,250);
+say('차원 보호막! 무적 + 회복');
+}
+
+function blast(){
+ring(p.x,p.y,'#ff376c',295,13);
+ring(p.x,p.y,'#ffbd4a',220,6);
+burst(p.x,p.y,'#ff3b70',105,380);
+shake=14;
+for(let e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<295){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ff9bcb');
+}
+}
+say('플라즈마 폭발!');
+}
+
+function lightning(){
+let targets=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+).slice(0,7);
+let ox=p.x,oy=p.y;
+for(let e of targets){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+for(let j=0;j<8;j++){
+particles.push({
+x:ox+(e.x-ox)*j/8+rand(-12,12),
+y:oy+(e.y-oy)*j/8+rand(-12,12),
+vx:rand(-45,45),vy:rand(-45,45),
+life:.3,max:.3,col:'#7af8ff',r:rand(2,5),glow:22
+});
+}
+ring(e.x,e.y,'#67efff',48,5,.35);
+burst(e.x,e.y,'#7af8ff',14,160);
+txt(e.x,e.y-20,'-'+d,'#a9ffff');
+ox=e.x;
+oy=e.y;
+}
+say(targets.length?'연쇄 번개!':'번개 발동!');
+}
+
+function warp(){
+slow=5.2;
+ring(p.x,p.y,'#31eaff',420,9,1);
+burst(p.x,p.y,'#35dfff',65,260);
+for(let e of enemies)txt(e.x,e.y-18,'SLOW','#80f7ff');
+say('시간 왜곡!');
+}
+
+function meteor(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9d42',230,14,.85);
+ring(tx,ty,'#fff0a0',145,7,.65);
+burst(tx,ty,'#ff8b38',75,300);
+burst(tx,ty,'#fff0a0',35,200);
+shake=10;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<225){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd28b');
+}
+}
+say('운석 낙하!');
+}
+
+function grenade(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9e45',210,12,.8);
+burst(tx,ty,'#ff9e45',62,280);
+shake=8;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<155){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd095');
+}
+}
+say('충격 수류탄!');
+}
+
+function heal(){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+55);
+ring(p.x,p.y,'#65ffac',125,8,.8);
+burst(p.x,p.y,'#65ffac',42,210);
+txt(p.x,p.y-30,'+'+Math.round(p.hp-before),'#8dffbd');
+say('응급 회복!');
+}
+
+function frost(){
+let tx=mouse.x,ty=mouse.y;
+slow=5.2;
+ring(tx,ty,'#8ceaff',245,11,1);
+burst(tx,ty,'#8ceaff',75,280);
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<235){
+let d=Math.round(p.atk*2.15*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#a8f4ff');
+}
+}
+say('빙결 파동!');
+}
+
+function turret(){
+if(turrets.length>=2)turrets.shift();
+turrets.push({x:p.x,y:p.y,life:12,fire:.15});
+ring(p.x,p.y,'#ffce75',70,6,.55);
+burst(p.x,p.y,'#ffce75',28,150);
+say('자동 포탑 설치!');
+}
+
+function blade(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+ring(p.x+Math.cos(a)*72,p.y+Math.sin(a)*72,'#aefcff',175,12,.55);
+burst(p.x+Math.cos(a)*75,p.y+Math.sin(a)*75,'#d5fbff',45,250);
+for(let e of enemies){
+let da=Math.atan2(e.y-p.y,e.x-p.x)-a;
+while(da>Math.PI)da-=Math.PI*2;
+while(da<-Math.PI)da+=Math.PI*2;
+if(Math.hypot(e.x-p.x,e.y-p.y)<225&&Math.abs(da)<1.3){
+let d=Math.round(p.atk*3.0*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#e2ffff');
+}
+}
+shake=6;
+say('검기 회오리!');
+}
+
+function drone(){
+droneTime=10;
+droneFire=.1;
+ring(p.x,p.y,'#84eaff',85,6,.6);
+burst(p.x,p.y,'#84eaff',28,160);
+say('지원 드론 출격!');
+}
+
+function castSkill(slot){
+if(!p||p.cd[slot]>0)return;
+let id=equipped[slot],def=skillDefs[id];
+p.cd[slot]=def.cd*(p.cdFactor||1);
+({dash,shield,blast,lightning,warp,meteor,grenade,heal,frost,turret,blade,drone})[id]();
+}
+
+function classPower(){
+if(!p||p.powerCd>0)return;
+const job=classDefs[p.job],color=job.power.color;
+p.powerCd=job.power.cd*(p.cdFactor||1);
+
+if(p.job==='fighter'){
+p.powerTime=7;
+p.powerPulse=.12;
+p.inv=Math.max(p.inv,.45);
+ring(p.x,p.y,color,235,13,.85);
+ring(p.x,p.y,'#ffffff',165,5,.7);
+burst(p.x,p.y,color,80,310);
+shake=9;
+say('🌌 차원 각성! 7초간 공격 강화');
+}else if(p.job==='soldier'){
+classStrike={x:mouse.x,y:mouse.y,time:3.4,delay:.25,tick:.25,color};
+ring(classStrike.x,classStrike.y,color,190,8,.8);
+burst(classStrike.x,classStrike.y,color,28,140);
+say('🪖 전술 공습 요청!');
+}else if(p.job==='dragon'){
+p.powerTime=8;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,.65);
+ring(p.x,p.y,color,275,14,.9);
+ring(p.x,p.y,'#ffd69b',190,6,.8);
+burst(p.x,p.y,color,100,340);
+shake=11;
+say('🐉 용의 힘 개방!');
+}else if(p.job==='mage'){
+ring(p.x,p.y,color,365,15,1);
+ring(p.x,p.y,'#ffffff',275,6,.8);
+burst(p.x,p.y,color,125,390);
+burst(p.x,p.y,'#d8f6ff',65,290);
+shake=13;
+slow=6.2;
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<430){
+const d=Math.round(p.atk*4.6*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-24,'-'+d,'#c7ddff');
+}
+}
+say('🔮 마나 방출!');
+}else if(p.job==='assassin'){
+p.powerTime=6;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,1.35);
+ring(p.x,p.y,color,205,11,.8);
+burst(p.x,p.y,color,75,330);
+shake=7;
+say('🗡️ 그림자 분신!');
+}
+}
+
+function ultimate(){
+if(ult<100){
+say('궁극기 게이지가 부족해!');
+return;
+}
+ult=0;
+ring(p.x,p.y,'#e16bff',455,14,.9);
+ring(p.x,p.y,'#fff',350,4,.75);
+burst(p.x,p.y,'#e16bff',145,430);
+burst(p.x,p.y,'#58eaff',90,330);
+shake=17;
+for(let e of enemies){
+let d=Math.round(p.atk*3.25*p.damageBonus+45);
+e.hp-=d;
+txt(e.x,e.y-25,'-'+d,'#ffcbff');
+}
+say('🌌 차원 붕괴! 광역 피해!');
+}
+
+function fire(){
+if(!p||fireT>0)return;
+let boosted=p.powerTime>0;
+fireT=p.rate*(boosted&&p.job==='assassin'?.58:boosted&&p.job==='fighter'?.72:1);
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let sx=p.x+Math.cos(a)*23,sy=p.y+Math.sin(a)*23;
+let crit=Math.random()<(p.crit||0);
+let dmg=p.atk*(p.damageBonus||1)*
+(boosted&&p.job==='fighter'?1.85:
+boosted&&p.job==='dragon'?1.85:
+boosted&&p.job==='assassin'?1.55:1)*
+(crit?1.8:1);
+bullets.push({
+x:sx,y:sy,
+vx:Math.cos(a)*850,vy:Math.sin(a)*850,
+life:1.25,dmg,r:crit?5:4,crit
+});
+burst(sx,sy,crit?'#ffd56c':'#6df5ff',3,50);
+}
+
+function spawnEnemy(){
+let ang=rand(0,Math.PI*2),dist=rand(520,790);
+let ex=cl(p.x+Math.cos(ang)*dist,40,MW-40);
+let ey=cl(p.y+Math.sin(ang)*dist,40,MH-40);
+let boss=(round%5===0)&&waveSpawned===0;
+let type='normal';
+
+if(!boss){
+let roll=Math.random();
+if(round>=3&&roll<.24)type='runner';
+else if(round>=4&&roll>.77)type='tank';
+}
+
+let hp=boss?(340+Math.floor(round/5)*65):
+type==='tank'?78:
+type==='runner'?31:38;
+
+let radius=boss?31:
+type==='tank'?22:
+type==='runner'?12:rand(13,17);
+
+let speed=boss?42:
+type==='tank'?35:
+type==='runner'?72:47;
+
+enemies.push({
+id:eid++,x:ex,y:ey,r:radius,hp,maxHp:hp,
+speed,boss,type,phase:rand(0,7),touch:0
+});
+waveSpawned++;
+
+if(boss){
+say('☠ 차원 보스 출현!');
+ring(ex,ey,'#ff247c',120,8);
+burst(ex,ey,'#ff247c',40,200);
+}
+}
+
+function update(dt){
+p.inv=Math.max(0,p.inv-dt);
+p.regenWait=Math.max(0,(p.regenWait||0)-dt);
+
+if(p.regenWait<=0&&p.hp<p.maxHp)
+p.hp=Math.min(p.maxHp,p.hp+0.8*dt);
+
+fireT-=dt;
+slow=Math.max(0,slow-dt);
+
+for(let k of ['q','e','r'])
+p.cd[k]=Math.max(0,p.cd[k]-dt);
+
+p.powerCd=Math.max(0,(p.powerCd||0)-dt);
+
+if(p.powerTime>0){
+p.powerTime=Math.max(0,p.powerTime-dt);
+p.powerPulse-=dt;
+
+if(p.powerPulse<=0){
+p.powerPulse=p.job==='dragon'?.82:.95;
+
+if(p.job==='fighter'||p.job==='dragon'){
+const radius=p.job==='dragon'?235:195;
+const dmg=p.atk*(p.job==='dragon'?1.65:1.3)*p.damageBonus;
+ring(p.x,p.y,p.job==='dragon'?'#ff8a45':'#d9b4ff',radius,5,.35);
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<radius){
+e.hp-=dmg;
+txt(e.x,e.y-e.r,'-'+Math.round(dmg),p.job==='dragon'?'#ffb56d':'#e6caff');
+}
+}
+}else if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+let a=rand(0,Math.PI*2);
+let tx=p.x+Math.cos(a)*rand(70,155);
+let ty=p.y+Math.sin(a)*rand(70,155);
+ring(tx,ty,'#ff79be',55,4,.28);
+for(const e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<74){
+let d=p.atk*1.15;
+e.hp-=d;
+txt(e.x,e.y-15,'-'+Math.round(d),'#ffb4db');
+}
+}
+}
+}
+}
+}
+
+if(classStrike){
+classStrike.time-=dt;
+classStrike.delay-=dt;
+classStrike.tick-=dt;
+if(classStrike.delay<=0&&classStrike.tick<=0){
+classStrike.tick=.58;
+ring(classStrike.x,classStrike.y,classStrike.color,160,9,.55);
+burst(classStrike.x,classStrike.y,classStrike.color,22,180);
+shake=6;
+for(const e of enemies){
+if(Math.hypot(e.x-classStrike.x,e.y-classStrike.y)<205){
+let d=Math.round(p.atk*1.9*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#bffaff');
+}
+}
+}
+if(classStrike.time<=0)classStrike=null;
+}
+
+let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+let len=Math.hypot(dx,dy)||1;
+
+p.x=cl(p.x+dx/len*p.speed*dt,24,MW-24);
+p.y=cl(p.y+dy/len*p.speed*dt,24,MH-24);
+
+camX+=(cl(p.x-W/2,0,MW-W)-camX)*Math.min(1,dt*10);
+camY+=(cl(p.y-H/2,0,MH-H)-camY)*Math.min(1,dt*10);
+
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+
+if(auto)fire();
+
+for(let t of turrets){
+t.life-=dt;
+t.fire-=dt;
+if(t.fire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y)
+)[0];
+let a=Math.atan2(target.y-t.y,target.x-t.x);
+bullets.push({
+x:t.x,y:t.y,
+vx:Math.cos(a)*740,vy:Math.sin(a)*740,
+life:1.2,dmg:p.atk*.95,r:3.5
+});
+t.fire=.38;
+}
+}
+turrets=turrets.filter(t=>t.life>0);
+
+if(droneTime>0){
+droneTime=Math.max(0,droneTime-dt);
+droneFire-=dt;
+if(droneFire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+)[0];
+let a=Math.atan2(target.y-p.y,target.x-p.x);
+bullets.push({
+x:p.x+Math.cos(a)*38,y:p.y+Math.sin(a)*38,
+vx:Math.cos(a)*820,vy:Math.sin(a)*820,
+life:1.1,dmg:p.atk*1.15,r:3.5
+});
+droneFire=.46;
+}
+}
+
+spawn+=dt;
+if(waveSpawned<waveGoal&&spawn>=1.32&&enemies.length<10){
+spawn=0;
+spawnEnemy();
+}
+
+for(let b of bullets){
+b.x+=b.vx*dt;
+b.y+=b.vy*dt;
+b.life-=dt;
+if(b.life<=0)continue;
+
+for(let e of enemies){
+if(e.hp>0&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+b.r){
+e.hp-=b.dmg;
+b.life=0;
+burst(b.x,b.y,'#72f5ff',7,75);
+txt(e.x,e.y-e.r,'-'+Math.round(b.dmg),'#b7ffff');
+break;
+}
+}
+}
+
+bullets=bullets.filter(b=>
+b.life>0&&b.x>-30&&b.x<MW+30&&b.y>-30&&b.y<MH+30
+);
+
+for(let e of enemies){
+let a=Math.atan2(p.y-e.y,p.x-e.x);
+let sf=slow>0?.32:1;
+e.x+=Math.cos(a)*e.speed*sf*dt;
+e.y+=Math.sin(a)*e.speed*sf*dt;
+e.phase+=dt*4;
+
+if(Math.hypot(p.x-e.x,p.y-e.y)<p.r+e.r&&p.inv<=0&&e.touch<=0){
+let dmg=e.boss?9:e.type==='tank'?6:e.type==='runner'?3:4;
+p.hp-=dmg;
+p.regenWait=2.4;
+p.inv=.88;
+e.touch=.9;
+shake=5;
+burst(p.x,p.y,'#ff4d86',13,125);
+txt(p.x,p.y-28,'-'+dmg,'#ff7fae');
+if(p.hp<=0){
+finish(false);
+return;
+}
+}
+e.touch=Math.max(0,e.touch-dt);
+}
+
+for(let e of enemies.filter(e=>e.hp<=0)){
+kills++;
+ult=Math.min(100,ult+(e.boss?32:6));
+burst(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?70:22,e.boss?300:160);
+ring(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?105:42,4);
+if(Math.random()<(e.boss?.9:.16)){
+pickups.push({x:e.x,y:e.y,r:11,life:12,phase:rand(0,6)});
+}
+}
+enemies=enemies.filter(e=>e.hp>0);
+
+for(let h of pickups){
+h.life-=dt;
+h.phase+=dt*4;
+if(Math.hypot(p.x-h.x,p.y-h.y)<p.r+h.r+7){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+20);
+let healed=Math.round(p.hp-before);
+if(healed>0)txt(p.x,p.y-25,'+'+healed,'#7dffb0');
+burst(h.x,h.y,'#7dffb0',22,150);
+h.life=0;
+}
+}
+pickups=pickups.filter(h=>h.life>0);
+
+for(let q of particles){
+q.x+=q.vx*dt;
+q.y+=q.vy*dt;
+q.vx*=Math.pow(.985,dt*60);
+q.vy*=Math.pow(.985,dt*60);
+q.life-=dt;
+}
+particles=particles.filter(q=>q.life>0);
+
+for(let r of rings){
+r.life-=dt;
+r.r=r.max*(1-r.life/r.maxLife);
+}
+rings=rings.filter(r=>r.life>0);
+
+for(let t of floats){
+t.y-=29*dt;
+t.life-=dt;
+}
+floats=floats.filter(t=>t.life>0);
+
+if(waveSpawned>=waveGoal&&kills>=waveGoal&&enemies.length===0){
+if(round>=20){
+finish(true);
+return;
+}else{
+paused=true;
+upgrade();
+return;
+}
+}
+
+$('round').textContent=round;
+$('hp').textContent=Math.max(0,Math.ceil(p.hp));
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+$('count').textContent=enemies.length;
+$('progress').textContent=kills+'/'+waveGoal;
+$('ult').textContent=Math.floor(ult);
+$('qcd').textContent=skillDefs[equipped.q].name+' · '+(p.cd.q?p.cd.q.toFixed(1)+'초':'준비 완료');
+$('ecd').textContent=skillDefs[equipped.e].name+' · '+(p.cd.e?p.cd.e.toFixed(1)+'초':'준비 완료');
+$('rcd').textContent=skillDefs[equipped.r].name+' · '+(p.cd.r?p.cd.r.toFixed(1)+'초':'준비 완료');
+$('ultready').textContent=ult>=100?'사용 가능!':'충전 중';
+$('powercd').textContent=p.powerCd>0?p.powerCd.toFixed(1)+'초':'준비 완료';
+}
+
+function renderSkillSlots(){
+let box=$('skillSlots');
+box.innerHTML='';
+for(let slot of ['q','e','r']){
+let d=skillDefs[equipped[slot]];
+let b=document.createElement('button');
+b.className='skill-slot';
+b.innerHTML=`<b>${slot.toUpperCase()} · ${d.icon} d.name</b><span>{d.desc}</span><span>쿨타임 ${d.cd}초 · 눌러서 변경</span>`;
+b.onclick=()=>showSkillChoices(slot);
+box.appendChild(b);
+}
+}
+
+function showSkillChoices(slot){
+selectedSlot=slot;
+$('skillHint').textContent=slot.toUpperCase()+' 슬롯에 장착할 스킬을 선택하세요.';
+let box=$('skillChoices');
+box.innerHTML='';
+
+for(let [id,d] of Object.entries(skillDefs)){
+let used=['q','e','r'].some(s=>s!==slot&&equipped[s]===id);
+let b=document.createElement('button');
+b.className='skill-choice';
+b.disabled=used;
+b.innerHTML=`<div>d.icon</div><b>{d.name}</b><div class="desc">${d.desc}</div><div class="small">쿨타임 d.cd초{used?' · 다른 슬롯 장착 중':''}</div>`;
+b.onclick=()=>{
+equipped[slot]=id;
+renderSkillSlots();
+showSkillChoices(slot);
+say(slot.toUpperCase()+' 스킬 변경: '+d.name);
+};
+box.appendChild(b);
+}
+}
+
+function upgrade(){
+chosenUpgrade=null;
+selectedSlot=null;
+
+let a=[
+{i:'⚔️',n:'초고속 탄환',d:'공격력 +7',f:()=>p.atk+=7},
+{i:'💖',n:'생명력 회복',d:'체력 완전 회복',f:()=>p.hp=p.maxHp},
+{i:'⚡',n:'신속 강화',d:'이동 속도 +15%',f:()=>p.speed*=1.15},
+{i:'🌌',n:'궁극기 충전',d:'게이지 +45%',f:()=>ult=Math.min(100,ult+45)},
+{i:'🛡️',n:'차원 갑옷',d:'최대 체력 +25',f:()=>{p.maxHp+=25;p.hp=Math.min(p.maxHp,p.hp+25)}},
+{i:'💠',n:'연사 코어',d:'발사 속도 +18%',f:()=>p.rate=Math.max(.065,p.rate*.82)}
+].sort(()=>Math.random()-.5);
+
+$('cards').innerHTML='';
+
+a.slice(0,3).forEach(o=>{
+let b=document.createElement('button');
+b.className='card';
+b.innerHTML=`<div>o.i</div><b>{o.n}</b><div class="desc">${o.d}</div><div class="small">강화 선택</div>`;
+b.onclick=()=>{
+chosenUpgrade=o;
+[...$('cards').children].forEach(el=>el.classList.remove('selected'));
+b.classList.add('selected');
+$('continueRound').disabled=false;
+$('continueRound').textContent='선택한 강화 받고 다음 라운드';
+say(o.n+' 선택됨');
+};
+$('cards').appendChild(b);
+});
+
+renderSkillSlots();
+$('skillChoices').innerHTML='';
+$('skillHint').textContent='Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.';
+$('continueRound').disabled=false;
+$('continueRound').textContent='보상 없이 다음 라운드';
+$('upgrade').style.display='flex';
+}
+
+$('continueRound').onclick=()=>{
+if(chosenUpgrade)chosenUpgrade.f();
+round++;
+kills=0;
+waveGoal=Math.min(18,8+Math.floor((round-1)*.55));
+waveSpawned=0;
+spawn=.45;
+p.hp=Math.min(p.maxHp,p.hp+12);
+paused=false;
+$('upgrade').style.display='none';
+say('ROUND '+round+' START!');
+last=performance.now();
+};
+
+function finish(win){
+if(!running)return;
+running=false;
+paused=true;
+$('finishTitle').textContent=win?'차원 정복 성공!':'GAME OVER';
+$('finishText').textContent=win?
+'20라운드 클리어! 플레리어가 차원을 구했습니다!':
+'ROUND '+round+'에서 쓰러졌습니다. 다시 도전해 보세요!';
+$('finish').style.display='flex';
+}
+
+function draw(now){
+x.save();
+
+if(shake>0){
+x.translate(rand(-shake,shake),rand(-shake,shake));
+shake*=.86;
+if(shake<.35)shake=0;
+}
+
+x.translate(-camX,-camY);
+
+let g=x.createLinearGradient(camX,camY,camX+W,camY+H);
+g.addColorStop(0,'#07152c');
+g.addColorStop(.5,'#111039');
+g.addColorStop(1,'#061d2b');
+x.fillStyle=g;
+x.fillRect(camX,camY,W,H);
+
+x.strokeStyle='#182b54';
+let gx0=Math.floor(camX/60)*60;
+let gy0=Math.floor(camY/60)*60;
+
+for(let a=gx0;a<camX+W+60;a+=60){
+x.beginPath();
+x.moveTo(a,camY);
+x.lineTo(a,camY+H);
+x.stroke();
+}
+
+for(let b=gy0;b<camY+H+60;b+=60){
+x.beginPath();
+x.moveTo(camX,b);
+x.lineTo(camX+W,b);
+x.stroke();
+}
+
+x.strokeStyle='#6d62ff';
+x.lineWidth=8;
+x.strokeRect(0,0,MW,MH);
+x.lineWidth=1;
+
+for(let i=0;i<55;i++){
+let a=camX+((i*173+now*.014)%(W));
+let b=camY+((i*97+Math.sin(now*.001+i)*24)%(H));
+x.fillStyle=`rgba(105,145,255,${.15+(i%4)*.1})`;
+x.fillRect(a,b,2,2);
+}
+
+for(let r of rings){
+x.save();
+x.globalAlpha=Math.max(0,r.life/r.maxLife);
+x.strokeStyle=r.col;
+x.shadowColor=r.col;
+x.shadowBlur=27;
+x.lineWidth=r.width;
+x.beginPath();
+x.arc(r.x,r.y,r.r,0,Math.PI*2);
+x.stroke();
+x.restore();
+}
+
+if(p&&p.powerTime>0){
+x.save();
+x.globalAlpha=.22+.12*Math.sin(now*.02);
+x.strokeStyle=classDefs[p.job].power.color;
+x.shadowColor=classDefs[p.job].power.color;
+x.shadowBlur=26;
+x.lineWidth=5;
+x.beginPath();
+x.arc(p.x,p.y,p.job==='dragon'?48:35,0,Math.PI*2);
+x.stroke();
+
+if(p.job==='dragon'){
+x.strokeStyle='#ffb45c';
+x.lineWidth=3;
+x.beginPath();
+x.arc(p.x,p.y,62+Math.sin(now*.012)*8,now*.003,now*.003+Math.PI*1.35);
+x.stroke();
+}
+
+if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+x.globalAlpha=.18;
+x.fillStyle='#ff79be';
+x.beginPath();
+x.arc(p.x-28-i*18,p.y+13+i*9,14,0,Math.PI*2);
+x.fill();
+}
+}
+x.restore();
+}
+
+if(classStrike){
+x.save();
+x.globalAlpha=.45+.25*Math.sin(now*.025);
+x.strokeStyle='#8cf4ff';
+x.shadowColor='#8cf4ff';
+x.shadowBlur=22;
+x.lineWidth=4;
+x.beginPath();
+x.arc(classStrike.x,classStrike.y,classStrike.delay>0?165:145,0,Math.PI*2);
+x.stroke();
+x.beginPath();
+x.moveTo(classStrike.x-18,classStrike.y);
+x.lineTo(classStrike.x+18,classStrike.y);
+x.moveTo(classStrike.x,classStrike.y-18);
+x.lineTo(classStrike.x,classStrike.y+18);
+x.stroke();
+x.restore();
+}
+
+for(let b of bullets){
+x.save();
+x.strokeStyle=b.crit?'#ffd56c':'#73f7ff';
+x.shadowColor=b.crit?'#ffbd4a':'#3af4ff';
+x.shadowBlur=19;
+x.lineWidth=5;
+x.beginPath();
+x.moveTo(b.x-b.vx*.022,b.y-b.vy*.022);
+x.lineTo(b.x,b.y);
+x.stroke();
+x.restore();
+}
+
+for(let e of enemies){
+x.save();
+x.translate(e.x,e.y);
+x.rotate(e.phase*.12);
+let ec=e.boss?'#ff237b':e.type==='runner'?'#bd73ff':e.type==='tank'?'#ffb84d':'#3ceeff';
+x.shadowColor=ec;
+x.shadowBlur=e.boss?31:18;
+x.fillStyle=e.boss?'#8e174f':e.type==='runner'?'#4c287a':e.type==='tank'?'#755023':'#14617b';
+x.strokeStyle=e.boss?'#ff73b6':e.type==='runner'?'#d5a2ff':e.type==='tank'?'#ffd17c':'#70f5ff';
+x.lineWidth=e.boss?4:2.5;
+x.beginPath();
+
+for(let i=0;i<8;i++){
+let a=i*Math.PI/4;
+let r=e.r*(i%2?.78:1.18);
+if(i)x.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+else x.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+}
+
+x.closePath();
+x.fill();
+x.stroke();
+x.shadowBlur=0;
+x.fillStyle='#fff';
+x.beginPath();
+x.arc(-e.r*.28,-2,2.8,0,7);
+x.arc(e.r*.28,-2,2.8,0,7);
+x.fill();
+
+x.fillStyle='#25152e';
+x.fillRect(-e.r,e.r+6,e.r*2,5);
+x.fillStyle=e.boss?'#ff2e80':e.type==='tank'?'#ffbd54':e.type==='runner'?'#c68bff':'#57f0b8';
+x.fillRect(-e.r,e.r+6,e.r*2*Math.max(0,e.hp/e.maxHp),5);
+
+if(e.boss){
+x.fillStyle='#ffadd9';
+x.font='bold 14px sans-serif';
+x.textAlign='center';
+x.fillText('DIMENSION BOSS',0,-e.r-13);
+}
+x.restore();
+}
+
+for(let h of pickups){
+x.save();
+let pulse=1+Math.sin(h.phase)*.16;
+x.translate(h.x,h.y);
+x.scale(pulse,pulse);
+x.shadowColor='#65ff9a';
+x.shadowBlur=22;
+x.fillStyle='#143d2b';
+x.strokeStyle='#7dffad';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,h.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#aaffc8';
+x.fillRect(-2,-7,4,14);
+x.fillRect(-7,-2,14,4);
+x.restore();
+}
+
+for(let t of turrets){
+x.save();
+x.translate(t.x,t.y);
+x.shadowColor='#ffd078';
+x.shadowBlur=18;
+x.fillStyle='#6b4d21';
+x.strokeStyle='#ffe1a0';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,13,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#fff0bb';
+x.fillRect(0,-4,21,8);
+x.restore();
+}
+
+if(droneTime>0&&p){
+let dx=p.x+Math.cos(now*.004)*37;
+let dy=p.y-35+Math.sin(now*.004)*13;
+x.save();
+x.translate(dx,dy);
+x.shadowColor='#83efff';
+x.shadowBlur=22;
+x.fillStyle='#277da5';
+x.strokeStyle='#b8f8ff';
+x.lineWidth=2.5;
+x.beginPath();
+x.arc(0,0,10,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.restore();
+}
+
+for(let q of particles){
+x.save();
+x.globalAlpha=cl(q.life/q.max,0,1);
+x.fillStyle=q.col;
+x.shadowColor=q.col;
+x.shadowBlur=q.glow;
+x.beginPath();
+x.arc(q.x,q.y,q.r,0,Math.PI*2);
+x.fill();
+x.restore();
+}
+
+for(let t of floats){
+x.save();
+x.globalAlpha=cl(t.life/.75,0,1);
+x.font='bold 16px system-ui';
+x.textAlign='center';
+x.fillStyle=t.col;
+x.shadowColor=t.col;
+x.shadowBlur=12;
+x.fillText(t.t,t.x,t.y);
+x.restore();
+}
+
+if(p){
+x.save();
+x.translate(p.x,p.y);
+x.rotate(Math.atan2(mouse.y-p.y,mouse.x-p.x));
+
+let pc=classDefs[p.job]?.color||'#a58bff';
+x.shadowColor=p.inv>0?'#fff':pc;
+x.shadowBlur=28;
+x.fillStyle=p.inv>0?'#fff':pc;
+x.strokeStyle='#f4eaff';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,p.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#d5ffff';
+x.fillRect(3,-6,31,12);
+x.fillStyle='#5233c5';
+x.fillRect(9,-3,22,6);
+x.restore();
+
+x.save();
+x.strokeStyle='#a4faff';
+x.shadowColor='#63efff';
+x.shadowBlur=12;
+x.lineWidth=1.5;
+x.beginPath();
+x.arc(mouse.x,mouse.y,10,0,Math.PI*2);
+x.moveTo(mouse.x-17,mouse.y);
+x.lineTo(mouse.x-5,mouse.y);
+x.moveTo(mouse.x+5,mouse.y);
+x.lineTo(mouse.x+17,mouse.y);
+x.moveTo(mouse.x,mouse.y-17);
+x.lineTo(mouse.x,mouse.y-5);
+x.moveTo(mouse.x,mouse.y+5);
+x.lineTo(mouse.x,mouse.y+17);
+x.stroke();
+x.restore();
+}
+
+x.restore();
+drawMiniMap();
+}
+
+function drawMiniMap(){
+x.save();
+x.setTransform(1,0,0,1,0,0);
+
+const mw=176,mh=127;
+const mx=W-mw-16,my=16;
+const sx=mw/MW,sy=mh/MH;
+
+x.fillStyle='rgba(3,8,28,.82)';
+x.fillRect(mx,my,mw,mh);
+x.strokeStyle='#8d83ff';
+x.lineWidth=2;
+x.strokeRect(mx,my,mw,mh);
+
+x.strokeStyle='rgba(160,180,255,.65)';
+x.lineWidth=1;
+x.strokeRect(mx+camX*sx,my+camY*sy,W*sx,H*sy);
+
+for(const e of enemies){
+x.fillStyle=e.boss?'#ff438d':
+e.type==='tank'?'#ffc15f':
+e.type==='runner'?'#d49aff':'#65efff';
+x.beginPath();
+x.arc(mx+e.x*sx,my+e.y*sy,e.boss?3.5:2,0,Math.PI*2);
+x.fill();
+}
+
+if(p){
+x.fillStyle='#fff';
+x.shadowColor='#70f6ff';
+x.shadowBlur=8;
+x.beginPath();
+x.arc(mx+p.x*sx,my+p.y*sy,4,0,Math.PI*2);
+x.fill();
+}
+
+x.shadowBlur=0;
+x.fillStyle='#d8dcff';
+x.font='bold 10px sans-serif';
+x.textAlign='left';
+x.fillText('WORLD MAP',mx+6,my+11);
+x.font='8px sans-serif';
+x.fillStyle='#aeeeff';
+x.fillText('청록 일반 · 보라 빠름 · 노랑 탱커 · 분홍 보스',mx+4,my+mh+12);
+x.restore();
+}
+
+function loop(now){
+if(!running)return;
+let dt=Math.min(.033,Math.max(0,(now-last)/1000||.016));
+last=now;
+if(!paused)update(dt);
+draw(now);
+if(running)requestAnimationFrame(loop);
+}
+
+// 직업 선택 없이 플레리어로 자동 시작
+selectedClass='fighter';
+camX=MW/2-W/2;
+camY=MH/2-H/2;
+reset();
+draw(0);
+
+})();
+</script>
+</body>
+</html>
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>플레리어: 네온 차원전쟁</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#050714;color:#eef2ff;font-family:system-ui,"Malgun Gothic",sans-serif}
+#wrap{max-width:1250px;margin:auto;padding:12px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:14px;border:1px solid #6656ff;border-radius:15px;background:linear-gradient(110deg,#111b42,#21103d);box-shadow:0 0 28px #643aff38}
+h1{font-size:clamp(18px,2.5vw,27px);margin:0;color:#e4d9ff;text-shadow:0 0 15px #8d5cff}
+.stats{display:flex;gap:7px;flex-wrap:wrap}
+.stat,.pill{padding:7px 10px;background:#080e28;border:1px solid #283b77;border-radius:9px;font-size:13px;font-weight:800;white-space:nowrap}
+#arena{position:relative;margin-top:10px;border:2px solid #594aff;border-radius:15px;overflow:hidden;box-shadow:0 0 32px #5037ff35}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;cursor:crosshair;touch-action:none}
+#toast{position:absolute;top:14px;left:50%;transform:translateX(-50%);font-size:clamp(16px,2.5vw,28px);font-weight:1000;text-shadow:0 0 12px white,0 0 28px #9b59ff;pointer-events:none;white-space:nowrap;text-align:center}
+.overlay{position:absolute;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding:12px;background:#040615eF;overflow:auto}
+.panel{width:min(760px,100%);padding:clamp(15px,3vw,28px);border:1px solid #8d72ff;border-radius:22px;text-align:center;background:linear-gradient(145deg,#151c49,#090d25);box-shadow:0 0 45px #7545ff55}
+.panel h2{font-size:clamp(27px,5vw,48px);margin:0;color:#e7dcff;text-shadow:0 0 22px #a15cff}
+.panel p{line-height:1.65;color:#cbd5ff}
+button{font:inherit;font-weight:850;color:white;padding:10px 15px;border:1px solid #c6baff;border-radius:11px;background:linear-gradient(120deg,#914bff,#3730bf);cursor:pointer;margin:4px}
+button:hover{filter:brightness(1.2)}
+#cards{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.card{flex:1 1 145px;max-width:210px;padding:14px 8px;border:1px solid #626fff;border-radius:14px;background:linear-gradient(150deg,#172653,#170f3c);cursor:pointer}
+.card:hover{box-shadow:0 0 22px #7d55ff}
+.card.selected{border:2px solid #58f4ff;box-shadow:0 0 24px #38dfff88;background:linear-gradient(150deg,#17415a,#28205b)}
+#skillArea{margin-top:18px;padding-top:14px;border-top:1px solid #555da8}
+#skillArea h3{margin:4px 0 10px;color:#a9f5ff}
+#skillSlots,#skillChoices{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.skill-slot{min-width:145px;max-width:190px;flex:1 1 145px;padding:10px;border:1px solid #48cce8;border-radius:12px;background:linear-gradient(145deg,#102b49,#201342);color:#fff}
+.skill-slot b{display:block;font-size:15px}
+.skill-slot span{display:block;font-size:12px;color:#b9d7ff;margin-top:4px}
+.skill-choice{min-width:130px;max-width:180px;flex:1 1 130px;padding:10px;border:1px solid #b17cff;border-radius:11px;background:#21163f;color:#fff}
+.skill-choice:disabled{opacity:.35;cursor:not-allowed}
+.desc{font-size:13px;color:#c9d4ff;margin:7px 0}
+#help{text-align:center;padding:10px 5px;color:#c5d0ff;font-size:13px;line-height:1.7}
+#bottom{display:flex;justify-content:center;gap:7px;flex-wrap:wrap}
+kbd{padding:2px 6px;border:1px solid #7f8dff;border-radius:5px;background:#151e46;color:#fff}
+.small{font-size:12px!important;color:#9daedc!important}
+@media(max-width:600px){
+#wrap{padding:6px}
+.stat{font-size:11px;padding:6px}
+.panel{padding:12px}
+.panel p{font-size:13px}
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header>
+<h1>✦ 플레리어 : 네온 차원전쟁 ✦</h1>
+<div class="stats">
+<div class="stat">플레이어 <span id="className">플레리어</span></div>
+<div class="stat">ROUND <span id="round">1</span>/20</div>
+<div class="stat">❤️ <span id="hp">100</span>/<span id="maxhp">100</span></div>
+<div class="stat">⚔ <span id="atk">18</span></div>
+<div class="stat">👾 <span id="count">0</span></div>
+<div class="stat">처치 <span id="progress">0/8</span></div>
+<div class="stat">궁극기 <span id="ult">0</span>%</div>
+</div>
+</header>
+
+<div id="arena">
+<canvas id="game" width="1200" height="675"></canvas>
+<div id="toast"></div>
+
+<div class="overlay" id="upgrade" style="display:none">
+<div class="panel">
+<h2>✧ 차원 강화 ✧</h2>
+<p>강화와 스킬 변경은 선택 사항입니다. 아무것도 고르지 않고 넘어가도 몬스터 능력치는 강해지지 않습니다.</p>
+<div id="cards"></div>
+<div id="skillArea">
+<h3>⚙ 스킬 장착 / 변경</h3>
+<div id="skillSlots"></div>
+<p class="small" id="skillHint">Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.</p>
+<div id="skillChoices"></div>
+</div>
+<button id="continueRound" disabled>강화를 선택하세요</button>
+</div>
+</div>
+
+<div class="overlay" id="finish" style="display:none">
+<div class="panel">
+<h2 id="finishTitle">GAME OVER</h2>
+<p id="finishText"></p>
+<button id="restartBtn">다시 도전</button>
+</div>
+</div>
+</div>
+
+<div id="help">
+이동 <kbd>WASD</kbd> · 수동 조준 <b>마우스</b> · 자동 사격 <b>켜짐</b><br>
+회복 코어 <b>초록색</b> · <kbd>Q</kbd> 스킬 1 · <kbd>E</kbd> 스킬 2 · <kbd>R</kbd> 스킬 3<br>
+<kbd>F</kbd> 특수 스킬 · <kbd>SPACE</kbd> 궁극기
+</div>
+
+<div id="bottom">
+<span class="pill">🟣 Q: <b id="qcd">준비 완료</b></span>
+<span class="pill">🔴 E: <b id="ecd">준비 완료</b></span>
+<span class="pill">🔵 R: <b id="rcd">준비 완료</b></span>
+<span class="pill">🌌 궁극기: <b id="ultready">충전 중</b></span>
+<span class="pill">✨ 특수 스킬(F): <b id="powercd">준비 완료</b></span>
+<button id="autoBtn" aria-pressed="true">자동 사격: 켜짐</button>
+</div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+
+window.addEventListener('error',function(ev){
+const toast=document.getElementById('toast');
+if(toast)toast.textContent='게임 오류: '+(ev.message||'페이지를 새로고침해 주세요.');
+});
+
+const c=document.getElementById('game');
+const x=c.getContext('2d');
+const $=id=>document.getElementById(id);
+const W=1200,H=675,MW=3600,MH=2600;
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rand=(a,b)=>a+Math.random()*(b-a);
+
+let camX=0,camY=0;
+let running=false,paused=false,last=0,round=1,kills=0,ult=0;
+let spawn=0,fireT=0,slow=0,shake=0,auto=true;
+let mouse={x:850,y:330,sx:780,sy:337};
+let keys={},p,enemies=[],bullets=[],particles=[],rings=[],floats=[],pickups=[],turrets=[];
+let droneTime=0,droneFire=0,classStrike=null,eid=1;
+let chosenUpgrade=null,selectedSlot=null;
+let waveGoal=8,waveSpawned=0,selectedClass=null;
+
+const equipped={q:'dash',e:'blast',r:'warp'};
+
+const classDefs={
+fighter:{
+color:'#d6a8ff',icon:'⚔️',name:'플레리어',
+desc:'공격력이 높고 균형 잡힌 근접 전투형',
+hp:140,atk:24,speed:280,rate:.17,crit:.06,cdFactor:1,
+skills:{q:'dash',e:'blade',r:'shield'},
+passive:'공격력 우수 · 체력 140',
+power:{name:'차원 각성',desc:'검기가 폭발하며 공격 강화',cd:19,color:'#d9b4ff'}
+},
+soldier:{
+color:'#8cf4ff',icon:'🪖',name:'군인',
+desc:'빠른 연사와 설치형 포탑을 활용하는 사격형',
+hp:128,atk:20,speed:270,rate:.115,crit:.04,cdFactor:1,
+skills:{q:'grenade',e:'turret',r:'warp'},
+passive:'연사 속도 우수 · 포탑 시작 장착',
+power:{name:'전술 공습',desc:'마우스 위치에 폭격',cd:21,color:'#8cf4ff'}
+},
+dragon:{
+color:'#ff9865',icon:'🐉',name:'용기사',
+desc:'높은 체력과 강한 한 발로 버티는 돌격형',
+hp:170,atk:25,speed:252,rate:.18,crit:.06,cdFactor:1.05,
+skills:{q:'shield',e:'blast',r:'meteor'},
+passive:'최대 체력 우수 · 공격력 보너스',
+power:{name:'용의 힘',desc:'용의 화염으로 공격 강화',cd:23,color:'#ff9865'}
+},
+mage:{
+color:'#8ab8ff',icon:'🔮',name:'마법사',
+desc:'스킬을 자주 사용해 적 무리를 제어하는 마법형',
+hp:118,atk:21,speed:265,rate:.16,crit:.03,cdFactor:.82,
+skills:{q:'frost',e:'lightning',r:'warp'},
+passive:'스킬 쿨타임 감소',
+power:{name:'마나 방출',desc:'넓은 범위에 마법 피해',cd:22,color:'#8ab8ff'}
+},
+assassin:{
+color:'#ff79be',icon:'🗡️',name:'암살자',
+desc:'빠른 이동과 치명타로 약점을 노리는 기동형',
+hp:112,atk:22,speed:325,rate:.145,crit:.2,cdFactor:.94,
+skills:{q:'dash',e:'blade',r:'lightning'},
+passive:'이동 속도 우수 · 치명타 확률 높음',
+power:{name:'그림자 분신',desc:'분신과 함께 공격',cd:20,color:'#ff79be'}
+}
+};
+
+const skillDefs={
+dash:{icon:'⚡',name:'순간 돌진',desc:'마우스 방향으로 돌진하고 잠시 무적',cd:4},
+shield:{icon:'🛡️',name:'차원 보호막',desc:'2.8초 무적 + 체력 30 회복',cd:9},
+blast:{icon:'💥',name:'플라즈마 폭발',desc:'주변 적에게 강력한 광역 피해',cd:7},
+lightning:{icon:'🌩️',name:'연쇄 번개',desc:'가까운 적 최대 7명에게 번개 피해',cd:8},
+warp:{icon:'🌀',name:'시간 왜곡',desc:'모든 적을 5.2초 동안 둔화',cd:14},
+meteor:{icon:'☄️',name:'운석 낙하',desc:'마우스 위치에 거대 운석 공격',cd:11},
+grenade:{icon:'🧨',name:'충격 수류탄',desc:'마우스 위치에 폭발 공격',cd:8},
+heal:{icon:'💚',name:'응급 회복',desc:'체력을 최대 55 회복',cd:16},
+frost:{icon:'❄️',name:'빙결 파동',desc:'적에게 피해를 주고 느리게 함',cd:12},
+turret:{icon:'🤖',name:'자동 포탑',desc:'12초 동안 주변 적을 자동 공격',cd:18},
+blade:{icon:'🌪️',name:'검기 회오리',desc:'전방 넓은 범위에 강한 검격',cd:8},
+drone:{icon:'🛸',name:'지원 드론',desc:'10초 동안 적을 자동 공격',cd:17}
+};
+
+function say(s){
+$('toast').textContent=s;
+clearTimeout(say.t);
+say.t=setTimeout(()=>$('toast').textContent='',1400);
+}
+
+function reset(){
+selectedClass=selectedClass||'fighter';
+const job=classDefs[selectedClass];
+
+round=1;
+kills=0;
+ult=0;
+waveGoal=8;
+waveSpawned=0;
+spawn=.8;
+fireT=slow=shake=0;
+
+enemies=[];
+bullets=[];
+particles=[];
+rings=[];
+floats=[];
+pickups=[];
+turrets=[];
+droneTime=droneFire=0;
+classStrike=null;
+keys={};
+eid=1;
+
+Object.assign(equipped,job.skills);
+chosenUpgrade=null;
+selectedSlot=null;
+
+p={
+x:MW/2,y:MH/2,r:17,
+hp:job.hp,maxHp:job.hp,
+atk:job.atk,speed:job.speed,
+inv:0,regenWait:0,
+cd:{q:0,e:0,r:0},
+rate:job.rate,crit:job.crit,
+cdFactor:job.cdFactor,
+job:selectedClass,
+damageBonus:selectedClass==='dragon'?1.1:1,
+powerCd:0,powerTime:0,powerPulse:0
+};
+
+camX=cl(p.x-W/2,0,MW-W);
+camY=cl(p.y-H/2,0,MH-H);
+mouse.sx=780;
+mouse.sy=H/2;
+mouse.x=mouse.sx+camX;
+mouse.y=mouse.sy+camY;
+
+$('className').textContent=job.name;
+$('round').textContent=round;
+$('hp').textContent=p.hp;
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+
+running=true;
+paused=false;
+$('upgrade').style.display='none';
+$('finish').style.display='none';
+say(job.name+' 출전!');
+last=performance.now();
+requestAnimationFrame(loop);
+}
+
+$('restartBtn').addEventListener('click',reset);
+
+$('autoBtn').onclick=()=>{
+auto=!auto;
+$('autoBtn').textContent='자동 사격: '+(auto?'켜짐':'꺼짐');
+$('autoBtn').setAttribute('aria-pressed',String(auto));
+say(auto?'자동 사격 ON':'자동 사격 OFF');
+};
+
+function pointer(e){
+let b=c.getBoundingClientRect();
+mouse.sx=cl((e.clientX-b.left)/b.width*W,0,W);
+mouse.sy=cl((e.clientY-b.top)/b.height*H,0,H);
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+}
+
+c.addEventListener('pointermove',pointer);
+c.addEventListener('pointerdown',e=>{
+pointer(e);
+if(e.pointerType==='mouse'&&e.button===0&&!auto)fire();
+});
+c.addEventListener('contextmenu',e=>e.preventDefault());
+
+window.addEventListener('keydown',e=>{
+let k=e.key.toLowerCase();
+keys[k]=true;
+if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+if(e.repeat||!running||paused||!p)return;
+if(k==='q')castSkill('q');
+if(k==='e')castSkill('e');
+if(k==='r')castSkill('r');
+if(k==='f')classPower();
+if(e.code==='Space')ultimate();
+});
+
+window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function burst(a,b,col,n=20,pow=200){
+for(let i=0;i<n;i++){
+let ang=rand(0,Math.PI*2),s=rand(30,pow);
+particles.push({
+x:a,y:b,
+vx:Math.cos(ang)*s,
+vy:Math.sin(ang)*s,
+life:rand(.25,.8),max:.8,
+col,r:rand(1.5,4.5),glow:rand(5,17)
+});
+}
+}
+
+function ring(a,b,col,max=120,width=5,life=.55){
+rings.push({x:a,y:b,col,r:4,max,life,maxLife:life,width});
+}
+
+function txt(a,b,t,col='#fff'){
+floats.push({x:a,y:b,t,col,life:.75});
+}
+
+function dash(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let ox=p.x,oy=p.y;
+p.x=cl(p.x+Math.cos(a)*210,22,MW-22);
+p.y=cl(p.y+Math.sin(a)*210,22,MH-22);
+for(let i=0;i<7;i++){
+particles.push({
+x:ox+(p.x-ox)*i/7,
+y:oy+(p.y-oy)*i/7,
+vx:rand(-70,70),vy:rand(-70,70),
+life:.45,max:.45,col:'#b15cff',r:7,glow:20
+});
+}
+p.inv=1.0;
+ring(p.x,p.y,'#c477ff',105,8);
+burst(p.x,p.y,'#a85bff',36,230);
+shake=7;
+say('순간 돌진!');
+}
+
+function shield(){
+p.inv=Math.max(p.inv,2.8);
+p.hp=Math.min(p.maxHp,p.hp+30);
+ring(p.x,p.y,'#72f5ff',190,11,.8);
+ring(p.x,p.y,'#ffffff',125,4,.65);
+burst(p.x,p.y,'#72f5ff',55,250);
+say('차원 보호막! 무적 + 회복');
+}
+
+function blast(){
+ring(p.x,p.y,'#ff376c',295,13);
+ring(p.x,p.y,'#ffbd4a',220,6);
+burst(p.x,p.y,'#ff3b70',105,380);
+shake=14;
+for(let e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<295){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ff9bcb');
+}
+}
+say('플라즈마 폭발!');
+}
+
+function lightning(){
+let targets=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+).slice(0,7);
+let ox=p.x,oy=p.y;
+for(let e of targets){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+for(let j=0;j<8;j++){
+particles.push({
+x:ox+(e.x-ox)*j/8+rand(-12,12),
+y:oy+(e.y-oy)*j/8+rand(-12,12),
+vx:rand(-45,45),vy:rand(-45,45),
+life:.3,max:.3,col:'#7af8ff',r:rand(2,5),glow:22
+});
+}
+ring(e.x,e.y,'#67efff',48,5,.35);
+burst(e.x,e.y,'#7af8ff',14,160);
+txt(e.x,e.y-20,'-'+d,'#a9ffff');
+ox=e.x;
+oy=e.y;
+}
+say(targets.length?'연쇄 번개!':'번개 발동!');
+}
+
+function warp(){
+slow=5.2;
+ring(p.x,p.y,'#31eaff',420,9,1);
+burst(p.x,p.y,'#35dfff',65,260);
+for(let e of enemies)txt(e.x,e.y-18,'SLOW','#80f7ff');
+say('시간 왜곡!');
+}
+
+function meteor(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9d42',230,14,.85);
+ring(tx,ty,'#fff0a0',145,7,.65);
+burst(tx,ty,'#ff8b38',75,300);
+burst(tx,ty,'#fff0a0',35,200);
+shake=10;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<225){
+let d=Math.round(p.atk*3.5*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd28b');
+}
+}
+say('운석 낙하!');
+}
+
+function grenade(){
+let tx=mouse.x,ty=mouse.y;
+ring(tx,ty,'#ff9e45',210,12,.8);
+burst(tx,ty,'#ff9e45',62,280);
+shake=8;
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<155){
+let d=Math.round(p.atk*2.8*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#ffd095');
+}
+}
+say('충격 수류탄!');
+}
+
+function heal(){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+55);
+ring(p.x,p.y,'#65ffac',125,8,.8);
+burst(p.x,p.y,'#65ffac',42,210);
+txt(p.x,p.y-30,'+'+Math.round(p.hp-before),'#8dffbd');
+say('응급 회복!');
+}
+
+function frost(){
+let tx=mouse.x,ty=mouse.y;
+slow=5.2;
+ring(tx,ty,'#8ceaff',245,11,1);
+burst(tx,ty,'#8ceaff',75,280);
+for(let e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<235){
+let d=Math.round(p.atk*2.15*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#a8f4ff');
+}
+}
+say('빙결 파동!');
+}
+
+function turret(){
+if(turrets.length>=2)turrets.shift();
+turrets.push({x:p.x,y:p.y,life:12,fire:.15});
+ring(p.x,p.y,'#ffce75',70,6,.55);
+burst(p.x,p.y,'#ffce75',28,150);
+say('자동 포탑 설치!');
+}
+
+function blade(){
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+ring(p.x+Math.cos(a)*72,p.y+Math.sin(a)*72,'#aefcff',175,12,.55);
+burst(p.x+Math.cos(a)*75,p.y+Math.sin(a)*75,'#d5fbff',45,250);
+for(let e of enemies){
+let da=Math.atan2(e.y-p.y,e.x-p.x)-a;
+while(da>Math.PI)da-=Math.PI*2;
+while(da<-Math.PI)da+=Math.PI*2;
+if(Math.hypot(e.x-p.x,e.y-p.y)<225&&Math.abs(da)<1.3){
+let d=Math.round(p.atk*3.0*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-20,'-'+d,'#e2ffff');
+}
+}
+shake=6;
+say('검기 회오리!');
+}
+
+function drone(){
+droneTime=10;
+droneFire=.1;
+ring(p.x,p.y,'#84eaff',85,6,.6);
+burst(p.x,p.y,'#84eaff',28,160);
+say('지원 드론 출격!');
+}
+
+function castSkill(slot){
+if(!p||p.cd[slot]>0)return;
+let id=equipped[slot],def=skillDefs[id];
+p.cd[slot]=def.cd*(p.cdFactor||1);
+({dash,shield,blast,lightning,warp,meteor,grenade,heal,frost,turret,blade,drone})[id]();
+}
+
+function classPower(){
+if(!p||p.powerCd>0)return;
+const job=classDefs[p.job],color=job.power.color;
+p.powerCd=job.power.cd*(p.cdFactor||1);
+
+if(p.job==='fighter'){
+p.powerTime=7;
+p.powerPulse=.12;
+p.inv=Math.max(p.inv,.45);
+ring(p.x,p.y,color,235,13,.85);
+ring(p.x,p.y,'#ffffff',165,5,.7);
+burst(p.x,p.y,color,80,310);
+shake=9;
+say('🌌 차원 각성! 7초간 공격 강화');
+}else if(p.job==='soldier'){
+classStrike={x:mouse.x,y:mouse.y,time:3.4,delay:.25,tick:.25,color};
+ring(classStrike.x,classStrike.y,color,190,8,.8);
+burst(classStrike.x,classStrike.y,color,28,140);
+say('🪖 전술 공습 요청!');
+}else if(p.job==='dragon'){
+p.powerTime=8;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,.65);
+ring(p.x,p.y,color,275,14,.9);
+ring(p.x,p.y,'#ffd69b',190,6,.8);
+burst(p.x,p.y,color,100,340);
+shake=11;
+say('🐉 용의 힘 개방!');
+}else if(p.job==='mage'){
+ring(p.x,p.y,color,365,15,1);
+ring(p.x,p.y,'#ffffff',275,6,.8);
+burst(p.x,p.y,color,125,390);
+burst(p.x,p.y,'#d8f6ff',65,290);
+shake=13;
+slow=6.2;
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<430){
+const d=Math.round(p.atk*4.6*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-24,'-'+d,'#c7ddff');
+}
+}
+say('🔮 마나 방출!');
+}else if(p.job==='assassin'){
+p.powerTime=6;
+p.powerPulse=.1;
+p.inv=Math.max(p.inv,1.35);
+ring(p.x,p.y,color,205,11,.8);
+burst(p.x,p.y,color,75,330);
+shake=7;
+say('🗡️ 그림자 분신!');
+}
+}
+
+function ultimate(){
+if(ult<100){
+say('궁극기 게이지가 부족해!');
+return;
+}
+ult=0;
+ring(p.x,p.y,'#e16bff',455,14,.9);
+ring(p.x,p.y,'#fff',350,4,.75);
+burst(p.x,p.y,'#e16bff',145,430);
+burst(p.x,p.y,'#58eaff',90,330);
+shake=17;
+for(let e of enemies){
+let d=Math.round(p.atk*3.25*p.damageBonus+45);
+e.hp-=d;
+txt(e.x,e.y-25,'-'+d,'#ffcbff');
+}
+say('🌌 차원 붕괴! 광역 피해!');
+}
+
+function fire(){
+if(!p||fireT>0)return;
+let boosted=p.powerTime>0;
+fireT=p.rate*(boosted&&p.job==='assassin'?.58:boosted&&p.job==='fighter'?.72:1);
+let a=Math.atan2(mouse.y-p.y,mouse.x-p.x);
+let sx=p.x+Math.cos(a)*23,sy=p.y+Math.sin(a)*23;
+let crit=Math.random()<(p.crit||0);
+let dmg=p.atk*(p.damageBonus||1)*
+(boosted&&p.job==='fighter'?1.85:
+boosted&&p.job==='dragon'?1.85:
+boosted&&p.job==='assassin'?1.55:1)*
+(crit?1.8:1);
+bullets.push({
+x:sx,y:sy,
+vx:Math.cos(a)*850,vy:Math.sin(a)*850,
+life:1.25,dmg,r:crit?5:4,crit
+});
+burst(sx,sy,crit?'#ffd56c':'#6df5ff',3,50);
+}
+
+function spawnEnemy(){
+let ang=rand(0,Math.PI*2),dist=rand(520,790);
+let ex=cl(p.x+Math.cos(ang)*dist,40,MW-40);
+let ey=cl(p.y+Math.sin(ang)*dist,40,MH-40);
+let boss=(round%5===0)&&waveSpawned===0;
+let type='normal';
+
+if(!boss){
+let roll=Math.random();
+if(round>=3&&roll<.24)type='runner';
+else if(round>=4&&roll>.77)type='tank';
+}
+
+let hp=boss?(340+Math.floor(round/5)*65):
+type==='tank'?78:
+type==='runner'?31:38;
+
+let radius=boss?31:
+type==='tank'?22:
+type==='runner'?12:rand(13,17);
+
+let speed=boss?42:
+type==='tank'?35:
+type==='runner'?72:47;
+
+enemies.push({
+id:eid++,x:ex,y:ey,r:radius,hp,maxHp:hp,
+speed,boss,type,phase:rand(0,7),touch:0
+});
+waveSpawned++;
+
+if(boss){
+say('☠ 차원 보스 출현!');
+ring(ex,ey,'#ff247c',120,8);
+burst(ex,ey,'#ff247c',40,200);
+}
+}
+
+function update(dt){
+p.inv=Math.max(0,p.inv-dt);
+p.regenWait=Math.max(0,(p.regenWait||0)-dt);
+
+if(p.regenWait<=0&&p.hp<p.maxHp)
+p.hp=Math.min(p.maxHp,p.hp+0.8*dt);
+
+fireT-=dt;
+slow=Math.max(0,slow-dt);
+
+for(let k of ['q','e','r'])
+p.cd[k]=Math.max(0,p.cd[k]-dt);
+
+p.powerCd=Math.max(0,(p.powerCd||0)-dt);
+
+if(p.powerTime>0){
+p.powerTime=Math.max(0,p.powerTime-dt);
+p.powerPulse-=dt;
+
+if(p.powerPulse<=0){
+p.powerPulse=p.job==='dragon'?.82:.95;
+
+if(p.job==='fighter'||p.job==='dragon'){
+const radius=p.job==='dragon'?235:195;
+const dmg=p.atk*(p.job==='dragon'?1.65:1.3)*p.damageBonus;
+ring(p.x,p.y,p.job==='dragon'?'#ff8a45':'#d9b4ff',radius,5,.35);
+for(const e of enemies){
+if(Math.hypot(e.x-p.x,e.y-p.y)<radius){
+e.hp-=dmg;
+txt(e.x,e.y-e.r,'-'+Math.round(dmg),p.job==='dragon'?'#ffb56d':'#e6caff');
+}
+}
+}else if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+let a=rand(0,Math.PI*2);
+let tx=p.x+Math.cos(a)*rand(70,155);
+let ty=p.y+Math.sin(a)*rand(70,155);
+ring(tx,ty,'#ff79be',55,4,.28);
+for(const e of enemies){
+if(Math.hypot(e.x-tx,e.y-ty)<74){
+let d=p.atk*1.15;
+e.hp-=d;
+txt(e.x,e.y-15,'-'+Math.round(d),'#ffb4db');
+}
+}
+}
+}
+}
+}
+
+if(classStrike){
+classStrike.time-=dt;
+classStrike.delay-=dt;
+classStrike.tick-=dt;
+if(classStrike.delay<=0&&classStrike.tick<=0){
+classStrike.tick=.58;
+ring(classStrike.x,classStrike.y,classStrike.color,160,9,.55);
+burst(classStrike.x,classStrike.y,classStrike.color,22,180);
+shake=6;
+for(const e of enemies){
+if(Math.hypot(e.x-classStrike.x,e.y-classStrike.y)<205){
+let d=Math.round(p.atk*1.9*p.damageBonus);
+e.hp-=d;
+txt(e.x,e.y-18,'-'+d,'#bffaff');
+}
+}
+}
+if(classStrike.time<=0)classStrike=null;
+}
+
+let dx=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+let dy=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
+let len=Math.hypot(dx,dy)||1;
+
+p.x=cl(p.x+dx/len*p.speed*dt,24,MW-24);
+p.y=cl(p.y+dy/len*p.speed*dt,24,MH-24);
+
+camX+=(cl(p.x-W/2,0,MW-W)-camX)*Math.min(1,dt*10);
+camY+=(cl(p.y-H/2,0,MH-H)-camY)*Math.min(1,dt*10);
+
+mouse.x=cl(mouse.sx+camX,0,MW);
+mouse.y=cl(mouse.sy+camY,0,MH);
+
+if(auto)fire();
+
+for(let t of turrets){
+t.life-=dt;
+t.fire-=dt;
+if(t.fire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-t.x,a.y-t.y)-Math.hypot(b.x-t.x,b.y-t.y)
+)[0];
+let a=Math.atan2(target.y-t.y,target.x-t.x);
+bullets.push({
+x:t.x,y:t.y,
+vx:Math.cos(a)*740,vy:Math.sin(a)*740,
+life:1.2,dmg:p.atk*.95,r:3.5
+});
+t.fire=.38;
+}
+}
+turrets=turrets.filter(t=>t.life>0);
+
+if(droneTime>0){
+droneTime=Math.max(0,droneTime-dt);
+droneFire-=dt;
+if(droneFire<=0&&enemies.length){
+let target=enemies.slice().sort((a,b)=>
+Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y)
+)[0];
+let a=Math.atan2(target.y-p.y,target.x-p.x);
+bullets.push({
+x:p.x+Math.cos(a)*38,y:p.y+Math.sin(a)*38,
+vx:Math.cos(a)*820,vy:Math.sin(a)*820,
+life:1.1,dmg:p.atk*1.15,r:3.5
+});
+droneFire=.46;
+}
+}
+
+spawn+=dt;
+if(waveSpawned<waveGoal&&spawn>=1.32&&enemies.length<10){
+spawn=0;
+spawnEnemy();
+}
+
+for(let b of bullets){
+b.x+=b.vx*dt;
+b.y+=b.vy*dt;
+b.life-=dt;
+if(b.life<=0)continue;
+
+for(let e of enemies){
+if(e.hp>0&&Math.hypot(b.x-e.x,b.y-e.y)<e.r+b.r){
+e.hp-=b.dmg;
+b.life=0;
+burst(b.x,b.y,'#72f5ff',7,75);
+txt(e.x,e.y-e.r,'-'+Math.round(b.dmg),'#b7ffff');
+break;
+}
+}
+}
+
+bullets=bullets.filter(b=>
+b.life>0&&b.x>-30&&b.x<MW+30&&b.y>-30&&b.y<MH+30
+);
+
+for(let e of enemies){
+let a=Math.atan2(p.y-e.y,p.x-e.x);
+let sf=slow>0?.32:1;
+e.x+=Math.cos(a)*e.speed*sf*dt;
+e.y+=Math.sin(a)*e.speed*sf*dt;
+e.phase+=dt*4;
+
+if(Math.hypot(p.x-e.x,p.y-e.y)<p.r+e.r&&p.inv<=0&&e.touch<=0){
+let dmg=e.boss?9:e.type==='tank'?6:e.type==='runner'?3:4;
+p.hp-=dmg;
+p.regenWait=2.4;
+p.inv=.88;
+e.touch=.9;
+shake=5;
+burst(p.x,p.y,'#ff4d86',13,125);
+txt(p.x,p.y-28,'-'+dmg,'#ff7fae');
+if(p.hp<=0){
+finish(false);
+return;
+}
+}
+e.touch=Math.max(0,e.touch-dt);
+}
+
+for(let e of enemies.filter(e=>e.hp<=0)){
+kills++;
+ult=Math.min(100,ult+(e.boss?32:6));
+burst(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?70:22,e.boss?300:160);
+ring(e.x,e.y,e.boss?'#ff388b':'#53f0ff',e.boss?105:42,4);
+if(Math.random()<(e.boss?.9:.16)){
+pickups.push({x:e.x,y:e.y,r:11,life:12,phase:rand(0,6)});
+}
+}
+enemies=enemies.filter(e=>e.hp>0);
+
+for(let h of pickups){
+h.life-=dt;
+h.phase+=dt*4;
+if(Math.hypot(p.x-h.x,p.y-h.y)<p.r+h.r+7){
+let before=p.hp;
+p.hp=Math.min(p.maxHp,p.hp+20);
+let healed=Math.round(p.hp-before);
+if(healed>0)txt(p.x,p.y-25,'+'+healed,'#7dffb0');
+burst(h.x,h.y,'#7dffb0',22,150);
+h.life=0;
+}
+}
+pickups=pickups.filter(h=>h.life>0);
+
+for(let q of particles){
+q.x+=q.vx*dt;
+q.y+=q.vy*dt;
+q.vx*=Math.pow(.985,dt*60);
+q.vy*=Math.pow(.985,dt*60);
+q.life-=dt;
+}
+particles=particles.filter(q=>q.life>0);
+
+for(let r of rings){
+r.life-=dt;
+r.r=r.max*(1-r.life/r.maxLife);
+}
+rings=rings.filter(r=>r.life>0);
+
+for(let t of floats){
+t.y-=29*dt;
+t.life-=dt;
+}
+floats=floats.filter(t=>t.life>0);
+
+if(waveSpawned>=waveGoal&&kills>=waveGoal&&enemies.length===0){
+if(round>=20){
+finish(true);
+return;
+}else{
+paused=true;
+upgrade();
+return;
+}
+}
+
+$('round').textContent=round;
+$('hp').textContent=Math.max(0,Math.ceil(p.hp));
+$('maxhp').textContent=p.maxHp;
+$('atk').textContent=p.atk;
+$('count').textContent=enemies.length;
+$('progress').textContent=kills+'/'+waveGoal;
+$('ult').textContent=Math.floor(ult);
+$('qcd').textContent=skillDefs[equipped.q].name+' · '+(p.cd.q?p.cd.q.toFixed(1)+'초':'준비 완료');
+$('ecd').textContent=skillDefs[equipped.e].name+' · '+(p.cd.e?p.cd.e.toFixed(1)+'초':'준비 완료');
+$('rcd').textContent=skillDefs[equipped.r].name+' · '+(p.cd.r?p.cd.r.toFixed(1)+'초':'준비 완료');
+$('ultready').textContent=ult>=100?'사용 가능!':'충전 중';
+$('powercd').textContent=p.powerCd>0?p.powerCd.toFixed(1)+'초':'준비 완료';
+}
+
+function renderSkillSlots(){
+let box=$('skillSlots');
+box.innerHTML='';
+for(let slot of ['q','e','r']){
+let d=skillDefs[equipped[slot]];
+let b=document.createElement('button');
+b.className='skill-slot';
+b.innerHTML=`<b>${slot.toUpperCase()} · ${d.icon} d.name</b><span>{d.desc}</span><span>쿨타임 ${d.cd}초 · 눌러서 변경</span>`;
+b.onclick=()=>showSkillChoices(slot);
+box.appendChild(b);
+}
+}
+
+function showSkillChoices(slot){
+selectedSlot=slot;
+$('skillHint').textContent=slot.toUpperCase()+' 슬롯에 장착할 스킬을 선택하세요.';
+let box=$('skillChoices');
+box.innerHTML='';
+
+for(let [id,d] of Object.entries(skillDefs)){
+let used=['q','e','r'].some(s=>s!==slot&&equipped[s]===id);
+let b=document.createElement('button');
+b.className='skill-choice';
+b.disabled=used;
+b.innerHTML=`<div>d.icon</div><b>{d.name}</b><div class="desc">${d.desc}</div><div class="small">쿨타임 d.cd초{used?' · 다른 슬롯 장착 중':''}</div>`;
+b.onclick=()=>{
+equipped[slot]=id;
+renderSkillSlots();
+showSkillChoices(slot);
+say(slot.toUpperCase()+' 스킬 변경: '+d.name);
+};
+box.appendChild(b);
+}
+}
+
+function upgrade(){
+chosenUpgrade=null;
+selectedSlot=null;
+
+let a=[
+{i:'⚔️',n:'초고속 탄환',d:'공격력 +7',f:()=>p.atk+=7},
+{i:'💖',n:'생명력 회복',d:'체력 완전 회복',f:()=>p.hp=p.maxHp},
+{i:'⚡',n:'신속 강화',d:'이동 속도 +15%',f:()=>p.speed*=1.15},
+{i:'🌌',n:'궁극기 충전',d:'게이지 +45%',f:()=>ult=Math.min(100,ult+45)},
+{i:'🛡️',n:'차원 갑옷',d:'최대 체력 +25',f:()=>{p.maxHp+=25;p.hp=Math.min(p.maxHp,p.hp+25)}},
+{i:'💠',n:'연사 코어',d:'발사 속도 +18%',f:()=>p.rate=Math.max(.065,p.rate*.82)}
+].sort(()=>Math.random()-.5);
+
+$('cards').innerHTML='';
+
+a.slice(0,3).forEach(o=>{
+let b=document.createElement('button');
+b.className='card';
+b.innerHTML=`<div>o.i</div><b>{o.n}</b><div class="desc">${o.d}</div><div class="small">강화 선택</div>`;
+b.onclick=()=>{
+chosenUpgrade=o;
+[...$('cards').children].forEach(el=>el.classList.remove('selected'));
+b.classList.add('selected');
+$('continueRound').disabled=false;
+$('continueRound').textContent='선택한 강화 받고 다음 라운드';
+say(o.n+' 선택됨');
+};
+$('cards').appendChild(b);
+});
+
+renderSkillSlots();
+$('skillChoices').innerHTML='';
+$('skillHint').textContent='Q·E·R 슬롯을 눌러 장착할 스킬을 고르세요.';
+$('continueRound').disabled=false;
+$('continueRound').textContent='보상 없이 다음 라운드';
+$('upgrade').style.display='flex';
+}
+
+$('continueRound').onclick=()=>{
+if(chosenUpgrade)chosenUpgrade.f();
+round++;
+kills=0;
+waveGoal=Math.min(18,8+Math.floor((round-1)*.55));
+waveSpawned=0;
+spawn=.45;
+p.hp=Math.min(p.maxHp,p.hp+12);
+paused=false;
+$('upgrade').style.display='none';
+say('ROUND '+round+' START!');
+last=performance.now();
+};
+
+function finish(win){
+if(!running)return;
+running=false;
+paused=true;
+$('finishTitle').textContent=win?'차원 정복 성공!':'GAME OVER';
+$('finishText').textContent=win?
+'20라운드 클리어! 플레리어가 차원을 구했습니다!':
+'ROUND '+round+'에서 쓰러졌습니다. 다시 도전해 보세요!';
+$('finish').style.display='flex';
+}
+
+function draw(now){
+x.save();
+
+if(shake>0){
+x.translate(rand(-shake,shake),rand(-shake,shake));
+shake*=.86;
+if(shake<.35)shake=0;
+}
+
+x.translate(-camX,-camY);
+
+let g=x.createLinearGradient(camX,camY,camX+W,camY+H);
+g.addColorStop(0,'#07152c');
+g.addColorStop(.5,'#111039');
+g.addColorStop(1,'#061d2b');
+x.fillStyle=g;
+x.fillRect(camX,camY,W,H);
+
+x.strokeStyle='#182b54';
+let gx0=Math.floor(camX/60)*60;
+let gy0=Math.floor(camY/60)*60;
+
+for(let a=gx0;a<camX+W+60;a+=60){
+x.beginPath();
+x.moveTo(a,camY);
+x.lineTo(a,camY+H);
+x.stroke();
+}
+
+for(let b=gy0;b<camY+H+60;b+=60){
+x.beginPath();
+x.moveTo(camX,b);
+x.lineTo(camX+W,b);
+x.stroke();
+}
+
+x.strokeStyle='#6d62ff';
+x.lineWidth=8;
+x.strokeRect(0,0,MW,MH);
+x.lineWidth=1;
+
+for(let i=0;i<55;i++){
+let a=camX+((i*173+now*.014)%(W));
+let b=camY+((i*97+Math.sin(now*.001+i)*24)%(H));
+x.fillStyle=`rgba(105,145,255,${.15+(i%4)*.1})`;
+x.fillRect(a,b,2,2);
+}
+
+for(let r of rings){
+x.save();
+x.globalAlpha=Math.max(0,r.life/r.maxLife);
+x.strokeStyle=r.col;
+x.shadowColor=r.col;
+x.shadowBlur=27;
+x.lineWidth=r.width;
+x.beginPath();
+x.arc(r.x,r.y,r.r,0,Math.PI*2);
+x.stroke();
+x.restore();
+}
+
+if(p&&p.powerTime>0){
+x.save();
+x.globalAlpha=.22+.12*Math.sin(now*.02);
+x.strokeStyle=classDefs[p.job].power.color;
+x.shadowColor=classDefs[p.job].power.color;
+x.shadowBlur=26;
+x.lineWidth=5;
+x.beginPath();
+x.arc(p.x,p.y,p.job==='dragon'?48:35,0,Math.PI*2);
+x.stroke();
+
+if(p.job==='dragon'){
+x.strokeStyle='#ffb45c';
+x.lineWidth=3;
+x.beginPath();
+x.arc(p.x,p.y,62+Math.sin(now*.012)*8,now*.003,now*.003+Math.PI*1.35);
+x.stroke();
+}
+
+if(p.job==='assassin'){
+for(let i=0;i<2;i++){
+x.globalAlpha=.18;
+x.fillStyle='#ff79be';
+x.beginPath();
+x.arc(p.x-28-i*18,p.y+13+i*9,14,0,Math.PI*2);
+x.fill();
+}
+}
+x.restore();
+}
+
+if(classStrike){
+x.save();
+x.globalAlpha=.45+.25*Math.sin(now*.025);
+x.strokeStyle='#8cf4ff';
+x.shadowColor='#8cf4ff';
+x.shadowBlur=22;
+x.lineWidth=4;
+x.beginPath();
+x.arc(classStrike.x,classStrike.y,classStrike.delay>0?165:145,0,Math.PI*2);
+x.stroke();
+x.beginPath();
+x.moveTo(classStrike.x-18,classStrike.y);
+x.lineTo(classStrike.x+18,classStrike.y);
+x.moveTo(classStrike.x,classStrike.y-18);
+x.lineTo(classStrike.x,classStrike.y+18);
+x.stroke();
+x.restore();
+}
+
+for(let b of bullets){
+x.save();
+x.strokeStyle=b.crit?'#ffd56c':'#73f7ff';
+x.shadowColor=b.crit?'#ffbd4a':'#3af4ff';
+x.shadowBlur=19;
+x.lineWidth=5;
+x.beginPath();
+x.moveTo(b.x-b.vx*.022,b.y-b.vy*.022);
+x.lineTo(b.x,b.y);
+x.stroke();
+x.restore();
+}
+
+for(let e of enemies){
+x.save();
+x.translate(e.x,e.y);
+x.rotate(e.phase*.12);
+let ec=e.boss?'#ff237b':e.type==='runner'?'#bd73ff':e.type==='tank'?'#ffb84d':'#3ceeff';
+x.shadowColor=ec;
+x.shadowBlur=e.boss?31:18;
+x.fillStyle=e.boss?'#8e174f':e.type==='runner'?'#4c287a':e.type==='tank'?'#755023':'#14617b';
+x.strokeStyle=e.boss?'#ff73b6':e.type==='runner'?'#d5a2ff':e.type==='tank'?'#ffd17c':'#70f5ff';
+x.lineWidth=e.boss?4:2.5;
+x.beginPath();
+
+for(let i=0;i<8;i++){
+let a=i*Math.PI/4;
+let r=e.r*(i%2?.78:1.18);
+if(i)x.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+else x.moveTo(Math.cos(a)*r,Math.sin(a)*r);
+}
+
+x.closePath();
+x.fill();
+x.stroke();
+x.shadowBlur=0;
+x.fillStyle='#fff';
+x.beginPath();
+x.arc(-e.r*.28,-2,2.8,0,7);
+x.arc(e.r*.28,-2,2.8,0,7);
+x.fill();
+
+x.fillStyle='#25152e';
+x.fillRect(-e.r,e.r+6,e.r*2,5);
+x.fillStyle=e.boss?'#ff2e80':e.type==='tank'?'#ffbd54':e.type==='runner'?'#c68bff':'#57f0b8';
+x.fillRect(-e.r,e.r+6,e.r*2*Math.max(0,e.hp/e.maxHp),5);
+
+if(e.boss){
+x.fillStyle='#ffadd9';
+x.font='bold 14px sans-serif';
+x.textAlign='center';
+x.fillText('DIMENSION BOSS',0,-e.r-13);
+}
+x.restore();
+}
+
+for(let h of pickups){
+x.save();
+let pulse=1+Math.sin(h.phase)*.16;
+x.translate(h.x,h.y);
+x.scale(pulse,pulse);
+x.shadowColor='#65ff9a';
+x.shadowBlur=22;
+x.fillStyle='#143d2b';
+x.strokeStyle='#7dffad';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,h.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#aaffc8';
+x.fillRect(-2,-7,4,14);
+x.fillRect(-7,-2,14,4);
+x.restore();
+}
+
+for(let t of turrets){
+x.save();
+x.translate(t.x,t.y);
+x.shadowColor='#ffd078';
+x.shadowBlur=18;
+x.fillStyle='#6b4d21';
+x.strokeStyle='#ffe1a0';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,13,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#fff0bb';
+x.fillRect(0,-4,21,8);
+x.restore();
+}
+
+if(droneTime>0&&p){
+let dx=p.x+Math.cos(now*.004)*37;
+let dy=p.y-35+Math.sin(now*.004)*13;
+x.save();
+x.translate(dx,dy);
+x.shadowColor='#83efff';
+x.shadowBlur=22;
+x.fillStyle='#277da5';
+x.strokeStyle='#b8f8ff';
+x.lineWidth=2.5;
+x.beginPath();
+x.arc(0,0,10,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.restore();
+}
+
+for(let q of particles){
+x.save();
+x.globalAlpha=cl(q.life/q.max,0,1);
+x.fillStyle=q.col;
+x.shadowColor=q.col;
+x.shadowBlur=q.glow;
+x.beginPath();
+x.arc(q.x,q.y,q.r,0,Math.PI*2);
+x.fill();
+x.restore();
+}
+
+for(let t of floats){
+x.save();
+x.globalAlpha=cl(t.life/.75,0,1);
+x.font='bold 16px system-ui';
+x.textAlign='center';
+x.fillStyle=t.col;
+x.shadowColor=t.col;
+x.shadowBlur=12;
+x.fillText(t.t,t.x,t.y);
+x.restore();
+}
+
+if(p){
+x.save();
+x.translate(p.x,p.y);
+x.rotate(Math.atan2(mouse.y-p.y,mouse.x-p.x));
+
+let pc=classDefs[p.job]?.color||'#a58bff';
+x.shadowColor=p.inv>0?'#fff':pc;
+x.shadowBlur=28;
+x.fillStyle=p.inv>0?'#fff':pc;
+x.strokeStyle='#f4eaff';
+x.lineWidth=3;
+x.beginPath();
+x.arc(0,0,p.r,0,Math.PI*2);
+x.fill();
+x.stroke();
+x.fillStyle='#d5ffff';
+x.fillRect(3,-6,31,12);
+x.fillStyle='#5233c5';
+x.fillRect(9,-3,22,6);
+x.restore();
+
+x.save();
+x.strokeStyle='#a4faff';
+x.shadowColor='#63efff';
+x.shadowBlur=12;
+x.lineWidth=1.5;
+x.beginPath();
+x.arc(mouse.x,mouse.y,10,0,Math.PI*2);
+x.moveTo(mouse.x-17,mouse.y);
+x.lineTo(mouse.x-5,mouse.y);
+x.moveTo(mouse.x+5,mouse.y);
+x.lineTo(mouse.x+17,mouse.y);
+x.moveTo(mouse.x,mouse.y-17);
+x.lineTo(mouse.x,mouse.y-5);
+x.moveTo(mouse.x,mouse.y+5);
+x.lineTo(mouse.x,mouse.y+17);
+x.stroke();
+x.restore();
+}
+
+x.restore();
+drawMiniMap();
+}
+
+function drawMiniMap(){
+x.save();
+x.setTransform(1,0,0,1,0,0);
+
+const mw=176,mh=127;
+const mx=W-mw-16,my=16;
+const sx=mw/MW,sy=mh/MH;
+
+x.fillStyle='rgba(3,8,28,.82)';
+x.fillRect(mx,my,mw,mh);
+x.strokeStyle='#8d83ff';
+x.lineWidth=2;
+x.strokeRect(mx,my,mw,mh);
+
+x.strokeStyle='rgba(160,180,255,.65)';
+x.lineWidth=1;
+x.strokeRect(mx+camX*sx,my+camY*sy,W*sx,H*sy);
+
+for(const e of enemies){
+x.fillStyle=e.boss?'#ff438d':
+e.type==='tank'?'#ffc15f':
+e.type==='runner'?'#d49aff':'#65efff';
+x.beginPath();
+x.arc(mx+e.x*sx,my+e.y*sy,e.boss?3.5:2,0,Math.PI*2);
+x.fill();
+}
+
+if(p){
+x.fillStyle='#fff';
+x.shadowColor='#70f6ff';
+x.shadowBlur=8;
+x.beginPath();
+x.arc(mx+p.x*sx,my+p.y*sy,4,0,Math.PI*2);
+x.fill();
+}
+
+x.shadowBlur=0;
+x.fillStyle='#d8dcff';
+x.font='bold 10px sans-serif';
+x.textAlign='left';
+x.fillText('WORLD MAP',mx+6,my+11);
+x.font='8px sans-serif';
+x.fillStyle='#aeeeff';
+x.fillText('청록 일반 · 보라 빠름 · 노랑 탱커 · 분홍 보스',mx+4,my+mh+12);
+x.restore();
+}
+
+function loop(now){
+if(!running)return;
+let dt=Math.min(.033,Math.max(0,(now-last)/1000||.016));
+last=now;
+if(!paused)update(dt);
+draw(now);
+if(running)requestAnimationFrame(loop);
+}
+
+// 직업 선택 없이 플레리어로 자동 시작
+selectedClass='fighter';
+camX=MW/2-W/2;
+camY=MH/2-H/2;
+reset();
+draw(0);
+
+})();
+</script>
+</body>
+</html>

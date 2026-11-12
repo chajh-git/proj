@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>낚시 파이터: 도감 완성 챌린지</title>
+<style>
+:root{--bg:#081322;--panel:#101f34;--line:#294765;--text:#eff8ff;--muted:#a7c1d7;--cyan:#58e0dc;--gold:#ffd36b;--red:#ff7185}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#143654,#07111f 65%);color:var(--text);font-family:system-ui,"Malgun Gothic",sans-serif;min-height:100vh}
+main{max-width:1120px;margin:auto;padding:18px}.head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}h1{font-size:clamp(22px,4vw,34px);margin:0}.subtitle{color:var(--muted);font-size:13px;margin-top:3px}
+.purse{background:#132b40;border:1px solid #3c637e;padding:10px 15px;border-radius:14px;text-align:right}.purse small{display:block;color:var(--muted)}.purse strong{font-size:24px;color:var(--gold)}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:14px}.panel{background:rgba(13,28,46,.94);border:1px solid var(--line);border-radius:17px;padding:15px;box-shadow:0 12px 32px #0002}.scene{position:relative;overflow:hidden;padding:0}.scene canvas{display:block;width:100%;height:auto;min-height:280px;background:#0b263e}#art{visibility:visible;width:100%;height:auto;min-height:0;aspect-ratio:760/340;object-fit:contain;background:#0b263e}#threeStage{display:none!important} .scenehud{z-index:4}
+.scenehud{position:absolute;left:14px;right:14px;top:12px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}.badge{padding:6px 10px;border-radius:999px;background:#071827d9;border:1px solid #42627c;font-size:12px}
+h2{font-size:18px;margin:0 0 12px}.desc{color:var(--muted);font-size:13px;line-height:1.55}.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button{border:0;border-radius:11px;padding:11px 13px;background:#1e3b55;color:var(--text);font-weight:800;cursor:pointer;transition:.15s}button:hover{filter:brightness(1.18);transform:translateY(-1px)}button:disabled{opacity:.35;cursor:not-allowed;transform:none}.primary{background:linear-gradient(135deg,#31bfc2,#2988b6);color:#031a28}.gold{background:linear-gradient(135deg,#ffdc7a,#f6a94f);color:#39220a}.danger{background:#57283a;color:#ffeaf0}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.mini{background:#0a1a2b;border:1px solid #233f59;padding:10px;border-radius:11px}.mini small{display:block;color:var(--muted);font-size:11px}.mini b{font-size:18px}.log{height:110px;overflow:auto;background:#081725;border:1px solid #203b53;border-radius:10px;padding:9px;font-size:12px;line-height:1.55;color:#c9e0f0}.log div{margin-bottom:3px}.fightbar{height:12px;border-radius:999px;background:#26384b;overflow:hidden;margin:6px 0 10px}.fightbar span{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff7085,#ffbd71);transition:width .2s}.fishgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-height:360px;overflow:auto}.fishcard{background:#0b1b2c;border:1px solid #25415a;border-radius:10px;padding:8px;text-align:center;min-width:0}.fishcard .emoji{font-size:25px}.fishcard strong{display:block;font-size:12px;overflow-wrap:anywhere}.fishcard small{color:var(--muted);font-size:10px}.fishcard.locked{opacity:.58;filter:saturate(.45)}.rarity{color:var(--gold)!important}.section{margin-top:14px}.status{font-weight:800;color:var(--cyan);margin:4px 0}
+.hidden{display:none!important}
+#timingUI{margin-top:10px;padding:14px;border:1px solid #39758b;border-radius:14px;background:linear-gradient(135deg,#0c2b43,#12394a)}
+.timing-track{height:32px;position:relative;border-radius:9px;overflow:hidden;background:linear-gradient(90deg,#5a2636,#b77c3b 30%,#2d986d 45%,#b77c3b 55%,#5a2636);border:2px solid #8eb8c9;margin:14px 0}
+.timing-target{position:absolute;top:0;bottom:0;left:var(--target-left,42%);width:var(--target-width,16%);border-left:2px solid #fff8a8;border-right:2px solid #fff8a8;background:#b6ffb955;box-shadow:0 0 15px #b6ffb9}
+.timing-marker{position:absolute;top:-3px;bottom:-3px;left:0;width:5px;border-radius:4px;background:white;box-shadow:0 0 8px white;transform:translateX(-50%)}
+.timing-instruction{text-align:center;font-size:13px;color:#cce9f8}.timing-instruction b{color:#ffe17c}
+#timingResult{text-align:center;font-weight:900;min-height:24px;margin-top:7px;color:var(--gold)}
+
+.scene{isolation:isolate}
+.fx-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.fx-text{position:absolute;left:50%;top:43%;transform:translate(-50%,-50%) scale(.5);font-size:clamp(25px,5vw,52px);font-weight:1000;font-style:italic;letter-spacing:2px;opacity:0;text-shadow:0 3px 0 #07111f,0 0 18px currentColor;white-space:nowrap}
+.fx-text.play{animation:hitText .62s cubic-bezier(.1,.8,.2,1) forwards}
+.fx-flash{position:absolute;inset:0;opacity:0;background:radial-gradient(circle at 50% 55%,#fff9 0%,#ffdf7a44 28%,transparent 70%)}
+.fx-flash.play{animation:screenFlash .24s ease-out}
+.fx-shake{animation:shake .24s ease-out}
+.fx-ring{position:absolute;left:50%;top:63%;width:18px;height:18px;border:4px solid #fff;border-radius:50%;transform:translate(-50%,-50%) scale(.2);opacity:0}
+.fx-ring.play{animation:ringBurst .42s ease-out}
+.fx-particle{position:absolute;left:50%;top:62%;width:9px;height:9px;border-radius:3px;background:var(--c,#fff);box-shadow:0 0 12px var(--c,#fff);animation:particleFly .5s ease-out forwards}
+@keyframes hitText{0%{opacity:0;transform:translate(-50%,-30%) scale(.4) rotate(-8deg)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.18) rotate(3deg)}70%{opacity:1;transform:translate(-50%,-75%) scale(1)}100%{opacity:0;transform:translate(-50%,-100%) scale(.85)}}
+@keyframes screenFlash{0%{opacity:.9}100%{opacity:0}}
+@keyframes ringBurst{0%{opacity:1;transform:translate(-50%,-50%) scale(.2)}100%{opacity:0;transform:translate(-50%,-50%) scale(9)}}
+@keyframes particleFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(160deg) scale(.15)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}45%{transform:translateX(6px)}70%{transform:translateX(-3px)}}
+
+/* 한눈에 보이는 2D 대시보드 레이아웃 */
+.head{position:sticky;top:0;z-index:10;background:#081322ee;backdrop-filter:blur(10px);padding:10px 0;margin-bottom:12px}
+.layout{grid-template-columns:minmax(0,1.45fr) minmax(300px,1fr);align-items:start;gap:12px}
+.panel{padding:13px;border-radius:14px}.scene{padding:0}.scene #art{min-height:0;display:block}
+.scenehud{top:9px;left:9px;right:9px}.badge{font-size:11px;padding:5px 8px}
+.stats{gap:7px;margin-bottom:10px}.mini{padding:8px}.mini b{font-size:17px}
+.section{margin-top:10px}.fishgrid{grid-template-columns:repeat(5,minmax(0,1fr));max-height:250px}
+.fishcard{padding:5px 3px}.fishcard .emoji{font-size:21px}.fishcard strong{font-size:11px}.fishcard small{font-size:9px}
+#shop{max-height:350px;overflow:auto;padding-right:3px}#shop button{width:100%;text-align:left;padding:8px 10px;font-size:12px}
+#shop .buttons{margin:4px 0!important}.log{height:90px}
+#actionPanel h2{margin-bottom:8px}.buttons button{min-height:40px}
+@media(max-width:780px){main{padding:10px}.head{position:static}.layout{grid-template-columns:1fr}.fishgrid{grid-template-columns:repeat(5,minmax(0,1fr));max-height:240px}.scene canvas{min-height:0}.purse{padding:7px 11px}.purse strong{font-size:20px}}
+@media(min-width:1100px){aside{position:sticky;top:82px;max-height:calc(100vh - 94px);overflow:auto;padding-right:3px}aside::-webkit-scrollbar,#shop::-webkit-scrollbar{width:6px}aside::-webkit-scrollbar-thumb,#shop::-webkit-scrollbar-thumb{background:#35536b;border-radius:8px}}
+
+/* UI 리디자인: 밝은 바다색, 한눈에 보는 상태 카드, 명확한 버튼 계층 */
+:root{--bg:#eaf7fb;--panel:#ffffff;--line:#c8e2eb;--text:#15354a;--muted:#5d7c8d;--cyan:#087f8c;--gold:#9b6500;--red:#b52d4a}
+body{background:linear-gradient(180deg,#dff5fb 0,#eff9fc 360px,#e9f3f8 100%);color:var(--text)}
+main{max-width:1320px;padding:16px 20px 28px}
+.head{background:rgba(9,43,65,.96);color:#f1fbff;border:1px solid #2b5b74;border-radius:18px;padding:13px 17px;margin:0 0 16px;box-shadow:0 8px 22px #16485b20}
+.head .subtitle{color:#b9dce8}.head h1{letter-spacing:-.5px}.purse{background:linear-gradient(145deg,#173e56,#0e2d43);border:1px solid #4d849b;box-shadow:inset 0 1px #ffffff16}.purse small{color:#b9dce8}.purse strong{color:#ffdc77}
+.layout{grid-template-columns:minmax(0,1.4fr) minmax(330px,.9fr);gap:16px;align-items:start}
+.panel{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:17px;padding:16px;box-shadow:0 7px 22px #1d587010}
+.panel h2{color:#17465e;letter-spacing:-.25px}.desc{color:#607f8e}.status{color:#087f8c;background:#e5f8f8;border:1px solid #b9e6e6;padding:9px 11px;border-radius:10px}
+.scene{border:3px solid #fff;box-shadow:0 10px 26px #174c6420}.scenehud .badge{background:#09273be8;border-color:#6b9eb2;color:#f3fbff}
+.buttons{gap:9px}button{background:#e5f0f5;color:#24495d;border:1px solid #c2dbe5;box-shadow:0 2px 0 #b9d2dd;font-size:13px}button:hover{filter:brightness(1.03);box-shadow:0 4px 10px #174c6418}button:active{transform:translateY(1px);box-shadow:none}.primary{background:linear-gradient(135deg,#10b7b0,#0789a5);color:white;border-color:#07899c;box-shadow:0 2px 0 #087387}.gold{background:linear-gradient(135deg,#ffe69b,#ffc65e);color:#553700;border-color:#edbc4c;box-shadow:0 2px 0 #d7a63e}.danger{background:#ffedf0;color:#a32743;border-color:#f0bdc7;box-shadow:0 2px 0 #e8b1bc}
+.stats{gap:9px}.mini{background:#f2f9fc;border:1px solid #d4e8ef;color:#15394f;border-radius:13px}.mini small{color:#658392}.mini b{color:#15394f}.fightbar{background:#dce9ef}.log{background:#f4fafc;border-color:#d3e7ee;color:#38596b}.fishcard{background:#f5fbfd;border-color:#d3e6ed;color:#1d4358}.fishcard.locked{opacity:.68}.fishcard .emoji{filter:drop-shadow(0 2px 1px #183b4b18)}.rarity{color:#9b6500!important}
+#timingUI{background:linear-gradient(135deg,#eafaff,#e3f8f3);border-color:#a8dce4;color:#173f55}#timingUI h2{color:#176178}.timing-instruction{color:#4a6f7e}
+#shop{max-height:none;overflow:visible;padding-right:0}#shop button{width:100%;text-align:left;border-radius:10px;margin:4px 0;padding:10px 12px;background:#f3f9fc;color:#24495d;border:1px solid #d0e4eb;box-shadow:none}#shop button:hover{background:#e5f7fb;border-color:#82cbd5}#shop .buttons{margin:5px 0!important}
+aside{position:static;max-height:none;overflow:visible;padding:0;display:flex;flex-direction:column;gap:12px}aside .section{margin-top:0}aside .panel{margin-top:0}aside .panel.section{margin-top:0}
+.fishgrid{grid-template-columns:repeat(5,minmax(0,1fr));max-height:300px}.fishcard{padding:7px 4px}.fishcard .emoji{font-size:23px}.fishcard strong{font-size:11px}.fishcard small{font-size:10px}
+#actionPanel{padding:17px}#actionPanel h2{font-size:20px}#mainButtons button{flex:1 1 150px;min-height:45px}.section{margin-top:13px}
+@media(max-width:900px){main{padding:10px}.layout{grid-template-columns:1fr}.head{position:static}.fishgrid{grid-template-columns:repeat(5,minmax(0,1fr))}aside{display:grid;grid-template-columns:1fr}aside .panel{min-width:0}}
+@media(max-width:480px){.head{align-items:flex-start}.purse{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left}.purse small{display:inline}.purse strong{font-size:21px}.panel{padding:12px}.fishgrid{grid-template-columns:repeat(3,minmax(0,1fr));max-height:260px}.scenehud{flex-wrap:wrap}.buttons button{flex:1 1 42%}#art{aspect-ratio:760/340}}
+
+</style></head>
+<body><main>
+<header class="head"><div><h1>🎣 낚시 파이터</h1><div class="subtitle">🎣 낚시 → 🎯 타이밍 → ⚔️ 결투 → 💰 판매 · 목표: 물고기 도감 30종 완성</div></div><div class="purse"><small>보유 금액</small><strong><span id="money">0</span>원</strong></div></header>
+<div class="layout">
+<section>
+<div class="panel scene">
+<canvas id="art" width="760" height="340"></canvas><div id="threeStage" aria-label="3D 낚시터 장면"></div>
+<div class="fx-overlay" id="fxOverlay"><div class="fx-flash" id="fxFlash"></div><div class="fx-ring" id="fxRing"></div><div class="fx-text" id="fxText">HIT!</div></div>
+<div class="scenehud"><span class="badge" id="sceneBadge">🌊 평화로운 낚시터</span><span class="badge" id="countBadge">도감 0 / 30</span></div>
+</div>
+<div class="panel section" id="actionPanel">
+<h2 id="actionTitle">🌊 낚시터</h2><div id="status" class="status">낚싯대를 던져 보자!</div><div id="description" class="desc">물고기를 낚으면 1 대 1 대결이 시작돼. 이기면 물고기를 잡고 판매할 수 있어. 희귀한 물고기는 등장 확률이 낮지만 더 비싸!</div>
+<div class="buttons" id="mainButtons"><button class="primary" id="cast">🎣 낚싯대 던지기</button><button id="sellAll" disabled>💰 잡은 물고기 판매</button><button id="heal">🩹 체력 회복 (100원)</button></div>
+<div id="timingUI" class="hidden">
+<h2>🎯 찌 타이밍 미니게임</h2>
+<div class="timing-instruction">움직이는 흰색 표시가 <b>초록색 구역</b>에 들어왔을 때 클릭해!</div>
+<div class="timing-track" id="timingTrack"><div class="timing-target" id="timingTarget"></div><div class="timing-marker" id="timingMarker"></div></div>
+<div class="buttons" style="justify-content:center"><button class="gold" id="timingHit">🎣 지금 낚아 올리기!</button></div>
+<div id="timingResult">준비… 표시가 움직이기 시작해!</div>
+<div class="desc" style="text-align:center;margin-top:5px">정확히 맞히면 물고기가 지쳐서 전투가 쉬워져. 놓쳐도 전투는 계속할 수 있어!</div>
+</div>
+<div id="fightUI" class="hidden">
+<div class="stats"><div class="mini"><small>내 체력</small><b id="playerHP">100 / 100</b><div class="fightbar"><span id="playerBar" style="width:100%;background:linear-gradient(90deg,#45d9bb,#7cf3b4)"></span></div></div><div class="mini"><small id="enemyLabel">물고기 체력</small><b id="enemyHP">—</b><div class="fightbar"><span id="enemyBar" style="width:100%"></span></div></div></div>
+<div class="buttons"><button class="primary" id="attack">⚔️ 공격하기</button><button class="gold" id="special">💥 필살기 (기력 3)</button><button id="guard">🛡️ 방어하기</button><button class="danger" id="run">🏃 도망가기</button></div>
+<div class="desc" style="margin-top:8px">공격은 12~22 피해, 필살기는 28~42 피해(기력 3 소모). 방어하면 다음에 받을 피해가 줄어들어.</div>
+</div>
+<div id="resultUI" class="hidden"><div class="buttons"><button class="primary" id="continue">다음 낚시로</button><button class="gold" id="sellCaught">이 물고기 판매</button></div></div>
+</div>
+<div class="panel section"><h2>📜 최근 기록</h2><div id="log" class="log"><div>게임 시작! 첫 물고기를 낚아 보자.</div></div></div>
+</section>
+<aside>
+<div class="panel"><h2>🧑‍🎣 낚시꾼 정보</h2><div class="stats"><div class="mini"><small>승리한 대결</small><b id="wins">0</b></div><div class="mini"><small>보유 물고기</small><b id="caught">0마리</b></div><div class="mini"><small>내 체력</small><b id="hpSmall">100 / 100</b></div><div class="mini"><small>기력</small><b id="energySmall">3 / 3</b></div></div><div class="desc">대결에서 승리하면 물고기를 보관해 팔 수 있어. 패배해도 돈은 잃지 않지만, 그 물고기는 놓쳐 버려.</div></div>
+<div class="panel section"><h2>🐟 물고기 도감 <span class="desc">(30종)</span></h2><div class="fishgrid" id="codex"></div></div>
+<div class="panel section"><h2>🛒 장비 상점</h2><div class="desc">돈으로 장비를 구매하면 캐릭터가 갑옷을 입고, 전투 중 무기를 들며, 낚시할 때 장착한 낚싯대를 사용해. 더 좋은 무기는 피해를 높이고 좋은 낚싯대는 희귀 물고기 확률을 올려 줘.</div><div id="shop"></div></div>
+<div class="panel section"><h2>🏆 목표 진행도</h2><div class="fightbar"><span id="goalBar" style="width:0%;background:linear-gradient(90deg,#ffd36b,#ff9c54)"></span></div><div id="goalText" class="desc">도감 0 / 30종 · 모든 물고기를 발견하자!</div></div>
+</aside></div></main>
+
+<script>
+(()=>{
+const fish=[
+['멸치','🐟',.16,35,22,8,'흔함'],['정어리','🐟',.13,45,25,9,'흔함'],['붕어','🐠',.12,55,28,10,'흔함'],['고등어','🐟',.105,70,32,11,'흔함'],['잉어','🐠',.09,85,36,12,'흔함'],['복어','🐡',.075,105,38,13,'흔함'],['오징어','🦑',.065,125,42,14,'고급'],['문어','🐙',.055,150,46,15,'고급'],['장어','🐍',.045,180,48,16,'고급'],['가오리','🪼',.035,220,52,17,'고급'],['참치','🐟',.025,280,58,18,'희귀'],['황금잉어','🐠',.02,340,62,19,'희귀'],['바닷가재','🦞',.018,390,65,20,'희귀'],['황새치','🗡️',.016,460,68,21,'희귀'],['아귀','👹',.014,520,72,22,'희귀'],['해파리왕','🪼',.012,600,75,23,'영웅'],['푸른고래','🐋',.01,700,78,24,'영웅'],['상어','🦈',.009,820,82,25,'영웅'],['전기뱀장어','⚡',.008,950,85,26,'영웅'],['산호용','🐉',.007,1100,88,27,'영웅'],['빙결상어','🦈',.006,1300,91,28,'전설'],['용암물고기','🔥',.005,1550,94,29,'전설'],['보석복어','💎',.004,1850,96,30,'전설'],['달빛가오리','🌙',.0035,2200,98,31,'전설'],['폭풍참치','🌩️',.003,2600,100,32,'전설'],['심해괴수','👾',.0025,3100,105,33,'신화'],['황금고래','🐳',.002,3700,110,34,'신화'],['크라켄','🐙',.0015,4500,115,35,'신화'],['바다의 왕','👑',.001,6000,120,36,'신화'],['우주고래','🌌',.0005,10000,130,38,'초월']
+].map((f,i)=>({id:i,name:f[0],emoji:f[1],weight:f[2],price:f[3],hp:f[4],atk:f[5],rarity:f[6]}));
+const $=id=>document.getElementById(id);
+let money=0,playerHP=100,energy=3,wins=0,caught=[],seen=new Set(),enemy=null,enemyHP=0,playerMax=100,guarding=false,mode='idle',wonFish=null,logLines=[];
+const weapons=[{name:'낡은 막대기',price:0,bonus:0,emoji:'🪵'},{name:'튼튼한 낚시창',price:250,bonus:5,emoji:'🔱'},{name:'강철 작살',price:700,bonus:10,emoji:'⚔️'},{name:'번개 검',price:1600,bonus:17,emoji:'⚡'},{name:'심해의 삼지창',price:3500,bonus:26,emoji:'🔱'}];
+const rods=[{name:'기본 낚싯대',price:0,luck:1,emoji:'🎣'},{name:'튼튼한 낚싯대',price:300,luck:1.35,emoji:'🎣'},{name:'황금 낚싯대',price:900,luck:1.8,emoji:'✨'},{name:'심해 낚싯대',price:2200,luck:2.5,emoji:'🌊'},{name:'전설의 낚싯대',price:5000,luck:3.5,emoji:'🌟'}];
+const armors=[{name:'천 옷',price:0,defense:0,emoji:'👕'},{name:'가죽 갑옷',price:350,defense:10,emoji:'🥋'},{name:'철 갑옷',price:900,defense:20,emoji:'🦾'},{name:'강철 중갑',price:2000,defense:30,emoji:'🛡️'},{name:'심해의 전설 갑옷',price:4500,defense:45,emoji:'🔱'}];
+let weaponIndex=0,rodIndex=0,armorIndex=0;
+let timingRAF=0,timingStart=0,timingDuration=1900,timingTargetLeft=42,timingTargetWidth=16,timingActive=false;
+const canvas=$('art'),ctx=canvas.getContext('2d');
+// 2D 캔버스 장면: 낚시터, 캐릭터, 장착 장비, 물고기를 한 화면에 표시
+let threeReady=false, renderer3D, scene3D, camera3D, fisher3D, fish3D, rod3D, weapon3D, water3D, lastGear='';
+const mat3=(color,roughness=.72,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+function box3(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
+function sphere3(parent,rx,ry,rz,material,x,y,z){const m=new THREE.Mesh(new THREE.SphereGeometry(1,20,14),material);m.scale.set(rx,ry,rz);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;}
+function cylinder3(parent,r1,r2,h,material,x,y,z,segments=12){const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),material);m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;}
+function init3D(){
+ if(!window.THREE)return;
+ const host=$('threeStage');
+ try{
+  scene3D=new THREE.Scene();scene3D.background=new THREE.Color(0x83d0ec);scene3D.fog=new THREE.Fog(0x83d0ec,18,42);
+  camera3D=new THREE.PerspectiveCamera(43,760/340,.1,100);camera3D.position.set(7.6,6.2,10.8);camera3D.lookAt(0,1.15,0);
+  renderer3D=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer3D.setPixelRatio(Math.min(devicePixelRatio||1,1.7));renderer3D.setSize(host.clientWidth||760,host.clientHeight||340);renderer3D.shadowMap.enabled=true;renderer3D.shadowMap.type=THREE.PCFSoftShadowMap;renderer3D.outputEncoding=THREE.sRGBEncoding;host.appendChild(renderer3D.domElement);
+  scene3D.add(new THREE.HemisphereLight(0xdff7ff,0x31546b,2.0));const sun=new THREE.DirectionalLight(0xffedc2,2.5);sun.position.set(-5,10,7);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);scene3D.add(sun);
+  // distant islands
+  const islandMat=mat3(0x438b83);for(let i=0;i<7;i++){const m=new THREE.Mesh(new THREE.ConeGeometry(2.4+(i%3)*.6,3.3+(i%2),7),islandMat);m.position.set(-12+i*4.1,1.4,-9-(i%3));m.scale.z=.7;scene3D.add(m);}
+  // water and a wooden pier in perspective
+  water3D=new THREE.Mesh(new THREE.PlaneGeometry(80,80,1,1),mat3(0x087fa7,.3,.18));water3D.rotation.x=-Math.PI/2;water3D.position.y=-.08;water3D.receiveShadow=true;scene3D.add(water3D);
+  const dockMat=mat3(0x805b3c),dockEdge=mat3(0x503b2b);box3(scene3D,4.9,.28,2.25,dockMat,2.7,.02,2.25);box3(scene3D,5.1,.22,.18,dockEdge,2.7,-.03,3.39);
+  for(let i=0;i<9;i++)box3(scene3D,.48,.035,2.16,mat3(i%2?0x9a7049:0x765238),.45+i*.56,.18,2.25);
+  for(let x of [.55,4.85])for(let z of [1.35,3.1])cylinder3(scene3D,.09,.11,1.1,dockEdge,x,-.25,z,8);
+  // soft sky sun
+  const sunBall=new THREE.Mesh(new THREE.SphereGeometry(.68,24,16),mat3(0xffe4a0,.4));sunBall.position.set(-6,7,-10);scene3D.add(sunBall);
+  buildFisher3D();buildFish3D();threeReady=true;resize3D();animate3D();
+ }catch(err){console.warn('3D scene unavailable; using fallback view.',err);host.style.display='none';canvas.style.visibility='visible';}
+}
+function buildFisher3D(){
+ if(!threeReady&& !scene3D)return;
+ if(fisher3D)scene3D.remove(fisher3D);fisher3D=new THREE.Group();fisher3D.position.set(2.75,.18,1.55);scene3D.add(fisher3D);
+ const skin=mat3(0xf0bd91),dark=mat3(0x243344),pants=mat3(0x25445b),armorColors=[0x2c83a6,0x9a6949,0x9aa8b7,0x687f94,0x193d68];
+ // boots and legs
+ for(const x of [-.22,.22]){cylinder3(fisher3D,.105,.13,.62,pants,x,.48,0,10);box3(fisher3D,.18,.12,.29,dark,x,.17,.08);}
+ // body and armor
+ cylinder3(fisher3D,.31,.38,.76,mat3(armorColors[armorIndex],.52,armorIndex>=2?.45:.05),0,1.15,0,8);
+ if(armorIndex>=2){for(const x of [-.31,.31])sphere3(fisher3D,.19,.13,.24,mat3(armorIndex===4?0x42e5dc:0xd2dfeb,.35,.55),x,1.42,0);sphere3(fisher3D,.09,.23,.08,mat3(armorIndex===4?0x6cfff0:0xe8f4ff,.3,.6),0,1.17,.34);}
+ if(armorIndex===1){const strap=box3(fisher3D,.12,.73,.06,mat3(0xe5c18c),0,1.15,.34);strap.rotation.z=-.35;}
+ cylinder3(fisher3D,.09,.09,.18,skin,0,1.62,0,10);sphere3(fisher3D,.25,.26,.23,skin,0,1.9,0);
+ sphere3(fisher3D,.255,.12,.24,mat3(0x3c2931),0,2.06,-.005);
+ for(const x of [-.085,.085])sphere3(fisher3D,.025,.03,.02,mat3(0x14283a),x,1.92,.214);
+ if(armorIndex>=2){const helmet=mat3(armorIndex===4?0x1b7888:0x8495a7,.35,.5);sphere3(fisher3D,.28,.16,.26,helmet,0,2.08,0);box3(fisher3D,.42,.055,.13,mat3(armorIndex===4?0x9bfff7:0xe2edf7,.3,.5),0,1.99,.21);}
+ // arms
+ const armL=cylinder3(fisher3D,.075,.09,.62,skin,-.36,1.24,.02,10);armL.rotation.z=-.7;
+ const armR=cylinder3(fisher3D,.075,.09,.6,skin,.36,1.24,.02,10);armR.rotation.z=.55;
+ sphere3(fisher3D,.09,.09,.09,skin,.52,1.04,.17);
+ // held fishing rod or weapon
+ if(mode==='fight'){
+  const colors=[0x8b7355,0xd6e7ef,0xcbd7e4,0x85eaff,0x55e8dd];
+  weapon3D=cylinder3(fisher3D,.045,.075,.95,mat3(colors[weaponIndex],.27,.6),.58,1.36,.2,8);weapon3D.rotation.z=-1.0;weapon3D.rotation.x=.12;
+  if(weaponIndex>0){const tip=cylinder3(fisher3D,.006,.09,.24,mat3(colors[weaponIndex],.25,.65),.94,1.78,.2,8);tip.rotation.z=-1.0;}
+  if(weaponIndex===3){const glow=sphere3(fisher3D,.08,.38,.08,mat3(0x76f8ff,.2,.3),.83,1.55,.2);glow.material.emissive=new THREE.Color(0x16b9ff);glow.material.emissiveIntensity=1.4;}
+ }else{
+  rod3D=cylinder3(fisher3D,.025,.045,2.35,mat3([0xd5b58a,0xa8d6e8,0xffd45e,0x35d6d0,0xd7a4ff][rodIndex],.35,.25),.57,1.86,.16,8);rod3D.rotation.z=-.4;rod3D.rotation.x=-.1;
+  if(rodIndex>=2){const glow=sphere3(fisher3D,.055,.6,.055,mat3([0xffd45e,0x35d6d0,0xd7a4ff][Math.min(rodIndex-2,2)],.3,.3),.52,2.02,.16);glow.material.emissive=new THREE.Color([0xffb62e,0x00d8e7,0xa75cff][Math.min(rodIndex-2,2)]);glow.material.emissiveIntensity=.6;}
+ }
+}
+function buildFish3D(){
+ if(!scene3D)return;if(fish3D)scene3D.remove(fish3D);fish3D=new THREE.Group();scene3D.add(fish3D);
+ const colors=[0xffb64d,0x5dc9e8,0xf1a2d4,0x72e6c4,0xf4d35e,0x9b8bff,0xff795e];const idx=enemy?enemy.id:2;const c=colors[idx%colors.length];
+ sphere3(fish3D,.72,.36,.29,mat3(c,.4,.15),0,0,0);
+ const tail=new THREE.Mesh(new THREE.ConeGeometry(.31,.55,3),mat3(c,.42));tail.rotation.z=-Math.PI/2;tail.position.set(-.78,.02,0);fish3D.add(tail);
+ const fin=new THREE.Mesh(new THREE.ConeGeometry(.22,.36,3),mat3(c,.4));fin.position.set(-.08,.33,0);fin.rotation.z=.5;fish3D.add(fin);
+ sphere3(fish3D,.07,.07,.045,mat3(0xffffff),.42,.1,.245);sphere3(fish3D,.033,.033,.025,mat3(0x101c2c),.445,.1,.282);
+ fish3D.position.set(-1.55,.85,-.3);fish3D.rotation.y=-.28;fish3D.visible=false;
+}
+function resize3D(){if(!renderer3D||!camera3D)return;const host=$('threeStage');const w=host.clientWidth||760,h=host.clientHeight||340;renderer3D.setSize(w,h,false);camera3D.aspect=w/h;camera3D.updateProjectionMatrix();}
+function animate3D(){if(!threeReady)return;requestAnimationFrame(animate3D);const t=performance.now()*.001;
+ const gearKey=`
+weaponIndex/{rodIndex}/armorIndex/{mode}`;if(gearKey!==lastGear){lastGear=gearKey;buildFisher3D();}
+ if(fisher3D)fisher3D.position.y=.18+Math.sin(t*1.6)*.025;
+ if(fish3D){const show=!!enemy&&(mode==='fight'||mode==='timing'||mode==='cast');fish3D.visible=show;fish3D.position.y=.85+Math.sin(t*3.2)*.12;if(mode==='fight'){fish3D.position.x=-1.8+Math.sin(t*1.4)*.25;fish3D.rotation.y=-.28+Math.sin(t*2)*.12;}else{fish3D.position.x=-.2+Math.sin(t*2)*.18;}}
+ if(water3D)water3D.material.color.setHSL(.53+Math.sin(t*.2)*.015,.82,.31);
+ renderer3D.render(scene3D,camera3D);
+}
+window.addEventListener('resize',resize3D);
+if(window.THREE){if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init3D);else init3D();}
+function fightFX(kind){
+ const text=('fxText'),flash=('fxFlash'),ring=$('fxRing'),sceneBox=canvas.parentElement;
+ const styles={hit:{label:'SLASH!',color:'#fff27a'},special:{label:'CRITICAL!!',color:'#ff7cbd'},guard:{label:'GUARD!',color:'#7deaff'},enemy:{label:'OUCH!',color:'#ff7185'},win:{label:'K.O.!',color:'#79ffb4'},miss:{label:'MISS!',color:'#c4cbed'}};
+ const v=styles[kind]||styles.hit;
+ text.textContent=v.label;text.style.color=v.color;text.classList.remove('play');flash.classList.remove('play');ring.classList.remove('play');sceneBox.classList.remove('fx-shake');
+ void text.offsetWidth;text.classList.add('play');
+ if(kind==='hit'||kind==='special'||kind==='enemy'||kind==='win'){flash.classList.add('play');ring.style.borderColor=v.color;ring.classList.add('play');sceneBox.classList.add('fx-shake');}
+ const overlay=$('fxOverlay');
+ for(let i=0;i<15;i++){const part=document.createElement('i');part.className='fx-particle';part.style.setProperty('--c',v.color);part.style.setProperty('--dx',(Math.random()*220-110)+'px');part.style.setProperty('--dy',(Math.random()*150-90)+'px');part.style.left=(50+(Math.random()*18-9))+'%';part.style.top=(61+(Math.random()*10-5))+'%';overlay.appendChild(part);setTimeout(()=>part.remove(),550);}
+ setTimeout(()=>{text.classList.remove('play');flash.classList.remove('play');ring.classList.remove('play');sceneBox.classList.remove('fx-shake');},700);
+}
+function log(s){logLines.unshift(s);logLines=logLines.slice(0,16);$('log').innerHTML=logLines.map(x=>'<div>› '+x+'</div>').join('');}
+function update(){
+ ('money').textContent=money.toLocaleString();('wins').textContent=wins;('caught').textContent=caught.length+'마리';('hpSmall').textContent=playerHP+' / '+playerMax;('energySmall').textContent=energy+'/3';('countBadge').textContent=`도감 ${seen.size} / 30`;
+ ('sellAll').disabled=!caught.length||mode==='fight';('heal').disabled=mode==='fight';('goalBar').style.width=(seen.size/30*100)+'%';('goalText').textContent=seen.size>=30?'🎉 도감 완성! 모든 물고기를 발견했어!':`도감 ${seen.size} / 30종 · ${30-seen.size}종 더 발견하자!`;
+ $('shop').innerHTML='<div class="desc" style="margin:10px 0 5px"><b>장착 무기:</b> '+weapons[weaponIndex].emoji+' '+weapons[weaponIndex].name+' (추가 피해 +'+weapons[weaponIndex].bonus+')</div>'+weapons.map((w,i)=>`<div class="buttons" style="margin:5px 0"><button i===weaponIndex?'disabled':''onclick="buyWeapon({i})">${w.emoji} ${w.name} · ${w.price.toLocaleString()}원 ${i===weaponIndex?'(장착 중)':(i<weaponIndex?'':'구매/장착')}</button></div>`).join('')+'<div class="desc" style="margin:12px 0 5px"><b>장착 갑옷:</b> '+armors[armorIndex].emoji+' '+armors[armorIndex].name+' (피해 '+armors[armorIndex].defense+'% 감소)</div>'+armors.map((a,i)=>`<div class="buttons" style="margin:5px 0"><button i===armorIndex?'disabled':''onclick="buyArmor({i})">${a.emoji} ${a.name} · ${a.price.toLocaleString()}원 · 피해 ${a.defense}% 감소 ${i===armorIndex?'(장착 중)':'구매/장착'}</button></div>`).join('')+'<div class="desc" style="margin:12px 0 5px"><b>장착 낚싯대:</b> '+rods[rodIndex].emoji+' '+rods[rodIndex].name+' (희귀도 보정 ×'+rods[rodIndex].luck+')</div>'+rods.map((r,i)=>`<div class="buttons" style="margin:5px 0"><button i===rodIndex?'disabled':''onclick="buyRod({i})">${r.emoji} ${r.name} · ${r.price.toLocaleString()}원 ${i===rodIndex?'(장착 중)':(i<rodIndex?'':'구매/장착')}</button></div>`).join('');
+ $('codex').innerHTML=fish.map(f=>{let got=seen.has(f.id);return `<div class="fishcard got?'':'locked'"><divclass="emoji">{got?f.emoji:'❔'}</div><strong>got?f.name:'미발견물고기'</strong><smallclass="rarity">{got?f.rarity:'???'}</small><small>${got?f.price.toLocaleString()+'원':'판매가 ???'}</small></div>`}).join('');
+}
+function scene(name,badge='🌊 평화로운 낚시터'){ ('actionTitle').textContent=name;('sceneBadge').textContent=badge;}
+function weightedFish(){const luck=rods[rodIndex].luck;const weights=fish.map(f=>f.weight*Math.pow(1/f.weight,Math.min(0.65,(luck-1)*0.22)));let total=weights.reduce((a,b)=>a+b,0),r=Math.random()*total;for(let i=0;i<fish.length;i++){r-=weights[i];if(r<=0)return fish[i];}return fish[0];}
+function cast(){if(mode==='fight'||mode==='timing')return;if(seen.size>=30){scene('🎉 도감 완성!','🏆 챔피언');$('status').textContent='물고기 도감 30종을 모두 완성했어!';return;}
+ mode='cast';('mainButtons').classList.remove('hidden');('fightUI').classList.add('hidden');('timingUI').classList.add('hidden');('resultUI').classList.add('hidden');('cast').disabled=true;('status').textContent='찌가 흔들린다… 물고기가 입질했어!';scene('🎣 입질이 왔다!','🐟 타이밍 준비!');
+ setTimeout(()=>{enemy=weightedFish();enemyHP=enemy.hp;mode='timing';timingActive=true;timingStart=performance.now();timingDuration=1700+Math.random()*800;timingTargetWidth=12+Math.random()*7;timingTargetLeft=18+Math.random()*(64-timingTargetWidth);('timingTarget').style.setProperty('--target-left',timingTargetLeft+'%');('timingTarget').style.setProperty('--target-width',timingTargetWidth+'%');('timingMarker').style.left='0%';('timingResult').textContent='표시가 움직여! 초록색 구역에서 눌러!';('cast').disabled=true;('mainButtons').classList.add('hidden');('fightUI').classList.add('hidden');('timingUI').classList.remove('hidden');('resultUI').classList.add('hidden');('status').textContent=`${enemy.emoji} ${enemy.name}이(가) 물었어! 타이밍을 맞춰 낚아 올려!`;scene('🎯 낚아 올릴 순간!','🎣 타이밍 게임');log('입질 성공! 움직이는 표시가 초록색 구역에 올 때 눌러!');update();cancelAnimationFrame(timingRAF);animateTiming();},850);
+}
+function animateTiming(){if(!timingActive||mode!=='timing')return;const elapsed=(performance.now()-timingStart)/timingDuration;const cycle=(elapsed%2);const pos=cycle<=1?cycle:2-cycle;$('timingMarker').style.left=(pos*100)+'%';timingRAF=requestAnimationFrame(animateTiming);}
+function finishTiming(){if(!timingActive||mode!=='timing')return;timingActive=false;cancelAnimationFrame(timingRAF);const elapsed=(performance.now()-timingStart)/timingDuration;const cycle=elapsed%2;const pos=(cycle<=1?cycle:2-cycle)*100;const center=timingTargetLeft+timingTargetWidth/2;const distance=Math.abs(pos-center);let grade='miss',weaken=0;if(pos>=timingTargetLeft&&pos<=timingTargetLeft+timingTargetWidth){grade=distance<timingTargetWidth*.22?'perfect':'good';weaken=grade==='perfect'?.32:.18;}else if(distance<timingTargetWidth*.65){grade='near';weaken=.06;}
+ ('timingUI').classList.add('hidden');('mainButtons').classList.add('hidden');('fightUI').classList.remove('hidden');('cast').disabled=false;mode='fight';guarding=false;energy=Math.min(3,energy+1);if(weaken>0){const reduced=Math.floor(enemy.hp*weaken);enemyHP=Math.max(1,enemy.hp-reduced);('timingResult').textContent=grade==='perfect'?'PERFECT!완벽한타이밍!':grade==='good'?'GOOD!타이밍성공!':'아슬아슬!';log(`{grade==='perfect'?'완벽한 타이밍!':grade==='good'?'타이밍 성공!':'아슬아슬하게 성공!'} 물고기가 지쳐 전투 시작 전 ${reduced} 피해!`);fightFX(grade==='perfect'?'special':'hit');}else{$('timingResult').textContent='MISS! 다음엔 초록색 구역을 노려 봐!';log('타이밍을 놓쳤어. 물고기가 지치지 않고 전투를 시작해!');fightFX('miss');}
+ ('status').textContent=`{enemy.emoji} ${enemy.name} 등장! weaken?'타이밍보너스를얻었어.':'전투에서승리해물고기를잡아라!'`;('description').textContent=`타이밍 보너스: ${Math.round(weaken*100)}% · 승리 보상: enemy.price.toLocaleString()원가치`;('enemyLabel').textContent=enemy.name+' 체력';updateFight();scene('⚔️ 물고기와 결투',enemy.emoji+' '+enemy.rarity);log(`${enemy.name} 등장! 승리하면 ${enemy.price.toLocaleString()}원에 팔 수 있어.`);}
+
+function updateFight(){('playerHP').textContent=`{playerHP} / playerMax`;('enemyHP').textContent=`${Math.max(0,enemyHP)} / enemy.hp`;('playerBar').style.width=Math.max(0,playerHP/playerMax*100)+'%';('enemyBar').style.width=Math.max(0,enemyHP/enemy.hp*100)+'%';('special').disabled=energy<3;update();}
+function enemyTurn(){if(mode!=='fight')return;let dmg=enemy.atk+Math.floor(Math.random()*7);const rawDmg=dmg;dmg=Math.max(1,Math.ceil(dmg*(1-armors[armorIndex].defense/100)));if(guarding){dmg=Math.ceil(dmg*.35);guarding=false;log('방어 성공! 피해를 크게 줄였어.');}playerHP=Math.max(0,playerHP-dmg);fightFX('enemy');log(`${enemy.name}의 반격! ${dmg} 피해. ${armors[armorIndex].defense?`갑옷이 피해를 줄였어 (원래 ${rawDmg}).`:''}`);if(playerHP<=0){mode='result';$('status').textContent='💫 패배… 물고기가 도망갔어. 회복하고 다시 도전하자.';('fightUI').classList.add('hidden');('resultUI').classList.remove('hidden');('sellCaught').classList.add('hidden');('continue').textContent='다시 낚시하기';scene('💫 대결 패배','🩹 회복 필요');}updateFight();}
+function playerAttack(type){if(mode!=='fight')return;let dmg;if(type==='special'){if(energy<3)return;energy=0;dmg=28+Math.floor(Math.random()*15)+weapons[weaponIndex].bonus*2;fightFX('special');log(`필살기 적중! ${dmg} 피해!`);}else if(type==='guard'){guarding=true;fightFX('guard');log('방어 자세! 다음 공격 피해 감소.');enemyTurn();return;}else{dmg=12+Math.floor(Math.random()*11)+weapons[weaponIndex].bonus;fightFX('hit');energy=Math.min(3,energy+1);log(`공격 성공! ${dmg} 피해.`);}enemyHP=Math.max(0,enemyHP-dmg);if(enemyHP<=0){fightFX('win');wins++;wonFish=enemy;caught.push(enemy);seen.add(enemy.id);mode='result';$('status').textContent=`🎉 승리! ${enemy.name}을(를) 잡았다!`; $('description').textContent=`이 물고기는 enemy.price.toLocaleString()원에팔수있어.도감에등록됐어!`;('fightUI').classList.add('hidden');('resultUI').classList.remove('hidden');('sellCaught').classList.remove('hidden');('continue').textContent='다음낚시';scene('🏆승리!','✨포획성공');log(`{enemy.name} 포획 성공! 판매 가치 ${enemy.price.toLocaleString()}원.`);update();return;}enemyTurn();updateFight();}
+function sellOne(){if(!wonFish||!caught.includes(wonFish))return;money+=wonFish.price;caught.splice(caught.indexOf(wonFish),1);log(`wonFish.name판매:+{wonFish.price.toLocaleString()}원`);wonFish=null;afterSell();}
+function afterSell(){update();if(seen.size>=30){mode='done';scene('🏆 도감 완성!','📖 30 / 30');('status').textContent='축하해!물고기도감30종을모두발견했어!';('description').textContent='모든 물고기를 발견했어. 이제 네가 바다 최고의 낚시 파이터야!';('resultUI').classList.add('hidden');('mainButtons').classList.remove('hidden');$('cast').disabled=true;return;}mode='idle';$('resultUI').classList.add('hidden');('mainButtons').classList.remove('hidden');('status').textContent='다음 물고기를 낚아 보자!';('description').textContent='낚시를계속하거나잡은물고기를모아서한번에팔수있어.';scene('🌊낚시터');('cast').disabled=false;}
+function sellAll(){if(!caught.length)return;let total=caught.reduce((a,f)=>a+f.price,0);money+=total;log(`물고기 caught.length마리일괄판매:+{total.toLocaleString()}원`);caught=[];wonFish=null;afterSell();}
+('cast').onclick=cast;('timingHit').onclick=finishTiming;document.addEventListener('keydown',e=>{if(mode==='timing'&&(e.code==='Space'||e.code==='Enter')){e.preventDefault();finishTiming();}});('attack').onclick=()=>playerAttack('attack');('special').onclick=()=>playerAttack('special');('guard').onclick=()=>playerAttack('guard');('run').onclick=()=>{if(mode!=='fight')return;mode='idle';enemy=null;('fightUI').classList.add('hidden');('mainButtons').classList.remove('hidden');$('status').textContent='도망쳤어. 다음엔 이길 수 있을 거야!';scene('🌊 낚시터');log('대결에서 도망쳤어. 물고기는 놓쳤어.');update();};$('continue').onclick=()=>{if(playerHP<=0){playerHP=65;energy=3;$('status').textContent='체력을 65까지 회복했어. 다시 도전하자!';}afterSell();};$('sellCaught').onclick=sellOne;('sellAll').onclick=sellAll;('heal').onclick=()=>{if(mode==='fight')return;if(money<100){$('status').textContent='회복하려면 100원이 필요해!';return;}money-=100;playerHP=playerMax;energy=3;$('status').textContent='100원을 내고 체력과 기력을 모두 회복했어!';log('체력 회복: -100원.');update();};
+window.buyWeapon=(i)=>{if(i===weaponIndex)return;let w=weapons[i];if(money<w.price){$('status').textContent='돈이 부족해! 물고기를 팔아 돈을 모으자.';return;}money-=w.price;weaponIndex=i;log(`${w.name} 구매 및 장착!`);('status').textContent=`{w.name} 장착 완료! 공격력이 올랐어.`;update();};
+window.buyRod=(i)=>{if(i===rodIndex)return;let r=rods[i];if(money<r.price){$('status').textContent='돈이 부족해! 물고기를 팔아 돈을 모으자.';return;}money-=r.price;rodIndex=i;log(`${r.name} 구매 및 장착!`);('status').textContent=`{r.name} 장착 완료! 희귀 물고기를 낚을 확률이 올라갔어.`;update();};
+window.buyArmor=(i)=>{if(i===armorIndex)return;let a=armors[i];if(money<a.price){$('status').textContent='돈이 부족해! 물고기를 팔아 돈을 모으자.';return;}money-=a.price;armorIndex=i;log(`${a.name} 구매 및 장착! 받는 피해가 a.defense%감소해.`);('status').textContent=`${a.name} 장착 완료! 적의 공격 피해가 ${a.defense}% 감소해.`;update();};
+function draw(){canvas.style.visibility='visible';let w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);let g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,'#163b59');g.addColorStop(.55,'#0b6682');g.addColorStop(1,'#062d4c');ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+ // sunset glow
+ let sun=ctx.createRadialGradient(590,100,4,590,100,100);sun.addColorStop(0,'#ffe8a5');sun.addColorStop(.3,'#f7b36b88');sun.addColorStop(1,'#f7b36b00');ctx.fillStyle=sun;ctx.fillRect(460,0,260,220);
+ ctx.fillStyle='#173d4b';ctx.beginPath();ctx.moveTo(0,160);ctx.lineTo(100,90);ctx.lineTo(190,145);ctx.lineTo(280,75);ctx.lineTo(390,155);ctx.lineTo(510,95);ctx.lineTo(620,145);ctx.lineTo(760,80);ctx.lineTo(760,210);ctx.lineTo(0,210);ctx.fill();
+ for(let i=0;i<9;i++){let y=170+i*22;ctx.strokeStyle=`rgba(109,225,234,${.22-i*.015})`;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo((i*67)%100,y);ctx.quadraticCurveTo(170,y-8,300,y);ctx.quadraticCurveTo(500,y+7,760,y-2);ctx.stroke();}
+ // 물가와 플레이어 장비에 맞춰 바뀌는 낚싯대/찌
+ let t=performance.now()/500;let bx=390+Math.sin(t)*8,by=185+Math.sin(t*1.4)*4;
+ const rod=rods[rodIndex], armor=armors[armorIndex], weapon=weapons[weaponIndex];
+ const rodColors=['#d5b58a','#a8d6e8','#ffd45e','#35d6d0','#d7a4ff'];
+ ctx.strokeStyle=rodColors[rodIndex];ctx.lineWidth=3+rodIndex*.35;ctx.beginPath();ctx.moveTo(575,165);ctx.quadraticCurveTo(535,120,520,76);ctx.stroke();
+ ctx.strokeStyle='#e3d8bd';ctx.lineWidth=1.6;ctx.beginPath();ctx.moveTo(520,76);ctx.quadraticCurveTo(455,100,bx,by);ctx.stroke();
+ if(rodIndex>=2){ctx.globalAlpha=.35;ctx.strokeStyle=rodColors[rodIndex];ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(575,165);ctx.quadraticCurveTo(535,120,520,76);ctx.stroke();ctx.globalAlpha=1;}
+ ctx.fillStyle='#ff655f';ctx.beginPath();ctx.ellipse(bx,by,7,12,0,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle='#f5f7ef';ctx.beginPath();ctx.ellipse(bx,by,7,7,0,0,Math.PI);ctx.fill();
+ // 물고기 전투 장면
+ if(enemy&&mode==='fight'){ctx.font='92px serif';ctx.textAlign='center';ctx.fillText(enemy.emoji,390,280);ctx.fillStyle='#ffffffcc';ctx.font='bold 22px system-ui';ctx.fillText(enemy.name,390,315);ctx.font='14px system-ui';ctx.fillStyle='#d7f4ff';ctx.fillText('FIGHT!',390,338);}
+ // 플레이어 캐릭터: 장착한 갑옷이 몸에, 무기는 손에 보이도록 그림
+ const skin='#f3c6a0', dark='#09243a';
+ // 다리와 신발
+ ctx.lineCap='round';ctx.strokeStyle=dark;ctx.lineWidth=13;ctx.beginPath();ctx.moveTo(637,264);ctx.lineTo(625,310);ctx.moveTo(653,264);ctx.lineTo(668,310);ctx.stroke();
+ ctx.strokeStyle='#182638';ctx.lineWidth=16;ctx.beginPath();ctx.moveTo(625,310);ctx.lineTo(616,313);ctx.moveTo(668,310);ctx.lineTo(678,313);ctx.stroke();
+ // 팔 뒤쪽
+ ctx.strokeStyle=skin;ctx.lineWidth=12;ctx.beginPath();ctx.moveTo(632,220);ctx.lineTo(606,195);ctx.lineTo(575,165);ctx.stroke();
+ // 몸통은 갑옷 종류에 따라 색/형태 변경
+ const armorColors=['#2c83a6','#9a6949','#9aa8b7','#687f94','#193d68'];
+ const ac=armorColors[armorIndex];
+ ctx.fillStyle=ac;ctx.beginPath();ctx.moveTo(632,210);ctx.lineTo(657,210);ctx.lineTo(665,260);ctx.lineTo(625,260);ctx.closePath();ctx.fill();
+ if(armorIndex===0){ctx.strokeStyle='#8ed6e7';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(645,214);ctx.lineTo(645,255);ctx.stroke();}
+ if(armorIndex===1){ctx.strokeStyle='#e6bf86';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(633,220);ctx.lineTo(657,250);ctx.moveTo(658,220);ctx.lineTo(633,250);ctx.stroke();ctx.fillStyle='#d6a96f';ctx.fillRect(627,218,8,12);ctx.fillRect(656,218,8,12);}
+ if(armorIndex>=2){ctx.fillStyle=armorIndex===4?'#40d9d0':'#c7d2df';ctx.beginPath();ctx.moveTo(630,214);ctx.lineTo(641,208);ctx.lineTo(650,208);ctx.lineTo(663,215);ctx.lineTo(659,246);ctx.lineTo(645,256);ctx.lineTo(631,246);ctx.closePath();ctx.fill();ctx.strokeStyle=armorIndex===4?'#b5ffff':'#eef5ff';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=armorIndex===4?'#164e68':'#6b7d90';ctx.beginPath();ctx.moveTo(645,218);ctx.lineTo(653,230);ctx.lineTo(645,242);ctx.lineTo(637,230);ctx.closePath();ctx.fill();
+  // 어깨 보호대
+  ctx.fillStyle=armorIndex===4?'#53f3e6':'#dce6f0';ctx.beginPath();ctx.ellipse(631,218,9,7,-.3,0,Math.PI*2);ctx.ellipse(660,218,9,7,.3,0,Math.PI*2);ctx.fill();}
+ // 목과 얼굴, 고급 갑옷은 투구도 착용
+ ctx.fillStyle=skin;ctx.fillRect(639,202,12,12);ctx.beginPath();ctx.arc(645,190,17,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#3a2630';ctx.beginPath();ctx.arc(645,186,17,Math.PI,Math.PI*2);ctx.fill();ctx.fillRect(628,185,5,9);
+ ctx.fillStyle='#172b3a';ctx.beginPath();ctx.arc(640,191,1.8,0,Math.PI*2);ctx.arc(650,191,1.8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#9b554d';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(641,198);ctx.quadraticCurveTo(645,201,649,198);ctx.stroke();
+ if(armorIndex>=2){ctx.fillStyle=armorIndex===4?'#1b7888':'#8495a7';ctx.beginPath();ctx.arc(645,190,18,Math.PI,Math.PI*2);ctx.lineTo(663,194);ctx.lineTo(655,199);ctx.lineTo(635,199);ctx.lineTo(627,194);ctx.closePath();ctx.fill();ctx.strokeStyle=armorIndex===4?'#9bfff7':'#dce7f2';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#eafaff';ctx.fillRect(637,187,16,3);}
+ // 손과 현재 장착 무기: 전투 중에는 무기를, 낚시 중에는 낚싯대를 잡고 있음
+ ctx.fillStyle=skin;ctx.beginPath();ctx.arc(575,165,6,0,Math.PI*2);ctx.fill();
+ if(mode==='fight'){
+   const weaponColors=['#8b7355','#d6e7ef','#cbd7e4','#a8f4ff','#55e8dd'];
+   ctx.save();ctx.translate(575,165);ctx.rotate(-.72);ctx.strokeStyle=weaponColors[weaponIndex];ctx.lineWidth=weaponIndex===0?7:10;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-48,0);ctx.stroke();
+   if(weaponIndex>0){ctx.fillStyle=weaponColors[weaponIndex];ctx.beginPath();ctx.moveTo(-50,-7);ctx.lineTo(-70,0);ctx.lineTo(-50,7);ctx.closePath();ctx.fill();ctx.strokeStyle='#f5ffff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-52,0);ctx.lineTo(-68,0);ctx.stroke();}
+   if(weaponIndex===3){ctx.shadowColor='#8cf8ff';ctx.shadowBlur=15;ctx.strokeStyle='#8cf8ff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-10,-4);ctx.lineTo(-55,-4);ctx.stroke();}
+   ctx.restore();
+ }
+ ctx.fillStyle='#e9f8ff';ctx.font='bold 14px system-ui';ctx.textAlign='left';ctx.fillText(mode==='fight'?'물고기와 결투 중!':'낚싯대를 던지고 기다려 봐!',20,315);
+ requestAnimationFrame(draw);
+}
+update();draw();
+})();
+</script></body></html>

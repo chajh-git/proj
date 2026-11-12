@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Realistic 3D Ping Pong Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0b0f19;
+        }
+        #game-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .btn-gradient {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transition: all 0.2s ease;
+        }
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+        }
+    </style>
+</head>
+<body class="relative text-white overflow-hidden">
+
+
+    <!-- Render Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+
+    <!-- UI Overlay Header / HUD -->
+    <div id="hud" class="absolute top-0 left-0 w-full p-4 flex justify-between items-center pointer-events-none z-10">
+        <!-- Score Board -->
+        <div class="glass-panel px-6 py-3 rounded-2xl flex items-center space-x-6 shadow-xl pointer-events-auto">
+            <div class="text-center">
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">Player</span>
+                <span id="player-score" class="text-3xl font-extrabold text-blue-400">0</span>
+            </div>
+            <div class="text-xl font-bold text-gray-500">:</div>
+            <div class="text-center">
+                <span class="text-xs text-gray-400 block font-semibold uppercase tracking-wider">AI Computer</span>
+                <span id="ai-score" class="text-3xl font-extrabold text-red-400">0</span>
+            </div>
+        </div>
+
+
+        <!-- Mode & Pause controls -->
+        <div class="flex items-center space-x-3 pointer-events-auto">
+            <span id="difficulty-badge" class="glass-panel px-3.5 py-2 rounded-xl text-xs font-semibold text-yellow-400 tracking-wide border border-yellow-500/30">
+                난이도: 보통
+            </span>
+            <button id="btn-pause" class="glass-panel p-3 rounded-xl hover:bg-slate-700/50 text-gray-200 transition">
+                <i class="fas fa-pause text-lg"></i>
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Serve Notice Banner -->
+    <div id="serve-notice" class="absolute top-24 left-1/2 -translate-x-1/2 glass-panel px-6 py-2.5 rounded-full text-sm text-yellow-300 font-medium pointer-events-none transition-opacity duration-300 opacity-0 z-10 shadow-lg border border-yellow-500/20">
+        마우스를 꾹 누른 상태로 위로 드래그하여 서브하세요!
+    </div>
+
+
+    <!-- Start / Pause Modal -->
+    <div id="modal-overlay" class="absolute inset-0 glass-panel bg-slate-950/80 flex items-center justify-center z-20">
+        <div class="max-w-md w-full mx-4 bg-slate-900/90 border border-slate-700/60 rounded-3xl p-6 sm:p-8 shadow-2xl text-center space-y-6">
+           
+            <div class="space-y-2">
+                <div class="inline-block p-4 bg-blue-500/10 rounded-full mb-1">
+                    <i class="fas fa-table-tennis-paddle-ball text-4xl text-blue-400"></i>
+                </div>
+                <h1 class="text-3xl font-black tracking-tight text-white">REAL 3D PING PONG</h1>
+                <p class="text-sm text-gray-400">현실적인 물리 엔진 기반 3D 탁구 게임</p>
+            </div>
+
+
+            <!-- Difficulty Selection -->
+            <div class="space-y-2 text-left">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider">난이도 선택</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button class="diff-btn px-3 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold hover:border-blue-500 transition" data-diff="easy">
+                        🌱 쉬움
+                    </button>
+                    <button class="diff-btn px-3 py-2.5 rounded-xl border border-blue-500 bg-blue-500/20 text-sm font-semibold text-blue-300 transition" data-diff="medium">
+                        ⚡ 중간
+                    </button>
+                    <button class="diff-btn px-3 py-2.5 rounded-xl border border-slate-700 text-sm font-semibold hover:border-red-500 transition" data-diff="hard">
+                        🔥 어려움
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Rules / Mode info -->
+            <div class="bg-slate-800/50 p-4 rounded-2xl text-xs text-gray-300 text-left space-y-2 border border-slate-700/40">
+                <p><i class="fas fa-infinity text-blue-400 mr-2"></i><strong>무한 점수 모드:</strong> 제한점수 없이 원할 때까지 플레이 가능</p>
+                <p><i class="fas fa-mouse text-blue-400 mr-2"></i><strong>조작법:</strong> <u>마우스 좌클릭을 꾹 누르고 드래그</u>할 때만 탁구채가 이동합니다.</p>
+                <p><i class="fas fa-bullseye text-blue-400 mr-2"></i><strong>바운드 규칙:</strong> 공이 탁구대에 <u>최소 1번 바운드된 후</u>에 맞춰야 합니다!</p>
+            </div>
+
+
+            <!-- Action Buttons -->
+            <div class="space-y-3 pt-1">
+                <button id="btn-start" class="w-full py-4 rounded-2xl btn-gradient font-bold text-lg text-white shadow-lg tracking-wide flex items-center justify-center space-x-2">
+                    <i class="fas fa-play"></i>
+                    <span>경기 진행하기</span>
+                </button>
+                <button id="btn-stop" class="w-full py-3 rounded-2xl bg-slate-800 hover:bg-red-600/80 text-gray-300 hover:text-white font-semibold text-sm transition hidden border border-slate-700">
+                    <i class="fas fa-stop-circle mr-2"></i>경기 완전히 종료하고 결과 보기
+                </button>
+            </div>
+
+
+        </div>
+    </div>
+
+
+    <!-- Final Result Dialog -->
+    <div id="result-modal" class="absolute inset-0 glass-panel bg-slate-950/90 flex items-center justify-center z-30 hidden">
+        <div class="max-w-md w-full mx-4 bg-slate-900 border border-slate-700 rounded-3xl p-8 shadow-2xl text-center space-y-6">
+            <h2 class="text-2xl font-bold text-gray-100">🏆 경기 최종 결과</h2>
+            <div class="flex justify-around items-center bg-slate-800/60 p-6 rounded-2xl">
+                <div>
+                    <span class="text-xs text-gray-400 block mb-1">플레이어</span>
+                    <span id="final-player-score" class="text-4xl font-black text-blue-400">0</span>
+                </div>
+                <div class="text-2xl font-bold text-gray-600">VS</div>
+                <div>
+                    <span class="text-xs text-gray-400 block mb-1">AI 컴퓨터</span>
+                    <span id="final-ai-score" class="text-4xl font-black text-red-400">0</span>
+                </div>
+            </div>
+            <p id="final-summary-text" class="text-sm text-gray-300 font-medium leading-relaxed"></p>
+            <button id="btn-restart" class="w-full py-3.5 rounded-2xl btn-gradient font-bold text-white shadow-lg">
+                새 경기 시작하기
+            </button>
+        </div>
+    </div>
+
+
+    <!-- Main Game Logic Script -->
+    <script>
+        // --- Game Setup & State Variables ---
+        let scene, camera, renderer;
+        let tableGroup, netMesh, ball, playerPaddle, aiPaddle;
+        let shadowLight;
+
+
+        // Table dimensions (Standard Ratio: 2.74m x 1.525m x 0.76m height)
+        const TABLE_WIDTH = 15.25;
+        const TABLE_LENGTH = 27.4;
+        const TABLE_HEIGHT = 7.6;
+        const NET_HEIGHT = 1.525;
+        const BALL_RADIUS = 0.4;
+        const PADDLE_RADIUS = 1.25;
+
+
+        // State & Physics
+        let gameState = 'STOPPED';
+        let selectedDifficulty = 'medium';
+        let playerScore = 0;
+        let aiScore = 0;
+        let isPlayerTurnToServe = true;
+
+
+        // Ball Mechanics
+        let ballPos = new THREE.Vector3();
+        let ballVel = new THREE.Vector3();
+        const GRAVITY = -34.0;
+        let lastHitBy = null;
+        let bounceCountOnTable = 0;
+        let bounceSide = null;
+
+
+        // Mouse Drag Control State
+        let isMouseDown = false;
+        let targetPaddlePos = new THREE.Vector3(0, TABLE_HEIGHT + PADDLE_RADIUS, TABLE_LENGTH / 2 + 1.5);
+        let playerPaddlePos = new THREE.Vector3().copy(targetPaddlePos);
+        let playerPaddleVel = new THREE.Vector3();
+
+
+        // Upgraded AI Settings (Much smarter AI, reduced errors) & Controlled Ball Speeds
+        const DIFF_SETTINGS = {
+            easy: { speed: 20.0, errorMargin: 0.25, hitPower: 1.1, arcHeight: 11.5 },
+            medium: { speed: 30.0, errorMargin: 0.08, hitPower: 1.25, arcHeight: 12.0 },
+            hard: { speed: 45.0, errorMargin: 0.01, hitPower: 1.35, arcHeight: 12.5 }
+        };
+
+
+        function init() {
+            const canvas = document.getElementById('game-canvas');
+           
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.15;
+
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b0f19);
+            scene.fog = new THREE.FogExp2(0x0b0f19, 0.012);
+
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, TABLE_HEIGHT + 13, TABLE_LENGTH / 2 + 18);
+            camera.lookAt(0, TABLE_HEIGHT + 1.2, 0);
+
+
+            setupLighting();
+            createRoom();
+            createTable();
+            createPaddles();
+            createBall();
+
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+           
+            // Mouse Hold Drag Controls
+            window.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isMouseDown = true;
+                    updatePaddleTargetFromPointer(e.clientX, e.clientY);
+                }
+            });
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) isMouseDown = false;
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (isMouseDown) {
+                    updatePaddleTargetFromPointer(e.clientX, e.clientY, e.movementY);
+                }
+            });
+
+
+            // Touch Drag Controls
+            window.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    isMouseDown = true;
+                    updatePaddleTargetFromPointer(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: false });
+            window.addEventListener('touchend', () => { isMouseDown = false; });
+            window.addEventListener('touchmove', (e) => {
+                if (isMouseDown && e.touches.length > 0) {
+                    updatePaddleTargetFromPointer(e.touches[0].clientX, e.touches[0].clientY, -5);
+                }
+            }, { passive: false });
+
+
+            setupUIEvents();
+            resetBall(true);
+
+
+            let lastTime = performance.now();
+            function animate(now) {
+                requestAnimationFrame(animate);
+                const dt = Math.min((now - lastTime) / 1000, 0.033);
+                lastTime = now;
+
+
+                updatePhysics(dt);
+                updateAI(dt);
+                renderer.render(scene, camera);
+            }
+            animate(performance.now());
+        }
+
+
+        function setupLighting() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+
+            shadowLight = new THREE.SpotLight(0xffffff, 2.0);
+            shadowLight.position.set(0, 36, 0);
+            shadowLight.angle = Math.PI / 3;
+            shadowLight.penumbra = 0.4;
+            shadowLight.castShadow = true;
+            shadowLight.shadow.mapSize.width = 2048;
+            shadowLight.shadow.mapSize.height = 2048;
+            shadowLight.shadow.camera.near = 10;
+            shadowLight.shadow.camera.far = 50;
+            shadowLight.shadow.bias = -0.001;
+            scene.add(shadowLight);
+
+
+            const fillLight1 = new THREE.DirectionalLight(0x3b82f6, 0.45);
+            fillLight1.position.set(-20, 20, 20);
+            scene.add(fillLight1);
+
+
+            const fillLight2 = new THREE.DirectionalLight(0xef4444, 0.35);
+            fillLight2.position.set(20, 20, -20);
+            scene.add(fillLight2);
+        }
+
+
+        function createRoom() {
+            const floorGeo = new THREE.PlaneGeometry(120, 120);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.45,
+                metalness: 0.1
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+        }
+
+
+        function createTable() {
+            tableGroup = new THREE.Group();
+
+
+            const topGeo = new THREE.BoxGeometry(TABLE_WIDTH, 0.6, TABLE_LENGTH);
+            const topMat = new THREE.MeshStandardMaterial({
+                color: 0x1d4ed8,
+                roughness: 0.25,
+                metalness: 0.05
+            });
+            const tableTop = new THREE.Mesh(topGeo, topMat);
+            tableTop.position.y = TABLE_HEIGHT;
+            tableTop.receiveShadow = true;
+            tableTop.castShadow = true;
+            tableGroup.add(tableTop);
+
+
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+
+            const sideLineGeo = new THREE.BoxGeometry(0.2, 0.02, TABLE_LENGTH);
+            const leftLine = new THREE.Mesh(sideLineGeo, lineMat);
+            leftLine.position.set(-TABLE_WIDTH / 2 + 0.1, TABLE_HEIGHT + 0.31, 0);
+            const rightLine = leftLine.clone();
+            rightLine.position.x = TABLE_WIDTH / 2 - 0.1;
+            tableGroup.add(leftLine, rightLine);
+
+
+            const endLineGeo = new THREE.BoxGeometry(TABLE_WIDTH, 0.02, 0.2);
+            const topEndLine = new THREE.Mesh(endLineGeo, lineMat);
+            topEndLine.position.set(0, TABLE_HEIGHT + 0.31, -TABLE_LENGTH / 2 + 0.1);
+            const bottomEndLine = topEndLine.clone();
+            bottomEndLine.position.z = TABLE_LENGTH / 2 - 0.1;
+            tableGroup.add(topEndLine, bottomEndLine);
+
+
+            const centerLineGeo = new THREE.BoxGeometry(0.1, 0.02, TABLE_LENGTH);
+            const centerLine = new THREE.Mesh(centerLineGeo, lineMat);
+            centerLine.position.set(0, TABLE_HEIGHT + 0.31, 0);
+            tableGroup.add(centerLine);
+
+
+            const legGeo = new THREE.CylinderGeometry(0.4, 0.4, TABLE_HEIGHT, 16);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.8 });
+
+
+            const legOffsets = [
+                [-TABLE_WIDTH / 2 + 1, -TABLE_LENGTH / 2 + 1.5],
+                [TABLE_WIDTH / 2 - 1, -TABLE_LENGTH / 2 + 1.5],
+                [-TABLE_WIDTH / 2 + 1, TABLE_LENGTH / 2 - 1.5],
+                [TABLE_WIDTH / 2 - 1, TABLE_LENGTH / 2 - 1.5],
+            ];
+
+
+            legOffsets.forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeo, legMat);
+                leg.position.set(x, TABLE_HEIGHT / 2, z);
+                leg.castShadow = true;
+                leg.receiveShadow = true;
+                tableGroup.add(leg);
+            });
+
+
+            const netPostGeo = new THREE.CylinderGeometry(0.15, 0.15, NET_HEIGHT + 0.4, 16);
+            const netPostMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 });
+
+
+            const leftPost = new THREE.Mesh(netPostGeo, netPostMat);
+            leftPost.position.set(-TABLE_WIDTH / 2 - 0.4, TABLE_HEIGHT + NET_HEIGHT / 2, 0);
+            const rightPost = leftPost.clone();
+            rightPost.position.x = TABLE_WIDTH / 2 + 0.4;
+            tableGroup.add(leftPost, rightPost);
+
+
+            const netGeo = new THREE.PlaneGeometry(TABLE_WIDTH + 0.8, NET_HEIGHT);
+            const netCanvas = document.createElement('canvas');
+            netCanvas.width = 64;
+            netCanvas.height = 64;
+            const ctx = netCanvas.getContext('2d');
+            ctx.fillStyle = "white";
+            ctx.fillRect(0,0,64,64);
+            ctx.fillStyle = "rgba(0,0,0,0.75)";
+            ctx.fillRect(2,2,60,60);
+
+
+            const netTexture = new THREE.CanvasTexture(netCanvas);
+            netTexture.wrapS = THREE.RepeatWrapping;
+            netTexture.wrapT = THREE.RepeatWrapping;
+            netTexture.repeat.set(32, 4);
+
+
+            const netMat = new THREE.MeshStandardMaterial({
+                map: netTexture,
+                transparent: true,
+                opacity: 0.88,
+                side: THREE.DoubleSide,
+                roughness: 0.8
+            });
+            netMesh = new THREE.Mesh(netGeo, netMat);
+            netMesh.position.set(0, TABLE_HEIGHT + NET_HEIGHT / 2 + 0.3, 0);
+            netMesh.castShadow = true;
+            tableGroup.add(netMesh);
+
+
+            scene.add(tableGroup);
+        }
+
+
+        function createPaddleMesh(frontRubberHex) {
+            const paddleGroup = new THREE.Group();
+
+
+            const bladeGeo = new THREE.CylinderGeometry(PADDLE_RADIUS, PADDLE_RADIUS, 0.15, 32);
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+            const blade = new THREE.Mesh(bladeGeo, woodMat);
+            blade.rotation.x = Math.PI / 2;
+            paddleGroup.add(blade);
+
+
+            const rubberGeo = new THREE.CylinderGeometry(PADDLE_RADIUS * 0.98, PADDLE_RADIUS * 0.98, 0.05, 32);
+            const rubberMat = new THREE.MeshStandardMaterial({ color: frontRubberHex, roughness: 0.35, metalness: 0.05 });
+            const frontRubber = new THREE.Mesh(rubberGeo, rubberMat);
+            frontRubber.rotation.x = Math.PI / 2;
+            frontRubber.position.z = 0.08;
+            paddleGroup.add(frontRubber);
+
+
+            const backRubberMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.35 });
+            const backRubber = new THREE.Mesh(rubberGeo, backRubberMat);
+            backRubber.rotation.x = Math.PI / 2;
+            backRubber.position.z = -0.08;
+            paddleGroup.add(backRubber);
+
+
+            const handleGeo = new THREE.BoxGeometry(0.5, 1.6, 0.25);
+            const handleMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.7 });
+            const handle = new THREE.Mesh(handleGeo, handleMat);
+            handle.position.y = -PADDLE_RADIUS - 0.6;
+            paddleGroup.add(handle);
+
+
+            paddleGroup.traverse(child => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+
+            return paddleGroup;
+        }
+
+
+        function createPaddles() {
+            playerPaddle = createPaddleMesh(0xd97706);
+            scene.add(playerPaddle);
+
+
+            aiPaddle = createPaddleMesh(0xd97706);
+            scene.add(aiPaddle);
+        }
+
+
+        function createBall() {
+            const ballGeo = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+            const ballMat = new THREE.MeshStandardMaterial({
+                color: 0xfff7ed,
+                roughness: 0.2,
+                metalness: 0.05
+            });
+            ball = new THREE.Mesh(ballGeo, ballMat);
+            ball.castShadow = true;
+            ball.receiveShadow = true;
+            scene.add(ball);
+        }
+
+
+        function resetBall(servingPlayerIsPlayer = true) {
+            isPlayerTurnToServe = servingPlayerIsPlayer;
+            bounceCountOnTable = 0;
+            bounceSide = null;
+            lastHitBy = null;
+
+
+            if (servingPlayerIsPlayer) {
+                ballPos.set(0, TABLE_HEIGHT + 2.0, TABLE_LENGTH / 2 - 2.0);
+            } else {
+                ballPos.set(0, TABLE_HEIGHT + 2.0, -TABLE_LENGTH / 2 + 2.0);
+            }
+            ballVel.set(0, 0, 0);
+            ball.position.copy(ballPos);
+
+
+            if (gameState === 'PLAYING') {
+                showNotice(servingPlayerIsPlayer ? "마우스를 꾹 누르고 드래그하여 서브하세요!" : "상대방의 서브 순서입니다.");
+            }
+        }
+
+
+        function updatePaddleTargetFromPointer(clientX, clientY, movementY = 0) {
+            const ndcX = (clientX / window.innerWidth) * 2 - 1;
+            const ndcY = -(clientY / window.innerHeight) * 2 + 1;
+
+
+            targetPaddlePos.x = ndcX * (TABLE_WIDTH / 2 + 1.0);
+            targetPaddlePos.y = Math.max(TABLE_HEIGHT + 0.5, TABLE_HEIGHT + 2.0 + ndcY * 4.0);
+            targetPaddlePos.z = TABLE_LENGTH / 2 + 1.2;
+
+
+            // Serve ball if holding click and dragging up (slightly reduced serve speed)
+            if (isPlayerTurnToServe && ballVel.lengthSq() === 0 && movementY < -2) {
+                ballVel.set(targetPaddlePos.x * 0.4, 10.5, -27.0);
+                lastHitBy = 'player';
+            }
+        }
+
+
+        function updatePhysics(dt) {
+            if (gameState !== 'PLAYING') return;
+
+
+            // Player Paddle moves to target ONLY when mouse is held down
+            const prevPlayerPos = playerPaddlePos.clone();
+            if (isMouseDown) {
+                playerPaddlePos.lerp(targetPaddlePos, 32 * dt);
+            }
+            playerPaddleVel.subVectors(playerPaddlePos, prevPlayerPos).divideScalar(dt);
+            playerPaddle.position.copy(playerPaddlePos);
+
+
+            // Ball Physics Update
+            if (ballVel.lengthSq() > 0) {
+                ballVel.y += GRAVITY * dt;
+                ballPos.addScaledVector(ballVel, dt);
+                ball.position.copy(ballPos);
+
+
+                ballPos.x += ballVel.x * 0.005 * dt;
+            } else {
+                if (isPlayerTurnToServe) {
+                    ballPos.set(playerPaddlePos.x * 0.8, TABLE_HEIGHT + 2.5, TABLE_LENGTH / 2 - 1.5);
+                    ball.position.copy(ballPos);
+                }
+            }
+
+
+            checkNetCollision();
+            checkTableCollision();
+            checkPaddleCollision(playerPaddle, playerPaddlePos, playerPaddleVel, 'player');
+            checkPaddleCollision(aiPaddle, aiPaddle.position, new THREE.Vector3(0, 0, 0), 'ai');
+            checkOutOfBounds();
+        }
+
+
+        function checkNetCollision() {
+            if (Math.abs(ballPos.z) < 0.3 && ballPos.y < (TABLE_HEIGHT + NET_HEIGHT + 0.2)) {
+                if (Math.abs(ballPos.x) < TABLE_WIDTH / 2 + 0.4) {
+                    ballVel.z *= -0.25;
+                    ballVel.x *= 0.4;
+                    ballVel.y *= 0.4;
+                }
+            }
+        }
+
+
+        function checkTableCollision() {
+            const tableTopY = TABLE_HEIGHT + 0.3 + BALL_RADIUS;
+            if (ballPos.y <= tableTopY && Math.abs(ballPos.z) <= TABLE_LENGTH / 2 && Math.abs(ballPos.x) <= TABLE_WIDTH / 2) {
+                if (ballVel.y < 0) {
+                    ballPos.y = tableTopY;
+                    ballVel.y = -ballVel.y * 0.90;
+                    ballVel.x *= 0.96;
+                    ballVel.z *= 0.96;
+
+
+                    bounceCountOnTable++;
+                    bounceSide = ballPos.z > 0 ? 'player' : 'ai';
+
+
+                    if (bounceCountOnTable >= 2) {
+                        if (bounceSide === 'player') {
+                            awardPoint('ai', "플레이어 진영에서 2번 연속 바운드되었습니다.");
+                        } else {
+                            awardPoint('player', "상대 진영에서 2번 연속 바운드되었습니다!");
+                        }
+                    }
+                }
+            }
+        }
+
+
+        function checkPaddleCollision(paddleMesh, paddlePos, paddleVelVec, hitOwner) {
+            const dist = ballPos.distanceTo(paddlePos);
+            if (dist < (PADDLE_RADIUS + BALL_RADIUS)) {
+                if (hitOwner === 'player' && lastHitBy === 'player') return;
+                if (hitOwner === 'ai' && lastHitBy === 'ai') return;
+
+
+                // STRICT BOUNCE RULE: Must bounce on player's side of table before hit!
+                if (hitOwner === 'player' && lastHitBy === 'ai' && (bounceCountOnTable === 0 || bounceSide !== 'player')) {
+                    awardPoint('ai', "노바운드 반칙! 공이 탁구대에 바운드되기 전에 맞췄습니다.");
+                    return;
+                }
+                if (hitOwner === 'ai' && lastHitBy === 'player' && (bounceCountOnTable === 0 || bounceSide !== 'ai')) {
+                    awardPoint('player', "상대 노바운드 반칙! 탁구대에 닿기 전에 쳤습니다!");
+                    return;
+                }
+
+
+                // BALANCED BALL REBOUND & OPTIMIZED TRAJECTORY (Slightly slower for better control)
+                const aiCfg = DIFF_SETTINGS[selectedDifficulty];
+                let pushSpeed = hitOwner === 'player' ? 28.0 : (24.0 * aiCfg.hitPower);
+               
+                if (hitOwner === 'player' && paddleVelVec) {
+                    pushSpeed += Math.min(paddleVelVec.length() * 0.35, 11.0);
+                }
+
+
+                const targetZ = hitOwner === 'player' ? -TABLE_LENGTH / 2 : TABLE_LENGTH / 2;
+                const upwardForce = hitOwner === 'ai' ? aiCfg.arcHeight : 11.0;
+
+
+                ballVel.set(
+                    (ballPos.x - paddlePos.x) * 3.2 + (Math.random() - 0.5) * 1.0,
+                    upwardForce + Math.random() * 1.5,
+                    (targetZ - ballPos.z) * 1.15
+                ).normalize().multiplyScalar(pushSpeed);
+
+
+                lastHitBy = hitOwner;
+                bounceCountOnTable = 0;
+            }
+        }
+
+
+        function checkOutOfBounds() {
+            if (ballPos.y < 0 || Math.abs(ballPos.z) > TABLE_LENGTH / 2 + 12 || Math.abs(ballPos.x) > TABLE_WIDTH / 2 + 10) {
+                if (lastHitBy === null) {
+                    resetBall(isPlayerTurnToServe);
+                    return;
+                }
+
+
+                if (bounceCountOnTable === 0) {
+                    if (lastHitBy === 'player') {
+                        awardPoint('ai', "플레이어의 공이 탁구대를 벗어났습니다.");
+                    } else {
+                        awardPoint('player', "상대의 공이 탁구대를 벗어났습니다!");
+                    }
+                } else if (bounceCountOnTable === 1) {
+                    if (bounceSide === 'player') {
+                        awardPoint('ai', "플레이어가 공을 받아치지 못했습니다.");
+                    } else {
+                        awardPoint('player', "상대방이 공을 받아치지 못했습니다!");
+                    }
+                }
+            }
+        }
+
+
+        function awardPoint(winner, reasonText) {
+            if (winner === 'player') {
+                playerScore++;
+                document.getElementById('player-score').innerText = playerScore;
+                showNotice(`득점! (+1) - ${reasonText}`);
+            } else {
+                aiScore++;
+                document.getElementById('ai-score').innerText = aiScore;
+                showNotice(`실점! (+1 AI) - ${reasonText}`);
+            }
+
+
+            resetBall(winner === 'player');
+        }
+
+
+        function updateAI(dt) {
+            if (!aiPaddle) return;
+
+
+            const config = DIFF_SETTINGS[selectedDifficulty];
+            let targetX = 0;
+            let targetY = TABLE_HEIGHT + PADDLE_RADIUS + 0.5;
+            let targetZ = -TABLE_LENGTH / 2 - 1.0;
+
+
+            if (ballVel.z < 0) {
+                const timeToReach = Math.abs((ballPos.z - targetZ) / ballVel.z);
+                const predictedX = ballPos.x + ballVel.x * timeToReach;
+               
+                targetX = Math.max(-TABLE_WIDTH / 2, Math.min(TABLE_WIDTH / 2, predictedX));
+                targetY = Math.max(TABLE_HEIGHT + 0.6, ballPos.y + 0.2);
+
+
+                // Minimal error offset for razor-sharp AI reaction
+                targetX += (Math.sin(performance.now() * 0.005) * config.errorMargin);
+            }
+
+
+            aiPaddle.position.x += (targetX - aiPaddle.position.x) * config.speed * dt;
+            aiPaddle.position.y += (targetY - aiPaddle.position.y) * config.speed * dt;
+            aiPaddle.position.z = targetZ;
+
+
+            // AI Serve Logic (Adjusted Speed)
+            if (!isPlayerTurnToServe && ballVel.lengthSq() === 0 && gameState === 'PLAYING') {
+                setTimeout(() => {
+                    if (!isPlayerTurnToServe && ballVel.lengthSq() === 0) {
+                        const serveSpeed = 23.0 * config.hitPower;
+                        ballVel.set((Math.random() - 0.5) * 3, 10.0, serveSpeed);
+                        lastHitBy = 'ai';
+                    }
+                }, 800);
+            }
+        }
+
+
+        function setupUIEvents() {
+            const modal = document.getElementById('modal-overlay');
+            const resultModal = document.getElementById('result-modal');
+            const btnStart = document.getElementById('btn-start');
+            const btnPause = document.getElementById('btn-pause');
+            const btnStop = document.getElementById('btn-stop');
+            const btnRestart = document.getElementById('btn-restart');
+            const diffBtns = document.querySelectorAll('.diff-btn');
+
+
+            diffBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    diffBtns.forEach(b => {
+                        b.classList.remove('border-blue-500', 'bg-blue-500/20', 'text-blue-300');
+                        b.classList.add('border-slate-700');
+                    });
+                    btn.classList.add('border-blue-500', 'bg-blue-500/20', 'text-blue-300');
+                    selectedDifficulty = btn.dataset.diff;
+                   
+                    const labelMap = { easy: '🌱 쉬움', medium: '⚡ 중간', hard: '🔥 어려움' };
+                    document.getElementById('difficulty-badge').innerText = `난이도: ${labelMap[selectedDifficulty]}`;
+                });
+            });
+
+
+            btnStart.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                gameState = 'PLAYING';
+                btnStop.classList.remove('hidden');
+            });
+
+
+            btnPause.addEventListener('click', () => {
+                gameState = 'PAUSED';
+                modal.classList.remove('hidden');
+            });
+
+
+            btnStop.addEventListener('click', () => {
+                gameState = 'STOPPED';
+                modal.classList.add('hidden');
+               
+                document.getElementById('final-player-score').innerText = playerScore;
+                document.getElementById('final-ai-score').innerText = aiScore;
+
+
+                let summary = "";
+                if (playerScore > aiScore) summary = "🎉 축하합니다! AI 상대로 멋진 승리를 거두었습니다!";
+                else if (playerScore < aiScore) summary = "아쉽네요! 다음 번에는 더 높은 난이도에 도전해 보세요!";
+                else summary = "무승부로 경기가 종료되었습니다!";
+
+
+                document.getElementById('final-summary-text').innerText = summary;
+                resultModal.classList.remove('hidden');
+            });
+
+
+            btnRestart.addEventListener('click', () => {
+                playerScore = 0;
+                aiScore = 0;
+                document.getElementById('player-score').innerText = '0';
+                document.getElementById('ai-score').innerText = '0';
+                resultModal.classList.add('hidden');
+                resetBall(true);
+                gameState = 'PLAYING';
+            });
+        }
+
+
+        function showNotice(msg) {
+            const el = document.getElementById('serve-notice');
+            el.innerText = msg;
+            el.classList.remove('opacity-0');
+            setTimeout(() => {
+                el.classList.add('opacity-0');
+            }, 2500);
+        }
+
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+
+        window.onload = init;
+    </script>
+</body>
+</html>

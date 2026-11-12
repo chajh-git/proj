@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON DASH</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; background:#080b18; color:white; font-family:Arial,sans-serif; overflow:hidden; }
+#game { display:block; width:100vw; height:100vh; background:#10172c; }
+#hud { position:fixed; top:15px; left:15px; right:15px; display:flex; justify-content:space-between; pointer-events:none; font-size:18px; font-weight:bold; text-shadow:0 0 8px cyan; }
+#menu { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(4,7,20,.88); text-align:center; padding:20px; }
+h1 { font-size:clamp(42px,8vw,80px); color:#40f5ff; text-shadow:0 0 25px #00d9ff; margin:0 0 12px; }
+button { border:2px solid #45efff; background:#101c36; color:white; padding:13px 22px; margin:7px; border-radius:12px; font-size:17px; cursor:pointer; }
+button:hover { background:#164b65; box-shadow:0 0 15px #00dfff; }
+.selected { background:#087b91; }
+#skills { position:fixed; bottom:22px; right:20px; display:flex; gap:10px; }
+#skills button { min-width:90px; }
+#help { position:fixed; bottom:20px; left:18px; color:#d6eaff; font-size:13px; line-height:1.7; }
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div><div>점수: <span id="score">0</span></div><div>체력: <span id="health">❤️❤️❤️</span></div></div>
+  <div id="mapName">NEON DASH</div>
+</div>
+<div id="help" class="hidden">이동: A / D 또는 ← / →<br>점프: SPACE 또는 W<br>대시: Q &nbsp; 보호막: E</div>
+<div id="skills" class="hidden">
+  <button onclick="useDash()">⚡ 대시 (Q)</button>
+  <button onclick="useShield()">🛡 보호막 (E)</button>
+</div>
+<div id="menu">
+  <h1>NEON DASH</h1>
+  <p id="description">세계를 선택하고 최고 기록에 도전하라!</p>
+  <h3>맵 선택</h3>
+  <div>
+    <button class="selected" onclick="selectMap('lava',this)">🔥 화산 지옥</button>
+    <button onclick="selectMap('city',this)">🌆 사이버 시티</button>
+    <button onclick="selectMap('space',this)">🌌 우주 은하</button>
+  </div>
+  <button onclick="startGame()">▶ 게임 시작</button>
+  <p>점프하고, 대시하고, 적의 공격을 피하라!</p>
+</div>
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+let W,H,ground;
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;ground=H-90;}
+addEventListener("resize",resize);resize();
+
+const maps={
+ lava:{name:"🔥 화산 지옥",bg:"#281018",ground:"#a93624",glow:"#ff542e"},
+ city:{name:"🌆 사이버 시티",bg:"#10152f",ground:"#164a73",glow:"#00eaff"},
+ space:{name:"🌌 우주 은하",bg:"#090d28",ground:"#40347c",glow:"#b18aff"}
+};
+let selectedMap="lava",running=false,gameOver=false,score=0,health=3,speed=5,frame=0;
+let obstacles=[],enemies=[],bullets=[],particles=[],keys={};
+const player={x:120,y:0,w:35,h:42,vy:0,onGround:true,dash:0,shield:0,invincible:0};
+
+function selectMap(name,button){
+ selectedMap=name;
+ document.querySelectorAll("#menu button").forEach(b=>b.classList.remove("selected"));
+ button.classList.add("selected");
+ document.getElementById("description").textContent=maps[name].name+"에서 살아남아라!";
+}
+function startGame(){
+ score=0;health=3;speed=5;frame=0;
+ obstacles=[];enemies=[];bullets=[];particles=[];
+ player.y=ground-player.h;player.vy=0;player.onGround=true;
+ player.dash=0;player.shield=0;player.invincible=0;
+ running=true;gameOver=false;
+ document.getElementById("menu").classList.add("hidden");
+ document.getElementById("hud").classList.remove("hidden");
+ document.getElementById("help").classList.remove("hidden");
+ document.getElementById("skills").classList.remove("hidden");
+ document.getElementById("mapName").textContent=maps[selectedMap].name;
+ requestAnimationFrame(loop);
+}
+function endGame(){
+ if(gameOver)return;gameOver=true;running=false;
+ document.getElementById("menu").classList.remove("hidden");
+ document.getElementById("hud").classList.add("hidden");
+ document.getElementById("help").classList.add("hidden");
+ document.getElementById("skills").classList.add("hidden");
+ document.querySelector("#menu h1").textContent="GAME OVER";
+ document.getElementById("description").textContent="최종 점수: "+Math.floor(score)+"점";
+}
+function jump(){if(running&&!gameOver&&player.onGround){player.vy=-14;player.onGround=false;}}
+function useDash(){if(!running||player.dash>0)return;player.dash=24;player.invincible=Math.max(player.invincible,28);burst(player.x,player.y,"#39faff",14);}
+function useShield(){if(!running||player.shield>0)return;player.shield=100;}
+
+addEventListener("keydown",e=>{
+ keys[e.code]=true;
+ if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code))e.preventDefault();
+ if(e.repeat)return;
+ if(e.code==="Space"||e.code==="ArrowUp"||e.code==="KeyW")jump();
+ if(e.code==="KeyQ")useDash();
+ if(e.code==="KeyE")useShield();
+});
+addEventListener("keyup",e=>keys[e.code]=false);
+canvas.addEventListener("pointerdown",()=>{if(running)jump();});
+
+function burst(x,y,color,amount){
+ for(let i=0;i<amount;i++)particles.push({x,y,vx:(Math.random()-.5)*9,vy:(Math.random()-.5)*9,life:25,color});
+}
+function rectHit(a,b){
+ return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+}
+function spawnObstacle(){
+ const type=Math.random()<.65?"spike":"block";
+ const h=type==="spike"?42:55;
+ obstacles.push({x:W+30,y:ground-h,w:type==="spike"?38:42,h,type});
+}
+function spawnEnemy(){
+ enemies.push({x:W+30,y:ground-145-Math.random()*100,w:42,h:30,fire:65+Math.random()*55});
+}
+
+/* 수정된 드론 탄환: 발사 순간 플레이어 위치를 조준 */
+function fireEnergyBolt(e){
+ const startX=e.x;
+ const startY=e.y+e.h/2;
+ const targetX=player.x+player.w/2;
+ const targetY=player.y+player.h/2;
+ const dx=targetX-startX;
+ const dy=targetY-startY;
+ const angle=Math.atan2(dy,dx)+(Math.random()-.5)*.07;
+ const shotSpeed=5.6+Math.random()*1.0;
+ bullets.push({
+  x:startX,y:startY-6,w:12,h:12,
+  vx:Math.cos(angle)*shotSpeed,
+  vy:Math.sin(angle)*shotSpeed
+ });
+ e.fire=88+Math.random()*42;
+}
+
+function update(){
+ frame++;
+ if(keys["ArrowLeft"]||keys["KeyA"])player.x=Math.max(20,player.x-4);
+ if(keys["ArrowRight"]||keys["KeyD"])player.x=Math.min(W*.55,player.x+4);
+ if(player.dash>0){player.dash--;player.x=Math.min(W-player.w,player.x+8);}
+ if(player.shield>0)player.shield--;
+ if(player.invincible>0)player.invincible--;
+ player.vy+=.7;player.y+=player.vy;
+ if(player.y+player.h>=ground){player.y=ground-player.h;player.vy=0;player.onGround=true;}
+ speed=Math.min(10,5+score/450);
+ if(frame%Math.max(35,Math.floor(90-speed*4))===0)spawnObstacle();
+ if(frame%190===0)spawnEnemy();
+ obstacles.forEach(o=>o.x-=speed);
+ obstacles=obstacles.filter(o=>o.x+o.w>0);
+ enemies.forEach(e=>{
+  e.x-=speed*.65;e.fire--;
+  if(e.fire<=0)fireEnergyBolt(e);
+ });
+ enemies=enemies.filter(e=>e.x+e.w>0);
+ bullets.forEach(b=>{b.x+=b.vx;b.y+=b.vy;});
+ bullets=bullets.filter(b=>b.x+b.w>0&&b.x<W&&b.y+b.h>0&&b.y<H);
+ const playerBox={x:player.x+5,y:player.y+5,w:player.w-10,h:player.h-10};
+ for(const o of obstacles)if(rectHit(playerBox,o))damage();
+ for(const b of bullets)if(rectHit(playerBox,b)){b.x=-100;damage();}
+ for(const e of enemies)if(rectHit(playerBox,e))damage();
+ particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life--;});
+ particles=particles.filter(p=>p.life>0);
+ score+=.12;
+ document.getElementById("score").textContent=Math.floor(score);
+ document.getElementById("health").textContent="❤️".repeat(health)+"🖤".repeat(3-health);
+}
+function damage(){
+ if(player.invincible>0||player.shield>0||gameOver)return;
+ health--;player.invincible=65;burst(player.x,player.y,"#ff334e",15);
+ if(health<=0)endGame();
+}
+function drawBackground(){
+ const map=maps[selectedMap];ctx.fillStyle=map.bg;ctx.fillRect(0,0,W,H);
+ for(let i=0;i<65;i++){
+  const x=(i*137+frame*(i%3+1)*.25)%W;
+  const y=(i*79)%Math.max(1,ground-100);
+  ctx.fillStyle="rgba(255,255,255,.55)";ctx.fillRect(x,y,2,2);
+ }
+ if(selectedMap==="city"){
+  for(let i=0;i<12;i++){
+   let x=(i*145-frame*1.2)%(W+145);if(x< -100)x+=W+145;
+   const height=100+(i*47%170);ctx.fillStyle="#172c52";
+   ctx.fillRect(x,ground-height,95,height);ctx.fillStyle="#00eaff";
+   for(let j=0;j<4;j++)ctx.fillRect(x+13+j*19,ground-height+20,6,12);
+  }
+ }
+ if(selectedMap==="lava"){
+  ctx.fillStyle="#59202a";ctx.beginPath();ctx.moveTo(0,ground);
+  for(let x=0;x<=W;x+=70)ctx.lineTo(x,ground-50-Math.sin(x*.02+frame*.02)*25);
+  ctx.lineTo(W,ground);ctx.fill();
+ }
+ if(selectedMap==="space"){
+  ctx.fillStyle="#28244f";ctx.beginPath();ctx.arc(W*.75,H*.25,65,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="#9584ff";ctx.lineWidth=3;ctx.beginPath();
+  ctx.ellipse(W*.75,H*.25,100,24,-.3,0,Math.PI*2);ctx.stroke();
+ }
+ ctx.fillStyle=map.ground;ctx.fillRect(0,ground,W,H-ground);
+ ctx.fillStyle=map.glow;ctx.fillRect(0,ground,W,4);
+}
+function drawPlayer(){
+ ctx.save();
+ if(player.invincible>0&&frame%8<4)ctx.globalAlpha=.45;
+ ctx.shadowBlur=22;ctx.shadowColor="#00eaff";ctx.fillStyle="#36edff";
+ ctx.fillRect(player.x,player.y,player.w,player.h);ctx.shadowBlur=0;
+ ctx.fillStyle="#10233b";ctx.fillRect(player.x+7,player.y+10,7,7);ctx.fillRect(player.x+22,player.y+10,7,7);
+ if(player.shield>0){
+  ctx.strokeStyle="#5b9cff";ctx.lineWidth=4;ctx.shadowBlur=20;ctx.shadowColor="#4d9dff";
+  ctx.beginPath();ctx.arc(player.x+player.w/2,player.y+player.h/2,34,0,Math.PI*2);ctx.stroke();
+ }
+ ctx.restore();
+}
+function draw(){
+ drawBackground();
+ obstacles.forEach(o=>{
+  ctx.shadowBlur=15;ctx.shadowColor="#ff385d";ctx.fillStyle="#ff385d";
+  if(o.type==="spike"){
+   ctx.beginPath();ctx.moveTo(o.x,ground);ctx.lineTo(o.x+o.w/2,ground-o.h);ctx.lineTo(o.x+o.w,ground);ctx.fill();
+  }else ctx.fillRect(o.x,o.y,o.w,o.h);
+ });
+ ctx.shadowBlur=0;
+ enemies.forEach(e=>{
+  ctx.shadowBlur=18;ctx.shadowColor="#ff9b35";ctx.fillStyle="#ff9b35";
+  ctx.fillRect(e.x,e.y,e.w,e.h);ctx.fillStyle="#351b20";ctx.fillRect(e.x+10,e.y+9,22,7);
+ });
+ bullets.forEach(b=>{
+  ctx.fillStyle="#fff3a1";ctx.shadowBlur=16;ctx.shadowColor="#ffcf40";
+  ctx.beginPath();ctx.arc(b.x+b.w/2,b.y+b.h/2,6,0,Math.PI*2);ctx.fill();
+ });
+ ctx.shadowBlur=0;drawPlayer();
+ particles.forEach(p=>{
+  ctx.globalAlpha=Math.max(0,p.life/25);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,5,5);
+ });
+ ctx.globalAlpha=1;
+ if(player.dash>0){ctx.fillStyle="rgba(40,240,255,.25)";ctx.fillRect(player.x-35,player.y+10,30,12);}
+}
+function loop(){
+ if(!running)return;update();draw();if(running)requestAnimationFrame(loop);
+}
+drawBackground();
+</script>
+</body>
+</html>

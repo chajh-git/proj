@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>무한 못 박기 리듬 게임</title>
+<style>
+body {
+  margin: 0;
+  padding: 20px;
+  background: #eeeedf;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: #34352f;
+}
+#game {
+  max-width: 780px;
+  margin: auto;
+}
+canvas {
+  width: 100%;
+  background: #eeeedf;
+  border: 1px solid #aaa999;
+  display: block;
+}
+.stats {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 12px;
+  font-weight: bold;
+}
+button {
+  padding: 14px 25px;
+  margin: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #a58b69;
+  color: white;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<div id="game">
+<h2>🔨 무한 못 박기</h2>
+<div class="stats">
+  <div>점수 <span id="score">0</span></div>
+  <div>콤보 <span id="combo">0</span></div>
+  <div>나무판 <span id="boardNum">1</span></div>
+</div>
+<canvas id="canvas" width="780" height="300"></canvas>
+<h3 id="message">게임 시작!</h3>
+<button onclick="startGame()">게임 시작</button>
+<button onclick="hit()">망치 치기 (SPACE)</button>
+<p>스페이스바를 눌러 못을 박으세요!</p>
+</div>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const patterns = [
+ [55,145,235,345,440],
+ [90,210,395],
+ [60,130,185,310,425],
+ [110,280,390],
+ [55,125,230,285,375,450],
+ [155,240,410],
+ [65,215,320,430],
+ [100,175,280,370,445]
+];
+
+let boards = [];
+let boardCount = 0;
+let score = 0;
+let combo = 0;
+let speed = 145;
+let running = false;
+let lastTime = 0;
+
+const target = 550;
+const boardWidth = 500;
+const spacing = 520;
+
+function createBoard(x) {
+  const index = boardCount % patterns.length;
+
+  boards.push({
+    x,
+    index,
+    nails: patterns[index].map(n => ({
+      x: n,
+      done: false,
+      sunk: false
+    }))
+  });
+
+  boardCount++;
+}
+
+function resetBoards() {
+  boards = [];
+  boardCount = 0;
+  createBoard(-520);
+  createBoard(0);
+  createBoard(520);
+}
+
+function drawBoard(board) {
+  ctx.save();
+  ctx.translate(board.x, 0);
+
+  ctx.fillStyle = [
+    "#d5c4a4", "#cbb99a",
+    "#e0d0b2", "#cbbb9b"
+  ][board.index % 4];
+
+  ctx.strokeStyle = "#49463e";
+  ctx.lineWidth = 2;
+
+  ctx.fillRect(0, 205, boardWidth, 60);
+  ctx.strokeRect(0, 205, boardWidth, 60);
+
+  // 나무 무늬
+  ctx.beginPath();
+  ctx.moveTo(0, 235);
+  ctx.quadraticCurveTo(130, 220, 250, 235);
+  ctx.quadraticCurveTo(380, 250, 500, 230);
+  ctx.stroke();
+
+  // 나무판에 박힌 못
+  board.nails.forEach(n => {
+    const top = n.sunk ? 190 : 139;
+
+    ctx.fillStyle = "#aaa99f";
+    ctx.strokeStyle = "#41413b";
+
+    ctx.fillRect(n.x - 3, top, 6, 205 - top);
+    ctx.strokeRect(n.x - 3, top, 6, 205 - top);
+
+    ctx.fillStyle = "#c6c3b8";
+    ctx.fillRect(n.x - 10, top - 7, 20, 7);
+    ctx.strokeRect(n.x - 10, top - 7, 20, 7);
+  });
+
+  ctx.restore();
+}
+
+function drawHammer() {
+  ctx.save();
+  ctx.translate(550, 100);
+
+  // 왼쪽으로 휘두르는 망치
+  ctx.fillStyle = "#b9b3a5";
+  ctx.strokeStyle = "#393a34";
+  ctx.lineWidth = 2;
+
+  ctx.fillRect(-5, 0, 25, 105);
+  ctx.strokeRect(-5, 0, 25, 105);
+
+  ctx.fillStyle = "#d0cabb";
+  ctx.fillRect(-48, -78, 105, 65);
+  ctx.strokeRect(-48, -78, 105, 65);
+
+  ctx.restore();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, 780, 300);
+
+  ctx.strokeStyle = "#aaa999";
+  ctx.beginPath();
+  ctx.moveTo(0, 275);
+  ctx.lineTo(780, 275);
+  ctx.stroke();
+
+  boards.forEach(drawBoard);
+  drawHammer();
+}
+
+function hit() {
+  if (!running) return;
+
+  let best = null;
+  let distance = Infinity;
+
+  boards.forEach(board => {
+    board.nails.forEach(nail => {
+      if (nail.done) return;
+
+      const d = Math.abs(board.x + nail.x - target);
+
+      if (d < distance) {
+        distance = d;
+        best = nail;
+      }
+    });
+  });
+
+  if (!best || distance > 60) {
+    combo = 0;
+    message.textContent = "헛스윙!";
+    updateStats();
+    return;
+  }
+
+  best.done = true;
+  best.sunk = true;
+
+  if (distance < 12) {
+    score += 100;
+    combo++;
+    message.textContent = "PERFECT!";
+  } else if (distance < 30) {
+    score += 50;
+    combo++;
+    message.textContent = "GOOD!";
+  } else {
+    score += 20;
+    combo = 0;
+    message.textContent = "OK!";
+  }
+
+  updateStats();
+  draw();
+}
+
+function updateStats() {
+  document.getElementById("score").textContent = score;
+  document.getElementById("combo").textContent = combo;
+  document.getElementById("boardNum").textContent = boardCount;
+}
+
+const message = document.getElementById("message");
+
+function update(time) {
+  if (!running) return;
+
+  if (!lastTime) lastTime = time;
+
+  const dt = Math.min((time - lastTime) / 1000, 0.05);
+  lastTime = time;
+
+  boards.forEach(board => {
+    board.x += speed * dt;
+  });
+
+  // 화면 오른쪽으로 나간 나무판 제거
+  let removed = 0;
+
+  while (boards.length && boards[0].x > 780) {
+    boards.shift();
+    removed++;
+  }
+
+  // 왼쪽에서 새로운 나무판 등장
+  for (let i = 0; i < removed; i++) {
+    const leftmost = Math.min(...boards.map(b => b.x));
+    createBoard(leftmost - spacing);
+    speed = Math.min(speed + 0.5, 240);
+  }
+
+  // 지나친 못은 놓친 것으로 처리
+  boards.forEach(board => {
+    board.nails.forEach(nail => {
+      if (!nail.done &&
+          board.x + nail.x > target + 60) {
+        nail.done = true;
+        combo = 0;
+        message.textContent = "MISS!";
+      }
+    });
+  });
+
+  draw();
+  updateStats();
+  requestAnimationFrame(update);
+}
+
+function startGame() {
+  score = 0;
+  combo = 0;
+  speed = 145;
+  lastTime = 0;
+
+  resetBoards();
+  running = true;
+  message.textContent = "시작!";
+  updateStats();
+  requestAnimationFrame(update);
+}
+
+document.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    e.preventDefault();
+    if (!e.repeat) hit();
+  }
+});
+
+draw();
+</script>
+</body>
+</html>

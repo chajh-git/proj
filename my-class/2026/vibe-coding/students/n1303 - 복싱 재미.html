@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1인칭 킥복싱 수행평가 게임</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .damage-popup {
+            position: absolute;
+            font-weight: 900;
+            font-size: 2rem;
+            animation: floatUp 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 20;
+            text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            50% { transform: translateY(-30px) scale(1.3); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+        }
+        .screen-flash {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.1s ease-out;
+        }
+        /* Low HP Blur & Blood Vignette Overlay */
+        #blood-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 12;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            background: radial-gradient(circle, transparent 40%, rgba(153, 27, 27, 0.7) 85%, rgba(127, 29, 29, 0.95) 100%);
+            box-shadow: inset 0 0 80px rgba(185, 28, 28, 0.8);
+        }
+        .cooldown-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.1rem;
+            color: #38bdf8;
+            border-radius: 0.75rem;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white select-none">
+
+    <!-- Low HP Blur & Blood Overlay Container -->
+    <div id="blood-overlay"></div>
+
+    <!-- 3D Canvas rendering container -->
+    <div id="canvas-container"></div>
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="main-menu" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 p-6 md:p-8 rounded-3xl max-w-xl w-full text-center shadow-2xl">
+            <h1 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500 mb-2">
+                🥊 1인칭 킥복싱 수행평가
+            </h1>
+            <p class="text-slate-400 text-sm mb-6">마인크래프트 3D 링 위에서 펼쳐지는 티어 승격전</p>
+
+            <!-- Mode Selection Tabs -->
+            <div class="grid grid-cols-2 gap-3 mb-6 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+                <button id="btn-mode-rank" onclick="selectMode('rank')" class="py-3 font-extrabold rounded-xl transition text-cyan-400 bg-slate-800 border border-cyan-500/30">
+                    🏆 랭크 매치
+                </button>
+                <button id="btn-mode-casual" onclick="selectMode('casual')" class="py-3 font-extrabold rounded-xl transition text-slate-400 hover:text-white">
+                    ⚔️ 일반 매치
+                </button>
+            </div>
+
+            <!-- Rank Status / Tier Selector -->
+            <div class="mb-6 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+                <div id="rank-info-box" class="flex items-center justify-between">
+                    <span class="text-slate-400 font-medium">현재 나의 티어:</span>
+                    <span id="player-tier-badge" class="px-4 py-1.5 rounded-full font-black text-sm bg-slate-700 text-slate-300 border border-slate-500">
+                        ⚙️ 아이언 (Iron)
+                    </span>
+                </div>
+
+                <!-- Opponent Difficulty Selector (Active in Casual Mode) -->
+                <div id="casual-tier-box" class="hidden text-left mt-3 pt-3 border-t border-slate-800">
+                    <label class="block text-xs text-slate-400 mb-2 font-bold">상대 실력 (난이도) 선택:</label>
+                    <select id="opp-difficulty-select" onchange="onCasualTierChange(this.value)" class="w-full bg-slate-800 border border-slate-700 text-white font-bold p-3 rounded-xl focus:outline-none focus:border-cyan-500">
+                        <option value="아이언">⚪ [1단계] 아이언 (Iron) - 매우 쉬움</option>
+                        <option value="실버">⚪ [2단계] 실버 (Silver) - 쉬움</option>
+                        <option value="골드">🟡 [3단계] 골드 (Gold) - 보통</option>
+                        <option value="플레티넘">🟢 [4단계] 플레티넘 (Platinum) - 숙련</option>
+                        <option value="다이아">💎 [5단계] 다이아 (Diamond) - 어려움</option>
+                        <option value="초월자">🟣 [6단계] 초월자 (Ascendant) - 극난이도</option>
+                        <option value="마스터">🔴 [7단계] 마스터 (Master) - 최상위 AI</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Game Control Guide -->
+            <div class="text-xs text-slate-400 bg-slate-950 p-3 rounded-xl mb-6 text-left space-y-1 border border-slate-800">
+                <div>• <b>이동:</b> W A S D (ㅈ ㅁ ㄴ ㅇ)</div>
+                <div>• <b>마우스:</b> 좌클릭(잽 - 5점), 우클릭(스트레이트 - 5점) [쿨타임 3초]</div>
+                <div>• <b>공격:</b> Q/E(훅-5), R(하이킥-6), F(로우킥-8), C(니킥-10) [쿨타임 3초]</div>
+                <div>• <b>카운터:</b> X (카운터-20) [쿨타임 10초]</div>
+                <div>• <b>방어:</b> Space 키 누르고 있기</div>
+            </div>
+
+            <button onclick="startGame()" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-black text-xl text-white rounded-2xl shadow-lg hover:shadow-cyan-500/40 transition transform hover:-translate-y-0.5">
+                경기 시작하기 🥊
+            </button>
+        </div>
+    </div>
+
+    <!-- UI Overlay Layer -->
+    <div class="relative z-10 flex flex-col justify-between h-screen p-4 md:p-6 pointer-events-none">
+        
+        <!-- Header & Health Bars -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 max-w-5xl mx-auto w-full">
+            
+            <!-- Player Status -->
+            <div class="w-full md:w-5/12 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-2xl">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-base md:text-lg text-cyan-400 flex items-center gap-2">
+                        <i class="fa-solid fa-user-ninja"></i> 나 <span id="player-tier-sub" class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">아이언</span>
+                    </span>
+                    <span id="player-hp-text" class="font-black text-lg md:text-xl text-emerald-400">100 / 100</span>
+                </div>
+                <!-- Player HP Bar -->
+                <div class="w-full bg-slate-950 h-4 md:h-5 rounded-full overflow-hidden p-0.5 border border-slate-800 mb-1.5">
+                    <div id="player-hp-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-300 w-full"></div>
+                </div>
+                <!-- Player Guard Bar -->
+                <div class="flex justify-between items-center text-xs mb-1">
+                    <span class="text-cyan-400 font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-shield"></i> 플레이어 가드
+                    </span>
+                    <span id="player-guard-text" class="text-cyan-300 font-bold">30 / 30</span>
+                </div>
+                <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                    <div id="player-guard-bar" class="bg-cyan-400 h-full rounded-full transition-all duration-150 w-full"></div>
+                </div>
+            </div>
+
+            <!-- VS Badge & Tier Display -->
+            <div class="hidden md:flex flex-col items-center">
+                <div class="bg-red-600 font-black text-xl italic px-4 py-1.5 rounded-xl shadow-lg border border-red-400 transform -skew-x-12">
+                    VS
+                </div>
+                <span id="current-match-tier" class="text-xs font-black text-amber-400 mt-1 uppercase tracking-widest">
+                    [아이언 매치]
+                </span>
+            </div>
+
+            <!-- Opponent Status -->
+            <div class="w-full md:w-5/12 bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl border border-slate-700 shadow-2xl">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-bold text-base md:text-lg text-rose-400 flex items-center gap-2">
+                        <i class="fa-solid fa-robot"></i> 상대 AI <span id="opp-tier-sub" class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-600/40">아이언</span>
+                    </span>
+                    <span id="opp-hp-text" class="font-black text-lg md:text-xl text-rose-500">100 / 100</span>
+                </div>
+                <!-- Opponent HP Bar -->
+                <div class="w-full bg-slate-950 h-4 md:h-5 rounded-full overflow-hidden p-0.5 border border-slate-800 mb-1.5">
+                    <div id="opp-hp-bar" class="bg-gradient-to-r from-rose-600 to-red-400 h-full rounded-full transition-all duration-300 w-full"></div>
+                </div>
+                <!-- Opponent Guard Bar -->
+                <div class="flex justify-between items-center text-xs mb-1">
+                    <span class="text-amber-400 font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-shield-halved"></i> 상대 가드
+                    </span>
+                    <span id="opp-guard-text" class="text-amber-300 font-bold">30 / 30</span>
+                </div>
+                <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                    <div id="opp-guard-bar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-150 w-full"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Center Notification Toast -->
+        <div id="action-toast" class="self-center bg-slate-900/95 border border-amber-500/50 text-amber-300 font-extrabold px-6 py-2.5 rounded-full text-lg shadow-2xl opacity-0 transition-all transform translate-y-4">
+            가드 파괴!
+        </div>
+
+        <!-- Controls Guide & Action Buttons with Cooldown Support -->
+        <div class="max-w-4xl mx-auto w-full bg-slate-900/85 backdrop-blur-md p-3 md:p-4 rounded-2xl border border-slate-700 shadow-2xl pointer-events-auto">
+            <div class="text-center text-xs text-slate-400 font-medium mb-2 flex items-center justify-center gap-3 flex-wrap">
+                <span><i class="fa-solid fa-computer-mouse"></i> 좌클릭: <b>잽(5)</b> | 우클릭: <b>스트레이트(5)</b></span>
+                <span><i class="fa-solid fa-arrows-up-down-left-right"></i> 이동: <b>WASD</b></span>
+                <span><i class="fa-solid fa-shield"></i> 가드: <b>Space</b></span>
+            </div>
+            
+            <div class="grid grid-cols-4 md:grid-cols-8 gap-1.5">
+                <button id="btn-JAB" onclick="triggerPlayerAttack('JAB')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-cyan-300 text-sm">L-Click</span>
+                    <span class="text-xs text-slate-200 font-semibold">잽 (5)</span>
+                    <!-- 잽 쿨타임 제거 -->
+                </button>
+                <button id="btn-STRAIGHT" onclick="triggerPlayerAttack('STRAIGHT')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-cyan-300 text-sm">R-Click</span>
+                    <span class="text-xs text-slate-200 font-semibold">스트레이트 (5)</span>
+                    <!-- 스트레이트 쿨타임 제거 -->
+                </button>
+                <button id="btn-Q" onclick="triggerPlayerAttack('Q')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-cyan-400 text-sm">Q (ㅂ)</span>
+                    <span class="text-xs text-slate-200 font-semibold">우훅 (5)</span>
+                    <div id="cd-Q" class="cooldown-overlay hidden">3</div>
+                </button>
+                <button id="btn-E" onclick="triggerPlayerAttack('E')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-cyan-400 text-sm">E (ㄷ)</span>
+                    <span class="text-xs text-slate-200 font-semibold">좌훅 (5)</span>
+                    <div id="cd-E" class="cooldown-overlay hidden">3</div>
+                </button>
+                <button id="btn-R" onclick="triggerPlayerAttack('R')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-amber-400 text-sm">R (ㄱ)</span>
+                    <span class="text-xs text-slate-200 font-semibold">하이킥 (6)</span>
+                    <div id="cd-R" class="cooldown-overlay hidden">3</div>
+                </button>
+                <button id="btn-F" onclick="triggerPlayerAttack('F')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-amber-400 text-sm">F (ㄹ)</span>
+                    <span class="text-xs text-slate-200 font-semibold">로우킥 (8)</span>
+                    <div id="cd-F" class="cooldown-overlay hidden">3</div>
+                </button>
+                <button id="btn-C" onclick="triggerPlayerAttack('C')" class="relative flex flex-col items-center justify-center bg-slate-800 hover:bg-slate-700 active:scale-95 transition p-2 rounded-xl border border-slate-600 shadow">
+                    <span class="font-black text-rose-400 text-sm">C (ㅊ)</span>
+                    <span class="text-xs text-slate-200 font-semibold">니킥 (10)</span>
+                    <div id="cd-C" class="cooldown-overlay hidden">3</div>
+                </button>
+                <button id="btn-X" onclick="triggerPlayerAttack('X')" class="relative flex flex-col items-center justify-center bg-purple-900/70 hover:bg-purple-800 active:scale-95 transition p-2 rounded-xl border border-purple-500 shadow">
+                    <span class="font-black text-purple-300 text-sm">X (ㅌ)</span>
+                    <span class="text-xs text-purple-200 font-bold">카운터 (20)</span>
+                    <div id="cd-X" class="cooldown-overlay hidden">10</div>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Red Screen Flash Effect on Hit -->
+    <div id="screen-flash" class="screen-flash bg-red-600/30"></div>
+
+    <!-- Game Over Modal with AI Analysis & Tier Progression -->
+    <div id="game-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 border border-slate-700 p-6 md:p-8 rounded-3xl max-w-lg w-full text-center shadow-2xl transform scale-95 transition-all">
+            <div id="modal-icon" class="text-6xl mb-3">🏆</div>
+            <h2 id="modal-title" class="text-2xl md:text-3xl font-black text-white mb-1">승리하였습니다!</h2>
+            <p id="modal-desc" class="text-slate-300 text-sm mb-4">상대 킥복서를 KO 시켰습니다.</p>
+
+            <!-- AI Rating Analysis Card -->
+            <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-left mb-6 space-y-2 text-xs md:text-sm">
+                <div class="flex justify-between items-center text-slate-400">
+                    <span>AI 종합 수행 평가 점수:</span>
+                    <span id="ai-score" class="font-black text-cyan-400 text-base">92점 (A+)</span>
+                </div>
+                <div class="flex justify-between items-center text-slate-400">
+                    <span>유효 타격 수 / 카운터:</span>
+                    <span id="ai-stats" class="font-bold text-slate-200">14회 / 3회 성공</span>
+                </div>
+                <div id="rank-result-row" class="flex justify-between items-center pt-2 border-t border-slate-800 font-bold">
+                    <span class="text-slate-300">랭크 변동:</span>
+                    <span id="tier-change-text" class="text-emerald-400">아이언 ➔ 실버 승격! 🎉</span>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="returnToMenu()" class="w-1/2 py-3.5 bg-slate-800 hover:bg-slate-700 font-bold text-white rounded-xl transition">
+                    메인 메뉴로
+                </button>
+                <button onclick="restartMatch()" class="w-1/2 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 font-bold text-white rounded-xl shadow-lg transition">
+                    다음 경기 진행
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- TIER CONFIGURATION & PROGRESSION ---
+        const TIER_LIST = ['아이언', '실버', '골드', '플레티넘', '다이아', '초월자', '마스터'];
+
+        const TIER_STATS = {
+            '아이언': {
+                name: '아이언', color: '#94a3b8', bgClass: 'bg-slate-700 text-slate-200',
+                reactionMs: 800, guardChance: 0.15, attackIntervalMs: 1400,
+                dodgeChance: 0.08, counterChance: 0.05, comboChance: 0.2, aggressiveness: 0.55, moveSpeed: 0.045
+            },
+            '실버': {
+                name: '실버', color: '#cbd5e1', bgClass: 'bg-slate-300 text-slate-900',
+                reactionMs: 600, guardChance: 0.25, attackIntervalMs: 1100,
+                dodgeChance: 0.18, counterChance: 0.10, comboChance: 0.35, aggressiveness: 0.7, moveSpeed: 0.06
+            },
+            '골드': {
+                name: '골드', color: '#fbbf24', bgClass: 'bg-amber-400 text-slate-950',
+                reactionMs: 450, guardChance: 0.38, attackIntervalMs: 850,
+                dodgeChance: 0.30, counterChance: 0.18, comboChance: 0.50, aggressiveness: 0.82, moveSpeed: 0.075
+            },
+            '플레티넘': {
+                name: '플레티넘', color: '#2dd4bf', bgClass: 'bg-teal-400 text-slate-950',
+                reactionMs: 320, guardChance: 0.50, attackIntervalMs: 650,
+                dodgeChance: 0.45, counterChance: 0.28, comboChance: 0.68, aggressiveness: 0.90, moveSpeed: 0.09
+            },
+            '다이아': {
+                name: '다이아', color: '#38bdf8', bgClass: 'bg-sky-400 text-slate-950',
+                reactionMs: 220, guardChance: 0.62, attackIntervalMs: 480,
+                dodgeChance: 0.60, counterChance: 0.38, comboChance: 0.80, aggressiveness: 0.95, moveSpeed: 0.11
+            },
+            '초월자': {
+                name: '초월자', color: '#a855f7', bgClass: 'bg-purple-500 text-white',
+                reactionMs: 150, guardChance: 0.75, attackIntervalMs: 350,
+                dodgeChance: 0.75, counterChance: 0.50, comboChance: 0.90, aggressiveness: 0.98, moveSpeed: 0.13
+            },
+            '마스터': {
+                name: '마스터', color: '#f43f5e', bgClass: 'bg-rose-500 text-white',
+                reactionMs: 90, guardChance: 0.88, attackIntervalMs: 220,
+                dodgeChance: 0.88, counterChance: 0.65, comboChance: 0.98, aggressiveness: 1.0, moveSpeed: 0.16
+            }
+        };
+
+        // Attack Cooldown Tracking (ms)
+        const attackCooldowns = {
+            'JAB': 0,
+            'STRAIGHT': 0,
+            'Q': 0,
+            'E': 0,
+            'R': 0,
+            'F': 0,
+            'C': 0,
+            'X': 0
+        };
+
+        // --- GAME STATE ---
+        const state = {
+            gameMode: 'rank',
+            playerTier: '아이언',
+            oppTier: '아이언',
+            
+            playerHP: 100,
+            playerGuardHP: 30,
+            maxPlayerHP: 100,
+            maxPlayerGuardHP: 30,
+
+            oppHP: 100,
+            oppGuardHP: 30,
+            maxOppHP: 100,
+            maxOppGuardHP: 30,
+
+            isPlayerGuarding: false,
+            isOpponentGuarding: false,
+            isOpponentAttacking: false,
+            isCounterActive: false,
+            isGameOver: false,
+            isPlayerAttacking: false,
+            isGameStarted: false,
+
+            hitsLanded: 0,
+            countersLanded: 0,
+            damageTaken: 0,
+            aiLoopTimer: null
+        };
+
+        // Key Press State for Movement & Guarding
+        const keysPressed = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            guard: false
+        };
+
+        // Key Mappings (Supports En / Ko layout)
+        const keyMap = {
+            'q': 'Q', 'Q': 'Q', 'ㅂ': 'Q',
+            'e': 'E', 'E': 'E', 'ㄷ': 'E',
+            'f': 'F', 'F': 'F', 'ㄹ': 'F',
+            'r': 'R', 'R': 'R', 'ㄱ': 'R',
+            'c': 'C', 'C': 'C', 'ㅊ': 'C',
+            'x': 'X', 'X': 'X', 'ㅌ': 'X'
+        };
+
+        const moveKeyMap = {
+            'w': 'forward', 'W': 'forward', 'ㅈ': 'forward',
+            's': 'backward', 'S': 'backward', 'ㄴ': 'backward',
+            'a': 'left', 'A': 'left', 'ㅁ': 'left',
+            'd': 'right', 'D': 'right', 'ㅇ': 'right'
+        };
+
+        // Web Audio API Sound Effects
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'guard') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'counter') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(650, now);
+                osc.frequency.exponentialRampToValueAtTime(220, now + 0.3);
+                gain.gain.setValueAtTime(1.0, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'whoosh') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(130, now);
+                osc.frequency.exponentialRampToValueAtTime(45, now + 0.18);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            }
+        }
+
+        // --- THREE.JS 3D ENVIRONMENT ---
+        let scene, camera, renderer;
+        let leftGlove, rightGlove, rightLeg;
+        let oppGroup, oppHead, oppBody, oppLeftArm, oppRightArm, oppLeftLeg, oppRightLeg;
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0f1d);
+            scene.fog = new THREE.FogExp2(0x0a0f1d, 0.04);
+
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(0, 1.65, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const ringLight = new THREE.PointLight(0x38bdf8, 1.8, 25);
+            ringLight.position.set(0, 5, 0);
+            scene.add(ringLight);
+
+            const spotlight = new THREE.SpotLight(0xffffff, 1.2);
+            spotlight.position.set(0, 7, 3);
+            spotlight.castShadow = true;
+            scene.add(spotlight);
+
+            createBoxingRing();
+            createPlayerMesh();
+            createMinecraftOpponentMesh();
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function createPlayerMesh() {
+            // First Person Gloves & Kicking Foot Attached to Camera
+            const gloveGeo = new THREE.SphereGeometry(0.14, 16, 16);
+            const gloveMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 });
+
+            leftGlove = new THREE.Mesh(gloveGeo, gloveMat);
+            leftGlove.position.set(-0.3, -0.35, -0.5);
+            camera.add(leftGlove);
+
+            rightGlove = new THREE.Mesh(gloveGeo, gloveMat);
+            rightGlove.position.set(0.3, -0.35, -0.5);
+            camera.add(rightGlove);
+
+            // Kicking Leg Mesh
+            const legGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.6);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+            rightLeg = new THREE.Mesh(legGeo, legMat);
+            rightLeg.rotation.x = Math.PI / 3;
+            rightLeg.position.set(0.25, -0.7, -0.4);
+            rightLeg.visible = false;
+            camera.add(rightLeg);
+
+            scene.add(camera);
+        }
+
+        function createBoxingRing() {
+            // Ring Floor (Voxel Grid Style)
+            const floorGeo = new THREE.BoxGeometry(8, 0.2, 8);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.position.y = -0.1;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Canvas Mat (Inner Ring)
+            const matGeo = new THREE.BoxGeometry(7, 0.05, 7);
+            const matMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
+            const innerMat = new THREE.Mesh(matGeo, matMaterial);
+            innerMat.position.y = 0.02;
+            innerMat.receiveShadow = true;
+            scene.add(innerMat);
+
+            // Corner Posts
+            const postGeo = new THREE.BoxGeometry(0.2, 2.5, 0.2);
+            const postMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+            const corners = [
+                [-3.8, 1.25, -3.8],
+                [3.8, 1.25, -3.8],
+                [-3.8, 1.25, 3.8],
+                [3.8, 1.25, 3.8]
+            ];
+            corners.forEach(pos => {
+                const post = new THREE.Mesh(postGeo, postMat);
+                post.position.set(...pos);
+                scene.add(post);
+            });
+        }
+
+        function createMinecraftOpponentMesh() {
+            oppGroup = new THREE.Group();
+
+            // Materials (Minecraft Voxel Aesthetic)
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xfbcfe8, roughness: 0.9 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: 0xe11d48, roughness: 0.8 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.8 });
+            const gloveMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
+
+            // Minecraft Box Head
+            const headGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+            oppHead = new THREE.Mesh(headGeo, skinMat);
+            oppHead.position.y = 1.8;
+            oppHead.castShadow = true;
+
+            // Eyes
+            const eyeGeo = new THREE.BoxGeometry(0.08, 0.04, 0.02);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.1, 0.04, 0.201);
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.1, 0.04, 0.201);
+            oppHead.add(leftEye, rightEye);
+
+            // Torso (Body)
+            const bodyGeo = new THREE.BoxGeometry(0.5, 0.65, 0.3);
+            oppBody = new THREE.Mesh(bodyGeo, shirtMat);
+            oppBody.position.y = 1.25;
+            oppBody.castShadow = true;
+
+            // Arms with Gloves
+            const armGeo = new THREE.BoxGeometry(0.18, 0.6, 0.18);
+            const oppGloveGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+
+            oppLeftArm = new THREE.Group();
+            const lArmMesh = new THREE.Mesh(armGeo, skinMat);
+            const lGloveMesh = new THREE.Mesh(oppGloveGeo, gloveMat);
+            lArmMesh.position.y = -0.15;
+            lGloveMesh.position.y = -0.45;
+            oppLeftArm.add(lArmMesh, lGloveMesh);
+            oppLeftArm.position.set(-0.35, 1.3, 0);
+
+            oppRightArm = new THREE.Group();
+            const rArmMesh = new THREE.Mesh(armGeo, skinMat);
+            const rGloveMesh = new THREE.Mesh(oppGloveGeo, gloveMat);
+            rArmMesh.position.y = -0.15;
+            rGloveMesh.position.y = -0.45;
+            oppRightArm.add(rArmMesh, rGloveMesh);
+            oppRightArm.position.set(0.35, 1.3, 0);
+
+            // Legs
+            const legGeo = new THREE.BoxGeometry(0.2, 0.7, 0.2);
+            oppLeftLeg = new THREE.Mesh(legGeo, pantsMat);
+            oppLeftLeg.position.set(-0.13, 0.45, 0);
+
+            oppRightLeg = new THREE.Mesh(legGeo, pantsMat);
+            oppRightLeg.position.set(0.13, 0.45, 0);
+
+            oppGroup.add(oppHead, oppBody, oppLeftArm, oppRightArm, oppLeftLeg, oppRightLeg);
+            oppGroup.position.set(0, 0, -1.8);
+            scene.add(oppGroup);
+        }
+
+        // Dynamic Hit Spark Particles
+        let hitParticles = [];
+        function createHitSparks(position) {
+            const particleCount = 12;
+            const pGroup = new THREE.Group();
+            const pGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
+            const pMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = new THREE.Mesh(pGeo, pMat);
+                particle.position.copy(position);
+                particle.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.15,
+                    (Math.random() - 0.5) * 0.15 + 0.05,
+                    (Math.random() - 0.5) * 0.15
+                );
+                pGroup.add(particle);
+            }
+            scene.add(pGroup);
+
+            let frame = 0;
+            const animateParticles = () => {
+                frame++;
+                pGroup.children.forEach(p => {
+                    p.position.add(p.velocity);
+                });
+                if (frame < 15) {
+                    requestAnimationFrame(animateParticles);
+                } else {
+                    scene.remove(pGroup);
+                }
+            };
+            animateParticles();
+        }
+
+        // --- ATTACK EXECUTION WITH SPECIFIED DAMAGE & COOLDOWNS ---
+        function triggerPlayerAttack(type) {
+            if (state.isGameOver || state.isPlayerAttacking || !state.isGameStarted) return;
+
+            // Check Cooldown (JAB과 STRAIGHT는 쿨타임 없음)
+            const now = Date.now();
+            if (type !== 'JAB' && type !== 'STRAIGHT') {
+                if (attackCooldowns[type] && now < attackCooldowns[type]) {
+                    const remaining = Math.ceil((attackCooldowns[type] - now) / 1000);
+                    showToast(`⏳ 
+type기술쿨타임({remaining}초 남음)`);
+                    return;
+                }
+            }
+
+            state.isPlayerAttacking = true;
+            playSound('whoosh');
+
+            let damage = 0;
+            let guardDmg = 10;
+            let attackName = '';
+            let cooldownTime = 3000; // 3 Seconds default
+
+            switch (type) {
+                case 'JAB':
+                    attackName = '잽'; damage = 5; guardDmg = 8; cooldownTime = 0;
+                    animateLeftHook(); break;
+                case 'STRAIGHT':
+                    attackName = '스트레이트'; damage = 5; guardDmg = 8; cooldownTime = 0;
+                    animateRightHook(); break;
+                case 'Q':
+                    attackName = '오른쪽 훅'; damage = 5; guardDmg = 10;
+                    animateRightHook(); break;
+                case 'E':
+                    attackName = '왼쪽 훅'; damage = 5; guardDmg = 10;
+                    animateLeftHook(); break;
+                case 'R':
+                    attackName = '하이킥'; damage = 6; guardDmg = 12;
+                    animateKick(1.4); break;
+                case 'F':
+                    attackName = '로우킥'; damage = 8; guardDmg = 15;
+                    animateKick(0.7); break;
+                case 'C':
+                    attackName = '니킥'; damage = 10; guardDmg = 15;
+                    animateKick(1.0); break;
+                case 'X':
+                    attackName = '카운터'; damage = 20; guardDmg = 30;
+                    cooldownTime = 10000; // 10 Seconds for Counter
+                    state.isCounterActive = true;
+                    animateCounter();
+                    setTimeout(() => { state.isCounterActive = false; }, 600);
+                    break;
+            }
+
+            // Start Cooldown & UI Timer (쿨타임이 있을 때만 적용)
+            if (cooldownTime > 0) {
+                startSkillCooldown(type, cooldownTime);
+            }
+
+            // High Tier AI Reactive Evade/Dodge Check
+            const oppConfig = TIER_STATS[state.oppTier];
+            const isDodged = Math.random() < oppConfig.dodgeChance;
+
+            if (isDodged) {
+                setTimeout(() => {
+                    const dodgeDirection = Math.random() > 0.5 ? 1.2 : -1.2;
+                    oppGroup.position.x += dodgeDirection;
+                    showToast(`⚡ 상대 [${state.oppTier}] AI 회피!`);
+                    setTimeout(() => { oppGroup.position.x = Math.max(-3.5, Math.min(3.5, oppGroup.position.x)); }, 250);
+                    state.isPlayerAttacking = false;
+                }, 50);
+                return;
+            }
+
+            setTimeout(() => {
+                resolveHit(damage, guardDmg, attackName);
+                state.isPlayerAttacking = false;
+            }, 120);
+        }
+
+            state.isPlayerAttacking = true;
+            playSound('whoosh');
+
+            let damage = 0;
+            let guardDmg = 10;
+            let attackName = '';
+            let cooldownTime = 3000; // 3 Seconds default
+
+            switch (type) {
+                case 'JAB':
+                    attackName = '잽'; damage = 5; guardDmg = 8;
+                    animateLeftHook(); break;
+                case 'STRAIGHT':
+                    attackName = '스트레이트'; damage = 5; guardDmg = 8;
+                    animateRightHook(); break;
+                case 'Q':
+                    attackName = '오른쪽 훅'; damage = 5; guardDmg = 10;
+                    animateRightHook(); break;
+                case 'E':
+                    attackName = '왼쪽 훅'; damage = 5; guardDmg = 10;
+                    animateLeftHook(); break;
+                case 'R':
+                    attackName = '하이킥'; damage = 6; guardDmg = 12;
+                    animateKick(1.4); break;
+                case 'F':
+                    attackName = '로우킥'; damage = 8; guardDmg = 15;
+                    animateKick(0.7); break;
+                case 'C':
+                    attackName = '니킥'; damage = 10; guardDmg = 15;
+                    animateKick(1.0); break;
+                case 'X':
+                    attackName = '카운터'; damage = 20; guardDmg = 30;
+                    cooldownTime = 10000; // 10 Seconds for Counter
+                    state.isCounterActive = true;
+                    animateCounter();
+                    setTimeout(() => { state.isCounterActive = false; }, 600);
+                    break;
+            }
+
+            // Start Cooldown & UI Timer
+            startSkillCooldown(type, cooldownTime);
+
+            // High Tier AI Reactive Evade/Dodge Check
+            const oppConfig = TIER_STATS[state.oppTier];
+            const isDodged = Math.random() < oppConfig.dodgeChance;
+
+            if (isDodged) {
+                setTimeout(() => {
+                    oppGroup.position.x += (Math.random() > 0.5 ? 0.8 : -0.8);
+                    showToast(`⚡ 상대 [${state.oppTier}] AI 회피!`);
+                    setTimeout(() => { oppGroup.position.x = Math.max(-3.5, Math.min(3.5, oppGroup.position.x)); }, 400);
+                    state.isPlayerAttacking = false;
+                }, 100);
+                return;
+            }
+
+            setTimeout(() => {
+                resolveHit(damage, guardDmg, attackName);
+                state.isPlayerAttacking = false;
+            }, 180);
+        }
+
+        function startSkillCooldown(type, durationMs) {
+            attackCooldowns[type] = Date.now() + durationMs;
+            const cdEl = document.getElementById(`cd-${type}`);
+            if (!cdEl) return;
+
+            cdEl.classList.remove('hidden');
+            let secondsLeft = Math.ceil(durationMs / 1000);
+            cdEl.innerText = secondsLeft;
+
+            const interval = setInterval(() => {
+                secondsLeft--;
+                if (secondsLeft > 0) {
+                    cdEl.innerText = secondsLeft;
+                } else {
+                    cdEl.classList.add('hidden');
+                    clearInterval(interval);
+                }
+            }, 1000);
+        }
+
+        function animateRightHook() {
+            let p = 0;
+            const timer = setInterval(() => {
+                p += 0.25;
+                rightGlove.position.x = 0.3 - Math.sin(p * Math.PI) * 0.45;
+                rightGlove.position.z = -0.5 - Math.sin(p * Math.PI) * 0.75;
+                if (p >= 1) { rightGlove.position.set(0.3, -0.35, -0.5); clearInterval(timer); }
+            }, 20);
+        }
+
+        function animateLeftHook() {
+            let p = 0;
+            const timer = setInterval(() => {
+                p += 0.25;
+                leftGlove.position.x = -0.3 + Math.sin(p * Math.PI) * 0.45;
+                leftGlove.position.z = -0.5 - Math.sin(p * Math.PI) * 0.75;
+                if (p >= 1) { leftGlove.position.set(-0.3, -0.35, -0.5); clearInterval(timer); }
+            }, 20);
+        }
+
+        function animateKick(h) {
+            rightLeg.visible = true;
+            let p = 0;
+            const timer = setInterval(() => {
+                p += 0.25;
+                rightLeg.position.y = -0.7 + Math.sin(p * Math.PI) * h;
+                rightLeg.position.z = -0.4 - Math.sin(p * Math.PI) * 0.6;
+                if (p >= 1) { rightLeg.position.set(0.25, -0.7, -0.4); rightLeg.visible = false; clearInterval(timer); }
+            }, 20);
+        }
+
+        function animateCounter() {
+            playSound('counter');
+            animateRightHook();
+            camera.position.x = (Math.random() - 0.5) * 0.15;
+            setTimeout(() => { camera.position.x = 0; }, 150);
+        }
+
+        // Damage & Hit Resolution
+        function resolveHit(damage, guardDmg, attackName) {
+            const distance = camera.position.distanceTo(oppGroup.position);
+            if (distance > 2.8) {
+                showToast("허공 공격! (사거리가 닿지 않음)");
+                return;
+            }
+
+            state.hitsLanded++;
+
+            // Create Visual Spark Effect at Opponent Position
+            createHitSparks(new THREE.Vector3(oppGroup.position.x, 1.4, oppGroup.position.z + 0.2));
+
+            // AI Guard Stance Check
+            const oppConfig = TIER_STATS[state.oppTier];
+            if (state.isOpponentGuarding || Math.random() < oppConfig.guardChance) {
+                state.oppGuardHP = Math.max(0, state.oppGuardHP - guardDmg);
+                playSound('guard');
+                showDamageText(`가드! -${guardDmg}`, '#f59e0b');
+
+                if (state.oppGuardHP <= 0) {
+                    state.isOpponentGuarding = false;
+                    showToast("💥 상대 가드 파괴! (Guard Broken)");
+                    state.oppHP = Math.max(0, state.oppHP - damage);
+                    triggerOpponentHurtEffect();
+                }
+            } else {
+                state.oppHP = Math.max(0, state.oppHP - damage);
+                playSound('hit');
+                showDamageText(`-${damage}`, '#ef4444');
+                triggerOpponentHurtEffect();
+            }
+
+            updateUI();
+            checkGameOver();
+        }
+
+        function triggerOpponentHurtEffect() {
+            oppGroup.position.z -= 0.3;
+            oppGroup.rotation.x = -0.25;
+            oppHead.rotation.y = (Math.random() - 0.5) * 0.5;
+            setTimeout(() => {
+                oppGroup.rotation.x = 0;
+                oppHead.rotation.y = 0;
+            }, 180);
+        }
+
+        // --- AI DYNAMIC MOVEMENT & ATTACK ENGINE ---
+        function startOpponentAILoop() {
+            if (state.aiLoopTimer) clearInterval(state.aiLoopTimer);
+
+            const oppConfig = TIER_STATS[state.oppTier];
+
+            state.aiLoopTimer = setInterval(() => {
+                if (state.isGameOver || !state.isGameStarted) return;
+
+                const distance = camera.position.distanceTo(oppGroup.position);
+                const roll = Math.random();
+
+                // Dynamic AI Movement & Step-walking (Forward, Retreat, Strafe)
+                const moveDist = oppConfig.moveSpeed * 6;
+                let isMoving = false;
+
+                if (distance > 1.6 && roll < oppConfig.aggressiveness) {
+                    // Step Towards Player
+                    const dx = camera.position.x - oppGroup.position.x;
+                    const dz = camera.position.z - oppGroup.position.z;
+                    oppGroup.position.x += Math.sign(dx) * moveDist * 0.7;
+                    oppGroup.position.z += Math.sign(dz) * moveDist * 0.9;
+                    isMoving = true;
+                } else if (distance < 1.2 && Math.random() < 0.6) {
+                    // Backpedal quickly if too close
+                    oppGroup.position.z -= moveDist * 1.2;
+                    isMoving = true;
+                } else if (roll < oppConfig.dodgeChance) {
+                    // Fast Lateral Strafe (티어가 높을수록 자주 사이드 스텝)
+                    const sideDir = Math.random() > 0.5 ? 1 : -1;
+                    oppGroup.position.x += sideDir * moveDist * 1.5;
+                    isMoving = true;
+                }
+
+                // Walking Legs Animation
+                if (isMoving) {
+                    const walkCycle = Date.now() * 0.015;
+                    oppLeftLeg.rotation.x = Math.sin(walkCycle) * 0.4;
+                    oppRightLeg.rotation.x = -Math.sin(walkCycle) * 0.4;
+                } else {
+                    oppLeftLeg.rotation.x = 0;
+                    oppRightLeg.rotation.x = 0;
+                }
+
+                // Clamp AI Position within ring
+                oppGroup.position.x = Math.max(-3.6, Math.min(3.6, oppGroup.position.x));
+                oppGroup.position.z = Math.max(-3.6, Math.min(3.6, oppGroup.position.z));
+
+                // AI Action Decision (Fast Attack & Aggressive Pattern)
+                if (roll < oppConfig.guardChance * 0.4) {
+                    state.isOpponentGuarding = true;
+                    oppLeftArm.position.set(-0.15, 1.6, 0.25);
+                    oppRightArm.position.set(0.15, 1.6, 0.25);
+
+                    setTimeout(() => {
+                        state.isOpponentGuarding = false;
+                        oppLeftArm.position.set(-0.35, 1.3, 0);
+                        oppRightArm.position.set(0.35, 1.3, 0);
+                        if (state.oppGuardHP > 0 && state.oppGuardHP < state.maxOppGuardHP) {
+                            state.oppGuardHP = Math.min(state.maxOppGuardHP, state.oppGuardHP + 4);
+                            updateUI();
+                        }
+                    }, oppConfig.reactionMs);
+
+                } else if (roll < oppConfig.aggressiveness) {
+                    executeAIAttackSequence(oppConfig);
+                }
+
+            }, oppConfig.attackIntervalMs);
+        }
+
+        function executeAIAttackSequence(oppConfig) {
+            if (state.isGameOver || state.isOpponentAttacking) return;
+            state.isOpponentAttacking = true;
+
+            // Punch Animation & Quick Strike
+            const isRightHand = Math.random() > 0.5;
+            const attackingArm = isRightHand ? oppRightArm : oppLeftArm;
+            attackingArm.position.z = 0.85;
+
+            setTimeout(() => {
+                const distance = camera.position.distanceTo(oppGroup.position);
+                if (distance <= 2.8) {
+                    if (state.isCounterActive) {
+                        state.countersLanded++;
+                        showToast("⚡ 카운터 반격 성공!");
+                        state.oppHP = Math.max(0, state.oppHP - 20);
+                        playSound('counter');
+                        triggerOpponentHurtEffect();
+                    } else if (state.isPlayerGuarding && state.playerGuardHP > 0) {
+                        state.playerGuardHP = Math.max(0, state.playerGuardHP - 8);
+                        playSound('guard');
+                        showDamageText(`가드 성공! -8`, '#38bdf8', true);
+                        if (state.playerGuardHP <= 0) {
+                            showToast("💥 플레이어 가드 파괴!");
+                        }
+                    } else {
+                        const baseDmg = 6 + TIER_LIST.indexOf(state.oppTier) * 2;
+                        state.playerHP = Math.max(0, state.playerHP - baseDmg);
+                        state.damageTaken += baseDmg;
+                        playSound('hit');
+
+                        const flash = document.getElementById('screen-flash');
+                        flash.style.opacity = '1';
+                        setTimeout(() => flash.style.opacity = '0', 140);
+
+                        showDamageText(`피격! -${baseDmg}`, '#dc2626', true);
+                    }
+                }
+
+                attackingArm.position.set(isRightHand ? 0.35 : -0.35, 1.3, 0);
+                state.isOpponentAttacking = false;
+                updateUI();
+                checkGameOver();
+
+                // High Tier Rapid Combo Attacks (연쇄 공격)
+                if (Math.random() < oppConfig.comboChance && !state.isGameOver) {
+                    setTimeout(() => {
+                        if (!state.isGameOver && !state.isOpponentAttacking) {
+                            executeAIAttackSequence(oppConfig);
+                        }
+                    }, 120);
+                }
+
+            }, oppConfig.reactionMs * 0.3);
+        }
+
+                // Clamp AI Position within ring
+                oppGroup.position.x = Math.max(-3.6, Math.min(3.6, oppGroup.position.x));
+                oppGroup.position.z = Math.max(-3.6, Math.min(3.6, oppGroup.position.z));
+
+                // AI Action Decision (Guard vs Attack)
+                if (roll < oppConfig.guardChance * 0.6) {
+                    state.isOpponentGuarding = true;
+                    oppLeftArm.position.set(-0.15, 1.6, 0.25);
+                    oppRightArm.position.set(0.15, 1.6, 0.25);
+
+                    setTimeout(() => {
+                        state.isOpponentGuarding = false;
+                        oppLeftArm.position.set(-0.35, 1.3, 0);
+                        oppRightArm.position.set(0.35, 1.3, 0);
+                        if (state.oppGuardHP > 0 && state.oppGuardHP < state.maxOppGuardHP) {
+                            state.oppGuardHP = Math.min(state.maxOppGuardHP, state.oppGuardHP + 4);
+                            updateUI();
+                        }
+                    }, oppConfig.reactionMs);
+
+                } else if (roll < oppConfig.aggressiveness) {
+                    executeAIAttackSequence(oppConfig);
+                }
+
+            }, oppConfig.attackIntervalMs);
+        }
+
+        function executeAIAttackSequence(oppConfig) {
+            if (state.isGameOver || state.isOpponentAttacking) return;
+            state.isOpponentAttacking = true;
+
+            oppRightArm.position.z = 0.85;
+
+            setTimeout(() => {
+                const distance = camera.position.distanceTo(oppGroup.position);
+                if (distance <= 2.8) {
+                    if (state.isCounterActive) {
+                        state.countersLanded++;
+                        showToast("⚡ 카운터 반격 성공!");
+                        state.oppHP = Math.max(0, state.oppHP - 20);
+                        playSound('counter');
+                        triggerOpponentHurtEffect();
+                    } else if (state.isPlayerGuarding && state.playerGuardHP > 0) {
+                        state.playerGuardHP = Math.max(0, state.playerGuardHP - 8);
+                        playSound('guard');
+                        showDamageText(`가드 성공! -8`, '#38bdf8', true);
+                        if (state.playerGuardHP <= 0) {
+                            showToast("💥 플레이어 가드 파괴!");
+                        }
+                    } else {
+                        const baseDmg = 6 + TIER_LIST.indexOf(state.oppTier) * 2;
+                        state.playerHP = Math.max(0, state.playerHP - baseDmg);
+                        state.damageTaken += baseDmg;
+                        playSound('hit');
+
+                        const flash = document.getElementById('screen-flash');
+                        flash.style.opacity = '1';
+                        setTimeout(() => flash.style.opacity = '0', 140);
+
+                        showDamageText(`피격! -${baseDmg}`, '#dc2626', true);
+                    }
+                }
+
+                oppRightArm.position.set(0.35, 1.3, 0);
+                state.isOpponentAttacking = false;
+                updateUI();
+                checkGameOver();
+
+                if (Math.random() < oppConfig.comboChance && !state.isGameOver) {
+                    setTimeout(() => {
+                        if (!state.isGameOver) {
+                            oppLeftArm.position.z = 0.85;
+                            setTimeout(() => {
+                                oppLeftArm.position.set(-0.35, 1.3, 0);
+                            }, 150);
+                        }
+                    }, 200);
+                }
+
+            }, oppConfig.reactionMs * 0.4);
+        }
+
+        // --- PLAYER MOVEMENT & GUARD UPDATE ---
+        function updatePlayerMovement() {
+            if (state.isGameOver || !state.isGameStarted) return;
+
+            const moveSpeed = 0.055;
+            const ringLimit = 3.8;
+
+            if (keysPressed.forward) camera.position.z -= moveSpeed;
+            if (keysPressed.backward) camera.position.z += moveSpeed;
+            if (keysPressed.left) camera.position.x -= moveSpeed;
+            if (keysPressed.right) camera.position.x += moveSpeed;
+
+            camera.position.x = Math.max(-ringLimit, Math.min(ringLimit, camera.position.x));
+            camera.position.z = Math.max(-ringLimit, Math.min(ringLimit, camera.position.z));
+
+            // Player Guarding Logic (Spacebar holding)
+            if (keysPressed.guard && state.playerGuardHP > 0) {
+                state.isPlayerGuarding = true;
+                leftGlove.position.set(-0.12, -0.15, -0.35);
+                rightGlove.position.set(0.12, -0.15, -0.35);
+            } else {
+                state.isPlayerGuarding = false;
+                leftGlove.position.set(-0.3, -0.35, -0.5);
+                rightGlove.position.set(0.3, -0.35, -0.5);
+
+                // Auto-recover Player Guard HP
+                if (state.playerGuardHP < state.maxPlayerGuardHP) {
+                    state.playerGuardHP = Math.min(state.maxPlayerGuardHP, state.playerGuardHP + 0.08);
+                    updateUI();
+                }
+            }
+
+            camera.lookAt(oppGroup.position.x, 1.5, oppGroup.position.z);
+        }
+
+        // --- UI & MODE MANAGERS ---
+        function selectMode(mode) {
+            state.gameMode = mode;
+            const btnRank = document.getElementById('btn-mode-rank');
+            const btnCasual = document.getElementById('btn-mode-casual');
+            const casualBox = document.getElementById('casual-tier-box');
+
+            if (mode === 'rank') {
+                btnRank.className = 'py-3 font-extrabold rounded-xl transition text-cyan-400 bg-slate-800 border border-cyan-500/30';
+                btnCasual.className = 'py-3 font-extrabold rounded-xl transition text-slate-400 hover:text-white';
+                casualBox.classList.add('hidden');
+                state.oppTier = state.playerTier; // Rank Mode matches Player's Current Tier
+            } else {
+                btnCasual.className = 'py-3 font-extrabold rounded-xl transition text-amber-400 bg-slate-800 border border-amber-500/30';
+                btnRank.className = 'py-3 font-extrabold rounded-xl transition text-slate-400 hover:text-white';
+                casualBox.classList.remove('hidden');
+                state.oppTier = document.getElementById('opp-difficulty-select').value;
+            }
+            updateTierBadges();
+        }
+
+        function onCasualTierChange(tierVal) {
+            state.oppTier = tierVal;
+            updateTierBadges();
+        }
+
+        function updateTierBadges() {
+            const playerConfig = TIER_STATS[state.playerTier];
+            const oppConfig = TIER_STATS[state.oppTier];
+
+            const pBadge = document.getElementById('player-tier-badge');
+            pBadge.innerText = `${playerConfig.name}`;
+            pBadge.className = `px-4 py-1.5 rounded-full font-black text-sm ${playerConfig.bgClass}`;
+
+            document.getElementById('player-tier-sub').innerText = state.playerTier;
+            document.getElementById('opp-tier-sub').innerText = state.oppTier;
+            document.getElementById('current-match-tier').innerText = `[${state.oppTier} AI 매치]`;
+        }
+
+        function updateUI() {
+            // Player HP & Guard
+            const playerPct = (state.playerHP / state.maxPlayerHP) * 100;
+            document.getElementById('player-hp-bar').style.width = `${playerPct}%`;
+            document.getElementById('player-hp-text').innerText = `${Math.ceil(state.playerHP)} / ${state.maxPlayerHP}`;
+
+            const pGuardPct = (state.playerGuardHP / state.maxPlayerGuardHP) * 100;
+            document.getElementById('player-guard-bar').style.width = `${pGuardPct}%`;
+            document.getElementById('player-guard-text').innerText = `${Math.ceil(state.playerGuardHP)} / ${state.maxPlayerGuardHP}`;
+
+            // Low HP Screen Blur & Blood Effect Threshold Check (< 30 HP)
+            const bloodOverlay = document.getElementById('blood-overlay');
+            const canvasContainer = document.getElementById('canvas-container');
+            if (state.playerHP <= 30 && state.playerHP > 0) {
+                bloodOverlay.style.opacity = `${(35 - state.playerHP) / 30}`;
+                canvasContainer.style.filter = `blur(${Math.min(6, (35 - state.playerHP) * 0.2)}px)`;
+            } else {
+                bloodOverlay.style.opacity = '0';
+                canvasContainer.style.filter = 'none';
+            }
+
+            // Opponent HP & Guard
+            const oppPct = (state.oppHP / state.maxOppHP) * 100;
+            document.getElementById('opp-hp-bar').style.width = `${oppPct}%`;
+            document.getElementById('opp-hp-text').innerText = `${Math.ceil(state.oppHP)} / ${state.maxOppHP}`;
+
+            const oGuardPct = (state.oppGuardHP / state.maxOppGuardHP) * 100;
+            document.getElementById('opp-guard-bar').style.width = `${oGuardPct}%`;
+            document.getElementById('opp-guard-text').innerText = `${Math.ceil(state.oppGuardHP)} / ${state.maxOppGuardHP}`;
+        }
+
+        function showDamageText(text, color = '#ffffff', isPlayer = false) {
+            const popup = document.createElement('div');
+            popup.className = 'damage-popup';
+            popup.innerText = text;
+            popup.style.color = color;
+            popup.style.left = isPlayer ? '22%' : '56%';
+            popup.style.top = isPlayer ? '42%' : '35%';
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 800);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('action-toast');
+            toast.innerText = msg;
+            toast.classList.remove('opacity-0', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-4');
+            }, 1200);
+        }
+
+        // --- GAME OVER & AI RATING EVALUATION ---
+        function checkGameOver() {
+            if (state.oppHP <= 0) {
+                state.isGameOver = true;
+                handleMatchEnd(true);
+            } else if (state.playerHP <= 0) {
+                state.isGameOver = true;
+                handleMatchEnd(false);
+            }
+        }
+
+        function handleMatchEnd(isWin) {
+            const modal = document.getElementById('game-modal');
+            const titleEl = document.getElementById('modal-title');
+            const descEl = document.getElementById('modal-desc');
+            const changeText = document.getElementById('tier-change-text');
+
+            // AI Performance Score Calculation
+            const score = Math.min(100, Math.max(40, (isWin ? 75 : 40) + state.hitsLanded * 2 + state.countersLanded * 5 - Math.floor(state.damageTaken * 0.3)));
+            let grade = 'C';
+            if (score >= 90) grade = 'S+';
+            else if (score >= 80) grade = 'A';
+            else if (score >= 70) grade = 'B';
+
+            document.getElementById('ai-score').innerText = `score점({grade})`;
+            document.getElementById('ai-stats').innerText = `${state.hitsLanded}회 / ${state.countersLanded}회 성공`;
+
+            if (state.gameMode === 'rank') {
+                const curIdx = TIER_LIST.indexOf(state.playerTier);
+                if (isWin && curIdx < TIER_LIST.length - 1) {
+                    const nextTier = TIER_LIST[curIdx + 1];
+                    changeText.innerText = `${state.playerTier} ➔ ${nextTier} 승격! 🎉`;
+                    changeText.className = 'text-emerald-400 font-extrabold';
+                    state.playerTier = nextTier;
+                } else if (!isWin && curIdx > 0) {
+                    const prevTier = TIER_LIST[curIdx - 1];
+                    changeText.innerText = `${state.playerTier} ➔ ${prevTier} 강등... 🔻`;
+                    changeText.className = 'text-rose-500 font-extrabold';
+                    state.playerTier = prevTier;
+                } else {
+                    changeText.innerText = `현재 티어 유지 (${state.playerTier})`;
+                    changeText.className = 'text-amber-400 font-extrabold';
+                }
+            } else {
+                changeText.innerText = `일반 매치 (티어 변동 없음)`;
+                changeText.className = 'text-slate-400 font-bold';
+            }
+
+            if (isWin) {
+                titleEl.innerText = "🏆 KO 승리!";
+                titleEl.className = "text-2xl md:text-3xl font-black text-emerald-400 mb-1";
+                descEl.innerText = `상대 [${state.oppTier}] AI를 쓰러뜨렸습니다!`;
+            } else {
+                titleEl.innerText = "💥 KO 패배...";
+                titleEl.className = "text-2xl md:text-3xl font-black text-rose-500 mb-1";
+                descEl.innerText = `[${state.oppTier}] AI의 공격에 K.O 되었습니다.`;
+            }
+
+            updateTierBadges();
+            modal.classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.getElementById('main-menu').classList.add('hidden');
+            state.isGameStarted = true;
+            resetMatchState();
+            startOpponentAILoop();
+        }
+
+        function returnToMenu() {
+            document.getElementById('game-modal').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            state.isGameStarted = false;
+            if (state.aiLoopTimer) clearInterval(state.aiLoopTimer);
+        }
+
+        function restartMatch() {
+            document.getElementById('game-modal').classList.add('hidden');
+            if (state.gameMode === 'rank') state.oppTier = state.playerTier;
+            resetMatchState();
+            startOpponentAILoop();
+        }
+
+        function resetMatchState() {
+            state.playerHP = 100;
+            state.playerGuardHP = 30;
+            state.oppHP = 100;
+            state.oppGuardHP = 30;
+            state.isGameOver = false;
+            state.hitsLanded = 0;
+            state.countersLanded = 0;
+            state.damageTaken = 0;
+
+            // Reset Cooldowns
+            Object.keys(attackCooldowns).forEach(k => attackCooldowns[k] = 0);
+            document.querySelectorAll('.cooldown-overlay').forEach(el => el.classList.add('hidden'));
+
+            if (camera) camera.position.set(0, 1.65, 0);
+            if (oppGroup) oppGroup.position.set(0, 0, -1.8);
+            updateUI();
+        }
+
+        // --- MOUSE & KEYBOARD EVENT LISTENERS ---
+        // Mouse Left Click (Jab) & Right Click (Straight)
+        window.addEventListener('mousedown', (e) => {
+            if (!state.isGameStarted || state.isGameOver) return;
+            if (e.button === 0) { // Left Mouse Click
+                triggerPlayerAttack('JAB');
+            } else if (e.button === 2) { // Right Mouse Click
+                triggerPlayerAttack('STRAIGHT');
+            }
+        });
+
+        // Prevent Context Menu on Right Click inside game
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        window.addEventListener('keydown', (e) => {
+            const moveDir = moveKeyMap[e.key];
+            if (moveDir) keysPressed[moveDir] = true;
+
+            if (e.code === 'Space') keysPressed.guard = true;
+
+            const attackKey = keyMap[e.key];
+            if (attackKey) triggerPlayerAttack(attackKey);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const moveDir = moveKeyMap[e.key];
+            if (moveDir) keysPressed[moveDir] = false;
+
+            if (e.code === 'Space') keysPressed.guard = false;
+        });
+
+        // RENDER LOOP
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayerMovement();
+
+            if (!state.isGameOver && state.isGameStarted && !keysPressed.forward && !keysPressed.backward) {
+                const t = Date.now() * 0.003;
+                camera.position.y = 1.65 + Math.sin(t) * 0.012;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function() {
+            init3D();
+            updateTierBadges();
+            updateUI();
+            animate();
+        };
+    </script>
+</body>
+</html>

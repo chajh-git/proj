@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>좀비 생존 게임</title>
+
+<style>
+body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+
+canvas {
+    background: #263526;
+    border: 3px solid white;
+}
+
+#xpBar {
+    width: 800px;
+    height: 20px;
+    background: #333;
+    margin: 10px auto;
+}
+
+#xp {
+    width: 0%;
+    height: 100%;
+    background: limegreen;
+}
+
+button {
+    padding: 12px;
+    margin: 5px;
+    font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🧟 좀비 생존 게임</h1>
+
+<div>
+    레벨: <span id="level">1</span>
+   　
+    체력: <span id="hp">100</span>
+   　
+    처치: <span id="kills">0</span>
+</div>
+
+<div id="xpBar">
+    <div id="xp"></div>
+</div>
+
+<canvas id="game" width="800" height="500"></canvas>
+
+<p>WASD 또는 방향키로 이동 | 무기는 자동 공격</p>
+
+<div id="levelUp"></div>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+    x: 400,
+    y: 250,
+    size: 20,
+    speed: 4,
+    hp: 100
+};
+
+let zombies = [];
+let bullets = [];
+let expItems = [];
+
+let keys = {};
+
+let level = 1;
+let exp = 0;
+let needExp = 5;
+let kills = 0;
+
+let weapons = [
+    {
+        name: "권총",
+        damage: 20,
+        speed: 500,
+        lastShot: 0
+    }
+];
+
+document.addEventListener("keydown", function(e) {
+    keys[e.key.toLowerCase()] = true;
+});
+
+document.addEventListener("keyup", function(e) {
+    keys[e.key.toLowerCase()] = false;
+});
+
+
+/* 좀비 생성 */
+
+function createZombie() {
+
+    let side = Math.floor(Math.random() * 4);
+
+    let x;
+    let y;
+
+    if(side === 0) {
+        x = Math.random() * canvas.width;
+        y = -30;
+    }
+
+    if(side === 1) {
+        x = canvas.width + 30;
+        y = Math.random() * canvas.height;
+    }
+
+    if(side === 2) {
+        x = Math.random() * canvas.width;
+        y = canvas.height + 30;
+    }
+
+    if(side === 3) {
+        x = -30;
+        y = Math.random() * canvas.height;
+    }
+
+    zombies.push({
+        x: x,
+        y: y,
+        size: 20,
+        hp: 40,
+        speed: 1
+    });
+}
+
+
+/* 총알 생성 */
+
+function shoot(weapon) {
+
+    if(zombies.length === 0) return;
+
+    let target = zombies[0];
+
+    let dx = target.x - player.x;
+    let dy = target.y - player.y;
+
+    let distance = Math.sqrt(dx * dx + dy * dy);
+
+    bullets.push({
+        x: player.x,
+        y: player.y,
+
+        vx: dx / distance * 7,
+        vy: dy / distance * 7,
+
+        damage: weapon.damage
+    });
+}
+
+
+/* 무기 자동 공격 */
+
+function autoAttack(time) {
+
+    weapons.forEach(function(weapon) {
+
+        if(time - weapon.lastShot > weapon.speed) {
+
+            shoot(weapon);
+
+            weapon.lastShot = time;
+        }
+
+    });
+}
+
+
+/* 경험치 획득 */
+
+function gainExp() {
+
+    exp++;
+
+    if(exp >= needExp) {
+
+        exp = 0;
+
+        level++;
+
+        needExp += 3;
+
+        levelUp();
+    }
+}
+
+
+/* 레벨업 */
+
+function levelUp() {
+
+    let box = document.getElementById("levelUp");
+
+    box.innerHTML = `
+        <h2>🎉 LEVEL UP!</h2>
+
+        <button onclick="getWeapon()">
+        🔫 새로운 무기
+        </button>
+
+        <button onclick="powerUp()">
+        💪 공격력 증가
+        </button>
+
+        <button onclick="speedUp()">
+        ⚡ 이동속도 증가
+        </button>
+    `;
+}
+
+
+/* 새로운 무기 */
+
+function getWeapon() {
+
+    weapons.push({
+        name: "새 무기",
+        damage: 15,
+        speed: 700,
+        lastShot: 0
+    });
+
+    document.getElementById("levelUp").innerHTML = "";
+
+}
+
+
+/* 공격력 증가 */
+
+function powerUp() {
+
+    weapons.forEach(function(weapon) {
+        weapon.damage += 10;
+    });
+
+    document.getElementById("levelUp").innerHTML = "";
+}
+
+
+/* 이동속도 증가 */
+
+function speedUp() {
+
+    player.speed += 1;
+
+    document.getElementById("levelUp").innerHTML = "";
+}
+
+
+/* 플레이어 이동 */
+
+function movePlayer() {
+
+    if(keys["w"] || keys["arrowup"]) {
+        player.y -= player.speed;
+    }
+
+    if(keys["s"] || keys["arrowdown"]) {
+        player.y += player.speed;
+    }
+
+    if(keys["a"] || keys["arrowleft"]) {
+        player.x -= player.speed;
+    }
+
+    if(keys["d"] || keys["arrowright"]) {
+        player.x += player.speed;
+    }
+
+    player.x = Math.max(10, Math.min(canvas.width - 10, player.x));
+    player.y = Math.max(10, Math.min(canvas.height - 10, player.y));
+}
+
+
+/* 좀비 이동 */
+
+function moveZombies() {
+
+    zombies.forEach(function(zombie) {
+
+        let dx = player.x - zombie.x;
+        let dy = player.y - zombie.y;
+
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        zombie.x += dx / distance * zombie.speed;
+        zombie.y += dy / distance * zombie.speed;
+
+    });
+}
+
+
+/* 총알 이동 */
+
+function moveBullets() {
+
+    bullets.forEach(function(bullet) {
+
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
+
+    });
+
+}
+
+
+/* 충돌 검사 */
+
+function collision() {
+
+    bullets.forEach(function(bullet) {
+
+        zombies.forEach(function(zombie, zombieIndex) {
+
+            let dx = bullet.x - zombie.x;
+            let dy = bullet.y - zombie.y;
+
+            let distance = Math.sqrt(dx * dx + dy * dy);
+
+            if(distance < 20) {
+
+                zombie.hp -= bullet.damage;
+
+                bullet.x = -100;
+
+                if(zombie.hp <= 0) {
+
+                    expItems.push({
+                        x: zombie.x,
+                        y: zombie.y
+                    });
+
+                    zombies.splice(zombieIndex, 1);
+
+                    kills++;
+                }
+
+            }
+
+        });
+
+    });
+
+
+    /* 경험치 먹기 */
+
+    expItems.forEach(function(item, index) {
+
+        let dx = player.x - item.x;
+        let dy = player.y - item.y;
+
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if(distance < 30) {
+
+            gainExp();
+
+            expItems.splice(index, 1);
+
+        }
+
+    });
+
+
+    /* 좀비와 플레이어 충돌 */
+
+    zombies.forEach(function(zombie) {
+
+        let dx = player.x - zombie.x;
+        let dy = player.y - zombie.y;
+
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if(distance < 30) {
+
+            player.hp -= 0.5;
+
+        }
+
+    });
+
+}
+
+
+/* 화면 그리기 */
+
+function draw() {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /* 플레이어 */
+
+    ctx.fillStyle = "dodgerblue";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        player.x,
+        player.y,
+        player.size,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    /* 좀비 */
+
+    zombies.forEach(function(zombie) {
+
+        ctx.fillStyle = "green";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            zombie.x,
+            zombie.y,
+            zombie.size,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+    });
+
+
+    /* 총알 */
+
+    bullets.forEach(function(bullet) {
+
+        ctx.fillStyle = "yellow";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            bullet.x,
+            bullet.y,
+            5,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+    });
+
+
+    /* 경험치 */
+
+    expItems.forEach(function(item) {
+
+        ctx.fillStyle = "lime";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            item.x,
+            item.y,
+            6,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+
+    });
+
+
+    /* UI */
+
+    document.getElementById("level").textContent = level;
+    document.getElementById("hp").textContent = Math.floor(player.hp);
+    document.getElementById("kills").textContent = kills;
+
+    document.getElementById("xp").style.width =
+        (exp / needExp * 100) + "%";
+
+
+    /* 게임 오버 */
+
+    if(player.hp <= 0) {
+
+        alert("게임 오버!\n처치한 좀비: " + kills);
+
+        location.reload();
+
+    }
+
+}
+
+
+/* 게임 루프 */
+
+let lastTime = 0;
+
+function gameLoop(time) {
+
+    movePlayer();
+
+    moveZombies();
+
+    moveBullets();
+
+    autoAttack(time);
+
+    collision();
+
+    draw();
+
+    requestAnimationFrame(gameLoop);
+}
+
+
+/* 좀비 생성 */
+
+setInterval(function() {
+
+    createZombie();
+
+}, 1000);
+
+
+/* 게임 시작 */
+
+gameLoop();
+
+</script>
+
+</body>
+</html>

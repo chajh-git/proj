@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>용사의 마왕성 단죄 (Demon Lord Castle Boss Raid)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for Dynamic Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Serif+KR:wght@600;900&family=Orbitron:wght@600;900&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Noto Serif KR', 'Cinzel', serif;
+            background-color: #030206;
+            color: #ffffff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        .glow-red {
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), inset 0 0 10px rgba(220, 38, 38, 0.4);
+        }
+
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.6), inset 0 0 10px rgba(217, 119, 6, 0.4);
+        }
+
+        .glow-purple {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), inset 0 0 10px rgba(147, 51, 234, 0.4);
+        }
+
+        .text-glow-red {
+            text-shadow: 0 0 12px #ef4444, 0 0 24px #b91c1c;
+        }
+
+        .text-glow-gold {
+            text-shadow: 0 0 12px #f59e0b, 0 0 24px #d97706;
+        }
+
+        .text-glow-purple {
+            text-shadow: 0 0 12px #a855f7, 0 0 24px #7e22ce;
+        }
+
+        @keyframes floatDamage {
+            0% { opacity: 1; transform: translateY(0) scale(1.1); }
+            50% { transform: translateY(-35px) scale(1.4); }
+            100% { opacity: 0; transform: translateY(-60px) scale(0.8); }
+        }
+
+        .damage-text {
+            position: absolute;
+            font-weight: 900;
+            font-family: 'Orbitron', sans-serif;
+            pointer-events: none;
+            animation: floatDamage 0.8s ease-out forwards;
+            text-shadow: 0 0 6px rgba(0,0,0,0.9);
+        }
+
+        .counter-text {
+            position: absolute;
+            font-weight: 900;
+            font-family: 'Orbitron', sans-serif;
+            color: #facc15;
+            text-shadow: 0 0 12px #eab308;
+            pointer-events: none;
+            animation: floatDamage 0.9s ease-out forwards;
+            font-size: 1.3rem;
+        }
+
+        .cutscene-bar {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-black text-white relative overflow-hidden">
+
+    <!-- Game Container -->
+    <div id="gameContainer" class="relative w-full h-full max-w-[1280px] max-h-[720px] aspect-video bg-black overflow-hidden shadow-2xl md:rounded-2xl border border-purple-950/60">
+        
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas" class="w-full h-full block bg-black"></canvas>
+
+        <!-- Dynamic Floating Damage Numbers Layer -->
+        <div id="damageLayer" class="absolute inset-0 pointer-events-none z-10"></div>
+
+        <!-- Cutscene Letterbox Bars -->
+        <div id="topCutsceneBar" class="cutscene-bar absolute top-0 left-0 w-full h-0 bg-black z-30"></div>
+        <div id="bottomCutsceneBar" class="cutscene-bar absolute bottom-0 left-0 w-full h-0 bg-black z-30"></div>
+
+        <!-- Cutscene Dialogue Box -->
+        <div id="cutsceneBox" class="absolute bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl bg-slate-950/90 border border-purple-600/60 rounded-xl p-5 backdrop-blur-md shadow-2xl z-40 hidden flex flex-col gap-2">
+            <div id="cutsceneSpeaker" class="font-black text-sm tracking-widest text-purple-400 text-glow-purple flex items-center gap-2">
+                <i class="fa-solid fa-crown"></i> 마왕 벨리알
+            </div>
+            <p id="cutsceneText" class="text-slate-100 text-base md:text-lg font-serif italic leading-relaxed">
+                "어리석은 용사여... 감히 마왕성의 알현실을 더럽히다니!"
+            </p>
+        </div>
+
+        <!-- HUD Overlay (In Game) -->
+        <div id="hudOverlay" class="absolute top-0 left-0 w-full p-4 pointer-events-none hidden flex flex-col justify-between h-full z-20">
+            <!-- Top Boss Bar -->
+            <div class="w-full max-w-2xl mx-auto flex flex-col items-center gap-1.5">
+                <div class="flex justify-between w-full text-xs md:text-sm font-bold tracking-widest px-1">
+                    <span id="bossName" class="text-red-500 text-glow-red flex items-center gap-2 font-serif">
+                        <i class="fa-solid fa-skull text-red-600"></i> 마왕 벨리알 (PHASE 1)
+                    </span>
+                    <span id="bossHpText" class="text-purple-300 font-mono">100%</span>
+                </div>
+                <!-- Boss Health Bar -->
+                <div class="w-full h-4 md:h-5 bg-black/80 rounded-full border border-red-900/60 p-0.5 overflow-hidden glow-red backdrop-blur-md">
+                    <div id="bossHpBar" class="h-full bg-gradient-to-r from-purple-900 via-red-600 to-amber-500 rounded-full transition-all duration-150" style="width: 100%;"></div>
+                </div>
+                <!-- Boss Stagger / Groggy Gauge -->
+                <div class="w-full h-1.5 bg-black/60 rounded-full overflow-hidden">
+                    <div id="bossGroggyBar" class="h-full bg-amber-400 rounded-full transition-all duration-75" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Bottom Player Status -->
+            <div class="flex justify-between items-end w-full">
+                <div class="flex flex-col gap-2 w-52 md:w-64">
+                    <!-- Hero Name & Class -->
+                    <div class="flex items-center justify-between text-amber-400 font-bold text-sm tracking-wider text-glow-gold">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i> 빛의 단죄자 용사</span>
+                        <span id="comboCounter" class="text-xs text-yellow-300 font-mono hidden">COMBO x0</span>
+                    </div>
+                    <!-- Health Bar -->
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-xs text-slate-300 font-semibold font-mono">
+                            <span>HP</span>
+                            <span id="playerHpText">300 / 300</span>
+                        </div>
+                        <div class="w-full h-3.5 bg-black/80 rounded-full border border-amber-900/50 p-0.5 glow-gold backdrop-blur-md">
+                            <div id="playerHpBar" class="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 rounded-full transition-all duration-100" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <!-- Dash Cooldown Bar -->
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-xs text-slate-400 font-semibold font-mono">
+                            <span>E 대시 스태미나</span>
+                            <span id="playerStaminaText">100%</span>
+                        </div>
+                        <div class="w-full h-2 bg-black/80 rounded-full border border-purple-900/40 p-0.5">
+                            <div id="playerStaminaBar" class="h-full bg-purple-500 rounded-full transition-all duration-75" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skill Key Quick Guide Overlay -->
+                <div class="flex gap-2.5 items-center">
+                    <div class="flex flex-col items-center bg-slate-900/80 border border-slate-700/60 px-2.5 py-1.5 rounded-xl text-slate-300">
+                        <div class="text-xs font-bold text-slate-200 flex items-center gap-1">
+                            <i class="fa-solid fa-arrows-up-down-left-right text-purple-400"></i> 방향키
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-mono">이동</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div id="attackSkillBox" class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-900/90 border border-amber-500/50 flex items-center justify-center text-amber-400 font-black shadow-lg text-base">
+                            Q
+                        </div>
+                        <span class="text-[10px] text-amber-300/80 mt-1 font-mono">기본 검기</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div id="dashSkillBox" class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-900/90 border border-purple-500/50 flex items-center justify-center text-purple-400 font-black shadow-lg text-base">
+                            E
+                        </div>
+                        <span class="text-[10px] text-purple-300/80 mt-1 font-mono">저스트 회피</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Intro Modal -->
+        <div id="introModal" class="absolute inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-6 z-50">
+            <div class="max-w-md w-full bg-slate-950 border border-purple-800/80 rounded-2xl p-6 text-center shadow-2xl flex flex-col items-center gap-5 glow-purple">
+                <div class="w-16 h-16 rounded-2xl bg-purple-950/80 border border-purple-500/60 flex items-center justify-center text-red-500 text-3xl shadow-lg glow-red">
+                    <i class="fa-solid fa-dungeon"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-amber-400 tracking-wider text-glow-gold">용사의 마왕성 단죄</h1>
+                    <p class="text-xs text-purple-300/80 mt-1 font-mono">SILVER DEMON QUEEN RAID</p>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed bg-purple-950/40 p-3.5 rounded-xl border border-purple-900/40 text-left">
+                    ⚔️ <span class="text-amber-300 font-bold">전투 조작 가이드:</span><br>
+                    • <b class="text-yellow-400">방향키</b>: 8방향 자유 이동 (리듬게임 훈련 시: ← ↓ ↑ → 노트 입력)<br>
+                    • <b class="text-yellow-400">Q 키</b>: 신성 검기 발사 (0.2초 쿨타임)<br>
+                    • <b class="text-yellow-400">E 키</b>: 무적 저스트 대시 & QTE 처형 일격<br>
+                    • <b class="text-purple-300">마왕 AI 패턴</b>: 판마다 무작위 적응 패턴 구사
+                </p>
+                <div class="flex gap-2 w-full">
+                    <button id="btnStartGame" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-purple-700 via-red-600 to-amber-600 font-black text-sm tracking-widest shadow-xl hover:brightness-110 active:scale-95 transition-all text-glow-gold border border-amber-400/40">
+                        마왕성 레이드 시작
+                    </button>
+                    <button id="btnStartRhythm" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-700 via-indigo-600 to-cyan-500 font-black text-sm tracking-widest shadow-xl hover:brightness-110 active:scale-95 transition-all text-glow-gold border border-cyan-400/40">
+                        🎵 용사의 훈련
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rhythm Game Training Modal -->
+        <div id="rhythmModal" class="absolute inset-0 bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50 hidden">
+            <div class="w-full max-w-lg bg-slate-950 border border-cyan-700/80 rounded-2xl p-4 text-center shadow-2xl flex flex-col items-center gap-3 glow-purple">
+                <div class="flex justify-between w-full items-center px-2">
+                    <span class="text-cyan-400 font-black text-lg tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-music"></i> 용사의 훈련 (방향키 타격 훈련)
+                    </span>
+                    <span id="rhythmScoreText" class="text-amber-300 font-mono text-base font-bold">SCORE: 0</span>
+                </div>
+                
+                <!-- Rhythm Canvas Container -->
+                <div class="relative w-full h-[360px] bg-slate-900/90 rounded-xl border border-cyan-900 overflow-hidden">
+                    <canvas id="rhythmCanvas" class="w-full h-full block"></canvas>
+                </div>
+
+                <div class="flex justify-between w-full text-xs text-slate-300 font-mono px-4">
+                    <span>판정: <b id="rhythmJudgmentText" class="text-yellow-300">READY</b></span>
+                    <span>난이도: <b id="rhythmLevelText" class="text-amber-400 font-bold">LV.1</b> | COMBO: <b id="rhythmComboText" class="text-cyan-300">0</b></span>
+                </div>
+
+                <div class="flex gap-2 w-full mt-1">
+                    <button id="btnExitRhythm" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 font-bold text-sm tracking-wider shadow-lg active:scale-95 transition-all text-slate-300">
+                        메인으로 돌아가기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="gameOverModal" class="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-6 z-50 hidden">
+            <div class="max-w-md w-full bg-slate-950 border border-red-800/80 rounded-2xl p-6 text-center shadow-2xl flex flex-col items-center gap-4 glow-red">
+                <div class="text-5xl text-red-600 text-glow-red">
+                    <i class="fa-solid fa-skull-crossbones"></i>
+                </div>
+                <h2 class="text-3xl font-black text-red-500 text-glow-red">용사 패배...</h2>
+                <p class="text-sm text-slate-300">마왕의 압도적인 힘에 빛이 사그라들었습니다.</p>
+                <button id="btnRestart" class="w-full py-3.5 rounded-xl bg-red-700 hover:bg-red-600 font-bold tracking-wider shadow-lg active:scale-95 transition-all mt-2">
+                    다시 도전하기
+                </button>
+            </div>
+        </div>
+
+        <!-- Victory Modal -->
+        <div id="victoryModal" class="absolute inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-6 z-50 hidden">
+            <div class="max-w-md w-full bg-slate-950 border border-amber-500/80 rounded-2xl p-6 text-center shadow-2xl flex flex-col items-center gap-4 glow-gold">
+                <div class="text-5xl text-amber-400 text-glow-gold">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h2 class="text-3xl font-black text-amber-400 text-glow-gold">마왕 정화 완료!</h2>
+                <p class="text-sm text-slate-300">은발의 마왕 벨리알을 단죄하고 세계의 평화를 되찾았습니다!</p>
+                <button id="btnReplay" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-500 hover:brightness-110 font-bold tracking-wider shadow-lg active:scale-95 transition-all mt-2 text-black font-mono">
+                    다시 플레이하기
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const rhythmCanvas = document.getElementById('rhythmCanvas');
+        const rCtx = rhythmCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = 1280;
+            canvas.height = 720;
+            if (rhythmCanvas) {
+                rhythmCanvas.width = 480;
+                rhythmCanvas.height = 360;
+            }
+        }
+        resizeCanvas();
+
+        let game = null;
+        let rhythmGame = null;
+        let animationFrameId = null;
+        let rhythmFrameId = null;
+        const keys = {};
+
+        const playSFX = (type) => {
+            try {
+                if (typeof Tone === 'undefined' || !Tone.Synth) return;
+                if (type === 'attack') {
+                    const synth = new Tone.Synth().toDestination();
+                    synth.triggerAttackRelease("C5", "8n");
+                } else if (type === 'dash') {
+                    const synth = new Tone.Synth().toDestination();
+                    synth.triggerAttackRelease("G4", "16n");
+                } else if (type === 'perfectDodge') {
+                    const synth = new Tone.PolySynth().toDestination();
+                    synth.triggerAttackRelease(["E5", "G5", "B5", "E6"], "8n");
+                } else if (type === 'hit') {
+                    const synth = new Tone.MembraneSynth().toDestination();
+                    synth.triggerAttackRelease("C2", "8n");
+                } else if (type === 'bossAttack') {
+                    const synth = new Tone.FMSynth().toDestination();
+                    synth.triggerAttackRelease("F2", "8n");
+                } else if (type === 'melee') {
+                    const synth = new Tone.NoiseSynth({ envelope: { attack: 0.005, decay: 0.1, sustain: 0 } }).toDestination();
+                    synth.triggerAttackRelease("16n");
+                } else if (type === 'groggy') {
+                    const synth = new Tone.MetalSynth().toDestination();
+                    synth.triggerAttackRelease("C3", "4n");
+                }
+            } catch(e) {}
+        };
+
+        window.addEventListener('keydown', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyQ', 'KeyE', 'KeyA', 'KeyS', 'KeyK', 'KeyL'].includes(e.code)) {
+                e.preventDefault();
+            }
+            keys[e.code] = true;
+            if (rhythmGame && rhythmGame.active) rhythmGame.handleKeyPress(e.code);
+            else if (game) game.handleKeyPress(e.code, e.key);
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyQ', 'KeyE', 'KeyA', 'KeyS', 'KeyK', 'KeyL'].includes(e.code)) {
+                e.preventDefault();
+            }
+            keys[e.code] = false;
+        });
+
+        // Enhanced Arrow-Based Rhythm Mini Game Class
+        class RhythmTrainingGame {
+            constructor() {
+                this.active = false;
+                this.lanes = ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'];
+                this.laneSymbols = ['←', '↓', '↑', '→'];
+                this.laneColors = ['#ef4444', '#3b82f6', '#f59e0b', '#10b981'];
+                this.notes = [];
+                this.particles = [];
+                this.score = 0;
+                this.combo = 0;
+                this.maxCombo = 0;
+                this.level = 1;
+                this.judgment = 'READY';
+                this.judgmentTimer = 0;
+                this.spawnTimer = 0;
+                this.hitLineY = 300;
+                this.shake = 0;
+                this.isFever = false;
+                this.feverTimer = 0;
+                this.laneHitPulse = [0, 0, 0, 0];
+            }
+
+            start() {
+                this.active = true;
+                this.notes = [];
+                this.particles = [];
+                this.score = 0;
+                this.combo = 0;
+                this.maxCombo = 0;
+                this.level = 1;
+                this.judgment = 'READY';
+                this.spawnTimer = 0;
+                this.shake = 0;
+                this.isFever = false;
+                this.laneHitPulse = [0, 0, 0, 0];
+                this.loop();
+            }
+
+            stop() {
+                this.active = false;
+                if (rhythmFrameId) cancelAnimationFrame(rhythmFrameId);
+            }
+
+            handleKeyPress(code) {
+                const laneIndex = this.lanes.indexOf(code);
+                if (laneIndex === -1) return;
+
+                this.laneHitPulse[laneIndex] = 1.0;
+
+                let targetNoteIndex = -1;
+                let minDist = 9999;
+
+                for (let i = 0; i < this.notes.length; i++) {
+                    const n = this.notes[i];
+                    if (n.lane === laneIndex && !n.hit) {
+                        const dist = Math.abs(n.y - this.hitLineY);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            targetNoteIndex = i;
+                        }
+                    }
+                }
+
+                const laneWidth = rhythmCanvas.width / 4;
+                const noteX = laneIndex * laneWidth + laneWidth / 2;
+
+                if (targetNoteIndex !== -1 && minDist < 50) {
+                    const note = this.notes[targetNoteIndex];
+                    note.hit = true;
+
+                    let gainScore = 0;
+                    if (minDist < 16) {
+                        this.judgment = 'PERFECT!!';
+                        gainScore = 150;
+                        this.shake = 12;
+                        this.createSparks(noteX, this.hitLineY, this.laneColors[laneIndex], 22);
+                        playSFX('perfectDodge');
+                    } else if (minDist < 34) {
+                        this.judgment = 'GREAT!';
+                        gainScore = 90;
+                        this.shake = 6;
+                        this.createSparks(noteX, this.hitLineY, '#facc15', 14);
+                        playSFX('attack');
+                    } else {
+                        this.judgment = 'GOOD';
+                        gainScore = 40;
+                        this.shake = 3;
+                        this.createSparks(noteX, this.hitLineY, '#93c5fd', 8);
+                        playSFX('dash');
+                    }
+
+                    this.combo++;
+                    if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+
+                    // 20 Combo Unit Difficulty Scaling
+                    const newLevel = Math.floor(this.combo / 20) + 1;
+                    if (newLevel > this.level) {
+                        this.level = newLevel;
+                        this.shake = 20;
+                        this.judgment = `⚡ LV.${this.level} SPEED UP! ⚡`;
+                        this.createSparks(rhythmCanvas.width / 2, this.hitLineY, '#eab308', 35);
+                        playSFX('groggy');
+                    }
+
+                    if (this.combo >= 10 && !this.isFever) {
+                        this.isFever = true;
+                        this.shake = 18;
+                        this.judgment = '🔥 FEVER TIME!! 🔥';
+                        this.createSparks(rhythmCanvas.width / 2, this.hitLineY, '#f59e0b', 40);
+                    }
+
+                    this.score += this.isFever ? gainScore * 2 : gainScore;
+                    this.judgmentTimer = 30;
+                } else {
+                    this.judgment = 'MISS';
+                    this.combo = 0;
+                    this.level = 1;
+                    this.isFever = false;
+                    this.judgmentTimer = 25;
+                    playSFX('hit');
+                }
+                this.updateUI();
+            }
+
+            createSparks(x, y, color, count) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 9 + 3;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: Math.random() * 5 + 2,
+                        color: color,
+                        alpha: 1.0
+                    });
+                }
+            }
+
+            update() {
+                this.spawnTimer++;
+                if (this.shake > 0) this.shake *= 0.85;
+
+                this.laneHitPulse = this.laneHitPulse.map(p => Math.max(0, p - 0.1));
+
+                // Speed & Spawn Rate scaling per level
+                const baseInterval = Math.max(10, 24 - (this.level - 1) * 3);
+                const spawnInterval = this.isFever ? Math.max(8, baseInterval - 4) : baseInterval;
+                const baseSpeed = 4.8 + (this.level - 1) * 1.2;
+                const currentNoteSpeed = this.isFever ? baseSpeed + 1.5 : baseSpeed;
+
+                if (this.spawnTimer % spawnInterval === 0) {
+                    const randomLane = Math.floor(Math.random() * 4);
+                    this.notes.push({
+                        lane: randomLane,
+                        y: 0,
+                        speed: currentNoteSpeed,
+                        hit: false
+                    });
+                }
+
+                for (let i = this.notes.length - 1; i >= 0; i--) {
+                    const n = this.notes[i];
+                    n.y += n.speed;
+
+                    if (n.y > 345 && !n.hit) {
+                        this.judgment = 'MISS';
+                        this.combo = 0;
+                        this.level = 1;
+                        this.isFever = false;
+                        this.judgmentTimer = 25;
+                        this.notes.splice(i, 1);
+                        this.updateUI();
+                    } else if (n.hit) {
+                        this.notes.splice(i, 1);
+                    }
+                }
+
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.04;
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            updateUI() {
+                const sEl = document.getElementById('rhythmScoreText');
+                const jEl = document.getElementById('rhythmJudgmentText');
+                const lEl = document.getElementById('rhythmLevelText');
+                const cEl = document.getElementById('rhythmComboText');
+
+                if (sEl) sEl.innerText = `SCORE: ${this.score}`;
+                if (jEl) jEl.innerText = this.judgment;
+                if (lEl) lEl.innerText = `LV.${this.level}`;
+                if (cEl) cEl.innerText = this.combo;
+            }
+
+            render() {
+                rCtx.save();
+
+                if (this.shake > 0.5) {
+                    const sx = (Math.random() - 0.5) * this.shake;
+                    const sy = (Math.random() - 0.5) * this.shake;
+                    rCtx.translate(sx, sy);
+                }
+
+                rCtx.fillStyle = '#090d16';
+                rCtx.fillRect(0, 0, rhythmCanvas.width, rhythmCanvas.height);
+
+                if (this.isFever) {
+                    rCtx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+                    rCtx.fillRect(0, 0, rhythmCanvas.width, rhythmCanvas.height);
+                }
+
+                const laneWidth = rhythmCanvas.width / 4;
+
+                for (let i = 0; i < 4; i++) {
+                    const x = i * laneWidth;
+                    
+                    if (this.laneHitPulse[i] > 0) {
+                        rCtx.fillStyle = `rgba(255, 255, 255, ${this.laneHitPulse[i] * 0.25})`;
+                        rCtx.fillRect(x, 0, laneWidth, rhythmCanvas.height);
+                    }
+
+                    rCtx.strokeStyle = '#1e293b';
+                    rCtx.strokeRect(x, 0, laneWidth, rhythmCanvas.height);
+
+                    // Key Guide Arrows
+                    rCtx.fillStyle = this.laneHitPulse[i] > 0 ? '#ffffff' : this.laneColors[i];
+                    rCtx.font = '900 24px sans-serif';
+                    rCtx.textAlign = 'center';
+                    rCtx.fillText(this.laneSymbols[i], x + laneWidth / 2, this.hitLineY + 38);
+                }
+
+                // Target Hit Baseline
+                rCtx.strokeStyle = this.isFever ? '#facc15' : '#38bdf8';
+                rCtx.lineWidth = 4;
+                rCtx.beginPath();
+                rCtx.moveTo(0, this.hitLineY);
+                rCtx.lineTo(rhythmCanvas.width, this.hitLineY);
+                rCtx.stroke();
+
+                // Draw Arrow Notes
+                this.notes.forEach(n => {
+                    const x = n.lane * laneWidth + laneWidth / 2;
+                    rCtx.fillStyle = this.laneColors[n.lane];
+                    rCtx.beginPath();
+                    rCtx.arc(x, n.y, 18, 0, Math.PI * 2);
+                    rCtx.fill();
+
+                    rCtx.fillStyle = '#ffffff';
+                    rCtx.font = 'bold 16px sans-serif';
+                    rCtx.textAlign = 'center';
+                    rCtx.fillText(this.laneSymbols[n.lane], x, n.y + 5);
+                });
+
+                // Particles
+                this.particles.forEach(p => {
+                    rCtx.save();
+                    rCtx.globalAlpha = p.alpha;
+                    rCtx.fillStyle = p.color;
+                    rCtx.beginPath();
+                    rCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    rCtx.fill();
+                    rCtx.restore();
+                });
+
+                // Combo & Fever Floating Overlay
+                if (this.combo > 1) {
+                    rCtx.save();
+                    rCtx.fillStyle = this.isFever ? '#facc15' : '#38bdf8';
+                    rCtx.font = '900 26px Orbitron, sans-serif';
+                    rCtx.textAlign = 'center';
+                    const scale = 1 + Math.sin(Date.now() * 0.01) * 0.05;
+                    rCtx.translate(rhythmCanvas.width / 2, 100);
+                    rCtx.scale(scale, scale);
+                    rCtx.fillText(`${this.combo} COMBO!`, 0, 0);
+                    rCtx.restore();
+                }
+
+                rCtx.restore();
+            }
+
+            loop() {
+                if (!this.active) return;
+                this.update();
+                this.render();
+                rhythmFrameId = requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        class BossGame {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.state = 'PLAYING';
+                this.phase = 1;
+                this.time = 0;
+                this.screenShake = 0;
+                this.slowMoTimer = 0;
+                this.cheatSequence = ['KeyD', 'KeyH', 'KeyQ'];
+                this.cheatIndex = 0;
+
+                this.qteState = {
+                    active: false,
+                    step: 1,
+                    timer: 0,
+                    maxTimer: 180,
+                    success: false
+                };
+
+                this.player = {
+                    x: 200,
+                    y: 360,
+                    radius: 20,
+                    speed: 6.5,
+                    hp: 300,
+                    maxHp: 300,
+                    stamina: 100,
+                    maxStamina: 100,
+                    isDashing: false,
+                    dashTimer: 0,
+                    dashCooldown: 0,
+                    invincible: false,
+                    attackCooldown: 0,
+                    combo: 0,
+                    comboResetTimer: 0,
+                    trail: []
+                };
+
+                this.boss = {
+                    x: 1000,
+                    y: 360,
+                    radius: 60,
+                    hp: 900,
+                    maxHp: 900,
+                    groggyGauge: 0,
+                    maxGroggyGauge: 100,
+                    isGroggy: false,
+                    groggyTimer: 0,
+                    phase: 1,
+                    actionTimer: 0,
+                    laserAngle: 0,
+                    laserActive: false,
+                    isSlashing: false,
+                    slashAngle: 0,
+                    slashProgress: 0,
+                    slashRadius: 150,
+                    slashHitDone: false,
+                    patternPool: [],
+                    lastPattern: -1
+                };
+
+                this.projectiles = [];
+                this.bossProjectiles = [];
+                this.particles = [];
+                this.meteors = [];
+                this.cutsceneStep = 0;
+                this.cutsceneTimer = 0;
+
+                this.generateBossAiDeck();
+                this.updateHUD();
+            }
+
+            generateBossAiDeck() {
+                let pool = this.phase === 1 ? [1, 2, 4, 5] : [1, 2, 3, 4, 5, 6];
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                this.boss.patternPool = pool;
+            }
+
+            handleKeyPress(code, key) {
+                if (code === this.cheatSequence[this.cheatIndex]) {
+                    this.cheatIndex++;
+                    if (this.cheatIndex >= this.cheatSequence.length) {
+                        this.cheatIndex = 0;
+                        if (this.state === 'PLAYING') {
+                            this.boss.hp = 0;
+                            this.checkBossHp();
+                        }
+                    }
+                } else {
+                    this.cheatIndex = (code === this.cheatSequence[0]) ? 1 : 0;
+                }
+
+                if (this.state === 'QTE') {
+                    if (code === 'KeyE') {
+                        this.handleQTEPress();
+                    }
+                    return;
+                }
+
+                if (this.state !== 'PLAYING') return;
+
+                if (code === 'KeyQ' && this.player.attackCooldown <= 0) {
+                    this.shootHeroProjectile();
+                    this.player.attackCooldown = 12;
+                }
+
+                if (code === 'KeyE' && this.player.stamina >= 30 && this.player.dashCooldown <= 0) {
+                    this.triggerDash();
+                }
+            }
+
+            triggerQTEPhase() {
+                this.state = 'QTE';
+                this.qteState.active = true;
+                this.qteState.step = 1;
+                this.qteState.timer = this.qteState.maxTimer;
+                this.qteState.success = false;
+                this.screenShake = 15;
+                this.createDamageText(this.boss.x, this.boss.y - 40, 'E 키를 눌러 마왕을 넘어뜨려라!', '#facc15', 'counter-text');
+                playSFX('groggy');
+            }
+
+            handleQTEPress() {
+                if (!this.qteState.active) return;
+
+                if (this.qteState.step === 1) {
+                    this.qteState.step = 2;
+                    this.qteState.timer = this.qteState.maxTimer;
+                    this.screenShake = 20;
+                    this.boss.isGroggy = true;
+                    this.createExplosion(this.boss.x, this.boss.y, '#f59e0b', 35);
+                    this.createDamageText(this.boss.x, this.boss.y - 40, '마왕 전도 성공! E 키로 최후의 일격!!', '#ef4444', 'counter-text');
+                    playSFX('perfectDodge');
+                } else if (this.qteState.step === 2) {
+                    this.qteState.active = false;
+                    this.screenShake = 30;
+                    this.createExplosion(this.boss.x, this.boss.y, '#38bdf8', 60);
+                    this.createExplosion(this.player.x, this.player.y, '#facc15', 40);
+                    this.createDamageText(this.boss.x, this.boss.y - 40, 'FINAL SLASH!!', '#38bdf8', 'counter-text');
+                    playSFX('perfectDodge');
+
+                    setTimeout(() => {
+                        this.startCutscene();
+                    }, 400);
+                }
+            }
+
+            updateQTE() {
+                if (!this.qteState.active) return;
+                this.qteState.timer--;
+
+                if (this.qteState.timer <= 0) {
+                    this.qteState.timer = this.qteState.maxTimer;
+                    this.createDamageText(this.player.x, this.player.y - 30, '서둘러! E 키 입력!', '#ef4444', 'damage-text');
+                }
+            }
+
+            triggerDash() {
+                if (this.player.stamina >= 30 && this.player.dashCooldown <= 0) {
+                    this.player.isDashing = true;
+                    this.player.dashTimer = 16;
+                    this.player.dashCooldown = 30;
+                    this.player.stamina -= 30;
+                    this.player.invincible = true;
+
+                    if (this.checkNearMiss()) {
+                        this.triggerPerfectDodge();
+                    } else {
+                        playSFX('dash');
+                    }
+                }
+            }
+
+            checkNearMiss() {
+                for (let p of this.bossProjectiles) {
+                    if (Math.hypot(p.x - this.player.x, p.y - this.player.y) < 70) return true;
+                }
+                return false;
+            }
+
+            triggerPerfectDodge() {
+                this.slowMoTimer = 25;
+                this.player.stamina = 100;
+                this.screenShake = 14;
+                
+                const angle = Math.atan2(this.boss.y - this.player.y, this.boss.x - this.player.x);
+                this.projectiles.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    vx: Math.cos(angle) * 22,
+                    vy: Math.sin(angle) * 22,
+                    radius: 20,
+                    damage: 15,
+                    angle: angle,
+                    isCounter: true
+                });
+
+                this.createDamageText(this.player.x, this.player.y - 30, 'JUST COUNTER!!', '#facc15', 'counter-text');
+                this.createExplosion(this.player.x, this.player.y, '#3b82f6', 25);
+                playSFX('perfectDodge');
+            }
+
+            shootHeroProjectile() {
+                const baseDmg = this.phase === 1 ? 3 : 2;
+                const groggyBonus = this.boss.isGroggy ? 1.5 : 1.0;
+                const finalDamage = Math.max(1, Math.floor(baseDmg * groggyBonus));
+                
+                const angle = Math.atan2(this.boss.y - this.player.y, this.boss.x - this.player.x);
+                
+                this.projectiles.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    vx: Math.cos(angle) * 18,
+                    vy: Math.sin(angle) * 18,
+                    radius: 16,
+                    damage: finalDamage,
+                    angle: angle
+                });
+
+                playSFX('attack');
+            }
+
+            update() {
+                try {
+                    this.time++;
+
+                    if (this.screenShake > 0) this.screenShake *= 0.88;
+
+                    if (this.slowMoTimer > 0) {
+                        this.slowMoTimer--;
+                        if (this.time % 2 !== 0) return;
+                    }
+
+                    if (this.state === 'PLAYING') {
+                        this.updatePlayer();
+                        this.updateBoss();
+                        this.updateProjectiles();
+                        this.updateMeteors();
+                        this.updateParticles();
+                        this.checkCollisions();
+                    } else if (this.state === 'QTE') {
+                        this.updateQTE();
+                        this.updateParticles();
+                    } else if (this.state === 'CUTSCENE') {
+                        this.updateCutscene();
+                        this.updateParticles();
+                    }
+                } catch(e) {
+                    console.warn("Self-diagnostic auto recovery triggered:", e);
+                }
+            }
+
+            updatePlayer() {
+                let moveX = 0;
+                let moveY = 0;
+
+                if (keys['ArrowLeft']) moveX -= 1;
+                if (keys['ArrowRight']) moveX += 1;
+                if (keys['ArrowUp']) moveY -= 1;
+                if (keys['ArrowDown']) moveY += 1;
+
+                if (moveX !== 0 && moveY !== 0) {
+                    moveX *= 0.7071;
+                    moveY *= 0.7071;
+                }
+
+                const currentSpeed = this.player.isDashing ? this.player.speed * 2.4 : this.player.speed;
+                this.player.x += moveX * currentSpeed;
+                this.player.y += moveY * currentSpeed;
+
+                this.player.x = Math.max(30, Math.min(canvas.width - 30, this.player.x));
+                this.player.y = Math.max(30, Math.min(canvas.height - 30, this.player.y));
+
+                if (this.player.isDashing) {
+                    this.player.dashTimer--;
+                    this.player.trail.push({ x: this.player.x, y: this.player.y, alpha: 0.8 });
+                    if (this.player.dashTimer <= 0) {
+                        this.player.isDashing = false;
+                        this.player.invincible = false;
+                    }
+                }
+
+                if (this.player.dashCooldown > 0) this.player.dashCooldown--;
+                if (this.player.attackCooldown > 0) this.player.attackCooldown--;
+
+                if (this.player.stamina < this.player.maxStamina) {
+                    this.player.stamina = Math.min(this.player.maxStamina, this.player.stamina + 0.7);
+                }
+
+                if (this.player.comboResetTimer > 0) {
+                    this.player.comboResetTimer--;
+                    if (this.player.comboResetTimer <= 0) {
+                        this.player.combo = 0;
+                    }
+                }
+
+                this.player.trail.forEach(t => t.alpha -= 0.06);
+                this.player.trail = this.player.trail.filter(t => t.alpha > 0);
+
+                this.updateHUD();
+            }
+
+            updateBoss() {
+                this.boss.actionTimer++;
+
+                if (this.boss.isGroggy) {
+                    this.boss.groggyTimer--;
+                    if (this.boss.groggyTimer <= 0) {
+                        this.boss.isGroggy = false;
+                        this.boss.groggyGauge = 0;
+                    }
+                    return;
+                }
+
+                const distToPlayer = Math.hypot(this.player.x - this.boss.x, this.player.y - this.boss.y);
+                const baseSpeed = this.phase === 1 ? 2.7 : 4.3;
+
+                if (distToPlayer > 170) {
+                    const angle = Math.atan2(this.player.y - this.boss.y, this.player.x - this.boss.x);
+                    this.boss.x += Math.cos(angle) * baseSpeed;
+                    this.boss.y += Math.sin(angle) * baseSpeed;
+                } else if (distToPlayer < 90) {
+                    const angle = Math.atan2(this.boss.y - this.player.y, this.boss.x - this.player.x);
+                    this.boss.x += Math.cos(angle) * (baseSpeed * 0.8);
+                    this.boss.y += Math.sin(angle) * (baseSpeed * 0.8);
+                }
+
+                this.boss.x = Math.max(120, Math.min(canvas.width - 120, this.boss.x));
+                this.boss.y = Math.max(120, Math.min(canvas.height - 120, this.boss.y));
+
+                if (this.boss.isSlashing) {
+                    this.boss.slashProgress += 0.085;
+                    if (this.boss.slashProgress >= 1) {
+                        this.boss.isSlashing = false;
+                        this.boss.slashHitDone = false;
+                    } else {
+                        if (!this.player.invincible && !this.boss.slashHitDone && this.boss.slashProgress > 0.25 && this.boss.slashProgress < 0.8) {
+                            const d = Math.hypot(this.player.x - this.boss.x, this.player.y - this.boss.y);
+                            if (d <= this.boss.slashRadius + this.player.radius) {
+                                this.damagePlayer(this.phase === 1 ? 22 : 34);
+                                this.boss.slashHitDone = true;
+                            }
+                        }
+                    }
+                }
+
+                const patternCooldown = this.phase === 1 ? 90 : 65;
+                if (this.boss.actionTimer % patternCooldown === 0) {
+                    this.executeBossPattern();
+                }
+            }
+
+            executeBossPattern() {
+                if (this.boss.patternPool.length === 0) {
+                    this.generateBossAiDeck();
+                }
+
+                let pattern = this.boss.patternPool.pop();
+                if (pattern === this.boss.lastPattern && this.boss.patternPool.length > 0) {
+                    pattern = this.boss.patternPool.pop();
+                }
+                this.boss.lastPattern = pattern;
+
+                if (pattern === 1) {
+                    const count = this.phase === 1 ? 12 : 18;
+                    for (let i = 0; i < count; i++) {
+                        const angle = (i * Math.PI * 2) / count + (this.time * 0.1);
+                        this.bossProjectiles.push({
+                            x: this.boss.x,
+                            y: this.boss.y,
+                            vx: Math.cos(angle) * (this.phase === 1 ? 5.2 : 7.2),
+                            vy: Math.sin(angle) * (this.phase === 1 ? 5.2 : 7.2),
+                            radius: 9,
+                            color: this.phase === 1 ? '#ef4444' : '#a855f7'
+                        });
+                    }
+                    playSFX('bossAttack');
+                } else if (pattern === 2) {
+                    this.boss.isSlashing = true;
+                    this.boss.slashProgress = 0;
+                    this.boss.slashHitDone = false;
+                    this.boss.slashAngle = Math.atan2(this.player.y - this.boss.y, this.player.x - this.boss.x);
+                    playSFX('melee');
+                } else if (pattern === 3) {
+                    this.boss.laserActive = true;
+                    this.boss.laserAngle = Math.atan2(this.player.y - this.boss.y, this.player.x - this.boss.x);
+                    setTimeout(() => {
+                        this.boss.laserActive = false;
+                    }, 650);
+                    playSFX('bossAttack');
+                } else if (pattern === 4) {
+                    for (let i = 0; i < (this.phase === 1 ? 3 : 5); i++) {
+                        this.meteors.push({
+                            targetX: this.player.x + (Math.random() - 0.5) * 220,
+                            targetY: this.player.y + (Math.random() - 0.5) * 220,
+                            timer: 0,
+                            maxTimer: 45,
+                            radius: 40
+                        });
+                    }
+                } else if (pattern === 5) {
+                    this.createExplosion(this.boss.x, this.boss.y, '#9333ea', 20);
+                    const offsetAngle = Math.random() * Math.PI * 2;
+                    this.boss.x = Math.max(120, Math.min(canvas.width - 120, this.player.x + Math.cos(offsetAngle) * 110));
+                    this.boss.y = Math.max(120, Math.min(canvas.height - 120, this.player.y + Math.sin(offsetAngle) * 110));
+                    this.createExplosion(this.boss.x, this.boss.y, '#dc2626', 30);
+                    this.screenShake = 12;
+
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i * Math.PI / 4);
+                        this.bossProjectiles.push({
+                            x: this.boss.x,
+                            y: this.boss.y,
+                            vx: Math.cos(angle) * 8.5,
+                            vy: Math.sin(angle) * 8.5,
+                            radius: 11,
+                            color: '#f43f5e'
+                        });
+                    }
+                    playSFX('melee');
+                } else if (pattern === 6) {
+                    const baseAngle = Math.atan2(this.player.y - this.boss.y, this.player.x - this.boss.x);
+                    for (let i = 0; i < 4; i++) {
+                        const angle = baseAngle + (i * Math.PI / 2);
+                        this.bossProjectiles.push({
+                            x: this.boss.x,
+                            y: this.boss.y,
+                            vx: Math.cos(angle) * 6,
+                            vy: Math.sin(angle) * 6,
+                            radius: 15,
+                            color: '#c084fc'
+                        });
+                    }
+                    playSFX('bossAttack');
+                }
+            }
+
+            updateProjectiles() {
+                for (let i = this.projectiles.length - 1; i >= 0; i--) {
+                    const p = this.projectiles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                        this.projectiles.splice(i, 1);
+                        continue;
+                    }
+
+                    const dist = Math.hypot(p.x - this.boss.x, p.y - this.boss.y);
+                    if (dist < p.radius + this.boss.radius) {
+                        this.boss.hp = Math.max(0, this.boss.hp - p.damage);
+                        
+                        this.player.combo++;
+                        this.player.comboResetTimer = 180;
+
+                        if (!this.boss.isGroggy) {
+                            this.boss.groggyGauge += p.isCounter ? 20 : 6;
+                            if (this.boss.groggyGauge >= this.boss.maxGroggyGauge) {
+                                this.boss.isGroggy = true;
+                                this.boss.groggyTimer = 180;
+                                this.createDamageText(this.boss.x, this.boss.y - 50, 'GROGGY STUN!!', '#facc15', 'counter-text');
+                                playSFX('groggy');
+                            }
+                        }
+
+                        this.screenShake = 8;
+                        this.createDamageNumber(this.boss.x, this.boss.y, p.damage, '#f59e0b');
+                        this.createExplosion(p.x, p.y, '#f59e0b', 12);
+                        this.projectiles.splice(i, 1);
+                        this.checkBossHp();
+                    }
+                }
+
+                for (let i = this.bossProjectiles.length - 1; i >= 0; i--) {
+                    const p = this.bossProjectiles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                        this.bossProjectiles.splice(i, 1);
+                        continue;
+                    }
+
+                    if (!this.player.invincible) {
+                        const dist = Math.hypot(p.x - this.player.x, p.y - this.player.y);
+                        if (dist < p.radius + this.player.radius) {
+                            this.damagePlayer(this.phase === 1 ? 12 : 18);
+                            this.bossProjectiles.splice(i, 1);
+                        }
+                    }
+                }
+            }
+
+            updateMeteors() {
+                for (let i = this.meteors.length - 1; i >= 0; i--) {
+                    const m = this.meteors[i];
+                    m.timer++;
+                    if (m.timer >= m.maxTimer) {
+                        if (!this.player.invincible) {
+                            const d = Math.hypot(this.player.x - m.targetX, this.player.y - m.targetY);
+                            if (d < m.radius + this.player.radius) {
+                                this.damagePlayer(this.phase === 1 ? 16 : 24);
+                            }
+                        }
+                        this.createExplosion(m.targetX, m.targetY, '#ef4444', 24);
+                        this.screenShake = 16;
+                        this.meteors.splice(i, 1);
+                    }
+                }
+            }
+
+            checkCollisions() {
+                if (this.boss.laserActive && !this.player.invincible) {
+                    const laserVectorX = Math.cos(this.boss.laserAngle);
+                    const laserVectorY = Math.sin(this.boss.laserAngle);
+                    const toPlayerX = this.player.x - this.boss.x;
+                    const toPlayerY = this.player.y - this.boss.y;
+
+                    const projection = toPlayerX * laserVectorX + toPlayerY * laserVectorY;
+                    if (projection > 0) {
+                        const closestX = this.boss.x + laserVectorX * projection;
+                        const closestY = this.boss.y + laserVectorY * projection;
+                        const dist = Math.hypot(this.player.x - closestX, this.player.y - closestY);
+
+                        if (dist < this.player.radius + 15) {
+                            this.damagePlayer(2);
+                        }
+                    }
+                }
+            }
+
+            damagePlayer(amount) {
+                if (this.player.invincible) return;
+
+                this.player.hp = Math.max(0, this.player.hp - amount);
+                this.screenShake = 14;
+                this.createDamageNumber(this.player.x, this.player.y, amount, '#ef4444');
+                playSFX('hit');
+
+                if (this.player.hp <= 0 && this.state === 'PLAYING') {
+                    this.state = 'GAME_OVER';
+                    document.getElementById('gameOverModal').classList.remove('hidden');
+                }
+            }
+
+            checkBossHp() {
+                if (this.phase === 1 && this.boss.hp <= 450) {
+                    this.phase = 2;
+                    this.boss.phase = 2;
+                    this.generateBossAiDeck();
+                    this.screenShake = 18;
+                    const nameEl = document.getElementById('bossName');
+                    if (nameEl) {
+                        nameEl.innerHTML = '<i class="fa-solid fa-skull text-purple-500"></i> 진정한 흑화 마왕 벨리알 (PHASE 2)';
+                    }
+                    this.createExplosion(this.boss.x, this.boss.y, '#a855f7', 60);
+                } else if (this.boss.hp <= 0 && this.state === 'PLAYING') {
+                    this.triggerQTEPhase();
+                }
+            }
+
+            startCutscene() {
+                this.state = 'CUTSCENE';
+                this.cutsceneStep = 0;
+                this.cutsceneTimer = 0;
+                
+                document.getElementById('topCutsceneBar').style.height = '14%';
+                document.getElementById('bottomCutsceneBar').style.height = '14%';
+                document.getElementById('cutsceneBox').classList.remove('hidden');
+
+                this.nextCutsceneStep();
+            }
+
+            nextCutsceneStep() {
+                this.cutsceneStep++;
+                const speaker = document.getElementById('cutsceneSpeaker');
+                const text = document.getElementById('cutsceneText');
+
+                if (this.cutsceneStep === 1) {
+                    speaker.innerHTML = '<i class="fa-solid fa-crown text-purple-400"></i> 마왕 벨리알';
+                    text.innerText = '"으아악...! 이 신성한 광채는... 내 어둠이 무너지고 있어...!"';
+                    this.screenShake = 12;
+                    this.createExplosion(this.boss.x, this.boss.y, '#dc2626', 40);
+                } else if (this.cutsceneStep === 2) {
+                    speaker.innerHTML = '<i class="fa-solid fa-shield-halved text-amber-400"></i> 빛의 용사';
+                    text.innerText = '"마왕 벨리알, 어둠의 굴레에서 벗어나 성불하라! 신성 결계 발동!!"';
+                    this.screenShake = 16;
+                    this.createExplosion(this.player.x, this.player.y, '#f59e0b', 50);
+                } else if (this.cutsceneStep === 3) {
+                    speaker.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles text-cyan-300"></i> 마왕성 정화 결계';
+                    text.innerText = '"천상의 빛이 알현실 전체를 집어삼키며 정화의 찬가가 響きます!"';
+                    this.screenShake = 25;
+                    this.createExplosion(this.boss.x, this.boss.y, '#38bdf8', 100);
+                    this.createExplosion(canvas.width / 2, canvas.height / 2, '#fef08a', 120);
+                } else if (this.cutsceneStep === 4) {
+                    document.getElementById('cutsceneBox').classList.add('hidden');
+                    document.getElementById('topCutsceneBar').style.height = '0';
+                    document.getElementById('bottomCutsceneBar').style.height = '0';
+                    this.state = 'VICTORY';
+                    document.getElementById('victoryModal').classList.remove('hidden');
+                }
+            }
+
+            updateCutscene() {
+                this.cutsceneTimer++;
+                if (this.cutsceneTimer % 110 === 0 && this.cutsceneStep < 4) {
+                    this.nextCutsceneStep();
+                }
+            }
+
+            createExplosion(x, y, color, count = 20) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 8 + 2;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: Math.random() * 4 + 2,
+                        alpha: 1,
+                        color: color
+                    });
+                }
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.035;
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            createDamageNumber(x, y, amount, color) {
+                const layer = document.getElementById('damageLayer');
+                if (!layer) return;
+
+                const div = document.createElement('div');
+                div.className = 'damage-text';
+                div.style.left = `${(x / canvas.width) * 100}%`;
+                div.style.top = `${(y / canvas.height) * 100}%`;
+                div.style.color = color;
+                div.innerText = amount;
+
+                layer.appendChild(div);
+                setTimeout(() => div.remove(), 800);
+            }
+
+            createDamageText(x, y, text, color, className = 'damage-text') {
+                const layer = document.getElementById('damageLayer');
+                if (!layer) return;
+
+                const div = document.createElement('div');
+                div.className = className;
+                div.style.left = `${(x / canvas.width) * 100}%`;
+                div.style.top = `${(y / canvas.height) * 100}%`;
+                div.style.color = color;
+                div.innerText = text;
+
+                layer.appendChild(div);
+                setTimeout(() => div.remove(), 900);
+            }
+
+            updateHUD() {
+                const bHpBar = document.getElementById('bossHpBar');
+                const bHpText = document.getElementById('bossHpText');
+                const bGroggyBar = document.getElementById('bossGroggyBar');
+                const pHpBar = document.getElementById('playerHpBar');
+                const pHpText = document.getElementById('playerHpText');
+                const pStamBar = document.getElementById('playerStaminaBar');
+                const pStamText = document.getElementById('playerStaminaText');
+                const comboEl = document.getElementById('comboCounter');
+
+                if (bHpBar) bHpBar.style.width = `${(this.boss.hp / this.boss.maxHp) * 100}%`;
+                if (bHpText) bHpText.innerText = `${Math.ceil((this.boss.hp / this.boss.maxHp) * 100)}%`;
+                if (bGroggyBar) bGroggyBar.style.width = `${(this.boss.groggyGauge / this.boss.maxGroggyGauge) * 100}%`;
+
+                if (pHpBar) pHpBar.style.width = `${(this.player.hp / this.player.maxHp) * 100}%`;
+                if (pHpText) pHpText.innerText = `${Math.ceil(this.player.hp)} / ${this.player.maxHp}`;
+
+                if (pStamBar) pStamBar.style.width = `${(this.player.stamina / this.player.maxStamina) * 100}%`;
+                if (pStamText) pStamText.innerText = `${Math.ceil(this.player.stamina)}%`;
+
+                if (comboEl) {
+                    if (this.player.combo > 1) {
+                        comboEl.classList.remove('hidden');
+                        comboEl.innerText = `COMBO x${this.player.combo}`;
+                    } else {
+                        comboEl.classList.add('hidden');
+                    }
+                }
+            }
+
+            renderParticles() {
+                this.particles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            renderProjectiles() {
+                this.projectiles.forEach(p => {
+                    ctx.save();
+                    ctx.fillStyle = p.isCounter ? '#facc15' : '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                this.bossProjectiles.forEach(p => {
+                    ctx.save();
+                    ctx.fillStyle = p.color || '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+
+            renderHero() {
+                this.player.trail.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = t.alpha * 0.4;
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, this.player.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                ctx.save();
+                ctx.translate(this.player.x, this.player.y);
+
+                if (this.player.invincible && Math.floor(this.time / 4) % 2 === 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.ellipse(0, 16, 18, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#3b82f6';
+                ctx.beginPath();
+                ctx.arc(-4, 4, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(0, 0, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(0, -5, 11, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(4, -6, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(0, -14, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+
+            renderSilverDemonQueenBoss() {
+                ctx.save();
+                ctx.translate(this.boss.x, this.boss.y);
+
+                if (this.boss.isGroggy) {
+                    ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+                }
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(0, 38, 42, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.boss.phase === 2) {
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.35)';
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i * Math.PI / 4) + (this.time * 0.05);
+                        const radius = 48 + Math.sin(this.time * 0.1 + i) * 6;
+                        const ax = Math.cos(angle) * radius;
+                        const ay = Math.sin(angle) * radius;
+                        ctx.beginPath();
+                        ctx.arc(ax, ay, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                ctx.fillStyle = '#1e1b4b';
+                ctx.beginPath();
+                ctx.arc(-24, -30, 16, 0, Math.PI * 2);
+                ctx.arc(24, -30, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#7f1d1d';
+                ctx.beginPath();
+                ctx.arc(-22, -32, 10, 0, Math.PI * 2);
+                ctx.arc(22, -32, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#450a0a';
+                ctx.beginPath();
+                ctx.arc(0, 12, 34, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(0, 8, 26, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.beginPath();
+                ctx.arc(-16, -10, 18, 0, Math.PI * 2);
+                ctx.arc(16, -10, 18, 0, Math.PI * 2);
+                ctx.arc(0, -18, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fff1f2';
+                ctx.beginPath();
+                ctx.arc(0, -6, 16, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.arc(-6, -6, 4, 0, Math.PI * 2);
+                ctx.arc(6, -6, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(-7, -8, 1.5, 0, Math.PI * 2);
+                ctx.arc(5, -8, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(0, -32, 7, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (this.boss.isGroggy) {
+                    ctx.fillStyle = '#facc15';
+                    ctx.font = 'bold 20px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('★ STUN ★', 0, -55);
+                }
+
+                ctx.restore();
+            }
+
+            render() {
+                ctx.save();
+
+                if (this.screenShake > 0.5) {
+                    const shakeX = (Math.random() - 0.5) * this.screenShake;
+                    const shakeY = (Math.random() - 0.5) * this.screenShake;
+                    ctx.translate(shakeX, shakeY);
+                }
+
+                ctx.fillStyle = '#080511';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.strokeStyle = '#1e1438';
+                ctx.lineWidth = 1;
+                const tileSize = 60;
+                for (let x = 0; x < canvas.width; x += tileSize) {
+                    for (let y = 0; y < canvas.height; y += tileSize) {
+                        ctx.strokeRect(x, y, tileSize, tileSize);
+                    }
+                }
+
+                this.meteors.forEach(m => {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(m.targetX, m.targetY, m.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    const progress = m.timer / m.maxTimer;
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(m.targetX, m.targetY, m.radius * progress, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                if (this.boss.isSlashing) {
+                    ctx.save();
+                    ctx.translate(this.boss.x, this.boss.y);
+                    ctx.rotate(this.boss.slashAngle);
+                    ctx.fillStyle = 'rgba(168, 85, 247, 0.4)';
+                    ctx.strokeStyle = '#a855f7';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, this.boss.slashRadius, -Math.PI / 3, Math.PI / 3);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                if (this.boss.laserActive) {
+                    ctx.save();
+                    ctx.translate(this.boss.x, this.boss.y);
+                    ctx.rotate(this.boss.laserAngle);
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+                    ctx.fillRect(0, -15, 1200, 30);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, -5, 1200, 10);
+                    ctx.restore();
+                }
+
+                this.renderParticles();
+                this.renderProjectiles();
+                this.renderHero();
+                this.renderSilverDemonQueenBoss();
+
+                if (this.state === 'QTE') {
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    ctx.fillStyle = '#facc15';
+                    ctx.font = '900 36px sans-serif';
+                    ctx.textAlign = 'center';
+                    
+                    if (this.qteState.step === 1) {
+                        ctx.fillText('PRESS [ E ] TO KNOCKDOWN DEMON QUEEN!', canvas.width / 2, canvas.height / 2 - 40);
+                    } else if (this.qteState.step === 2) {
+                        ctx.fillStyle = '#ef4444';
+                        ctx.fillText('PRESS [ E ] FOR FINAL EXECUTION SLASH!', canvas.width / 2, canvas.height / 2 - 40);
+                    }
+
+                    const pulseRadius = 45 + Math.sin(this.time * 0.2) * 8;
+                    ctx.strokeStyle = this.qteState.step === 1 ? '#facc15' : '#ef4444';
+                    ctx.lineWidth = 5;
+                    ctx.beginPath();
+                    ctx.arc(canvas.width / 2, canvas.height / 2 + 50, pulseRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 32px monospace';
+                    ctx.fillText('E', canvas.width / 2, canvas.height / 2 + 62);
+                    ctx.restore();
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function gameLoop() {
+            if (game) {
+                game.update();
+                game.render();
+            }
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            const btnStart = document.getElementById('btnStartGame');
+            const btnRestart = document.getElementById('btnRestart');
+            const btnReplay = document.getElementById('btnReplay');
+
+            function startGameSession() {
+                document.getElementById('introModal').classList.add('hidden');
+                document.getElementById('gameOverModal').classList.add('hidden');
+                document.getElementById('victoryModal').classList.add('hidden');
+                document.getElementById('hudOverlay').classList.remove('hidden');
+
+                if (typeof Tone !== 'undefined' && Tone.start) {
+                    Tone.start();
+                }
+
+                if (!game) {
+                    game = new BossGame();
+                } else {
+                    game.reset();
+                }
+
+                if (!animationFrameId) {
+                    gameLoop();
+                }
+            }
+
+            function startRhythmSession() {
+                document.getElementById('introModal').classList.add('hidden');
+                document.getElementById('rhythmModal').classList.remove('hidden');
+
+                if (typeof Tone !== 'undefined' && Tone.start) {
+                    Tone.start();
+                }
+
+                if (!rhythmGame) {
+                    rhythmGame = new RhythmTrainingGame();
+                }
+                rhythmGame.start();
+            }
+
+            function exitRhythmSession() {
+                if (rhythmGame) rhythmGame.stop();
+                document.getElementById('rhythmModal').classList.add('hidden');
+                document.getElementById('introModal').classList.remove('hidden');
+            }
+
+            if (btnStart) btnStart.onclick = startGameSession;
+            if (btnStartRhythm) btnStartRhythm.onclick = startRhythmSession;
+            if (btnExitRhythm) btnExitRhythm.onclick = exitRhythmSession;
+            if (btnRestart) btnRestart.onclick = startGameSession;
+            if (btnReplay) btnReplay.onclick = startGameSession;
+        };
+    </script>
+</body>
+</html>

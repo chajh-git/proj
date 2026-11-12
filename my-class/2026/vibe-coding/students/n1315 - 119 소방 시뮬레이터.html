@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>한국 119 긴급구조 종합상황실 시뮬레이터</title>
+  <style>
+    :root {
+      --bg-dark: #12141d;
+      --bg-card: #1e2230;
+      --bg-card-hover: #282d3f;
+      --accent-red: #ff3b30;
+      --accent-orange: #ff9500;
+      --accent-blue: #007aff;
+      --accent-green: #34c759;
+      --accent-yellow: #ffcc00;
+      --text-main: #f2f2f7;
+      --text-muted: #8e8e93;
+      --border-color: #2c3144;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 상단 헤더 & 상태바 */
+    header {
+      background: linear-gradient(90deg, #1c1d21 0%, #2a0808 100%);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--accent-red);
+      box-shadow: 0 4px 15px rgba(255, 59, 48, 0.2);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      background-color: var(--accent-red);
+      color: white;
+      font-weight: 900;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 0 10px rgba(255, 59, 48, 0.5);
+    }
+
+    .brand-title h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .status-bar {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .stat-item {
+      background: rgba(255,255,255,0.05);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    /* 메인 컨테이너 */
+    main {
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      flex: 1;
+      gap: 16px;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .panel {
+      background-color: var(--bg-card);
+      border-radius: 12px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 12px 16px;
+      background-color: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-body {
+      padding: 12px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* 패널 1: 출동대 관리 */
+    .unit-card {
+      background: var(--bg-card-hover);
+      border-radius: 8px;
+      padding: 10px 12px;
+      border-left: 4px solid var(--accent-blue);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .unit-card.busy {
+      border-left-color: var(--accent-orange);
+      opacity: 0.8;
+    }
+
+    .unit-info .unit-name {
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
+
+    .unit-info .unit-type {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+
+    .badge-ready { background: rgba(52, 199, 89, 0.2); color: var(--accent-green); }
+    .badge-busy { background: rgba(255, 149, 0, 0.2); color: var(--accent-orange); }
+
+    /* 패널 2: 관제 지점 및 지도/사건 모니터 */
+    .map-container {
+      background: #0f121a;
+      border-radius: 8px;
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .map-grid {
+      position: absolute;
+      inset: 0;
+      background-size: 40px 40px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+
+    .dispatch-queue {
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .incident-card {
+      background: rgba(30, 34, 48, 0.9);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateY(-10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .incident-card.emergency-high {
+      border-color: var(--accent-red);
+      box-shadow: 0 0 12px rgba(255, 59, 48, 0.3);
+    }
+
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .incident-title {
+      font-size: 1rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .incident-type-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .tag-fire { background: rgba(255, 59, 48, 0.2); color: var(--accent-red); }
+    .tag-medical { background: rgba(0, 122, 255, 0.2); color: var(--accent-blue); }
+    .tag-rescue { background: rgba(255, 149, 0, 0.2); color: var(--accent-orange); }
+
+    .incident-desc {
+      font-size: 0.85rem;
+      color: #ccc;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .incident-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      background: var(--bg-card-hover);
+      color: white;
+      border: 1px solid var(--border-color);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      background: #32384e;
+    }
+
+    .btn-primary {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+    .btn-primary:hover { background: #0056b3; }
+
+    .btn-danger {
+      background: var(--accent-red);
+      border-color: var(--accent-red);
+    }
+    .btn-danger:hover { background: #d32f2f; }
+
+    .btn-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* 진행 중인 사건 모니터 */
+    .active-incidents {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .active-card {
+      background: var(--bg-card-hover);
+      border-radius: 8px;
+      padding: 10px;
+      border-left: 4px solid var(--accent-yellow);
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent-green);
+      width: 0%;
+      transition: width 0.3s linear;
+    }
+
+    /* 통신 콘솔 로그 */
+    .log-box {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #a0a5b5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .log-item {
+      padding: 4px 6px;
+      border-radius: 4px;
+      background: rgba(0,0,0,0.2);
+    }
+
+    .log-time {
+      color: var(--text-muted);
+      margin-right: 6px;
+    }
+
+    /* 모달 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      width: 90%;
+      max-width: 500px;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .modal-body {
+      font-size: 0.85rem;
+      color: #ccc;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .unit-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .unit-option {
+      background: rgba(255,255,255,0.05);
+      padding: 10px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .unit-option:hover {
+      border-color: var(--accent-blue);
+    }
+
+    .unit-option.selected {
+      border-color: var(--accent-blue);
+      background: rgba(0, 122, 255, 0.15);
+    }
+
+    .ktas-option {
+      padding: 8px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      cursor: pointer;
+      border: 1px solid transparent;
+      margin-bottom: 6px;
+    }
+    .ktas-option:hover { border-color: var(--accent-orange); }
+
+  </style>
+</head>
+<body>
+
+  <!-- 상단 상태바 -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">119</div>
+      <div class="brand-title">
+        <h1>긴급구조 종합상황실</h1>
+        <p>대한민국 소방청 긴급신고 접수 및 지휘 통제 시스템</p>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="stat-item">
+        <span class="stat-label">지휘관 계급</span>
+        <span class="stat-value" id="user-rank" style="color: var(--accent-yellow);">소방위</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">명예 점수 (XP)</span>
+        <span class="stat-value" id="user-xp">0 XP</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">오늘의 처리 건수</span>
+        <span class="stat-value" id="solved-count">0 건</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">상황실 시계</span>
+        <span class="stat-value" id="clock">12:00:00</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 관제판 -->
+  <main>
+    <!-- 왼쪽: 보유 출동대 현황 -->
+    <section class="panel">
+      <div class="panel-header">
+        <span>가용 출동대 (소방서/안전센터)</span>
+        <span id="unit-count-badge" class="badge badge-ready">6대 대기중</span>
+      </div>
+      <div class="panel-body" id="units-list">
+        <!-- JS로 동적 생성 -->
+      </div>
+    </section>
+
+    <!-- 중앙: 119 긴급신고 접수 & 출동 지휘 관제판 -->
+    <section class="panel" style="flex: 2;">
+      <div class="panel-header">
+        <span>실시간 119 신고 접수 모니터</span>
+        <span style="font-size: 0.75rem; color: var(--accent-red); animate: blink 1s infinite;">● LIVE CONNECTED</span>
+      </div>
+      <div class="map-container">
+        <div class="map-grid"></div>
+        <div class="dispatch-queue" id="incident-queue">
+          <!-- 접수된 사건들이 들어옴 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 현장 진행상황 & 상황실 무선 통신 로그 -->
+    <section class="panel">
+      <div class="panel-header">현장 대응 및 무선 통신</div>
+      <div class="panel-body">
+        <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-bottom: 4px;">진행 중인 출동건</div>
+        <div class="active-incidents" id="active-incidents">
+          <div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.8rem;">
+            현재 출동 중인 대원이 없습니다.
+          </div>
+        </div>
+
+        <div style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted); margin-top: 12px; margin-bottom: 4px;">무선 교신 기록 (ICS Log)</div>
+        <div class="log-box" id="radio-log">
+          <div class="log-item"><span class="log-time">[시스템]</span> 상황실 무선망 가동 완료.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 출동 지휘 모달 -->
+  <div class="modal-overlay" id="dispatch-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title">출동대 편성 및 지휘</span>
+        <span style="cursor: pointer;" onclick="closeModal()">✕</span>
+      </div>
+      <div class="modal-body">
+        <p id="modal-desc" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;"></p>
+        <div>
+          <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 6px;">출동 차량 선택 (복수 선택 가능)</label>
+          <div class="unit-selector" id="unit-selector">
+            <!-- 선택 가능한 차량 목록 -->
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn" onclick="closeModal()">취소</button>
+        <button class="btn btn-danger" onclick="confirmDispatch()">🚨 출동 명령 발령</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 의료 처치 / 구급 (KTAS 분류) 모달 -->
+  <div class="modal-overlay" id="ktas-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span>구급현장 중증도 분류 (KTAS) 및 응급처치</span>
+      </div>
+      <div class="modal-body">
+        <p id="ktas-patient-info"></p>
+        <p style="font-size: 0.8rem; color: var(--accent-yellow);">환자의 상태에 적합한 처치 지시를 선택하세요:</p>
+        <div id="ktas-options">
+          <!-- 선택지 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* 웹 오디오 효과음 generator */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'alert') {
+        // 긴급 출동 경보음
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } else if (type === 'siren') {
+        // 출동 승인 사이렌
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(900, audioCtx.currentTime + 0.25);
+        osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.5);
+      } else if (type === 'success') {
+        // 완수음
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    }
+
+    /* 게임 데이터 & 상태 */
+    let playerXP = 0;
+    let solvedCount = 0;
+    let currentModalIncidentId = null;
+    let selectedUnitIds = [];
+
+    const ranks = [
+      { name: "소방교", minXp: 0 },
+      { name: "소방장", minXp: 150 },
+      { name: "소방위", minXp: 400 },
+      { name: "소방경", minXp: 800 },
+      { name: "소방령", minXp: 1500 }
+    ];
+
+    // 가용 출동대 목록
+    const units = [
+      { id: 'pumper1', name: '중앙 펌프차 1호', type: 'fire', status: 'ready', icon: '🚒' },
+      { id: 'pumper2', name: '남부 펌프차 2호', type: 'fire', status: 'ready', icon: '🚒' },
+      { id: 'ladder1', name: '고가 사다리차 1호', type: 'ladder', status: 'ready', icon: '🪜' },
+      { id: 'amb1', name: '중앙 구급차 1호', type: 'medical', status: 'ready', icon: '🚑' },
+      { id: 'amb2', name: '서부 구급차 2호', type: 'medical', status: 'ready', icon: '🚑' },
+      { id: 'rescue1', name: '119 구조대원 1호', type: 'rescue', status: 'ready', icon: '🛟' }
+    ];
+
+    // 무작위 발생 가능 사건 풀 (한국 실정에 맞춘 다채로운 119 신고 데이터)
+    const incidentTemplates = [
+      {
+        title: "상가건물 2층 음식점 화재 발생",
+        type: "fire",
+        desc: "주방 튀김기 유류에서 화재가 발생하여 연기가 상가 전체로 확산 중. 다수 인원 대피 중.",
+        requiredType: ["fire"],
+        difficulty: 1,
+        time: 12,
+        xp: 50,
+        ktas: false
+      },
+      {
+        title: "아파트 12층 베란다 고립 및 연기 발생",
+        type: "fire",
+        desc: "고층 아파트에서 화염 발생. 요구조자 2명이 베란다에서 구조를 요청하고 있음.",
+        requiredType: ["fire", "ladder", "rescue"],
+        difficulty: 3,
+        time: 18,
+        xp: 120,
+        ktas: false
+      },
+      {
+        title: "60대 남성 갑작스러운 심정지 (CPR 상황)",
+        type: "medical",
+        desc: "버스정류장에서 의식을 잃고 쓰러짐. 호흡 없음. 신고자가 심폐소생술 진행 중.",
+        requiredType: ["medical"],
+        difficulty: 2,
+        time: 10,
+        xp: 80,
+        ktas: true,
+        patientInfo: "환자: 68세 남성, 자가 호흡 없음, 경동맥 맥박 미지각.",
+        ktasQuestions: [
+          { text: "즉시 AED(제세동기) 부착 및 고품질 CPR 지시하며 구급차 신속 이송", correct: true, feedback: "정확한 KTAS 1급 심정지 응급처치로 소생율을 높였습니다." },
+          { text: "산소 마스크 착용 후 구급차 천천히 이동 지시", correct: false, feedback: "심정지 환자에게 제세동과 CPR 처치가 지연되어 상태가 악화되었습니다." }
+        ]
+      },
+      {
+        title: "교차로 3중 추돌사고 차량 갇힘",
+        type: "rescue",
+        desc: "승용차가 승합차와 충돌하여 운전석 문이 침식됨. 운전자 유압장비 이용 구조 필요.",
+        requiredType: ["rescue", "medical"],
+        difficulty: 2,
+        time: 15,
+        xp: 90,
+        ktas: false
+      },
+      {
+        title: "등산로 낙상 환자 (발목 골절 추정)",
+        type: "rescue",
+        desc: "북한산 등산로 7부 능선에서 40대 여성 등산객이 다리를 삐어 자가 하산 불가.",
+        requiredType: ["rescue", "medical"],
+        difficulty: 1,
+        time: 14,
+        xp: 60,
+        ktas: false
+      },
+      {
+        title: "물류창고 대형 화재 및 유독가스 확산",
+        type: "fire",
+        desc: "샌드위치 패널 창고 전체에 화염 급격 확대. 인근 건물 연소 확대 위험 매우 높음.",
+        requiredType: ["fire", "ladder", "rescue"],
+        difficulty: 3,
+        time: 22,
+        xp: 150,
+        ktas: false
+      }
+    ];
+
+    let pendingIncidents = [];
+    let activeDispatches = [];
+
+    /* 초기화 및 타이머 */
+    function init() {
+      renderUnits();
+      updateClock();
+      setInterval(updateClock, 1000);
+      setInterval(gameLoop, 1000);
+
+      // 초기 사건 1개 즉시 생성
+      spawnIncident();
+    }
+
+    /* 시계 업데이트 */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').innerText = now.toTimeString().split(' ')[0];
+    }
+
+    /* 화면 유닛 목록 렌더링 */
+    function renderUnits() {
+      const listEl = document.getElementById('units-list');
+      listEl.innerHTML = '';
+
+      let readyCount = 0;
+
+      units.forEach(u => {
+        if (u.status === 'ready') readyCount++;
+        const card = document.createElement('div');
+        card.className = `unit-card ${u.status === 'busy' ? 'busy' : ''}`;
+        card.innerHTML = `
+          <div class="unit-info">
+            <div class="unit-name">${u.icon} ${u.name}</div>
+            <div class="unit-type">${getUnitTypeName(u.type)}</div>
+          </div>
+          <div>
+            <span class="badge ${u.status === 'ready' ? 'badge-ready' : 'badge-busy'}">
+              ${u.status === 'ready' ? '대기중' : '출동중'}
+            </span>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+
+      const badge = document.getElementById('unit-count-badge');
+      badge.innerText = `${readyCount}대 대기중`;
+      badge.className = `badge ${readyCount > 0 ? 'badge-ready' : 'badge-busy'}`;
+    }
+
+    function getUnitTypeName(type) {
+      switch(type) {
+        case 'fire': return '화재진압 펌프차';
+        case 'ladder': return '고가/굴절 사다리차';
+        case 'medical': return '119 구급차';
+        case 'rescue': return '구조 공작차';
+        default: return '소방차량';
+      }
+    }
+
+    /* 주기적 사건 발생 및 상태 업데이트 Loop */
+    let spawnTimer = 0;
+    function gameLoop() {
+      spawnTimer++;
+      // 12초마다 새로운 119 신고 접수 (최대 4건)
+      if (spawnTimer >= 12) {
+        spawnTimer = 0;
+        if (pendingIncidents.length < 4) {
+          spawnIncident();
+        }
+      }
+
+      // activeDispatches 시간 감소 처리
+      for (let i = activeDispatches.length - 1; i >= 0; i--) {
+        const item = activeDispatches[i];
+        item.remaining--;
+
+        const progressPercent = ((item.totalTime - item.remaining) / item.totalTime) * 100;
+        const fillEl = document.getElementById(`progress-${item.id}`);
+        if (fillEl) {
+          fillEl.style.width = `${progressPercent}%`;
+        }
+
+        if (item.remaining <= 0) {
+          // 현장 임무 완료
+          completeIncident(item, i);
+        }
+      }
+    }
+
+    /* 랜덤 사건 생성 */
+    function spawnIncident() {
+      const tpl = incidentTemplates[Math.floor(Math.random() * incidentTemplates.length)];
+      const incident = {
+        ...tpl,
+        id: 'inc_' + Date.now(),
+        timeStr: new Date().toTimeString().split(' ')[0]
+      };
+
+      pendingIncidents.push(incident);
+      playSound('alert');
+      addLog(`🚨 [신고 접수] 119 상황실에 '${incident.title}' 신고가 들어왔습니다.`);
+      renderIncidents();
+    }
+
+    /* 신고 접수 목록 렌더링 */
+    function renderIncidents() {
+      const container = document.getElementById('incident-queue');
+      container.innerHTML = '';
+
+      if (pendingIncidents.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">대기 중인 긴급 신고가 없습니다. 안전합니다.</div>`;
+        return;
+      }
+
+      pendingIncidents.forEach(inc => {
+        const card = document.createElement('div');
+        card.className = `incident-card ${inc.difficulty >= 3 ? 'emergency-high' : ''}`;
+        
+        let tagClass = 'tag-fire';
+        let tagText = '화재';
+        if (inc.type === 'medical') { tagClass = 'tag-medical'; tagText = '구급'; }
+        else if (inc.type === 'rescue') { tagClass = 'tag-rescue'; tagText = '구조'; }
+
+        card.innerHTML = `
+          <div class="incident-header">
+            <div class="incident-title">
+              <span class="incident-type-tag ${tagClass}">${tagText}</span>
+              ${inc.title}
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">${inc.timeStr}</span>
+          </div>
+          <div class="incident-desc">${inc.desc}</div>
+          <div class="incident-actions">
+            <button class="btn btn-primary" onclick="openDispatchModal('${inc.id}')">🚒 출동대 편성 지정</button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /* 모달 오픈 */
+    function openDispatchModal(incidentId) {
+      currentModalIncidentId = incidentId;
+      selectedUnitIds = [];
+      const inc = pendingIncidents.find(i => i.id === incidentId);
+      if (!inc) return;
+
+      document.getElementById('modal-title').innerText = `[출동지휘] ${inc.title}`;
+      document.getElementById('modal-desc').innerText = inc.desc;
+
+      const selector = document.getElementById('unit-selector');
+      selector.innerHTML = '';
+
+      units.forEach(u => {
+        const opt = document.createElement('div');
+        opt.className = `unit-option ${u.status === 'busy' ? 'btn-disabled' : ''}`;
+        opt.id = `opt-${u.id}`;
+        opt.innerHTML = `
+          <div>
+            <strong>${u.icon} ${u.name}</strong> 
+            <span style="font-size: 0.75rem; color: var(--text-muted);">(${getUnitTypeName(u.type)})</span>
+          </div>
+          <span style="font-size:0.75rem; color: ${u.status==='ready' ? 'var(--accent-green)': 'var(--accent-orange)'}">
+            ${u.status==='ready' ? '출동가능' : '작업중'}
+          </span>
+        `;
+
+        if (u.status === 'ready') {
+          opt.onclick = () => toggleSelectUnit(u.id);
+        }
+        selector.appendChild(opt);
+      });
+
+      document.getElementById('dispatch-modal').classList.add('active');
+    }
+
+    function toggleSelectUnit(unitId) {
+      const idx = selectedUnitIds.indexOf(unitId);
+      if (idx > -1) {
+        selectedUnitIds.splice(idx, 1);
+        document.getElementById(`opt-${unitId}`).classList.remove('selected');
+      } else {
+        selectedUnitIds.push(unitId);
+        document.getElementById(`opt-${unitId}`).classList.add('selected');
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('dispatch-modal').classList.remove('active');
+    }
+
+    /* 출동 명령 발령 */
+    function confirmDispatch() {
+      if (selectedUnitIds.length === 0) {
+        alert("최소 1개 이상의 출동차량을 선택해야 합니다.");
+        return;
+      }
+
+      const incIdx = pendingIncidents.findIndex(i => i.id === currentModalIncidentId);
+      if (incIdx === -1) return;
+      const inc = pendingIncidents[incIdx];
+
+      // 차량 상태 변경
+      selectedUnitIds.forEach(uid => {
+        const u = units.find(x => x.id === uid);
+        if (u) u.status = 'busy';
+      });
+
+      // 대기목록에서 제거 후 진행목록 추가
+      pendingIncidents.splice(incIdx, 1);
+      closeModal();
+      renderUnits();
+      renderIncidents();
+
+      playSound('siren');
+
+      // 구급 응급처치(KTAS) 필요한 사건일 경우 처치 모달 호출
+      if (inc.ktas) {
+        openKtasModal(inc);
+      } else {
+        startDispatchProcess(inc, selectedUnitIds);
+      }
+    }
+
+    function startDispatchProcess(inc, assignedUnits, extraBonus = 0) {
+      const assignedNames = assignedUnits.map(id => units.find(u => u.id === id).name).join(', ');
+      addLog(`📢 [출동 지시] ${inc.title} 현장으로 (${assignedNames}) 긴급 출동!`);
+
+      activeDispatches.push({
+        id: inc.id,
+        title: inc.title,
+        assignedUnits: assignedUnits,
+        totalTime: inc.time,
+        remaining: inc.time,
+        xp: inc.xp + extraBonus
+      });
+
+      renderActiveDispatches();
+    }
+
+    /* KTAS 응급처치 모달 */
+    function openKtasModal(inc) {
+      document.getElementById('ktas-patient-info').innerText = inc.patientInfo;
+      const optsContainer = document.getElementById('ktas-options');
+      optsContainer.innerHTML = '';
+
+      inc.ktasQuestions.forEach(q => {
+        const btn = document.createElement('div');
+        btn.className = 'ktas-option';
+        btn.innerText = q.text;
+        btn.onclick = () => {
+          document.getElementById('ktas-modal').classList.remove('active');
+          if (q.correct) {
+            addLog(`🩺 [응급처치 성공] ${q.feedback}`);
+            startDispatchProcess(inc, selectedUnitIds, 30);
+          } else {
+            addLog(`⚠️ [지휘 미숙] ${q.feedback}`);
+            startDispatchProcess(inc, selectedUnitIds, 0);
+          }
+        };
+        optsContainer.appendChild(btn);
+      });
+
+      document.getElementById('ktas-modal').classList.add('active');
+    }
+
+    /* 진행 중인 출동 UI */
+    function renderActiveDispatches() {
+      const container = document.getElementById('active-incidents');
+      if (activeDispatches.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px 0; font-size: 0.8rem;">현재 출동 중인 대원이 없습니다.</div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      activeDispatches.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'active-card';
+        card.innerHTML = `
+          <div style="font-size: 0.85rem; font-weight: bold;">${item.title}</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top:4px;">대응 중인 차량: ${item.assignedUnits.length}대</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-${item.id}"></div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    /* 사건 완수 */
+    function completeIncident(item, index) {
+      activeDispatches.splice(index, 1);
+
+      // 복귀 차량 상태 해제
+      item.assignedUnits.forEach(uid => {
+        const u = units.find(x => x.id === uid);
+        if (u) u.status = 'ready';
+      });
+
+      playSound('success');
+      solvedCount++;
+      playerXP += item.xp;
+
+      addLog(`✅ [상황 종료] ${item.title} 현장 조치 완료 및 대원 귀소.`);
+
+      updatePlayerStats();
+      renderUnits();
+      renderActiveDispatches();
+    }
+
+    /* 지휘관 스탯 & 승진 처리 */
+    function updatePlayerStats() {
+      document.getElementById('solved-count').innerText = `${solvedCount} 건`;
+      document.getElementById('user-xp').innerText = `${playerXP} XP`;
+
+      // 계급 계산
+      let currentRank = ranks[0].name;
+      for (let r of ranks) {
+        if (playerXP >= r.minXp) {
+          currentRank = r.name;
+        }
+      }
+      document.getElementById('user-rank').innerText = currentRank;
+    }
+
+    /* 무선 로그 기록 */
+    function addLog(msg) {
+      const logBox = document.getElementById('radio-log');
+      const timeStr = new Date().toTimeString().split(' ')[0];
+      const item = document.createElement('div');
+      item.className = 'log-item';
+      item.innerHTML = `<span class="log-time">[${timeStr}]</span> ${msg}`;
+      logBox.appendChild(item);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    // 초기화 실행
+    window.onload = init;
+  </script>
+</body>
+</html>

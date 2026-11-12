@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>3D FPS 타깃 슈터</title>
+<style>
+  :root { --bg:#020617; --fg:#e2e8f0; --accent:#00ffff; --panel:rgba(15,23,42,.8); }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:'Segoe UI','Malgun Gothic',sans-serif; overflow:hidden; }
+  canvas { display:block; }
+  #hud { position:fixed; inset:0; pointer-events:none; }
+  .box { position:absolute; background:var(--panel); border:1px solid var(--accent); padding:6px 14px; border-radius:6px; font-weight:700; }
+  #score { top:16px; left:16px; } #time { top:16px; right:16px; } #ammo { bottom:16px; right:16px; font-size:22px; }
+  #cross { position:absolute; left:50%; top:50%; width:22px; height:22px; margin:-11px 0 0 -11px; }
+  #cross::before,#cross::after { content:""; position:absolute; background:var(--accent); }
+  #cross::before { left:10px; top:0; width:2px; height:22px; } #cross::after { top:10px; left:0; height:2px; width:22px; }
+  #menu { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(2,6,23,.85); text-align:center; gap:10px; cursor:pointer; padding:20px; }
+  #menu h1 { color:var(--accent); margin:0; font-size:clamp(26px,6vw,44px); }
+  #menu p { margin:0; opacity:.85; line-height:1.6; }
+  #menu .small { font-size:12px; opacity:.6; max-width:560px; }
+  #stats { line-height:1.8; font-size:17px; } #stats b { color:var(--accent); }
+  .set { background:var(--panel); border:1px solid var(--accent); border-radius:8px; padding:10px 16px; display:flex; flex-direction:column; gap:6px; min-width:min(300px,80vw); }
+  .set input { width:100%; cursor:pointer; }
+  #startBtn { background:var(--accent); color:#020617; border:0; border-radius:6px; padding:10px 28px; font-size:18px; font-weight:700; cursor:pointer; }
+  #combo { top:64px; left:16px; color:#facc15; } #tier { top:64px; right:16px; }
+  #cross.dot::before { left:8px; top:8px; width:6px; height:6px; border-radius:50%; } #cross.dot::after { display:none; }
+  .opts { display:flex; gap:8px; }
+  .opt { flex:1; background:transparent; color:var(--fg); border:1px solid var(--accent); border-radius:6px; padding:6px 12px; cursor:pointer; font-weight:700; }
+  .opt.on { background:var(--accent); color:#020617; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="box" id="score">점수 0</div>
+  <div class="box" id="time">45</div>
+  <div class="box" id="ammo">30 / 30</div>
+  <div class="box" id="combo">콤보 0</div>
+  <div class="box" id="tier">티어 없음</div>
+  <div id="cross"></div>
+</div>
+<div id="menu">
+  <h1 id="mtitle">TARGET SHOOTER</h1>
+  <div id="stats"></div>
+  <div class="set"><label>감도 <b id="sensVal">1.00</b></label><input type="range" id="sens" min="0.2" max="3" step="0.05" value="1"></div>
+  <div class="set"><label>조준점</label><div class="opts"><button class="opt on" data-c="cross">십자가</button><button class="opt" data-c="dot">점</button></div></div>
+  <p>이동 WASD · 천천히 Shift · 조준 마우스 · 발사 클릭 · 재장전 R · 설정 ESC<br>(마우스 잠금이 안 되면 드래그로 조준)</p>
+  <p>🔵 파랑 20점 · 🟢 초록 55점 · 🟡 노랑 100점 (가장 빠름)</p>
+  <p class="small">플라스틱 220 · 아이언 450 · 브론즈 575 · 실버 755 · 골드 800 · 플래티넘 878 · 다이아 975 · 초월 1000 · 불멸 1200 · 레디언트 1775</p>
+  <button id="startBtn">시작</button>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const TIERS = [
+  { n: '플라스틱', p: 220 }, { n: '아이언', p: 450 }, { n: '브론즈', p: 575 }, { n: '실버', p: 755 },
+  { n: '골드', p: 800 }, { n: '플래티넘', p: 878 }, { n: '다이아', p: 975 }, { n: '초월', p: 1000 },
+  { n: '불멸', p: 1200 }, { n: '레디언트', p: 1775 }
+];
+class Game {
+  constructor() {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x020617);
+    this.camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.05, 200);
+    this.camera.position.set(0, 1.6, 0);
+    this.camera.rotation.order = 'YXZ';
+    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer.setSize(innerWidth, innerHeight);
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    document.body.prepend(this.renderer.domElement);
+    this.keys = {}; this.targets = []; this.score = 0; this.time = 45; this.ammo = 30; this.running = false;
+    this.hits = 0; this.shots = 0; this.combo = 0; this.maxCombo = 0; this.paused = false; this.sens = 1;
+    this.reloading = false; this.recoil = 0; this.yaw = 0; this.pitch = 0; this.dragging = false;
+    this.ray = new THREE.Raycaster(); this.clock = new THREE.Clock();
+    this.initEnvironment(); this.initGun(); this.initEventListeners();
+    this.loop();
+  }
+
+  initEnvironment() {
+    this.scene.add(new THREE.AmbientLight(0x94a3b8, 0.6));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(5, 15, 10); this.scene.add(dir);
+    const pointLight = new THREE.PointLight(0x00ffff, 1, 30);
+    pointLight.position.set(0, 10, -5);
+    this.scene.add(pointLight);
+
+    // 훈련장 바닥 및 그리드
+    const floorGeo = new THREE.PlaneGeometry(100, 100);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this.scene.add(floor);
+
+    const grid = new THREE.GridHelper(100, 50, 0x00ffff, 0x1e293b);
+    grid.position.y = 0.01;
+    this.scene.add(grid);
+
+    // 전방 타깃 벽면 (Target Wall)
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+    const neon = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const mk = (w, h, d, x, y, z, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.receiveShadow = true; this.scene.add(o); return o; };
+    // U자 맵: 뒷벽 + 좌우 벽 (입구는 플레이어 쪽)
+    mk(41, 14, 1, 0, 7, -25.5, wallMat);
+    mk(1, 14, 21, -20.5, 7, -15, wallMat);
+    mk(1, 14, 21, 20.5, 7, -15, wallMat);
+    // 바닥 패널 + 네온 라인
+    const panel = new THREE.Mesh(new THREE.PlaneGeometry(40, 22), new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.6 }));
+    panel.rotation.x = -Math.PI / 2; panel.position.set(0, 0.005, -14); this.scene.add(panel);
+    [0.05, 13.9].forEach(y => {
+      mk(40, 0.08, 0.15, 0, y, -24.9, neon);
+      mk(0.15, 0.08, 20, -19.9, y, -15, neon);
+      mk(0.15, 0.08, 20, 19.9, y, -15, neon);
+    });
+    const l1 = new THREE.PointLight(0x8b5cf6, 1, 35); l1.position.set(-14, 8, -14); this.scene.add(l1);
+    const l2 = new THREE.PointLight(0x8b5cf6, 1, 35); l2.position.set(14, 8, -14); this.scene.add(l2);
+  }
+
+  // 총기 3D 모델링 생성
+  initGun() {
+    this.gunGroup = new THREE.Group();
+
+    const bodyGeo = new THREE.BoxGeometry(0.12, 0.16, 0.7);
+    const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+    const body = new THREE.Mesh(bodyGeo, darkMetalMat);
+    this.gunGroup.add(body);
+
+    const handguardGeo = new THREE.BoxGeometry(0.1, 0.12, 0.6);
+    const grayMetalMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
+    const handguard = new THREE.Mesh(handguardGeo, grayMetalMat);
+    handguard.position.set(0, -0.01, -0.5);
+    this.gunGroup.add(handguard);
+
+    const barrelGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.6, 16);
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 });
+    const barrel = new THREE.Mesh(barrelGeo, blackMat);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 0, -0.9);
+    this.gunGroup.add(barrel);
+
+    const muzzleGeo = new THREE.CylinderGeometry(0.035, 0.03, 0.12, 12);
+    const muzzle = new THREE.Mesh(muzzleGeo, blackMat);
+    muzzle.rotation.x = Math.PI / 2;
+    muzzle.position.set(0, 0, -1.22);
+    this.gunGroup.add(muzzle);
+
+    const gripGeo = new THREE.BoxGeometry(0.08, 0.3, 0.12);
+    const gripMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+    const grip = new THREE.Mesh(gripGeo, gripMat);
+    grip.position.set(0, -0.2, 0.15);
+    grip.rotation.x = -Math.PI / 8;
+    this.gunGroup.add(grip);
+
+    const stockGeo = new THREE.BoxGeometry(0.09, 0.18, 0.4);
+    const stock = new THREE.Mesh(stockGeo, darkMetalMat);
+    stock.position.set(0, 0.02, 0.5);
+    this.gunGroup.add(stock);
+
+    const magGeo = new THREE.BoxGeometry(0.07, 0.32, 0.14);
+    this.magazine = new THREE.Mesh(magGeo, grayMetalMat);
+    this.magDefaultPos = new THREE.Vector3(0, -0.22, -0.1);
+    this.magazine.position.copy(this.magDefaultPos);
+    this.magazine.rotation.x = Math.PI / 12;
+    this.gunGroup.add(this.magazine);
+
+    const sightBaseGeo = new THREE.BoxGeometry(0.02, 0.04, 0.04);
+    const sightMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.5 });
+    const rearSight = new THREE.Mesh(sightBaseGeo, sightMat);
+    rearSight.position.set(0, 0.1, 0.2);
+    this.gunGroup.add(rearSight);
+
+    const frontSightGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.05, 8);
+    const sightTipMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+    const frontSight = new THREE.Mesh(frontSightGeo, sightTipMat);
+    frontSight.position.set(0, 0.105, -0.75);
+    this.gunGroup.add(frontSight);
+
+    const flashGeo = new THREE.SphereGeometry(0.12, 16, 16);
+    const flashMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0 });
+    this.muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
+    this.muzzleFlash.position.set(0, 0, -1.3);
+    this.gunGroup.add(this.muzzleFlash);
+
+    // 디테일 추가
+    const accent = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 1.2 });
+    const chrome = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 1, roughness: 0.15 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x66ffff, transparent: true, opacity: 0.3, emissive: 0x00ffff, emissiveIntensity: 0.4 });
+    const add = (geo, mat, x, y, z, rx = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.x = rx; this.gunGroup.add(m); return m; };
+    // 상단 레일 + 톱니
+    add(new THREE.BoxGeometry(0.05, 0.015, 1.0), chrome, 0, 0.088, -0.25);
+    for (let i = 0; i < 14; i++) add(new THREE.BoxGeometry(0.052, 0.012, 0.025), darkMetalMat, 0, 0.098, 0.2 - i * 0.07);
+    // 홀로 사이트
+    add(new THREE.BoxGeometry(0.06, 0.012, 0.1), blackMat, 0, 0.1, -0.05);
+    add(new THREE.BoxGeometry(0.008, 0.07, 0.1), blackMat, -0.03, 0.14, -0.05);
+    add(new THREE.BoxGeometry(0.008, 0.07, 0.1), blackMat, 0.03, 0.14, -0.05);
+    add(new THREE.BoxGeometry(0.068, 0.01, 0.1), blackMat, 0, 0.178, -0.05);
+    add(new THREE.BoxGeometry(0.052, 0.065, 0.006), glass, 0, 0.14, -0.085);
+    add(new THREE.SphereGeometry(0.004, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff2244 }), 0, 0.14, -0.082);
+    // 핸드가드 네온 라인 + 총신 링 + 총구 네온
+    add(new THREE.BoxGeometry(0.004, 0.02, 0.45), accent, -0.052, -0.01, -0.5);
+    add(new THREE.BoxGeometry(0.004, 0.02, 0.45), accent, 0.052, -0.01, -0.5);
+    for (let i = 0; i < 4; i++) add(new THREE.CylinderGeometry(0.032, 0.032, 0.02, 16), chrome, 0, 0, -0.75 - i * 0.1, Math.PI / 2);
+    add(new THREE.TorusGeometry(0.037, 0.004, 8, 20), accent, 0, 0, -1.285);
+    // 본체 네온, 장전 손잡이, 포그립, 트리거 가드, 개머리판 패드
+    add(new THREE.BoxGeometry(0.004, 0.03, 0.3), accent, -0.062, 0.02, 0.05);
+    add(new THREE.BoxGeometry(0.004, 0.03, 0.3), accent, 0.062, 0.02, 0.05);
+    add(new THREE.BoxGeometry(0.03, 0.03, 0.05), chrome, 0.075, 0.04, 0.1);
+    add(new THREE.BoxGeometry(0.05, 0.16, 0.06), gripMat, 0, -0.14, -0.55, Math.PI / 10);
+    add(new THREE.BoxGeometry(0.012, 0.012, 0.16), chrome, 0, -0.12, 0.08);
+    add(new THREE.BoxGeometry(0.012, 0.05, 0.012), chrome, 0, -0.1, 0.0);
+    add(new THREE.BoxGeometry(0.1, 0.2, 0.03), gripMat, 0, 0.02, 0.71);
+    this.magazine.add(new THREE.Mesh(new THREE.BoxGeometry(0.072, 0.02, 0.145), accent));
+    this.gunGroup.position.set(0.28, -0.24, -0.45);
+    this.camera.add(this.gunGroup);
+    this.scene.add(this.camera);
+  }
+
+  // U자 경로(왼벽 20 → 뒷벽 40 → 오른벽 20) 위에 타깃 배치, 안쪽을 향하도록 회전
+  place(t) {
+    const s = t.userData.s;
+    if (s < 20) { t.position.x = -19.7; t.position.z = -5 - s; t.rotation.set(0, 0, Math.PI / 2); }
+    else if (s < 60) { t.position.x = -20 + (s - 20); t.position.z = -24.7; t.rotation.set(Math.PI / 2, 0, 0); }
+    else { t.position.x = 19.7; t.position.z = -25 + (s - 60); t.rotation.set(0, 0, Math.PI / 2); }
+  }
+
+  spawnTarget() {
+    const q = Math.random();
+    const type = q < 0.5 ? { c: 0x3b82f6, pts: 20, r: 0.85, v: 3, vy: 0 }
+      : q < 0.9 ? { c: 0x22c55e, pts: 55, r: 0.65, v: 7, vy: 0 }
+      : { c: 0xfacc15, pts: 100, r: 0.4, v: 14, vy: 5 };
+    const t = new THREE.Mesh(
+      new THREE.SphereGeometry(type.r, 20, 16),
+      new THREE.MeshStandardMaterial({ color: type.c, emissive: type.c, emissiveIntensity: 0.25 })
+    );
+    const d = Math.random() < 0.5 ? -1 : 1;
+    t.userData = { pts: type.pts, vx: d * type.v, fast: type.pts === 100 };
+    t.position.set((Math.random() - 0.5) * 32, 2 + Math.random() * 9, -22 + Math.random() * 12);
+    this.scene.add(t); this.targets.push(t);
+  }
+
+  start() {
+    this.targets.forEach(t => this.scene.remove(t)); this.targets = [];
+    this.score = 0; this.time = 45; this.ammo = 30; this.reloading = false; this.running = true; this.paused = false;
+    this.hits = 0; this.shots = 0; this.combo = 0; this.maxCombo = 0; this.magazine.position.copy(this.magDefaultPos);
+    for (let i = 0; i < 12; i++) this.spawnTarget();
+    this.updateHud();
+  }
+
+  end() {
+    this.running = false; this.paused = false;
+    if (document.pointerLockElement) document.exitPointerLock();
+    this.showMenu('end');
+  }
+
+  shoot() {
+    if (!this.running || this.paused || this.reloading || this.ammo <= 0) return;
+    this.ammo--; this.shots++; this.recoil = 1; this.muzzleFlash.material.opacity = 1;
+    this.ray.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+    const hit = this.ray.intersectObjects(this.targets)[0];
+    if (hit) {
+      this.score += hit.object.userData.pts; this.hits++;
+      this.combo++; this.maxCombo = Math.max(this.maxCombo, this.combo);
+      this.scene.remove(hit.object);
+      this.targets = this.targets.filter(t => t !== hit.object);
+      this.spawnTarget();
+    } else this.combo = 0;
+    this.updateHud();
+    if (this.ammo === 0) this.reload();
+  }
+
+  reload() {
+    if (!this.running || this.paused || this.reloading || this.ammo === 30) return;
+    this.reloading = true; this.reloadT = 0;
+    document.getElementById('ammo').textContent = '재장전...';
+  }
+
+  tierInfo() {
+    let cur = null, next = null;
+    for (const t of TIERS) { if (this.score >= t.p) cur = t; else { next = t; break; } }
+    return { cur, next };
+  }
+
+  showMenu(mode) {
+    const { cur, next } = this.tierInfo();
+    const acc = this.shots ? Math.round(this.hits / this.shots * 100) : 0;
+    document.getElementById('mtitle').textContent = mode === 'end' ? '게임 종료' : mode === 'pause' ? '일시정지' : 'TARGET SHOOTER';
+    document.getElementById('stats').innerHTML = mode === 'start' ? '' :
+      `<div>티어 <b>${cur ? cur.n : '티어 없음'}</b></div>` +
+      `<div>점수 <b>
+this.score</b>·명중<b>{this.hits}</b>개 · 명중률 ${acc}%</div>` +
+      `<div>최고 콤보 <b>this.maxCombo</b>{mode === 'pause' ? ' · 남은 시간 ' + Math.ceil(this.time) + '초' : ''}</div>` +
+      (next ? `<div>다음 티어(${next.n})까지 ${next.p - this.score}점</div>` : '');
+    document.getElementById('startBtn').textContent = mode === 'pause' ? '계속하기' : mode === 'end' ? '다시 시작' : '시작';
+    document.getElementById('menu').style.display = 'flex';
+  }
+
+  pause() {
+    if (!this.running || this.paused) return;
+    this.paused = true; this.keys = {}; this.dragging = false;
+    if (document.pointerLockElement) document.exitPointerLock();
+    this.showMenu('pause');
+  }
+
+  lock() {
+    try { const p = this.renderer.domElement.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+
+  updateHud() {
+    const { cur } = this.tierInfo();
+    document.getElementById('score').textContent = '점수 ' + this.score + ' · 명중 ' + this.hits;
+    document.getElementById('time').textContent = Math.ceil(this.time);
+    document.getElementById('combo').textContent = '콤보 ' + this.combo;
+    document.getElementById('tier').textContent = cur ? cur.n : '티어 없음';
+    if (!this.reloading) document.getElementById('ammo').textContent = this.ammo + ' / 30';
+  }
+
+  initEventListeners() {
+    const menu = document.getElementById('menu');
+    addEventListener('keydown', e => { this.keys[e.code] = true; if (e.code === 'KeyR') this.reload(); if (e.code === 'Escape') this.pause(); });
+    document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement) this.pause(); });
+    addEventListener('keyup', e => this.keys[e.code] = false);
+    document.getElementById('startBtn').addEventListener('click', () => {
+      menu.style.display = 'none';
+      this.lock();
+      if (this.paused) { this.paused = false; this.clock.getDelta(); } else this.start();
+    });
+    document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
+      document.querySelectorAll('.opt').forEach(x => x.classList.toggle('on', x === b));
+      document.getElementById('cross').classList.toggle('dot', b.dataset.c === 'dot');
+    }));
+    document.getElementById('sens').addEventListener('input', e => {
+      this.sens = parseFloat(e.target.value);
+      document.getElementById('sensVal').textContent = this.sens.toFixed(2);
+    });
+    const look = (dx, dy) => {
+      const k = 0.0022 * this.sens;
+      this.yaw -= dx * k; this.pitch = Math.max(-1.2, Math.min(1.2, this.pitch - dy * k));
+    };
+    addEventListener('mousemove', e => {
+      if (!this.paused && (document.pointerLockElement || this.dragging)) look(e.movementX || 0, e.movementY || 0);
+    });
+    addEventListener('mousedown', e => {
+      if (!this.running || this.paused) return;
+      if (!document.pointerLockElement) this.dragging = true;
+      this.shoot();
+    });
+    addEventListener('mouseup', () => this.dragging = false);
+    addEventListener('resize', () => {
+      this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix();
+      this.renderer.setSize(innerWidth, innerHeight);
+    });
+  }
+
+  loop() {
+    requestAnimationFrame(() => this.loop());
+    const dt = Math.min(this.clock.getDelta(), 0.05);
+    if (this.running && !this.paused) {
+      this.time -= dt; if (this.time <= 0) { this.time = 0; this.end(); }
+      this.spawnT = (this.spawnT || 0) + dt;
+      if (this.spawnT > 0.6 && this.targets.length < 16) { this.spawnT = 0; this.spawnTarget(); }
+      const sp = (this.keys.ShiftLeft || this.keys.ShiftRight ? 2.2 : 6) * dt, f = (this.keys.KeyW ? 1 : 0) - (this.keys.KeyS ? 1 : 0), s = (this.keys.KeyD ? 1 : 0) - (this.keys.KeyA ? 1 : 0);
+      const c = this.camera.position;
+      c.x += (-Math.sin(this.yaw) * f + Math.cos(this.yaw) * s) * sp * -1 * -1;
+      c.z += (-Math.cos(this.yaw) * f - Math.sin(this.yaw) * s) * sp;
+      c.x = Math.max(-16, Math.min(16, c.x)); c.z = Math.max(-12, Math.min(10, c.z));
+      this.targets.forEach(t => {
+        const u = t.userData;
+        t.position.x += u.vx * dt;
+        if (Math.abs(t.position.x) > 17) u.vx = -Math.sign(t.position.x) * Math.abs(u.vx);
+        if (u.fast && Math.random() < dt * 1.2) { u.vx *= -1; }
+      });
+      if (this.reloading) {
+        this.reloadT += dt;
+        this.magazine.position.y = this.magDefaultPos.y - Math.sin(Math.min(this.reloadT / 1.2, 1) * Math.PI) * 0.3;
+        if (this.reloadT >= 1.2) { this.reloading = false; this.ammo = 30; this.magazine.position.copy(this.magDefaultPos); }
+      }
+      this.updateHud();
+    }
+    this.camera.rotation.set(this.pitch + this.recoil * 0.015, this.yaw, 0);
+    this.gunGroup.position.z = -0.45 + this.recoil * 0.06;
+    this.recoil = Math.max(0, this.recoil - dt * 10);
+    this.muzzleFlash.material.opacity = Math.max(0, this.muzzleFlash.material.opacity - dt * 20);
+    this.renderer.render(this.scene, this.camera);
+  }
+}
+new Game();
+</script>
+</body>
+</html>

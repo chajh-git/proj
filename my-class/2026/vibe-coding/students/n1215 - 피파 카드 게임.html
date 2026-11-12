@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>피파 선수  </title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;padding:15px;
+ font-family:Arial,sans-serif;color:white;
+ background:radial-gradient(circle at top,#23466b,#050b16 75%);
+}
+h1,h2{text-align:center}
+button,select{
+ border:0;border-radius:8px;padding:11px 14px;
+ margin:4px;font-weight:bold;cursor:pointer;
+ background:#1976d2;color:white;
+}
+button:disabled{opacity:.4;cursor:not-allowed}
+.gold{background:linear-gradient(100deg,#94600b,#ffe17a,#94600b);color:#211500}
+.green{background:#16865b}
+.panel{
+ background:#102039;border:1px solid #385575;
+ border-radius:12px;padding:13px;margin:10px 0;
+}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.center{text-align:center}
+.coins{color:#ffe17a;font-size:24px;font-weight:bold}
+.small{font-size:12px;color:#c6d8ed;line-height:1.7}
+.arena{
+ height:410px;position:relative;overflow:hidden;
+ border-radius:15px;border:1px solid #526d91;
+ background:radial-gradient(circle,#244a78,#10213a 55%,#030812);
+ display:flex;align-items:center;justify-content:center;
+ flex-direction:column;perspective:1200px;isolation:isolate;
+}
+.pack{
+ width:145px;height:195px;border:3px solid #f8dc79;
+ border-radius:14px;
+ background:linear-gradient(145deg,#2465a0,#061326 65%,#b18122);
+ display:flex;flex-direction:column;align-items:center;
+ justify-content:center;box-shadow:0 0 30px #ffe17b99;
+ animation:float 2s infinite;
+}
+@keyframes float{50%{transform:translateY(-10px)}}
+.card{
+ z-index:4;width:220px;min-height:285px;
+ border-radius:17px;border:3px solid #fff2b4;
+ color:#201500;background:linear-gradient(145deg,#fff4c5,#c99532,#fff0a0);
+ padding:13px;text-align:center;display:none;
+ box-shadow:0 0 35px #ffda5a;
+}
+.card.show{display:block;animation:cardReveal 1s ease-out both}
+@keyframes cardReveal{
+ 0%{opacity:0;transform:scale(.1) rotateY(540deg)}
+ 70%{opacity:1;transform:scale(1.2)}
+ 100%{transform:scale(1)}
+}
+.card.super{background:linear-gradient(145deg,#d8f2ff,#4c9bc9,#e4f8ff)}
+.card.hero{background:linear-gradient(145deg,#ffe0bd,#e94c27,#ffcf72)}
+.card.legend{background:linear-gradient(145deg,#fffbd0,#e8a51a,#fff3a2)}
+.card.ultra{
+ background:linear-gradient(130deg,#ff5f6d,#ffc371,#7afcff,#bd83ff,#ff8ed5);
+ background-size:300% 300%;
+ box-shadow:0 0 45px white,0 0 110px #bd68ff;
+}
+.ovr{font-size:48px;font-weight:1000}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:12px;font-size:12px;font-weight:bold}
+.stats span{background:#0002;border-radius:5px;padding:5px}
+.arena::before{
+ content:"";position:absolute;inset:-50%;pointer-events:none;
+ opacity:0;z-index:1;
+ background:repeating-conic-gradient(transparent 0deg 9deg,#ffffff35 10deg 11deg,transparent 12deg 20deg);
+}
+.arena.hero::before,.arena.legend::before,.arena.ultra::before{
+ opacity:1;animation:spin 5s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.arena.hero{background:radial-gradient(circle,#ffb24c,#8c251d 45%,#080812);animation:shake .5s 2}
+.arena.legend{background:radial-gradient(circle,#fff6b8,#d18b16 25%,#38200b 65%,#030812);animation:shake .4s 3}
+.arena.ultra{background:radial-gradient(circle,#fff,#a85cff 15%,#154c91 40%,#08041e);animation:ultrashake .2s 5}
+@keyframes shake{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes ultrashake{25%{transform:translate(-10px,7px)}75%{transform:translate(10px,-7px)}}
+.arena.hero .card.show{animation:heroReveal 1.3s ease-out both}
+@keyframes heroReveal{0%{opacity:0;transform:scale(.1) rotate(-35deg)}60%{opacity:1;transform:scale(1.3) rotate(8deg)}100%{transform:scale(1)}}
+.arena.legend .card.show{animation:goldReveal 1.7s ease-out both}
+@keyframes goldReveal{0%{opacity:0;transform:translateY(150px) rotateY(360deg) scale(.1)}65%{opacity:1;transform:translateY(-20px) scale(1.25)}100%{transform:scale(1)}}
+.arena.ultra .card.show{animation:ultraReveal 2s cubic-bezier(.15,.8,.2,1) both;border:4px solid white}
+@keyframes ultraReveal{
+ 0%{opacity:0;transform:translateY(180px) rotateY(720deg) scale(.05);filter:brightness(5)}
+ 45%{opacity:1;transform:translateY(-30px) scale(1.4);filter:brightness(2)}
+ 70%{transform:scale(.9) rotate(-5deg)}
+ 100%{opacity:1;transform:scale(1);filter:brightness(1)}
+}
+.epic{
+ position:absolute;z-index:9;top:13%;font-size:clamp(24px,5vw,42px);
+ font-weight:1000;text-shadow:0 0 15px white,0 0 30px gold;
+ animation:word 1.8s forwards;pointer-events:none;
+}
+@keyframes word{0%{opacity:0;transform:scale(2)}25%{opacity:1;transform:scale(1)}80%{opacity:1}100%{opacity:0;transform:scale(.8)}}
+.particle{position:absolute;z-index:7;pointer-events:none;font-size:23px;animation:particle 1.6s forwards}
+@keyframes particle{to{opacity:0;transform:translate(var(--x),var(--y)) scale(1.8) rotate(240deg)}}
+.record{display:flex;justify-content:space-between;align-items:center;gap:6px;border-bottom:1px solid #ffffff25;padding:7px;flex-wrap:wrap}
+.record button{font-size:12px;padding:7px}
+.pitch{
+ background:linear-gradient(90deg,#176b45,#258b53,#176b45);
+ border:3px solid #b9e7b9;border-radius:15px;padding:12px 5px;
+ position:relative;overflow:hidden;
+}
+.pitch:before{content:"";position:absolute;inset:8px;border:1px solid #ffffff70;border-radius:10px;pointer-events:none}
+.pitchrow{display:flex;justify-content:space-evenly;gap:4px;margin:13px 0;position:relative;z-index:1}
+.slot{
+ width:78px;min-height:76px;border:1px dashed #ffffffb0;
+ border-radius:8px;background:#082b2b99;text-align:center;
+ padding:5px;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;font-size:11px;
+ overflow-wrap:anywhere;
+}
+.slot.filled{background:linear-gradient(145deg,#f8e9a7,#b8872e);color:#241900;border:2px solid #fff0a0;font-weight:bold}
+.slot button{font-size:10px;padding:3px 5px;background:#8c2e25;margin:3px}
+@media(max-width:520px){
+ .grid{grid-template-columns:1fr}
+ .slot{width:65px;min-height:70px;font-size:10px}
+ .arena{height:390px}
+}
+</style>
+</head>
+<body>
+
+<h1>⚽ 피파 선수  </h1>
+
+<div class="panel center">
+ 보유 코인<br><span class="coins" id="coins">100,000</span>
+</div>
+
+<div class="center">
+ <button class="green" id="claim">🪙 코인 +5,000</button>
+ <button id="reset">↻ 처음부터</button>
+</div>
+
+<div class="grid">
+ <div class="panel center">
+  <b>일반팩 · 2,000 코인</b>
+  <p class="small">희귀 50% · 초희귀 30%<br>영웅 15% · 전설 4.5% · 울트라 0.5%</p>
+  <button id="normal">일반팩 열기</button>
+ </div>
+ <div class="panel center">
+  <b>고급팩 · 5,000 코인</b>
+  <p class="small">희귀 27.27% · 초희귀 22.73%<br>영웅 22.73% · 전설 18.18% · 울트라 9.09%</p>
+  <button class="gold" id="premium">고급팩 열기</button>
+ </div>
+</div>
+
+<div id="arena" class="arena">
+ <div id="pack" class="pack">
+  <b style="font-size:38px;color:#ffe78e">FC</b>
+  <span style="font-size:11px;letter-spacing:3px;margin-top:15px">ULTIMATE PACK</span>
+  <div style="font-size:36px;margin-top:12px">⚡</div>
+ </div>
+ <div id="card" class="card">
+  <div id="ovr" class="ovr">99</div>
+  <div id="pos" style="font-size:20px;font-weight:bold">ST</div>
+  <div id="flag" style="font-size:36px;margin:8px">🇰🇷</div>
+  <div id="name" style="font-size:23px;font-weight:1000">선수 이름</div>
+  <div id="club" style="font-weight:bold"></div>
+  <div id="stats" class="stats"></div>
+  <div id="grade" style="font-weight:1000;margin-top:12px"></div>
+ </div>
+ <div id="status" style="position:absolute;bottom:8px;z-index:10;font-size:13px">
+  팩을 선택해 선수를 뽑아보세요!
+ </div>
+</div>
+
+<h2 id="result"></h2>
+<div class="center">
+ <button id="again" disabled>🔁 다시 뽑기</button>
+</div>
+
+<div class="panel">
+ <h2>🏆 나의 베스트 11</h2>
+ <p class="small">획득한 선수를 라인업에 등록하세요. 최대 11명까지 등록할 수 있습니다.</p>
+ <div class="center">
+  포메이션
+  <select id="formation">
+   <option value="433">4-3-3</option>
+   <option value="442">4-4-2</option>
+   <option value="352">3-5-2</option>
+  </select>
+  <b id="rating" style="color:#ffe17a">팀 OVR: 0</b>
+ </div>
+ <div id="pitch" class="pitch">
+  <div id="row1" class="pitchrow"></div>
+  <div id="row2" class="pitchrow"></div>
+  <div id="row3" class="pitchrow"></div>
+  <div id="row4" class="pitchrow"></div>
+ </div>
+ <div class="center">
+  <button class="gold" id="clear">라인업 비우기</button>
+ </div>
+</div>
+
+<div class="panel">
+ <h2>📋 획득 선수 목록</h2>
+ <div id="count">0명</div>
+ <div id="history">아직 획득한 선수가 없습니다.</div>
+</div>
+<p id="message" class="center" style="color:#ffe17a"></p>
+
+<script>
+const $=id=>document.getElementById(id);
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+const raw=`김민재|88|CB|🇰🇷|바이에른 뮌헨
+쿠보|87|RW|🇯🇵|레알 소시에다드
+미토마|86|LW|🇯🇵|브라이턴
+풀리식|87|LW|🇺🇸|AC 밀란
+하키미|88|RB|🇲🇦|PSG
+오시멘|88|ST|🇳🇬|갈라타사라이
+맥 앨리스터|87|CM|🇦🇷|리버풀
+라이스|88|CDM|🏴|아스널
+그리즈만|88|CF|🇫🇷|아틀레티코 마드리드
+디아스|87|CB|🇵🇹|맨시티
+마르티네스|88|GK|🇦🇷|인터 밀란
+로드리고|88|RW|🇧🇷|레알 마드리드
+귄도안|87|CM|🇩🇪|맨시티
+루카쿠|87|ST|🇧🇪|나폴리
+손흥민|90|LW|🇰🇷|LAFC
+해리 케인|90|ST|🏴|바이에른 뮌헨
+마네|89|LW|🇸🇳|알 나스르
+베르나르두 실바|90|CM|🇵🇹|맨시티
+발베르데|90|CM|🇺🇾|레알 마드리드
+라우타로|90|ST|🇦🇷|인터 밀란
+포든|90|CAM|🏴|맨시티
+사카|90|RW|🏴|아스널
+레반도프스키|90|ST|🇵🇱|바르셀로나
+모드리치|89|CM|🇭🇷|AC 밀란
+뎀벨레|89|RW|🇫🇷|PSG
+브루노 페르난데스|90|CAM|🇵🇹|맨유
+알리송|90|GK|🇧🇷|리버풀
+테어 슈테겐|89|GK|🇩🇪|바르셀로나
+메시|92|RW|🇦🇷|인터 마이애미
+호날두|92|ST|🇵🇹|알 나스르
+홀란|92|ST|🇳🇴|맨시티
+비니시우스|92|LW|🇧🇷|레알 마드리드
+벨링엄|91|CAM|🏴|레알 마드리드
+살라|91|RW|🇪🇬|리버풀
+로드리|92|CDM|🇪🇸|맨시티
+반다이크|91|CB|🇳🇱|리버풀
+돈나룸마|91|GK|🇮🇹|PSG
+라민 야말|92|RW|🇪🇸|바르셀로나
+무시알라|91|CAM|🇩🇪|바이에른 뮌헨
+외데고르|91|CAM|🇳🇴|아스널
+네이마르|91|LW|🇧🇷|산투스
+음바페|94|ST|🇫🇷|레알 마드리드
+더브라위너|94|CM|🇧🇪|나폴리
+마라도나|94|CAM|🇦🇷|레전드
+지단|94|CAM|🇫🇷|레전드
+호나우지뉴|93|LW|🇧🇷|레전드
+호나우두|94|ST|🇧🇷|레전드
+메시 ULTRA|99|RW|🇦🇷|인터 마이애미
+호날두 ULTRA|99|ST|🇵🇹|알 나스르
+음바페 ULTRA|98|ST|🇫🇷|레알 마드리드
+펠레|99|ST|🇧🇷|레전드
+야신|97|GK|🇷🇺|레전드
+말디니|97|CB|🇮🇹|레전드
+베컴|97|CM|🏴|레전드
+크루이프|98|CF|🇳🇱|레전드
+앙리|97|ST|🇫🇷|레전드`;
+
+const players=raw.split("\n").map((line,id)=>{
+ const [name,ovr,pos,flag,club]=line.split("|");
+ return {id,name,ovr:+ovr,pos,flag,club};
+});
+
+const grades=["희귀","초희귀","영웅","전설","울트라"];
+const normal=[50,30,15,4.5,.5];
+const premium=[30,25,25,20,10];
+
+let coins=100000;
+let collection=[];
+let lineup=Array(11).fill(null);
+let busy=false;
+let last=null;
+let lastType="normal";
+
+const formations={
+ "433":[[0,1,2],[3,4,5],[6,7,8,9],[10]],
+ "442":[[0,1],[2,3,4,5],[6,7,8,9],[10]],
+ "352":[[0,1],[2,3,4,5,6],[7,8,9],[10]]
+};
+
+const positions=["ST","LW","RW","CM","CM","CM","LB","CB","CB","RB","GK"];
+
+function rank(p){
+ if(p.ovr>=95)return 4;
+ if(p.ovr>=93)return 3;
+ if(p.ovr>=91)return 2;
+ if(p.ovr>=89)return 1;
+ return 0;
+}
+
+function pick(type){
+ const odds=type==="normal"?normal:premium;
+ const total=odds.reduce((a,b)=>a+b,0);
+ let roll=Math.random()*total;
+ let grade=4;
+
+ for(let i=0;i<5;i++){
+  if(roll<odds[i]){grade=i;break}
+  roll-=odds[i];
+ }
+
+ let pool=players.filter(p=>rank(p)===grade);
+ if(!pool.length)pool=players.filter(p=>rank(p)<=grade);
+
+ const p=pool[Math.floor(Math.random()*pool.length)];
+ return {...p,grade,gradeName:grades[grade],uid:Date.now()+Math.random()};
+}
+
+function update(){
+ $("coins").textContent=coins.toLocaleString("ko-KR");
+ $("count").textContent=collection.length+"명";
+
+ $("normal").disabled=busy||coins<2000;
+ $("premium").disabled=busy||coins<5000;
+ $("again").disabled=busy||!last||coins<(lastType==="normal"?2000:5000);
+
+ $("history").innerHTML=collection.length?
+ collection.slice().reverse().map(p=>`
+ <div class="record">
+  <span>${p.flag} ${p.name} · 
+p.ovr({p.pos})</span>
+  <button data-add="${p.uid}">라인업 넣기</button>
+ </div>`).join("")
+ :"아직 획득한 선수가 없습니다.";
+
+ document.querySelectorAll("[data-add]").forEach(btn=>{
+  btn.addEventListener("click",()=>addLineup(btn.dataset.add));
+ });
+
+ renderLineup();
+}
+
+function renderLineup(){
+ const formation=formations[$("formation").value];
+
+ ["row1","row2","row3","row4"].forEach((id,row)=>{
+  $(id).innerHTML=formation[row].map(slot=>{
+   const p=lineup[slot];
+
+   if(p){
+    return `<div class="slot filled">
+     <b>${p.ovr}</b>
+     <span>${p.flag} ${p.name}</span>
+     <small>${p.pos}</small>
+     <button data-remove="${slot}">빼기</button>
+    </div>`;
+   }
+
+   return `<div class="slot">
+    <b>${positions[slot]}</b>
+    <span>빈 자리</span>
+    <small>${slot+1}번</small>
+   </div>`;
+  }).join("");
+ });
+
+ document.querySelectorAll("[data-remove]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+   lineup[Number(btn.dataset.remove)]=null;
+   renderLineup();
+  });
+ });
+
+ const chosen=lineup.filter(Boolean);
+ const rating=chosen.length?
+ Math.round(chosen.reduce((sum,p)=>sum+p.ovr,0)/chosen.length):0;
+
+ $("rating").textContent="팀 OVR: "+rating+" · "+chosen.length+"/11";
+}
+
+function addLineup(uid){
+ const player=collection.find(p=>String(p.uid)===String(uid));
+ if(!player)return;
+
+ const empty=lineup.findIndex(p=>!p);
+
+ if(empty===-1){
+  $("message").textContent="라인업이 가득 찼어요. 먼저 선수를 빼주세요.";
+  return;
+ }
+
+ lineup[empty]=player;
+ renderLineup();
+ $("message").textContent=player.name+" 선수를 라인업에 넣었어요!";
+}
+
+function particles(g){
+ const icons=g===4?["⚡","🌟","💎","✨","🌈"]:
+ g===3?["👑","✨","⭐","💫"]:
+ g===2?["🔥","💥","⭐"]:["✨","⭐"];
+
+ const count=[8,12,25,50,65][g];
+
+ for(let i=0;i<count;i++){
+  const e=document.createElement("span");
+  e.className="particle";
+  e.textContent=icons[Math.floor(Math.random()*icons.length)];
+  e.style.left=(Math.random()*90+5)+"%";
+  e.style.top=(Math.random()*75+10)+"%";
+  e.style.setProperty("--x",(Math.random()*600-300)+"px");
+  e.style.setProperty("--y",(Math.random()*500-250)+"px");
+  $("arena").appendChild(e);
+  setTimeout(()=>e.remove(),1900);
+ }
+}
+
+function epic(g){
+ const titles=["","⚡ SUPER RARE!","🔥 HERO!","👑 LEGENDARY!","🌈 ULTIMATE WALKOUT!"];
+ const e=document.createElement("div");
+ e.className="epic";
+ e.textContent=titles[g];
+ $("arena").appendChild(e);
+ setTimeout(()=>e.remove(),1900);
+}
+
+async function openPack(type){
+ if(busy)return;
+
+ const cost=type==="normal"?2000:5000;
+
+ if(coins<cost){
+  $("message").textContent="코인이 부족해요! 코인을 받아주세요.";
+  return;
+ }
+
+ busy=true;
+ lastType=type;
+ coins-=cost;
+ update();
+
+ $("message").textContent="";
+ $("result").textContent="";
+ $("arena").className="arena";
+ $("pack").style.display="flex";
+ $("card").style.display="none";
+ $("status").textContent="선수팩 등장!";
+
+ await wait(450);
+ $("status").textContent="팩 개봉 중...";
+ $("pack").style.transform="scale(1.3) rotate(4deg)";
+
+ await wait(550);
+
+ const p=pick(type);
+ const g=p.grade;
+ last=p;
+
+ $("arena").className="arena "+["","super","hero","legend","ultra"][g];
+ $("pack").style.display="none";
+
+ epic(g);
+ particles(g);
+
+ const card=$("card");
+ card.style.display="block";
+ card.className="card show "+["","super","hero","legend","ultra"][g];
+
+ $("ovr").textContent="??";
+ $("pos").textContent="??";
+ $("flag").textContent="❔";
+ $("name").textContent="선수 확인 중";
+ $("club").textContent="";
+ $("stats").innerHTML="";
+ $("grade").textContent="";
+
+ await wait(700);
+ $("pos").textContent=p.pos;
+ $("flag").textContent=p.flag;
+
+ await wait(500);
+ $("name").textContent=p.name;
+ $("club").textContent=p.club;
+
+ await wait(450);
+ $("ovr").textContent=p.ovr;
+
+ const values=Array.from({length:6},()=>{
+  return Math.max(40,Math.min(99,p.ovr-3+Math.floor(Math.random()*8)));
+ });
+
+ $("stats").innerHTML=["PAC","SHO","PAS","DRI","DEF","PHY"]
+ .map((s,i)=>`<span>s<br>{values[i]}</span>`).join("");
+
+ $("grade").textContent=p.gradeName.toUpperCase();
+ $("result").textContent=p.gradeName+" 선수 "+p.name+" 획득!";
+ $("status").textContent="선수 획득 완료!";
+
+ collection.push(p);
+ busy=false;
+ update();
+}
+
+$("claim").addEventListener("click",()=>{
+ coins+=5000;
+ update();
+ $("message").textContent="코인 5,000개를 받았습니다!";
+});
+
+$("normal").addEventListener("click",()=>openPack("normal"));
+$("premium").addEventListener("click",()=>openPack("premium"));
+$("again").addEventListener("click",()=>openPack(lastType));
+
+$("formation").addEventListener("change",renderLineup);
+
+$("clear").addEventListener("click",()=>{
+ lineup=Array(11).fill(null);
+ renderLineup();
+ $("message").textContent="라인업을 비웠어요.";
+});
+
+$("reset").addEventListener("click",()=>{
+ coins=100000;
+ collection=[];
+ lineup=Array(11).fill(null);
+ busy=false;
+ last=null;
+
+ $("arena").className="arena";
+ $("pack").style.display="flex";
+ $("pack").style.transform="";
+ $("card").style.display="none";
+ $("card").className="card";
+ $("status").textContent="팩을 선택해 선수를 뽑아보세요!";
+ $("result").textContent="";
+ $("message").textContent="새 게임 시작!";
+
+ update();
+});
+
+update();
+</script>
+</body>
+</html>

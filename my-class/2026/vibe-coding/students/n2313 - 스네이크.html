@@ -1,0 +1,1203 @@
+코드:<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>머지 스네이크! (Merge Snake Arcade)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@700;800;900&display=swap');
+        
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Jua', 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #1e1b4b 0%, #311b92 50%, #0f172a 100%);
+            color: #fff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Glassmorphism UI Effects */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-btn {
+            background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.15s ease;
+        }
+
+        .glass-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+        }
+
+        /* Snake Cell Slot Effects */
+        .grid-slot {
+            background: rgba(0, 0, 0, 0.25);
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            transition: border-color 0.2s;
+        }
+
+        .grid-slot.drag-over {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: float 2.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.6)); }
+            50% { filter: drop-shadow(0 0 22px rgba(234, 179, 8, 0.9)); }
+        }
+        .animate-glow {
+            animation: pulse-glow 2s infinite;
+        }
+
+        #gameCanvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between select-none">
+
+    <!-- TOP NAV / STATS BAR -->
+    <header class="w-full px-4 py-3 glass-panel z-20 flex justify-between items-center rounded-b-2xl border-t-0 shrink-0">
+        <!-- Brand / Level Logo -->
+        <div class="flex items-center space-x-2">
+            <div class="bg-gradient-to-r from-amber-400 to-orange-500 p-2.5 rounded-xl shadow-lg flex items-center justify-center">
+                <i class="fa-solid font-bold fa-worm text-2xl text-slate-900"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-amber-300 to-yellow-500">
+                    MERGE SNAKE!
+                </h1>
+                <p class="text-xs text-slate-300 font-sans" id="playerTitle">스네이크 마스터 LV.1</p>
+            </div>
+        </div>
+
+        <!-- Currencies HUD -->
+        <div class="flex items-center space-x-3">
+            <!-- Gold -->
+            <div class="flex items-center bg-slate-900/60 border border-amber-500/40 px-3 py-1.5 rounded-full shadow-inner">
+                <i class="fa-solid fa-coins text-amber-400 text-lg mr-2 animate-bounce"></i>
+                <span id="goldDisplay" class="text-amber-300 font-extrabold text-base tracking-wide">0</span>
+            </div>
+            <!-- Gems -->
+            <div class="flex items-center bg-slate-900/60 border border-cyan-500/40 px-3 py-1.5 rounded-full shadow-inner">
+                <i class="fa-solid fa-gem text-cyan-400 text-base mr-2"></i>
+                <span id="gemDisplay" class="text-cyan-300 font-extrabold text-base tracking-wide">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT CONTAINERS -->
+    <main class="flex-1 relative w-full overflow-hidden flex justify-center items-center">
+
+        <!-- ================= PAGE 1: MERGE & GARAGE ================= -->
+        <section id="garagePage" class="w-full h-full max-w-md p-4 flex flex-col justify-between items-center z-10 transition-all duration-300">
+            
+            <!-- Avatar Banner / Quick Info -->
+            <div class="w-full glass-panel p-3 rounded-2xl flex items-center justify-between border border-white/10 shrink-0">
+                <div class="flex items-center space-x-3">
+                    <div id="avatarPreviewContainer" class="w-14 h-14 rounded-xl bg-slate-800/80 border border-amber-400/50 flex items-center justify-center shadow-lg relative overflow-hidden">
+                        <canvas id="avatarCanvas" width="56" height="56"></canvas>
+                    </div>
+                    <div>
+                        <span class="text-xs text-slate-400 font-sans block">현재 출전 뱀</span>
+                        <h2 id="avatarName" class="text-lg font-bold text-amber-300">Lv.1 베이비 스네이크</h2>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 font-sans block">초당 골드 수익</span>
+                    <span id="totalIncomeDisplay" class="text-emerald-400 font-extrabold text-sm">+0 /sec</span>
+                </div>
+            </div>
+
+            <!-- Merge Grid (4x4) -->
+            <div class="w-full my-auto py-2">
+                <div id="mergeGrid" class="grid grid-cols-4 gap-2.5 bg-slate-900/40 p-3 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-md">
+                    <!-- 16 slots generated via JS -->
+                </div>
+            </div>
+
+            <!-- Garage Bottom Controls -->
+            <div class="w-full space-y-3 shrink-0">
+                <!-- Spawn Button -->
+                <button id="spawnBtn" class="w-full glass-btn bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black py-3.5 px-4 rounded-2xl shadow-xl flex items-center justify-center space-x-2 text-lg active:scale-95 transition-all border border-amber-300/40">
+                    <i class="fa-solid fa-egg text-xl text-slate-900"></i>
+                    <span><span id="spawnBtnText">Lv.1 뱀 소환</span> (<span id="spawnCost">10</span> <i class="fa-solid fa-coins text-xs"></i>)</span>
+                </button>
+
+                <!-- Battle Launch Button -->
+                <button id="startArenaBtn" class="w-full glass-btn bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black py-4 px-4 rounded-2xl shadow-2xl flex items-center justify-center space-x-3 text-xl tracking-wider active:scale-95 transition-all border border-emerald-300/40 animate-glow">
+                    <i class="fa-solid fa-gamepad text-2xl"></i>
+                    <span>아레나 배틀 참가!</span>
+                </button>
+            </div>
+        </section>
+
+
+        <!-- ================= PAGE 2: UPGRADES ================= -->
+        <section id="upgradePage" class="hidden w-full h-full max-w-md p-4 flex flex-col justify-start items-center z-10 space-y-3 overflow-y-auto">
+            <h2 class="text-2xl font-black text-amber-400 my-2 flex items-center gap-2">
+                <i class="fa-solid fa-bolt"></i> 스네이크 연구소 업그레이드
+            </h2>
+
+            <!-- Upgrade Item 1: Spawn Level Upgrade -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-amber-500/30 bg-amber-500/5">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-purple-500/20 text-purple-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-angles-up"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-amber-300">소환 뱀 레벨 업그레이드</h3>
+                        <p class="text-xs text-slate-300" id="upgSpawnLevelDesc">소환 시 Lv.1 뱀 생성</p>
+                    </div>
+                </div>
+                <button id="upgSpawnLevelBtn" class="glass-btn bg-purple-500 hover:bg-purple-400 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1 shrink-0">
+                    <span id="upgSpawnLevelCost">150</span> <i class="fa-solid fa-coins"></i>
+                </button>
+            </div>
+
+            <!-- Upgrade Item 2: Income Multiplier -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-amber-500/20 text-amber-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">방치 수익 증대</h3>
+                        <p class="text-xs text-slate-300" id="upgIncomeDesc">자동 생성 골드 +20%</p>
+                    </div>
+                </div>
+                <button id="upgIncomeBtn" class="glass-btn bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1 shrink-0">
+                    <span id="upgIncomeCost">100</span> <i class="fa-solid fa-coins"></i>
+                </button>
+            </div>
+
+            <!-- Upgrade Item 3: Speed Upgrade -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-cyan-500/20 text-cyan-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-gauge-high"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">아레나 이동 속도</h3>
+                        <p class="text-xs text-slate-300" id="upgSpeedDesc">기본 이동 속도 +5%</p>
+                    </div>
+                </div>
+                <button id="upgSpeedBtn" class="glass-btn bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1 shrink-0">
+                    <span id="upgSpeedCost">250</span> <i class="fa-solid fa-coins"></i>
+                </button>
+            </div>
+
+            <!-- Upgrade Item 4: Magnet / Pickup Radius -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-rose-500/20 text-rose-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-magnet"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">코인 자석 범위</h3>
+                        <p class="text-xs text-slate-300" id="upgMagnetDesc">코인 획득 범위 +25%</p>
+                    </div>
+                </div>
+                <button id="upgMagnetBtn" class="glass-btn bg-rose-500 hover:bg-rose-400 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1 shrink-0">
+                    <span id="upgMagnetCost">350</span> <i class="fa-solid fa-coins"></i>
+                </button>
+            </div>
+
+            <!-- Upgrade Item 5: Boost Efficiency -->
+            <div class="w-full glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-emerald-500/20 text-emerald-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base">부스터 효율</h3>
+                        <p class="text-xs text-slate-300" id="upgBoostDesc">부스터 소모 감소 +15%</p>
+                    </div>
+                </div>
+                <button id="upgBoostBtn" class="glass-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1 shrink-0">
+                    <span id="upgBoostCost">500</span> <i class="fa-solid fa-coins"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= PAGE 3: ARENA BATTLE (CANVAS) ================= -->
+        <section id="arenaPage" class="hidden absolute inset-0 w-full h-full z-30 bg-slate-950">
+            <!-- Fullscreen Canvas -->
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- Battle Score HUD Overlay -->
+            <div class="absolute top-4 left-4 pointer-events-none flex flex-col space-y-1">
+                <div class="glass-panel px-4 py-2 rounded-xl border border-white/20 backdrop-blur-md flex items-center space-x-3">
+                    <i class="fa-solid fa-trophy text-amber-400 text-xl"></i>
+                    <div>
+                        <div class="text-[10px] text-slate-300 uppercase tracking-widest font-sans">Battle Score</div>
+                        <div id="battleScore" class="text-2xl font-black text-white leading-none">0</div>
+                    </div>
+                </div>
+                <div class="glass-panel px-3 py-1 rounded-lg border border-white/10 backdrop-blur-md text-xs text-amber-300 font-bold">
+                    획득 골드: <span id="battleGoldEarned">0</span> <i class="fa-solid fa-coins"></i>
+                </div>
+            </div>
+
+            <!-- Mini Map Container -->
+            <div class="absolute top-4 right-4 w-24 h-24 rounded-full border-2 border-white/20 glass-panel overflow-hidden pointer-events-none">
+                <canvas id="minimapCanvas" width="96" height="96" class="w-full h-full"></canvas>
+            </div>
+
+            <!-- Touch Boost Control Button (Bottom Right) -->
+            <div class="absolute bottom-6 right-6 z-40">
+                <button id="boostBtn" class="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-950 text-2xl font-black shadow-2xl border-4 border-amber-200/50 flex flex-col items-center justify-center active:scale-90 transition-all">
+                    <i class="fa-solid fa-bolt text-2xl"></i>
+                    <span class="text-[9px] tracking-tighter uppercase font-sans font-extrabold mt-0.5">BOOST</span>
+                </button>
+            </div>
+
+            <!-- Exit Arena / Surrender (Bottom Left) -->
+            <div class="absolute bottom-6 left-6 z-40">
+                <button id="exitArenaBtn" class="w-12 h-12 rounded-full bg-slate-900/80 text-white/70 hover:text-white border border-white/20 flex items-center justify-center text-lg active:scale-90 transition-all">
+                    <i class="fa-solid fa-door-open"></i>
+                </button>
+            </div>
+
+            <!-- Game Over Modal Overlay -->
+            <div id="gameOverModal" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                <div class="glass-panel w-full max-w-xs p-6 rounded-3xl text-center space-y-4 border border-rose-500/30 animate-float">
+                    <div class="w-16 h-16 bg-rose-500/20 text-rose-400 rounded-2xl mx-auto flex items-center justify-center text-3xl border border-rose-500/40">
+                        <i class="fa-solid fa-skull"></i>
+                    </div>
+                    <h2 class="text-3xl font-black text-rose-400">게임 오버!</h2>
+                    
+                    <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-white/10 text-sm">
+                        <div class="flex justify-between items-center text-slate-300">
+                            <span>최종 점수:</span>
+                            <span id="finalScore" class="font-extrabold text-white text-base">0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-slate-300">
+                            <span>획득한 골드:</span>
+                            <span id="finalGold" class="font-extrabold text-amber-400 text-base">+0</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 pt-2">
+                        <button id="retryArenaBtn" class="w-full glass-btn bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-3 rounded-xl text-base">
+                            <i class="fa-solid fa-rotate-right mr-1"></i> 다시 도전
+                        </button>
+                        <button id="returnGarageBtn" class="w-full glass-btn bg-slate-700 hover:bg-slate-600 text-white font-bold py-2.5 rounded-xl text-sm">
+                            <i class="fa-solid fa-house mr-1"></i> 차고로 돌아가기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- BOTTOM TAB NAVIGATION -->
+    <nav id="bottomNav" class="w-full glass-panel z-20 flex justify-around items-center py-2.5 px-6 rounded-t-2xl border-b-0 shrink-0">
+        <button id="navGarageBtn" class="flex flex-col items-center text-amber-400 font-bold text-xs space-y-1 transition-all">
+            <i class="fa-solid fa-cubes text-xl"></i>
+            <span>머지/차고</span>
+        </button>
+        <button id="navUpgradeBtn" class="flex flex-col items-center text-slate-400 hover:text-white font-bold text-xs space-y-1 transition-all">
+            <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+            <span>연구소</span>
+        </button>
+    </nav>
+
+
+    <!-- AUDIO SYNTHESIS & GAME ENGINE SCRIPT -->
+    <script>
+        /* ==========================================================================
+           1. GAME DATA & CONFIGURATION
+           ========================================================================== */
+        
+        // Definition of 10 Snake Levels (Name, Colors, Base Power)
+        const SNAKE_SPECIES = [
+            { level: 1,  name: "베이비 그린",   color: "#4ade80", eyeColor: "#fff", income: 1,   cost: 10,   bodyPattern: "#22c55e" },
+            { level: 2,  name: "코발트 블루",   color: "#38bdf8", eyeColor: "#fff", income: 3,   cost: 35,   bodyPattern: "#0284c7" },
+            { level: 3,  name: "선셋 오렌지",   color: "#fb923c", eyeColor: "#fff", income: 8,   cost: 110,  bodyPattern: "#ea580c" },
+            { level: 4,  name: "네온 퍼플",     color: "#c084fc", eyeColor: "#fff", income: 20,  cost: 320,  bodyPattern: "#9333ea" },
+            { level: 5,  name: "골든 파이톤",   color: "#facc15", eyeColor: "#000", income: 50,  cost: 950,  bodyPattern: "#ca8a04" },
+            { level: 6,  name: "사이버 핑크",   color: "#f472b6", eyeColor: "#fff", income: 120, cost: 2800, bodyPattern: "#db2777" },
+            { level: 7,  name: "에메랄드 킹",   color: "#34d399", eyeColor: "#fff", income: 300, cost: 8000, bodyPattern: "#059669" },
+            { level: 8,  name: "마그마 코브라", color: "#f87171", eyeColor: "#fff", income: 750, cost: 22000,bodyPattern: "#dc2626" },
+            { level: 9,  name: "갤럭시 드래곤", color: "#818cf8", eyeColor: "#fff", income: 2000,cost: 60000,bodyPattern: "#4f46e5" },
+            { level: 10, name: "샤이닝 스타",   color: "#f43f5e", eyeColor: "#fff", income: 5000,cost: 150000,bodyPattern: "#fbbf24" }
+        ];
+
+        // Global State
+        const state = {
+            gold: 200,
+            gems: 5,
+            spawnLevel: 1,
+            selectedSnakeLevel: 1,
+            grid: Array(16).fill(null), // 4x4 Grid
+            upgrades: {
+                incomeMult: 1,
+                speedMult: 1,
+                boostEff: 1,
+                magnetRadius: 1
+            },
+            upgradeCosts: {
+                spawnLevel: 150,
+                income: 100,
+                speed: 250,
+                magnet: 350,
+                boost: 500
+            }
+        };
+
+        /* ==========================================================================
+           2. WEB AUDIO SYNTHESIZER
+           ========================================================================== */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playPop() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+            playCoin() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(987.77, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.06);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playUpgrade() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+            playCrash() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+            playBoost() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(350, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+        }
+        const sfx = new SoundFX();
+
+        /* ==========================================================================
+           3. UI UPDATER & GARAGE LOGIC
+           ========================================================================== */
+        
+        window.addEventListener('load', () => {
+            initGrid();
+            // Default starting snakes
+            state.grid[0] = 1;
+            state.grid[1] = 1;
+            updateUI();
+            renderGrid();
+            renderAvatarPreview();
+
+            // Passive Income Interval
+            setInterval(calculatePassiveIncome, 1000);
+        });
+
+        function updateUI() {
+            document.getElementById('goldDisplay').innerText = Math.floor(state.gold).toLocaleString();
+            document.getElementById('gemDisplay').innerText = state.gems;
+            
+            // Spawn cost calculation based on current spawn level
+            const currentSpawnSpecies = SNAKE_SPECIES[state.spawnLevel - 1];
+            const spawnCost = Math.floor(currentSpawnSpecies.cost);
+            document.getElementById('spawnCost').innerText = spawnCost.toLocaleString();
+            document.getElementById('spawnBtnText').innerText = `Lv.${state.spawnLevel} ${currentSpawnSpecies.name} 소환`;
+
+            // Upgrades UI Costs & Descriptions
+            document.getElementById('upgSpawnLevelCost').innerText = (state.spawnLevel >= SNAKE_SPECIES.length) ? 'MAX' : state.upgradeCosts.spawnLevel.toLocaleString();
+            document.getElementById('upgSpawnLevelDesc').innerText = (state.spawnLevel >= SNAKE_SPECIES.length) ? '최대 레벨 도달' : `소환 시 Lv.${state.spawnLevel + 1} ${SNAKE_SPECIES[state.spawnLevel].name} 생성`;
+            
+            document.getElementById('upgIncomeCost').innerText = state.upgradeCosts.income.toLocaleString();
+            document.getElementById('upgSpeedCost').innerText = state.upgradeCosts.speed.toLocaleString();
+            document.getElementById('upgMagnetCost').innerText = state.upgradeCosts.magnet.toLocaleString();
+            document.getElementById('upgBoostCost').innerText = state.upgradeCosts.boost.toLocaleString();
+
+            // Avatar info
+            const currentSnake = SNAKE_SPECIES[state.selectedSnakeLevel - 1];
+            document.getElementById('avatarName').innerText = `Lv.${currentSnake.level} ${currentSnake.name}`;
+            document.getElementById('avatarName').style.color = currentSnake.color;
+
+            // Total income display
+            let totalIncome = 0;
+            state.grid.forEach(lvl => {
+                if(lvl) totalIncome += SNAKE_SPECIES[lvl - 1].income * state.upgrades.incomeMult;
+            });
+            document.getElementById('totalIncomeDisplay').innerText = `+${Math.floor(totalIncome)} /sec`;
+        }
+
+        function initGrid() {
+            const gridContainer = document.getElementById('mergeGrid');
+            gridContainer.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const slot = document.createElement('div');
+                slot.className = 'grid-slot w-full aspect-square rounded-2xl flex items-center justify-center relative cursor-pointer shadow-inner';
+                slot.dataset.index = i;
+                
+                // Drag and Drop events
+                slot.addEventListener('dragover', handleDragOver);
+                slot.addEventListener('dragleave', handleDragLeave);
+                slot.addEventListener('drop', handleDrop);
+
+                gridContainer.appendChild(slot);
+            }
+        }
+
+        let draggedIndex = null;
+
+        function renderGrid() {
+            const gridContainer = document.getElementById('mergeGrid');
+            const slots = gridContainer.children;
+
+            for (let i = 0; i < 16; i++) {
+                const slot = slots[i];
+                slot.innerHTML = ''; // Clear slot
+                const snakeLvl = state.grid[i];
+
+                if (snakeLvl) {
+                    const species = SNAKE_SPECIES[snakeLvl - 1];
+                    const snakeCard = document.createElement('div');
+                    snakeCard.className = 'w-full h-full rounded-2xl flex flex-col items-center justify-center relative p-1 transition-transform active:scale-95 shadow-md';
+                    snakeCard.style.background = `radial-gradient(circle, ${species.color}44 0%, ${species.color}11 80%)`;
+                    snakeCard.style.border = `2px solid ${species.color}`;
+                    snakeCard.draggable = true;
+
+                    snakeCard.addEventListener('dragstart', (e) => {
+                        draggedIndex = i;
+                        e.dataTransfer.setData('text/plain', i);
+                        sfx.init();
+                    });
+
+                    snakeCard.addEventListener('click', () => {
+                        state.selectedSnakeLevel = snakeLvl;
+                        renderAvatarPreview();
+                        updateUI();
+                        sfx.init();
+                        sfx.playPop();
+                    });
+
+                    const badge = document.createElement('span');
+                    badge.className = 'absolute top-1 left-1 bg-slate-900/80 text-white text-[10px] px-1.5 py-0.5 rounded-md font-bold border border-white/20';
+                    badge.innerText = `Lvl ${snakeLvl}`;
+
+                    const icon = document.createElement('div');
+                    icon.className = 'w-8 h-8 rounded-full flex items-center justify-center shadow-lg my-0.5';
+                    icon.style.backgroundColor = species.color;
+                    icon.innerHTML = `<i class="fa-solid fa-worm text-slate-900 text-sm"></i>`;
+
+                    const name = document.createElement('span');
+                    name.className = 'text-[9px] font-extrabold truncate w-full text-center tracking-tight';
+                    name.style.color = species.color;
+                    name.innerText = species.name;
+
+                    snakeCard.appendChild(badge);
+                    snakeCard.appendChild(icon);
+                    snakeCard.appendChild(name);
+                    slot.appendChild(snakeCard);
+                }
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+        function handleDragLeave() {
+            this.classList.remove('drag-over');
+        }
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const targetIndex = parseInt(this.dataset.index);
+
+            if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+            const sourceLvl = state.grid[draggedIndex];
+            const targetLvl = state.grid[targetIndex];
+
+            if (sourceLvl) {
+                if (targetLvl === null) {
+                    state.grid[targetIndex] = sourceLvl;
+                    state.grid[draggedIndex] = null;
+                } else if (sourceLvl === targetLvl && sourceLvl < SNAKE_SPECIES.length) {
+                    state.grid[targetIndex] = sourceLvl + 1;
+                    state.grid[draggedIndex] = null;
+                    sfx.playPop();
+
+                    if (sourceLvl + 1 > state.selectedSnakeLevel) {
+                        state.selectedSnakeLevel = sourceLvl + 1;
+                    }
+                } else {
+                    state.grid[targetIndex] = sourceLvl;
+                    state.grid[draggedIndex] = targetLvl;
+                }
+                renderGrid();
+                renderAvatarPreview();
+                updateUI();
+            }
+            draggedIndex = null;
+        }
+
+        // Spawn Button Handler (Uses upgraded spawn level)
+        document.getElementById('spawnBtn').addEventListener('click', () => {
+            sfx.init();
+            const cost = Math.floor(SNAKE_SPECIES[state.spawnLevel - 1].cost);
+            if (state.gold >= cost) {
+                const emptyIdx = state.grid.findIndex(cell => cell === null);
+                if (emptyIdx !== -1) {
+                    state.gold -= cost;
+                    state.grid[emptyIdx] = state.spawnLevel;
+                    sfx.playPop();
+                    renderGrid();
+                    updateUI();
+                } else {
+                    alert("차고가 가득 찼습니다! 뱀들을 합성하여 공간을 확보하세요.");
+                }
+            }
+        });
+
+        function calculatePassiveIncome() {
+            let income = 0;
+            state.grid.forEach(lvl => {
+                if(lvl) income += SNAKE_SPECIES[lvl - 1].income * state.upgrades.incomeMult;
+            });
+            state.gold += income;
+            updateUI();
+        }
+
+        function renderAvatarPreview() {
+            const canvas = document.getElementById('avatarCanvas');
+            const ctx = canvas.getContext('2d');
+            const species = SNAKE_SPECIES[state.selectedSnakeLevel - 1];
+
+            ctx.clearRect(0, 0, 56, 56);
+            ctx.fillStyle = species.color;
+            ctx.beginPath();
+            ctx.arc(28, 28, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Eyes
+            ctx.fillStyle = species.eyeColor;
+            ctx.beginPath();
+            ctx.arc(22, 20, 4, 0, Math.PI * 2);
+            ctx.arc(34, 20, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(22, 20, 2, 0, Math.PI * 2);
+            ctx.arc(34, 20, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /* ==========================================================================
+           4. NAVIGATION & TAB SWITCHING
+           ========================================================================== */
+        const garagePage = document.getElementById('garagePage');
+        const upgradePage = document.getElementById('upgradePage');
+        const arenaPage = document.getElementById('arenaPage');
+
+        document.getElementById('navGarageBtn').addEventListener('click', () => {
+            garagePage.classList.remove('hidden');
+            upgradePage.classList.add('hidden');
+            document.getElementById('navGarageBtn').className = "flex flex-col items-center text-amber-400 font-bold text-xs space-y-1 transition-all";
+            document.getElementById('navUpgradeBtn').className = "flex flex-col items-center text-slate-400 hover:text-white font-bold text-xs space-y-1 transition-all";
+        });
+
+        document.getElementById('navUpgradeBtn').addEventListener('click', () => {
+            upgradePage.classList.remove('hidden');
+            garagePage.classList.add('hidden');
+            document.getElementById('navUpgradeBtn').className = "flex flex-col items-center text-amber-400 font-bold text-xs space-y-1 transition-all";
+            document.getElementById('navGarageBtn').className = "flex flex-col items-center text-slate-400 hover:text-white font-bold text-xs space-y-1 transition-all";
+        });
+
+        /* ==========================================================================
+           5. UPGRADES PURCHASING
+           ========================================================================== */
+        // Summon Level Upgrade
+        document.getElementById('upgSpawnLevelBtn').addEventListener('click', () => {
+            sfx.init();
+            if (state.spawnLevel < SNAKE_SPECIES.length && state.gold >= state.upgradeCosts.spawnLevel) {
+                state.gold -= state.upgradeCosts.spawnLevel;
+                state.spawnLevel += 1;
+                state.upgradeCosts.spawnLevel = Math.floor(state.upgradeCosts.spawnLevel * 3.2);
+                sfx.playUpgrade();
+                updateUI();
+            }
+        });
+
+        document.getElementById('upgIncomeBtn').addEventListener('click', () => {
+            sfx.init();
+            if (state.gold >= state.upgradeCosts.income) {
+                state.gold -= state.upgradeCosts.income;
+                state.upgrades.incomeMult += 0.2;
+                state.upgradeCosts.income = Math.floor(state.upgradeCosts.income * 1.6);
+                sfx.playUpgrade();
+                updateUI();
+            }
+        });
+
+        document.getElementById('upgSpeedBtn').addEventListener('click', () => {
+            sfx.init();
+            if (state.gold >= state.upgradeCosts.speed) {
+                state.gold -= state.upgradeCosts.speed;
+                state.upgrades.speedMult += 0.08;
+                state.upgradeCosts.speed = Math.floor(state.upgradeCosts.speed * 1.8);
+                sfx.playUpgrade();
+                updateUI();
+            }
+        });
+
+        document.getElementById('upgMagnetBtn').addEventListener('click', () => {
+            sfx.init();
+            if (state.gold >= state.upgradeCosts.magnet) {
+                state.gold -= state.upgradeCosts.magnet;
+                state.upgrades.magnetRadius += 0.25;
+                state.upgradeCosts.magnet = Math.floor(state.upgradeCosts.magnet * 1.9);
+                sfx.playUpgrade();
+                updateUI();
+            }
+        });
+
+        document.getElementById('upgBoostBtn').addEventListener('click', () => {
+            sfx.init();
+            if (state.gold >= state.upgradeCosts.boost) {
+                state.gold -= state.upgradeCosts.boost;
+                state.upgrades.boostEff += 0.15;
+                state.upgradeCosts.boost = Math.floor(state.upgradeCosts.boost * 2.0);
+                sfx.playUpgrade();
+                updateUI();
+            }
+        });
+
+        /* ==========================================================================
+           6. ARENA BATTLE MODE (IO CANVAS ENGINE)
+           ========================================================================== */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const miniCtx = minimapCanvas.getContext('2d');
+
+        const WORLD_SIZE = 2400;
+
+        let arenaActive = false;
+        let animationFrameId = null;
+        let playerSnake = null;
+        let botSnakes = [];
+        let foods = [];
+        let particles = [];
+        let arenaGoldEarned = 0;
+        let isBoosting = false;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        document.getElementById('startArenaBtn').addEventListener('click', startArena);
+        document.getElementById('retryArenaBtn').addEventListener('click', () => {
+            document.getElementById('gameOverModal').classList.add('hidden');
+            startArena();
+        });
+        document.getElementById('returnGarageBtn').addEventListener('click', exitArena);
+        document.getElementById('exitArenaBtn').addEventListener('click', exitArena);
+
+        function startArena() {
+            sfx.init();
+            
+            // Clean up any existing animation loop to prevent multiple loops running simultaneously
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            arenaActive = true;
+            isBoosting = false;
+            arenaGoldEarned = 0;
+            document.getElementById('battleGoldEarned').innerText = "0";
+            document.getElementById('battleScore').innerText = "0";
+            document.getElementById('gameOverModal').classList.add('hidden');
+            arenaPage.classList.remove('hidden');
+
+            const currentSpecies = SNAKE_SPECIES[state.selectedSnakeLevel - 1];
+            playerSnake = new Snake(
+                WORLD_SIZE / 2, 
+                WORLD_SIZE / 2, 
+                currentSpecies, 
+                true, 
+                "나 (Player)"
+            );
+
+            botSnakes = [];
+            for (let i = 0; i < 12; i++) {
+                spawnBot();
+            }
+
+            foods = [];
+            for (let i = 0; i < 250; i++) {
+                spawnFood();
+            }
+
+            particles = [];
+
+            window.removeEventListener('mousemove', handlePointerMove);
+            window.removeEventListener('touchmove', handlePointerMove);
+            window.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('touchmove', handlePointerMove);
+
+            const boostBtn = document.getElementById('boostBtn');
+            boostBtn.onmousedown = () => isBoosting = true;
+            boostBtn.onmouseup = () => isBoosting = false;
+            boostBtn.ontouchstart = (e) => { e.preventDefault(); isBoosting = true; };
+            boostBtn.ontouchend = (e) => { e.preventDefault(); isBoosting = false; };
+
+            window.onkeydown = (e) => { if(e.code === 'Space') isBoosting = true; };
+            window.onkeyup = (e) => { if(e.code === 'Space') isBoosting = false; };
+
+            animationFrameId = requestAnimationFrame(arenaGameLoop);
+        }
+
+        function exitArena() {
+            arenaActive = false;
+            isBoosting = false;
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            arenaPage.classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+            state.gold += arenaGoldEarned;
+            updateUI();
+        }
+
+        function handlePointerMove(e) {
+            if (!arenaActive || !playerSnake) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const dx = clientX - centerX;
+            const dy = clientY - centerY;
+
+            playerSnake.targetAngle = Math.atan2(dy, dx);
+        }
+
+        function spawnBot() {
+            const randomLevel = Math.floor(Math.random() * Math.min(state.selectedSnakeLevel + 2, 10)) + 1;
+            const species = SNAKE_SPECIES[randomLevel - 1];
+            const botNames = ["파이톤X", "초코뱀", "스피드킹", "나이트메어", "머지마스터", "골드헌터", "지렁이99", "루키스네이크"];
+            const name = botNames[Math.floor(Math.random() * botNames.length)];
+            const bot = new Snake(
+                Math.random() * (WORLD_SIZE - 200) + 100,
+                Math.random() * (WORLD_SIZE - 200) + 100,
+                species,
+                false,
+                name
+            );
+            botSnakes.push(bot);
+        }
+
+        function spawnFood(x, y, value = 1) {
+            foods.push({
+                x: x || Math.random() * (WORLD_SIZE - 100) + 50,
+                y: y || Math.random() * (WORLD_SIZE - 100) + 50,
+                radius: value > 1 ? 6 : 4,
+                color: value > 1 ? "#facc15" : ["#38bdf8", "#4ade80", "#f472b6", "#c084fc"][Math.floor(Math.random() * 4)],
+                value: value
+            });
+        }
+
+        /* ==========================================================================
+           7. SNAKE CLASS & PHYSICS LOGIC
+           ========================================================================== */
+        class Snake {
+            constructor(x, y, species, isPlayer = false, name = "Snake") {
+                this.x = x;
+                this.y = y;
+                this.species = species;
+                this.isPlayer = isPlayer;
+                this.name = name;
+                this.angle = Math.random() * Math.PI * 2;
+                this.targetAngle = this.angle;
+                // Base Speed Normalization (Player base: 3.0 px/frame * upgrade factor)
+                this.baseSpeed = isPlayer ? 3.0 * state.upgrades.speedMult : 2.8;
+                this.turnSpeed = 0.12;
+                this.radius = 12 + species.level * 0.8;
+                
+                this.length = 15 + species.level * 3;
+                this.body = [];
+                for (let i = 0; i < this.length; i++) {
+                    this.body.push({ x: x - i * 8, y: y });
+                }
+
+                this.score = 0;
+                this.dead = false;
+            }
+
+            update() {
+                if (this.dead) return;
+
+                if (!this.isPlayer) {
+                    if (Math.random() < 0.03) {
+                        this.targetAngle += (Math.random() - 0.5) * 1.5;
+                    }
+                    if (this.x < 150 || this.x > WORLD_SIZE - 150 || this.y < 150 || this.y > WORLD_SIZE - 150) {
+                        this.targetAngle = Math.atan2(WORLD_SIZE / 2 - this.y, WORLD_SIZE / 2 - this.x);
+                    }
+                }
+
+                let diff = this.targetAngle - this.angle;
+                diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+                this.angle += diff * this.turnSpeed;
+
+                let currentSpeed = this.baseSpeed;
+                if (this.isPlayer && isBoosting && this.body.length > 10) {
+                    currentSpeed *= 1.7; // Controlled boost multiplier
+                    sfx.playBoost();
+                    if (Math.random() < 0.25 / state.upgrades.boostEff) {
+                        this.body.pop();
+                        spawnFood(this.body[this.body.length - 1].x, this.body[this.body.length - 1].y, 1);
+                    }
+                }
+
+                this.x += Math.cos(this.angle) * currentSpeed;
+                this.y += Math.sin(this.angle) * currentSpeed;
+
+                if (this.x < this.radius || this.x > WORLD_SIZE - this.radius ||
+                    this.y < this.radius || this.y > WORLD_SIZE - this.radius) {
+                    this.die();
+                    return;
+                }
+
+                this.body.unshift({ x: this.x, y: this.y });
+                while (this.body.length > this.length) {
+                    this.body.pop();
+                }
+
+                // Food Pickup with Magnet Range Multiplier for Player
+                const effectivePickupRadius = (this.radius + 8) * (this.isPlayer ? state.upgrades.magnetRadius : 1.0);
+                for (let i = foods.length - 1; i >= 0; i--) {
+                    const f = foods[i];
+                    const dist = Math.hypot(this.x - f.x, this.y - f.y);
+                    if (dist < effectivePickupRadius) {
+                        this.length += f.value;
+                        this.score += f.value * 10;
+                        if (this.isPlayer) {
+                            arenaGoldEarned += f.value;
+                            document.getElementById('battleGoldEarned').innerText = arenaGoldEarned;
+                            document.getElementById('battleScore').innerText = this.score;
+                            sfx.playCoin();
+                        }
+                        foods.splice(i, 1);
+                        spawnFood();
+                    }
+                }
+            }
+
+            draw(cameraX, cameraY) {
+                const screenX = this.x - cameraX + canvas.width / 2;
+                const screenY = this.y - cameraY + canvas.height / 2;
+
+                for (let i = this.body.length - 1; i >= 0; i--) {
+                    const seg = this.body[i];
+                    const segScreenX = seg.x - cameraX + canvas.width / 2;
+                    const segScreenY = seg.y - cameraY + canvas.height / 2;
+
+                    if (segScreenX < -50 || segScreenX > canvas.width + 50 || segScreenY < -50 || segScreenY > canvas.height + 50) continue;
+
+                    ctx.fillStyle = (i % 2 === 0) ? this.species.color : this.species.bodyPattern;
+                    ctx.beginPath();
+                    const segRadius = Math.max(4, this.radius * (1 - (i / this.body.length) * 0.3));
+                    ctx.arc(segScreenX, segScreenY, segRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                if (screenX >= -50 && screenX <= canvas.width + 50 && screenY >= -50 && screenY <= canvas.height + 50) {
+                    ctx.save();
+                    ctx.translate(screenX, screenY);
+                    ctx.rotate(this.angle);
+
+                    ctx.fillStyle = this.species.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = this.species.eyeColor;
+                    ctx.beginPath();
+                    ctx.arc(this.radius * 0.4, -this.radius * 0.4, 4, 0, Math.PI * 2);
+                    ctx.arc(this.radius * 0.4, this.radius * 0.4, 4, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#000";
+                    ctx.beginPath();
+                    ctx.arc(this.radius * 0.5, -this.radius * 0.4, 2, 0, Math.PI * 2);
+                    ctx.arc(this.radius * 0.5, this.radius * 0.4, 2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                    ctx.font = "bold 11px sans-serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(this.name, screenX, screenY - this.radius - 6);
+                }
+            }
+
+            die() {
+                if (this.dead) return;
+                this.dead = true;
+                sfx.playCrash();
+
+                this.body.forEach((seg, idx) => {
+                    if (idx % 2 === 0) {
+                        spawnFood(seg.x + (Math.random() - 0.5) * 10, seg.y + (Math.random() - 0.5) * 10, 3);
+                    }
+                });
+
+                for (let i = 0; i < 20; i++) {
+                    particles.push({
+                        x: this.x,
+                        y: this.y,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        life: 1.0,
+                        color: this.species.color
+                    });
+                }
+
+                if (this.isPlayer) {
+                    setTimeout(() => {
+                        document.getElementById('finalScore').innerText = this.score;
+                        document.getElementById('finalGold').innerText = `+${arenaGoldEarned}`;
+                        document.getElementById('gameOverModal').classList.remove('hidden');
+                    }, 600);
+                }
+            }
+        }
+
+        /* ==========================================================================
+           8. MAIN ARENA RENDER & COLLISION LOOP
+           ========================================================================== */
+        function arenaGameLoop() {
+            if (!arenaActive) return;
+
+            ctx.fillStyle = "#0f172a";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const camX = playerSnake ? playerSnake.x : WORLD_SIZE / 2;
+            const camY = playerSnake ? playerSnake.y : WORLD_SIZE / 2;
+
+            drawGridPattern(camX, camY);
+
+            foods.forEach(f => {
+                const screenX = f.x - camX + canvas.width / 2;
+                const screenY = f.y - camY + canvas.height / 2;
+                if (screenX > -20 && screenX < canvas.width + 20 && screenY > -20 && screenY < canvas.height + 20) {
+                    ctx.fillStyle = f.color;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, f.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 8;
+                    ctx.shadowColor = f.color;
+                }
+            });
+            ctx.shadowBlur = 0;
+
+            const allSnakes = [playerSnake, ...botSnakes].filter(s => s && !s.dead);
+
+            allSnakes.forEach(snake => {
+                snake.update();
+
+                allSnakes.forEach(otherSnake => {
+                    if (snake === otherSnake || snake.dead) return;
+
+                    for (let i = 0; i < otherSnake.body.length; i++) {
+                        const seg = otherSnake.body[i];
+                        const dist = Math.hypot(snake.x - seg.x, snake.y - seg.y);
+                        if (dist < snake.radius + 6) {
+                            snake.die();
+                            break;
+                        }
+                    }
+                });
+            });
+
+            botSnakes = botSnakes.filter(b => !b.dead);
+            while (botSnakes.length < 12) {
+                spawnBot();
+            }
+
+            allSnakes.forEach(snake => snake.draw(camX, camY));
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.03;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                const screenX = p.x - camX + canvas.width / 2;
+                const screenY = p.y - camY + canvas.height / 2;
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            drawMinimap();
+
+            animationFrameId = requestAnimationFrame(arenaGameLoop);
+        }
+
+        function drawGridPattern(camX, camY) {
+            const gridSize = 80;
+            const offsetX = (canvas.width / 2 - camX) % gridSize;
+            const offsetY = (canvas.height / 2 - camY) % gridSize;
+
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            for (let x = offsetX; x < canvas.width; x += gridSize) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+            }
+            for (let y = offsetY; y < canvas.height; y += gridSize) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+            }
+            ctx.stroke();
+
+            const minX = canvas.width / 2 - camX;
+            const minY = canvas.height / 2 - camY;
+
+            ctx.strokeStyle = "#f43f5e";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(minX, minY, WORLD_SIZE, WORLD_SIZE);
+        }
+
+        function drawMinimap() {
+            miniCtx.fillStyle = "rgba(15, 23, 42, 0.9)";
+            miniCtx.fillRect(0, 0, 96, 96);
+
+            const scale = 96 / WORLD_SIZE;
+
+            miniCtx.fillStyle = "#f87171";
+            botSnakes.forEach(b => {
+                if (!b.dead) {
+                    miniCtx.fillRect(b.x * scale, b.y * scale, 2, 2);
+                }
+            });
+
+            if (playerSnake && !playerSnake.dead) {
+                miniCtx.fillStyle = "#38bdf8";
+                miniCtx.beginPath();
+                miniCtx.arc(playerSnake.x * scale, playerSnake.y * scale, 3, 0, Math.PI * 2);
+                miniCtx.fill();
+            }
+        }
+    </script>
+</body>
+</html>

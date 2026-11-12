@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>승부차기 챔피언</title>
+
+<style>
+body {
+    margin: 0;
+    padding: 20px;
+    background: #14251c;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+h1 {
+    color: #ffe66d;
+}
+
+#game {
+    max-width: 900px;
+    margin: auto;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    background: #298b49;
+    border: 3px solid white;
+    border-radius: 10px;
+}
+
+button {
+    margin: 6px;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    background: #ffe66d;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #ffcc33;
+}
+
+#info {
+    font-size: 18px;
+    margin: 15px;
+}
+</style>
+</head>
+
+<body>
+<div id="game">
+    <h1>⚽ 승부차기 챔피언</h1>
+
+    <div id="info">
+        득점: <span id="score">0</span>
+        &nbsp; | &nbsp;
+        남은 슛: <span id="shots">5</span>
+    </div>
+
+    <canvas id="field" width="900" height="500"></canvas>
+
+    <div>
+        <button id="leftBtn">⬅ 왼쪽</button>
+        <button id="centerBtn">⬆ 중앙</button>
+        <button id="rightBtn">➡ 오른쪽</button>
+    </div>
+
+    <div>
+        <button id="shootBtn">⚽ 슛!</button>
+        <button id="restartBtn">🔄 다시 시작</button>
+    </div>
+
+    <p id="message">골대를 향해 슛을 날려 보세요!</p>
+</div>
+
+<script>
+const canvas = document.getElementById("field");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+let shots = 5;
+let aim = 0;
+let shooting = false;
+let ball = { x: 450, y: 420, z: 0 };
+let keeper = { x: 450, y: 150 };
+let target = null;
+
+function drawField() {
+    ctx.clearRect(0, 0, 900, 500);
+
+    // 잔디
+    ctx.fillStyle = "#298b49";
+    ctx.fillRect(0, 0, 900, 500);
+
+    for (let i = 0; i < 9; i++) {
+        ctx.fillStyle = i % 2 ? "#298b49" : "#319b53";
+        ctx.fillRect(0, i * 60, 900, 60);
+    }
+
+    // 페널티 구역
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(250, 35, 400, 210);
+    ctx.strokeRect(340, 35, 220, 100);
+
+    // 골대와 그물
+    ctx.fillStyle = "#eeeeee";
+    ctx.fillRect(325, 30, 250, 12);
+
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(325, 10, 250, 100);
+
+    ctx.strokeStyle = "#b8d9c4";
+    ctx.lineWidth = 1;
+
+    for (let x = 340; x < 575; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, 12);
+        ctx.lineTo(x, 108);
+        ctx.stroke();
+    }
+
+    for (let y = 25; y < 110; y += 20) {
+        ctx.beginPath();
+        ctx.moveTo(327, y);
+        ctx.lineTo(573, y);
+        ctx.stroke();
+    }
+
+    // 골키퍼
+    ctx.fillStyle = "#ffca28";
+    ctx.fillRect(keeper.x - 20, keeper.y - 20, 40, 40);
+
+    ctx.fillStyle = "#222";
+    ctx.beginPath();
+    ctx.arc(keeper.x, keeper.y - 28, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 공
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y - ball.z, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#222";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ball.x - 6, ball.y - ball.z - 5);
+    ctx.lineTo(ball.x + 6, ball.y - ball.z + 5);
+    ctx.moveTo(ball.x + 6, ball.y - ball.z - 5);
+    ctx.lineTo(ball.x - 6, ball.y - ball.z + 5);
+    ctx.stroke();
+
+    // 슈터
+    if (!shooting && shots > 0) {
+        ctx.fillStyle = "#42a5f5";
+        ctx.beginPath();
+        ctx.arc(450, 460, 18, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "white";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("키커", 450, 490);
+    }
+}
+
+function updateUI() {
+    document.getElementById("score").textContent = score;
+    document.getElementById("shots").textContent = shots;
+}
+
+function shoot() {
+    if (shooting || shots <= 0) return;
+
+    shooting = true;
+    shots--;
+
+    const goalX = [365, 450, 535][aim];
+
+    target = {
+        x: goalX,
+        y: 45,
+        progress: 0,
+        startX: 450,
+        startY: 420
+    };
+
+    keeper.x = 450;
+
+    // 골키퍼가 슛 방향을 예측해 움직임
+    const random = Math.random();
+
+    if (random < 0.65) {
+        keeper.x = goalX + (Math.random() - 0.5) * 80;
+    } else {
+        keeper.x = 450 + (Math.random() - 0.5) * 100;
+    }
+
+    document.getElementById("message").textContent = "슛!";
+    updateUI();
+}
+
+function animate() {
+    if (shooting && target) {
+        target.progress += 0.035;
+
+        const t = Math.min(target.progress, 1);
+
+        ball.x = target.startX + (target.x - target.startX) * t;
+        ball.y = target.startY + (target.y - target.startY) * t;
+        ball.z = Math.sin(t * Math.PI) * 100;
+
+        if (t >= 1) {
+            const saved =
+                Math.abs(keeper.x - target.x) < 40;
+
+            if (saved) {
+                document.getElementById("message").textContent =
+                    "🧤 골키퍼 선방!";
+            } else {
+                score++;
+                document.getElementById("message").textContent =
+                    "⚽ 골! 멋진 슛!";
+            }
+
+            shooting = false;
+            target = null;
+            ball = { x: 450, y: 420, z: 0 };
+            updateUI();
+
+            if (shots === 0) {
+                document.getElementById("message").textContent +=
+                    " 경기 종료! 최종 득점: " + score;
+            }
+        }
+    }
+
+    drawField();
+    requestAnimationFrame(animate);
+}
+
+document.getElementById("leftBtn").onclick = () => aim = 0;
+document.getElementById("centerBtn").onclick = () => aim = 1;
+document.getElementById("rightBtn").onclick = () => aim = 2;
+document.getElementById("shootBtn").onclick = shoot;
+
+document.getElementById("restartBtn").onclick = () => {
+    score = 0;
+    shots = 5;
+    aim = 0;
+    shooting = false;
+    target = null;
+    ball = { x: 450, y: 420, z: 0 };
+    keeper = { x: 450, y: 150 };
+
+    document.getElementById("message").textContent =
+        "골대를 향해 슛을 날려 보세요!";
+
+    updateUI();
+};
+
+updateUI();
+animate();
+</script>
+</body>
+</html>

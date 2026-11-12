@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한밤의 학교 3D</title>
+<style>
+:root{color-scheme:dark;--bg:#020304;--fg:#e8e0d0;--ac:#b01c1c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:'Noto Sans KR',system-ui,sans-serif;overflow:hidden;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#hud div{position:fixed;z-index:3;pointer-events:none;text-shadow:0 0 6px #000}
+#keys{top:14px;left:16px;font-size:17px}#lv{top:14px;right:16px;font-size:15px;opacity:.7}
+#msg{top:70px;left:0;right:0;text-align:center;font-size:18px;color:#f0e6c8}
+#pr{bottom:70px;left:0;right:0;text-align:center;font-size:19px}
+#sbw{bottom:28px;left:50%;width:220px;height:7px;margin-left:-110px;background:rgba(255,255,255,.12)}#sb{height:100%;background:#d8d0b0;width:100%}
+#slit{position:fixed;inset:0;z-index:2;display:none;pointer-events:none;background:linear-gradient(#000 0 32%,transparent 32% 68%,#000 68%),repeating-linear-gradient(90deg,#000 0,#000 9%,transparent 9%,transparent 10%)}
+#red{position:fixed;inset:0;z-index:2;pointer-events:none;box-shadow:inset 0 0 160px 50px #c00;opacity:0}
+#ov{position:fixed;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.9);text-align:center;padding:20px}
+#ov h1{font-size:clamp(28px,6vw,54px);margin:0 0 10px;color:var(--ac);letter-spacing:4px;text-shadow:0 0 20px #500}
+#ov p{max-width:600px;line-height:1.7;margin:6px 0;font-size:clamp(13px,2vw,16px);color:#bdb5a5}#ov b{color:#fff}
+#btn{margin-top:18px;padding:12px 38px;font-size:18px;background:var(--ac);color:#fff;border:0;border-radius:4px;cursor:pointer;font-family:inherit}
+</style></head><body>
+<div id="hud"><div id="keys"></div><div id="lv"></div><div id="msg"></div><div id="pr"></div><div id="sbw"><div id="sb"></div></div></div>
+<div id="slit"></div><div id="red"></div>
+<div id="ov"><h1 id="t"></h1><p id="d"></p><button id="btn"></button></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+// ---------- maps (20x14 cells, 4 units each). # wall . floor V stair void K key
+const L0=["####################","#..................#","#.##.####.####.###.#","#.#...#....#.....#.#","#.#...#....#..K..#.#","#.#...#....#.....#.#","#.##.####.####.###.#","#..................#","#.##.####.####.###.#","#.#...#....#.....#.#","#.#.K.#....#.....#.#","###...#....#.....###","####################","####################"];
+const L1=["####################","#..................#","#.##.####.####.###.#","#.#...#....#.....#.#","#.#...#..K.#.....#.#","#.#...#....#.....#.#","#.##.####.####.###.#","#.....#......#.....#","#.##.####.####.###.#","#V#...#....#.....#V#","#V#...#....#.....#V#","#..................#","####################","####################"];
+const LV=[L0,L1].map(m=>m.map(r=>r.split('')));
+const cell=(l,x,z)=>(LV[l][z]||[])[x]||'#';
+const KEYPOS=[];LV.forEach((m,l)=>m.forEach((r,z)=>r.forEach((c,x)=>{if(c==='K'){KEYPOS.push({l,x,z,wx:x*4+2,wz:z*4+2,wy:l*4+1.3});r[x]='.'}})));
+KEYPOS.push({l:2,x:11,z:1,wx:23,wz:3,wy:101});
+const isKey=(l,x,z)=>KEYPOS.some(k=>k.l===l&&k.x===x&&k.z===z);
+const EXIT={x:10,z:1},DIRS=[[0,-1],[0,1],[-1,0],[1,0]];
+const VENTS=[{l:0,x:3,z:10,sx:12.1,sz:42,ry:Math.PI/2,cx:14,cz:42,yaw:-Math.PI/2,vx:3,vz:3},{l:1,x:16,z:4,sx:67.9,sz:18,ry:-Math.PI/2,cx:66,cz:18,yaw:Math.PI/2,vx:3,vz:23}];
+const desks=[];
+LV.forEach((m,l)=>m.forEach((r,z)=>r.forEach((c,x)=>{if(c!=='.'||(x*7+z*5+l*3)%4||isKey(l,x,z))return;let ok=true;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)if(cell(l,x+a,z+b)!=='.')ok=false;if(ok)desks.push([l,x,z])})));
+desks.forEach(([l,x,z])=>LV[l][z][x]='D');
+const lockers=[];
+LV.forEach((m,l)=>m.forEach((r,z)=>r.forEach((c,x)=>{
+  if(c!=='.'||(x*13+z*7+l*5)%3||isKey(l,x,z)||(l===0&&x===EXIT.x&&z===EXIT.z)||VENTS.some(v=>v.l===l&&v.x===x&&v.z===z))return;
+  const w=DIRS.filter(([a,b])=>cell(l,x+a,z+b)==='#');if(w.length!==1)return;
+  if(DIRS.some(([a,b])=>cell(l,x+a,z+b)==='V'))return;
+  lockers.push({l,x,z,dx:w[0][0],dz:w[0][1]});
+})));
+// ---------- three.js
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x020304);scene.fog=new THREE.FogExp2(0x020304,.042);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,120);camera.rotation.order='YXZ';scene.add(camera);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.body.appendChild(renderer.domElement);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+scene.add(new THREE.AmbientLight(0x445566,.45));
+const fl=new THREE.SpotLight(0xfff2d0,2.4,42,.55,.55,1.2);camera.add(fl,fl.target);fl.target.position.set(0,0,-5);
+const nl=new THREE.PointLight(0xffe0b0,.5,9);camera.add(nl);
+function tex(f,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'));const t=new THREE.CanvasTexture(c);return t}
+const wallT=tex(x=>{x.fillStyle='#3d4a48';x.fillRect(0,0,64,64);x.fillStyle='#2f3a38';x.fillRect(0,40,64,24);x.fillStyle='rgba(0,0,0,.25)';for(let i=0;i<25;i++)x.fillRect(Math.random()*64,Math.random()*64,2,12)},64,64);
+const floorT=tex(x=>{x.fillStyle='#4a4238';x.fillRect(0,0,64,64);x.fillStyle='#352e26';x.fillRect(0,0,32,32);x.fillRect(32,32,32,32)},64,64);
+const lockT=tex(x=>{x.fillStyle='#fff';x.fillRect(0,0,64,128);x.fillStyle='rgba(0,0,0,.55)';for(let i=0;i<5;i++)x.fillRect(14,14+i*6,36,3);x.fillRect(0,0,64,3);x.fillRect(30,0,4,128);x.fillRect(44,70,6,14)},64,128);
+const signT=tex(x=>{x.fillStyle='#062';x.fillRect(0,0,256,64);x.fillStyle='#7f9';x.font='bold 40px sans-serif';x.textAlign='center';x.fillText('비상구',128,48)},256,64);
+const std=(o)=>new THREE.MeshStandardMaterial(Object.assign({roughness:.9},o));
+function inst(geo,mat,arr){const m=new THREE.InstancedMesh(geo,mat,arr.length),o=new THREE.Object3D();arr.forEach((p,i)=>{o.position.set(p[0],p[1],p[2]);o.updateMatrix();m.setMatrixAt(i,o.matrix)});m.frustumCulled=false;scene.add(m)}
+const walls=[],s0=[],s1=[],s2=[];
+LV.forEach((m,l)=>m.forEach((r,z)=>r.forEach((c,x)=>{
+  const px=x*4+2,pz=z*4+2;
+  if(c==='#'){if(DIRS.some(([a,b])=>cell(l,x+a,z+b)!=='#'))walls.push([px,l*4+2,pz])}
+  else if(l===0)s0.push([px,-.15,pz]);else if(c!=='V'){s1.push([px,3.85,pz]);s2.push([px,8.15,pz])}
+})));
+const GS=new THREE.BoxGeometry(4,.3,4),fm=std({map:floorT});
+inst(new THREE.BoxGeometry(4,4,4),std({map:wallT}),walls);inst(GS,fm,s0);inst(GS,fm,s1);inst(GS,std({color:0x2a2a2a}),s2);
+desks.forEach(([l,x,z])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(3.4,1.1,3.4),std({color:0x4a3524}));b.position.set(x*4+2,l*4+.55,z*4+2);scene.add(b)});
+// stairs
+const RAMPS=[{x0:4,x1:8,z0:36,z1:44},{x0:72,x1:76,z0:36,z1:44}];
+RAMPS.forEach(r=>{const m=new THREE.Mesh(new THREE.BoxGeometry(4,.3,8.944),std({color:0x5a5048}));m.position.set(r.x0+2,2,r.z0+4);m.rotation.x=-Math.atan(.5);scene.add(m)});
+function ramp(x,z,y,e){e=e||0;for(const r of RAMPS)if(x>=r.x0&&x<=r.x1&&z>=r.z0-e&&z<=r.z1+e){const h=Math.max(0,Math.min(4,(z-r.z0)/(r.z1-r.z0)*4));if(Math.abs(y-h)<1.3)return h}return null}
+// lockers
+const lkMats=[0x3b4a55,0x4a3b3b,0x3d4d3f].map(c=>std({map:lockT,color:c}));
+lockers.forEach((k,i)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(1.4,2.5,.5),lkMats[i%3]);k.px=k.x*4+2+k.dx*1.7;k.pz=k.z*4+2+k.dz*1.7;m.position.set(k.px,k.l*4+1.25,k.pz);if(k.dx)m.rotation.y=Math.PI/2;scene.add(m)});
+// exit door
+const ex=EXIT.x*4+2,exz=4.1;
+const doorM=std({color:0x3a1515});const door=new THREE.Mesh(new THREE.BoxGeometry(3,3.2,.2),doorM);door.position.set(ex,1.6,exz);scene.add(door);
+const sign=new THREE.Mesh(new THREE.PlaneGeometry(2.4,.6),new THREE.MeshBasicMaterial({map:signT,fog:false}));sign.position.set(ex,3.5,exz+.12);scene.add(sign);
+// keys
+const keyMeshes=KEYPOS.map(k=>{const m=new THREE.Mesh(new THREE.BoxGeometry(.7,.45,.08),new THREE.MeshBasicMaterial({color:0xffdd55}));m.position.set(k.wx,k.wy,k.wz);scene.add(m);return m});
+// ---------- vent maze (separate space high above the school, 2-unit cells) + grates
+const VMAP=["####################","#...#...#.#...#...##","###.###.#.###.###.##","#.#...#.....#...#.##","#.###.#####.###.#.##","#.....#.#.....#...##","#####.#.#####.###.##","#.#.....#.#.....#.##","#.#####.#.#####.#.##","#...#.....#.#.....##","###.#####.#.#####.##","#.................##","####################","####################"];
+const VM=VMAP.map(r=>r.split('')),vc=(x,z)=>(VM[z]||[])[x]||'#',VY=100;
+const ductT=tex(x=>{x.fillStyle='#6b7075';x.fillRect(0,0,64,64);x.fillStyle='rgba(0,0,0,.35)';for(let i=0;i<8;i++)x.fillRect(0,i*8+5,64,2);x.fillStyle='#aaa';for(let i=0;i<4;i++){x.fillRect(4,i*16+4,3,3);x.fillRect(57,i*16+4,3,3)}},64,64);
+const vw=[],vf=[],vcl=[];
+VM.forEach((r,z)=>r.forEach((c,x)=>{const px=x*2+1,pz=z*2+1;if(c==='#'){if(DIRS.some(([a,b])=>vc(x+a,z+b)!=='#'))vw.push([px,VY+1.1,pz])}else{vf.push([px,VY-.15,pz]);vcl.push([px,VY+2.35,pz])}}));
+const dm=std({map:ductT,color:0xa0a6ac,metalness:.35});
+inst(new THREE.BoxGeometry(2,2.2,2),dm,vw);inst(new THREE.BoxGeometry(2,.3,2),dm,vf);inst(new THREE.BoxGeometry(2,.3,2),dm,vcl);
+function slideV(x,z,dx,dz){x+=dx;z+=dz;for(let it=0;it<2;it++){const c0=x/2|0,z0=z/2|0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const cx=c0+a,cz=z0+b;if(vc(cx,cz)!=='#')continue;const nx=Math.max(cx*2,Math.min(cx*2+2,x)),nz=Math.max(cz*2,Math.min(cz*2+2,z)),ex=x-nx,ez=z-nz,d=Math.hypot(ex,ez);if(d<.42){if(d>1e-4){x+=ex/d*(.42-d);z+=ez/d*(.42-d)}else{x-=dx;z-=dz}}}}return[x,z]}
+const grT=tex(x=>{x.fillStyle='#111';x.fillRect(0,0,64,40);x.fillStyle='#8a9096';for(let i=0;i<7;i++)x.fillRect(4,3+i*5,56,2);x.strokeStyle='#777';x.lineWidth=3;x.strokeRect(1,1,62,38)},64,40);
+function grate(px,py,pz,ry){const m=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1),std({map:grT,color:0xcccccc}));m.position.set(px,py,pz);m.rotation.y=ry;scene.add(m)}
+VENTS.forEach(v=>{grate(v.sx,v.l*4+.8,v.sz,v.ry);grate(2.05,VY+.8,v.vz,Math.PI/2)});
+const vk=(x,z)=>z*30+x,vnb=k=>{const x=k%30,z=k/30|0,o=[];DIRS.forEach(([a,b])=>{if(vc(x+a,z+b)==='.')o.push(vk(x+a,z+b))});return o},VALL=[];
+VM.forEach((r,z)=>r.forEach((c,x)=>{if(c==='.')VALL.push(vk(x,z))}));
+const vbfs=(a,b)=>bfs(a,b,vnb);
+function enterVent(v){M.vent=true;M.vt=10;M.x=v.vx;M.z=v.vz;M.y=VY;M.state='patrol';M.path=[];M.rp=0;M.hp=99;M.tgt=0;M.out=0;M.lost=0;mg.visible=false}
+function exitVent(v){const ch=M.vent&&M.state==='chase'&&!(M.vt>0);M.vent=false;M.path=[];M.rp=0;M.tgt=0;M.bias=6;M.vt=0;
+ if(ch){M.out=4;M.ov=v;mg.visible=false;say('환풍구에서 빠져나왔다. 안에서 무언가가 기어 나온다!',4)}
+ else{let k=0;for(let t=0;t<40;t++){k=ALL[Math.random()*ALL.length|0];if(Math.hypot((k%30)*4+2-P.x,(((k%600)/30)|0)*4+2-P.z)>40)break}
+  M.x=(k%30)*4+2;M.z=(((k%600)/30)|0)*4+2;M.y=(k/600|0)*4;M.state='patrol';mg.visible=true;say('환풍구에서 빠져나왔다.',3)}}
+function updV(dt){
+  if(M.vt>0){M.vt-=dt;if(M.vt>0)return;mg.visible=true;M.state='patrol';M.tgt=0;noise(.5,.5);tone(70,.8,.5,'sawtooth');say('환풍구 입구에서 무언가가 기어 들어온다...',4)}
+  const mc=vk(M.x/2|0,M.z/2|0),pc=vk(P.x/2|0,P.z/2|0),dist=Math.hypot(P.x-M.x,P.z-M.z);let sp=3;M.rp-=dt;
+  if(M.rp<=0){M.hp=vbfs(mc,pc).length;if(M.state==='patrol'&&(!M.tgt||mc===M.tgt))M.tgt=VALL[Math.random()*VALL.length|0];M.path=vbfs(mc,M.state==='chase'?pc:M.tgt);M.rp=.35}
+  if(M.state==='patrol'){if(M.hp*2<(P.sprint?32:15)){M.state='chase';M.lost=0;M.rp=0;noise(.6,.5);tone(70,.9,.5,'sawtooth');say('...!!',2)}}
+  else{sp=4.7;M.lost=M.hp*2>40?M.lost+dt:0;if(M.lost>5){M.state='patrol';M.tgt=0;M.rp=0}if(dist<1.5)die()}
+  const dr=M.state==='chase'&&M.path.length<2&&dist<4;if(M.path.length>1||dr){const n=M.path[1]||0,ex=(dr?P.x:(n%30)*2+1)-M.x,ez=(dr?P.z:((n/30)|0)*2+1)-M.z,d=Math.hypot(ex,ez),s=Math.min(sp*dt,d);if(d>.01){M.x+=ex/d*s;M.z+=ez/d*s;M.face=Math.atan2(ex,ez)}if(!dr&&vk(M.x/2|0,M.z/2|0)===n)M.path.shift()}
+  mstT-=dt;if(mstT<=0){noise(.05,Math.min(.5,3/(1+dist)));tone(80,.08,Math.min(.5,3/(1+dist)));mstT=.25}
+  const sw=Math.sin(time*9)*.45;mg.scale.setScalar(.62);mg.rotation.x=1.25;armL.rotation.x=-2+sw;armR.rotation.x=-2-sw;head.rotation.z=.2+Math.sin(time*3)*.12;head.rotation.x=-1.1;
+  mg.position.set(M.x-Math.sin(M.face)*1.2,VY,M.z-Math.cos(M.face)*1.2);mg.rotation.y=M.face;
+}
+function useVent(i,lv){const v=VENTS[i];P.vcd=1;noise(.3,.4);tone(120,.25,.3,'square');
+ if(lv===2){P.x=v.cx;P.z=v.cz;P.y=v.l*4;P.yaw=v.yaw;P.pitch=0;exitVent(v)}
+ else{P.x=v.vx;P.z=v.vz;P.y=VY;P.yaw=-Math.PI/2;P.pitch=0;enterVent(v);say('환풍구 안은 좁은 미로다. 열쇠 카드를 찾아라... 무언가가 곧 기어 들어온다.',6)}}
+// monster
+const mg=new THREE.Group(),blk=std({color:0x050505}),pale=std({color:0xcfc8b8});
+const part=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);mg.add(o);return o};
+const bone=std({color:0xb8b09a}),rag=std({color:0x1a0f0f}),tm=new THREE.MeshBasicMaterial({color:0xe8e4d0});
+part(new THREE.CylinderGeometry(.3,.45,1.5,8),rag,0,1.95,.05).rotation.x=.2;
+for(let i=0;i<4;i++)part(new THREE.BoxGeometry(.5-i*.05,.035,.12),bone,0,2.5-i*.2,.3);
+part(new THREE.CylinderGeometry(.06,.07,.4,6),blk,0,2.8,.12);
+[-1,1].forEach(s=>part(new THREE.CylinderGeometry(.07,.05,1.7,6),blk,s*.18,.85,0));
+function arm(s){const a=new THREE.Group();a.position.set(s*.5,2.55,0);a.rotation.z=s*.1;const u=new THREE.Mesh(new THREE.CylinderGeometry(.06,.04,2.5,6),blk);u.position.y=-1.25;a.add(u);for(let i=-1;i<=1;i++){const c=new THREE.Mesh(new THREE.ConeGeometry(.025,.5,4),bone);c.position.set(i*.06,-2.7,0);c.rotation.x=Math.PI;a.add(c)}mg.add(a);return a}
+const armL=arm(-1),armR=arm(1);
+const head=new THREE.Group();head.position.set(0,3,.12);mg.add(head);
+const hp=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);head.add(o);return o};
+hp(new THREE.SphereGeometry(.3,14,12),bone,0,0,0).scale.set(.75,1.35,.85);
+const eyeM=new THREE.MeshBasicMaterial({color:0xff1111,fog:false});
+[-1,1].forEach(s=>{hp(new THREE.SphereGeometry(.09,10,8),blk,s*.1,.1,.22);hp(new THREE.SphereGeometry(.04,8,8),eyeM,s*.1,.1,.305)});
+hp(new THREE.BoxGeometry(.34,.13,.06),blk,0,-.2,.22);
+for(let i=0;i<8;i++){const x=-.14+i*.04;hp(new THREE.ConeGeometry(.014,.07,4),tm,x,-.17,.255).rotation.x=Math.PI;hp(new THREE.ConeGeometry(.014,.07,4),tm,x,-.23,.255)}
+for(let i=0;i<12;i++){const h=hp(new THREE.CylinderGeometry(.012,.006,.9,4),blk,(i-5.5)*.035,-.5,-.12+(i%3)*.08);h.rotation.z=(i-5.5)*.02}
+const mlight=new THREE.PointLight(0xff2222,1.3,10);mlight.position.y=3.1;mg.add(mlight);mg.scale.setScalar(1.05);mg.rotation.order='YXZ';scene.add(mg);
+// ---------- audio
+let ac,hbT=0,stepT=0,mstT=0;
+function A(){if(ac)return;ac=new (window.AudioContext||window.webkitAudioContext)();[46,48.7].forEach(f=>{const o=ac.createOscillator(),n=ac.createGain();o.frequency.value=f;n.gain.value=.05;o.connect(n).connect(ac.destination);o.start()})}
+function tone(f,du,v,t){if(!ac)return;const o=ac.createOscillator(),n=ac.createGain();o.type=t||'sine';o.frequency.value=f;n.gain.setValueAtTime(v,ac.currentTime);n.gain.exponentialRampToValueAtTime(.001,ac.currentTime+du);o.connect(n).connect(ac.destination);o.start();o.stop(ac.currentTime+du)}
+function noise(du,v){if(!ac)return;const n=ac.sampleRate*du|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=ac.createBufferSource(),g=ac.createGain();g.gain.value=v;s.buffer=b;s.connect(g).connect(ac.destination);s.start()}
+const thump=()=>{tone(60,.18,.6);setTimeout(()=>tone(48,.18,.4),160)};
+// ---------- pathfinding
+const key=(l,x,z)=>l*600+z*30+x,open=(l,x,z)=>cell(l,x,z)==='.';
+const LINK={};[[1,10,1,11],[18,10,18,11]].forEach(([x,z,x2,z2])=>{LINK[key(0,x,z)]=key(1,x2,z2);LINK[key(1,x2,z2)]=key(0,x,z)});
+const ALL=[];LV.forEach((m,l)=>m.forEach((r,z)=>r.forEach((c,x)=>{if(c==='.')ALL.push(key(l,x,z))})));
+function nbrs(k){const l=k/600|0,z=((k%600)/30)|0,x=k%30,o=[];DIRS.forEach(([a,b])=>{if(open(l,x+a,z+b))o.push(key(l,x+a,z+b))});if(LINK[k])o.push(LINK[k]);return o}
+function bfs(a,b,nb){nb=nb||nbrs;if(a===b)return[a];const pv=new Map([[a,-1]]),q=[a];while(q.length){const k=q.shift();if(k===b)break;for(const n of nb(k))if(!pv.has(n)){pv.set(n,k);q.push(n)}}if(!pv.has(b))return[a];const p=[];let k=b;while(k!==-1){p.push(k);k=pv.get(k)}return p.reverse()}
+function nodeOf(x,y,z){return key(ramp(x,z,y,0)!==null?0:(y>2.5?1:0),x/4|0,z/4|0)}
+function los(ax,az,bx,bz,l){const n=Math.ceil(Math.hypot(bx-ax,bz-az)/.7);for(let i=1;i<n;i++){const t=i/n,c=cell(l,(ax+(bx-ax)*t)/4|0,(az+(bz-az)*t)/4|0);if(c==='#'||c==='D')return false}return true}
+function slide(x,z,dx,dz,l,onR){x+=dx;z+=dz;for(let it=0;it<2;it++){const c0=x/4|0,z0=z/4|0;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const cx=c0+a,cz=z0+b,c=cell(l,cx,cz);if(!(c==='#'||c==='D'||(c==='V'&&!onR)))continue;const nx=Math.max(cx*4,Math.min(cx*4+4,x)),nz=Math.max(cz*4,Math.min(cz*4+4,z)),ex=x-nx,ez=z-nz,d=Math.hypot(ex,ez);if(d<.45){if(d>1e-4){x+=ex/d*(.45-d);z+=ez/d*(.45-d)}else{x-=dx;z-=dz}}}}return[x,z]}
+// ---------- game state
+const keys={};let st='menu',P,M,got=0,msgT=0,time=0,deadT=0,last=0,drag=false,walkT=0;
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE')act=true;if(e.code.startsWith('Arrow')||e.code==='Space')e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=false);
+let act=false;
+addEventListener('mousedown',()=>drag=true);addEventListener('mouseup',()=>drag=false);
+addEventListener('mousemove',e=>{if(st!=='play'||P.hid)return;if(document.pointerLockElement||drag){P.yaw-=e.movementX*.0024;P.pitch=Math.max(-1.2,Math.min(1.2,P.pitch-e.movementY*.0024))}});
+function say(t,s){$('msg').textContent=t;msgT=s}
+function init(){
+  P={x:42,z:30,y:0,yaw:0,pitch:0,hid:null,hideT:0,hidDist:999,stam:100,exh:false,sprint:false,vcd:0,camp:0};
+  M={x:42,z:46,y:4,face:0,state:'patrol',path:[],rp:0,tgt:0,bias:3,lost:0,t:0,checks:false,lock:null};
+  mg.visible=true;got=0;keyMeshes.forEach(m=>m.visible=true);door.material.color.set(0x3a1515);
+  say('복도 끝 비상구까지 가야 한다. 열쇠 카드 4개가 필요하다.',6);
+}
+function show(t,h,b){
+('t').textContent=t;('d').innerHTML=h;('btn').textContent=b;('ov').style.display='flex'}
+const INTRO='밤의 학교, 2층 건물에 혼자 남겨졌다. 복도를 떠도는 <b>무언가</b>가 당신을 찾고 있다.<br><b>1층과 2층</b>에 흩어진 <b>열쇠 카드 4개</b>를 모아 1층 북쪽 복도의 비상구로 탈출하라.<br><br><b>W A S D</b> 이동 · <b>Shift</b> 전력질주(스태미나 소모, 소리가 커져 멀리서 들킨다)<br><b>마우스</b> 시점(안 움직이면 드래그 또는 ← → 키) · <b>E</b> 사물함 숨기/나오기, 줍기, 문 열기<br><br>괴물은 걷는 속도보다 훨씬 빠르다. 시야를 벗어나 <b>충분히 거리를 벌린 뒤</b> 사물함에 숨어라. 가까이서 숨으면 들킨다. 계단은 복도 양 끝에 있다.<br>1층 왼쪽 아래 교실과 2층 오른쪽 위 교실 벽에 <b>환풍구</b>가 있다. 안은 좁은 미로이고, 열쇠 카드 하나가 숨겨져 있다. 들어가면 괴물이 잠시 뒤 <b>기어서</b> 쫓아 들어온다. 소리를 죽이고(걷기) 숨어 다니거나, 전력질주로 따돌려라.';
+show('한밤의 학교 3D',INTRO,'시작하기');
+$('btn').onclick=()=>{A();init();st='play';$('ov').style.display='none';last=performance.now();try{renderer.domElement.requestPointerLock()}catch(e){}};
+renderer.domElement.addEventListener('click',()=>{if(st==='play'&&!document.pointerLockElement)try{renderer.domElement.requestPointerLock()}catch(e){}});
+function die(){st='dead';deadT=0;noise(.9,.9);tone(110,.9,.6,'sawtooth');tone(70,1.2,.5,'square');if(document.exitPointerLock)document.exitPointerLock();$('slit').style.display='none'}
+// ---------- update
+function updM(dt){
+  if(M.vent){updV(dt);return}
+  if(M.out>0){M.out-=dt;if(M.out>0)return;const v=M.ov;M.x=v.cx;M.z=v.cz;M.y=v.l*4;mg.visible=true;M.state='chase';M.lost=0;M.path=[];noise(.5,.5);tone(70,.8,.5,'sawtooth')}
+  const mn=nodeOf(M.x,M.y,M.z),pn=nodeOf(P.x,P.y,P.z),dx=P.x-M.x,dz=P.z-M.z,dist=Math.hypot(dx,dz),sameL=Math.abs(P.y-M.y)<2.5;
+  let sp=4.6;M.rp-=dt;
+  const go=t=>{if(M.rp<=0||!M.path.length){M.path=bfs(mn,t);M.rp=.4}};
+  const vis=!P.hid&&sameL&&dist<(P.sprint?34:20)&&los(M.x,M.z,P.x,P.z,P.y>2.5?1:0);
+  if(M.state==='patrol'){
+    M.bias-=dt;if(M.bias<=0){M.tgt=pn;M.bias=8}
+    if(!M.tgt||(mn===M.tgt&&P.y<50))M.tgt=ALL[Math.random()*ALL.length|0];
+    go(M.tgt);
+    if(!P.hid&&(vis||(sameL&&dist<(P.sprint?14:6)))){M.state='chase';M.lost=0;noise(.6,.5);tone(70,.9,.5,'sawtooth');say('...!!',2)}
+  }else if(M.state==='chase'){
+    sp=8.6;
+    if(P.hid){M.state='search';M.lock=P.hid;M.t=0;M.checks=P.hidDist<10;M.path=[]}
+    else{M.lost=vis?0:M.lost+dt;go(pn);if(M.lost>6){M.state='patrol';M.tgt=0;M.bias=10}if(dist<1.7&&sameL)die()}
+  }else{
+    sp=6.5;const lk=M.lock,ln=key(lk.l,lk.x,lk.z);
+    if(!P.hid)M.state='chase';
+    else if(Math.hypot(lk.px-M.x,lk.pz-M.z)>2.6)go(ln);
+    else{M.path=[];M.t+=dt;if(M.t>4.2){if(M.checks)die();else{M.state='patrol';M.tgt=0;M.bias=12;say('괴물이 멀어졌다...',3)}}}
+  }
+  const dr=M.state==='chase'&&sameL&&dist<5&&M.path.length<2;if(M.path.length>1||dr){const n=M.path[1]||0,tx=dr?P.x:(n%30)*4+2,tz=dr?P.z:(((n%600)/30)|0)*4+2,ex=tx-M.x,ez=tz-M.z,d=Math.hypot(ex,ez),s=Math.min(sp*dt,d);if(d>.01){M.x+=ex/d*s;M.z+=ez/d*s;M.face=Math.atan2(ex,ez)}
+    const m2=nodeOf(M.x,M.y,M.z);if(M.path[1]===m2)M.path.shift();
+    mstT-=dt;if(mstT<=0){tone(48,.15,Math.min(.7,2.5/(1+dist)));mstT=sp>7?.28:.5}}
+  const g=ramp(M.x,M.z,M.y,0);M.y=g!==null?g:(M.y>2.5?4:0);
+  mg.position.set(M.x,M.y,M.z);mg.rotation.y=M.face;mg.rotation.x=0;mg.scale.setScalar(1.05);
+  const sw=Math.sin(time*(sp>7?12:5))*(sp>7?.5:.2);armL.rotation.x=sw;armR.rotation.x=-sw;head.rotation.z=.25+Math.sin(time*3)*.12+(Math.random()<.05?(Math.random()-.5)*.9:0);head.rotation.x=.15;
+}
+function update(dt){
+  time+=dt;P.vcd-=dt;if(msgT>0){msgT-=dt;if(msgT<=0)$('msg').textContent=''}
+  if(keys.ArrowLeft)P.yaw+=1.9*dt;if(keys.ArrowRight)P.yaw-=1.9*dt;
+  const f=[-Math.sin(P.yaw),-Math.cos(P.yaw)],rt=[Math.cos(P.yaw),-Math.sin(P.yaw)];
+  let mv=0;P.sprint=false;
+  if(!P.hid){
+    const fw=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),sd=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+    let dx=f[0]*fw+rt[0]*sd,dz=f[1]*fw+rt[1]*sd;const L=Math.hypot(dx,dz);
+    if(L>0){dx/=L;dz/=L;mv=1;
+      if((keys.ShiftLeft||keys.ShiftRight)&&P.stam>0&&!P.exh){P.sprint=true;P.stam-=dt*26}
+      const iv=P.y>50,sp=iv?(P.sprint?5.8:3.2):P.sprint?10:5.2,onR=ramp(P.x,P.z,P.y,.6)!==null,r=iv?slideV(P.x,P.z,dx*sp*dt,dz*sp*dt):slide(P.x,P.z,dx*sp*dt,dz*sp*dt,P.y>2.5?1:0,onR);P.x=r[0];P.z=r[1];
+      if(!iv){const g=ramp(P.x,P.z,P.y,0);P.y=g!==null?g:(P.y>2.5?4:0)}walkT+=dt*(P.sprint?14:9);
+      stepT-=dt;if(stepT<=0){noise(.06,P.sprint?.28:.1);stepT=P.sprint?.27:.46}}
+    if(!P.sprint)P.stam=Math.min(100,P.stam+dt*(mv?12:24));
+    if(P.stam<=0)P.exh=true;if(P.stam>35)P.exh=false;
+  }else P.hideT+=dt;
+  // interaction
+  const lv=P.y>50?2:P.y>2.5?1:0;let nlk=null,nd=3.3;
+  lockers.forEach(k=>{if(k.l!==lv)return;const d=Math.hypot(k.px-P.x,k.pz-P.z);if(d<nd){nd=d;nlk=k}});
+  const nk=KEYPOS.findIndex((k,i)=>keyMeshes[i].visible&&k.l===lv&&Math.hypot(k.wx-P.x,k.wz-P.z)<(k.l===2?2.2:3));
+  const nex=lv===0&&Math.hypot(ex-P.x,6-P.z)<4.5;
+  const nv=VENTS.findIndex(v=>lv===2?Math.hypot(v.vx-P.x,v.vz-P.z)<2.4:(v.l===lv&&Math.hypot(v.cx-P.x,v.cz-P.z)<3.4));
+  $('pr').textContent=P.hid?(P.hideT>.6?'[E] 사물함에서 나가기':''):nlk?'[E] 사물함에 숨기':nk>=0?'[E] 열쇠 카드 줍기':nv>=0&&P.vcd<=0?(lv===2?'[E] 환풍구에서 나가기':'[E] 환풍구로 들어가기'):nex?'[E] 비상구 열기':'';
+  if(act){act=false;
+    if(P.hid){if(P.hideT>.6){P.x=P.hid.x*4+2;P.z=P.hid.z*4+2;P.hid=null;noise(.15,.3);tone(180,.1,.2,'square')}}
+    else if(nlk){const md=Math.hypot(M.x-P.x,M.z-P.z);P.hidDist=M.state==='chase'&&Math.abs(M.y-P.y)<2.5?md:999;P.hid=nlk;P.hideT=0;P.x=nlk.x*4+2+nlk.dx*1.4;P.z=nlk.z*4+2+nlk.dz*1.4;P.yaw=Math.atan2(nlk.dx,nlk.dz);P.pitch=0;noise(.15,.3);tone(150,.12,.2,'square')}
+    else if(nk>=0){keyMeshes[nk].visible=false;got++;tone(880,.3,.3);tone(1320,.4,.2);say(got>=4?'열쇠 카드를 모두 모았다! 비상구로 가자!':'열쇠 카드를 얻었다 ('+got+'/4)',4);if(got>=4)door.material.color.set(0x1f6b3a)}
+    else if(nv>=0&&P.vcd<=0){useVent(nv,lv)}else if(nex){if(got>=4){st='win';deadT=0;document.exitPointerLock&&document.exitPointerLock();$('slit').style.display='none';show('탈출 성공','비상구를 열고 학교를 빠져나왔다. 차가운 밤공기가 반갑다.<br>하지만 뒤에서... 무언가의 발소리가 들리는 것 같다.','다시 하기')}else{say('문이 잠겨 있다. 열쇠 카드 4개가 필요하다. ('+got+'/4)',3);tone(100,.2,.3,'square')}}
+  }
+  updM(dt);
+  // camera, lights, HUD
+  const bob=mv?Math.sin(walkT)*(P.sprint?.1:.05):0;
+  camera.position.set(P.x,P.y+(P.y>50?1:P.hid?1.55:1.65)+bob,P.z);camera.rotation.set(P.pitch,P.yaw,0);
+  const md=Math.hypot(M.x-P.x,M.z-P.z),near=Math.abs(M.y-P.y)<2.5?md:99;
+  let fk=.92+.08*Math.sin(time*31);if(near<18&&Math.random()<.07)fk=.25+Math.random()*.3;
+  fl.intensity=2.4*fk;nl.intensity=.5*fk;scene.fog.density=P.y>50?.1:.042;if(P.y>50&&Math.random()<dt*.3)tone(40+Math.random()*30,.4,.2,'square');
+  const inten=M.state==='chase'?1:M.state==='search'?.75:Math.max(0,Math.min(.6,1-near/30));
+  hbT-=dt;if(hbT<=0){if(inten>.1)thump();hbT=1.3-inten*.8}
+  $('red').style.opacity=M.state==='chase'?.5+.3*Math.sin(time*10):M.state==='search'?.25:0;
+  $('slit').style.display=P.hid?'block':'none';
+  ('sb').style.width=P.stam+'%';('sb').style.background=P.exh?'#a33':'#d8d0b0';
+  ('keys').textContent='열쇠카드'+got+'/4';('lv').textContent=lv===2?'환풍구':lv?'2층':'1층';
+  keyMeshes.forEach((m,i)=>{m.rotation.y=time*2;m.position.y=KEYPOS[i].wy+Math.sin(time*3+i)*.12});
+}
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(st==='play')update(dt);
+  else if(st==='dead'){deadT+=dt;
+    const dx=P.x-M.x,dz=P.z-M.z,d=Math.hypot(dx,dz)||1;
+    const cv=M.vent;camera.position.set(M.x+dx/d*(cv?1.6:1.4)+(Math.random()-.5)*.1,M.y+(cv?1.1:3)+(Math.random()-.5)*.1,M.z+dz/d*(cv?1.6:1.4));camera.lookAt(M.x+(cv?dx/d*.55:0),M.y+(cv?.55:3.15),M.z+(cv?dz/d*.55:0));mg.rotation.y=Math.atan2(dx,dz);
+    ('red').style.opacity=.9;if(deadT>1.6&&('ov').style.display!=='flex')show('잡혔다...','괴물에게 붙잡혔다. 시야에서 벗어나 거리를 충분히 벌린 뒤 숨어야 한다.','다시 도전')}
+  renderer.render(scene,camera);requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script></body></html>

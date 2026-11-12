@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dance of Fire & Ice - Rhythm Timing Game</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #05070f;
+            color: #ffffff;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        /* Neon glow effects */
+        .glow-red {
+            box-shadow: 0 0 20px rgba(255, 59, 48, 0.6), 0 0 40px rgba(255, 59, 48, 0.3);
+        }
+        .glow-blue {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), 0 0 40px rgba(59, 130, 246, 0.3);
+        }
+        .text-glow-red {
+            text-shadow: 0 0 10px rgba(255, 59, 48, 0.8), 0 0 20px rgba(255, 59, 48, 0.4);
+        }
+        .text-glow-blue {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        /* Glassmorphism modal UI */
+        .glass-panel {
+            background: rgba(13, 17, 30, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Custom scrollbar for song selector */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center relative select-none">
+
+
+    <!-- Background Canvas for Audio Visualizer / Stars -->
+    <canvas id="bgCanvas" class="absolute inset-0 w-full h-full z-0 pointer-events-none"></canvas>
+
+
+    <!-- Main Game Canvas -->
+    <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-10 cursor-pointer"></canvas>
+
+
+    <!-- HUD / Overlay Layer -->
+    <div id="hud" class="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4 sm:p-6">
+       
+        <!-- Top Bar: Title & Stats -->
+        <div class="flex justify-between items-start w-full max-w-5xl mx-auto">
+            <!-- Left: Level info & BPM -->
+            <div>
+                <h1 id="hudLevelTitle" class="text-xl sm:text-2xl font-black font-orbitron tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-purple-400 to-blue-500">
+                    STORY OF FIRE & ICE
+                </h1>
+                <div class="flex items-center gap-3 mt-1 text-xs sm:text-sm text-gray-400 font-semibold">
+                    <span>BPM: <span id="hudBpm" class="text-cyan-400 font-orbitron">120</span></span>
+                    <span>•</span>
+                    <span>SPEED: <span id="hudSpeed" class="text-purple-400 font-orbitron">1.0x</span></span>
+                    <span>•</span>
+                    <span>PROGRESS: <span id="hudProgress" class="text-yellow-400 font-orbitron">0%</span></span>
+                </div>
+            </div>
+
+
+            <!-- Right: Score & Accuracy -->
+            <div class="text-right">
+                <div id="hudScore" class="text-2xl sm:text-4xl font-black font-orbitron text-white tracking-widest drop-shadow-md">
+                    000000
+                </div>
+                <div class="text-xs sm:text-sm font-semibold text-gray-400 mt-0.5">
+                    ACCURACY: <span id="hudAccuracy" class="text-emerald-400 font-orbitron">100.0%</span>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Center Dynamic Judgment Notification & Key Press Ripple -->
+        <div class="flex flex-col items-center justify-center -mt-12 pointer-events-none">
+            <div id="judgmentText" class="text-4xl sm:text-6xl font-black font-orbitron opacity-0 transform scale-50 transition-all duration-150 tracking-widest">
+                PERFECT
+            </div>
+            <div id="comboCounter" class="text-xl sm:text-3xl font-bold font-orbitron text-cyan-300 opacity-0 transition-all duration-200 mt-2">
+                0 COMBO
+            </div>
+            <!-- Key Visualizer Display -->
+            <div id="keyVisualizer" class="mt-4 flex gap-2 opacity-75">
+                <span id="keyDisplay" class="px-3 py-1 bg-white/10 border border-white/20 rounded-lg text-xs font-mono text-cyan-300 font-bold transition">PRESS ANY KEY</span>
+            </div>
+        </div>
+
+
+        <!-- Bottom Controls & Hints -->
+        <div class="flex justify-between items-end w-full max-w-5xl mx-auto">
+            <!-- Game instructions -->
+            <div class="hidden sm:block text-xs text-gray-400 space-y-1 bg-black/40 p-3 rounded-xl border border-white/5 backdrop-blur-md">
+                <p><span class="px-2 py-0.5 bg-white/20 text-white rounded font-mono font-bold">ANY KEY</span> / <span class="px-2 py-0.5 bg-white/20 text-white rounded font-mono font-bold">CLICK</span> : Step</p>
+                <p><span class="px-2 py-0.5 bg-white/20 text-white rounded font-mono font-bold">SUDDEN DEATH</span> : 1 Miss = Instant Game Over</p>
+            </div>
+
+
+            <!-- Action Buttons (Pause, Sudden Death & Auto Toggle) -->
+            <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto ml-auto">
+                <button id="suddenDeathHudBtn" class="px-3 py-2 bg-red-950/60 hover:bg-red-900/80 text-red-300 rounded-xl border border-red-800/60 font-semibold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-lg">
+                    <i class="fa-solid fa-skull text-red-400"></i> SD: <span id="sdStatus">ON</span>
+                </button>
+                <button id="autoPlayBtn" class="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 text-gray-300 hover:text-white rounded-xl border border-slate-700 font-semibold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-lg">
+                    <i class="fa-solid fa-robot text-purple-400"></i> AUTO: <span id="autoPlayStatus">OFF</span>
+                </button>
+                <button id="pauseBtn" class="p-3 sm:px-4 sm:py-2 bg-slate-800/80 hover:bg-slate-700 text-white rounded-xl border border-slate-700 font-semibold text-sm transition shadow-lg flex items-center gap-2">
+                    <i class="fa-solid fa-pause"></i> <span class="hidden sm:inline">Pause</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MAIN MENU OVERLAY -->
+    <div id="mainMenu" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xl transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-lg p-6 sm:p-8 rounded-3xl text-center shadow-2xl relative border border-white/10 flex flex-col items-center">
+           
+            <!-- Animated Dual Orbit Logo -->
+            <div class="relative w-24 h-24 mb-6 flex items-center justify-center">
+                <div class="absolute w-6 h-6 rounded-full bg-red-500 glow-red animate-ping opacity-75"></div>
+                <div class="absolute w-6 h-6 rounded-full bg-blue-500 glow-blue animate-ping opacity-75" style="animation-delay: 0.5s;"></div>
+                <div class="w-16 h-16 rounded-full border-2 border-dashed border-white/30 animate-spin flex items-center justify-center" style="animation-duration: 4s;">
+                    <div class="w-4 h-4 bg-red-500 rounded-full glow-red -translate-x-8"></div>
+                    <div class="w-4 h-4 bg-blue-500 rounded-full glow-blue translate-x-8"></div>
+                </div>
+            </div>
+
+
+            <h1 class="text-3xl sm:text-4xl font-black font-orbitron tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-500 via-purple-300 to-blue-400 mb-2">
+                DANCE OF FIRE & ICE
+            </h1>
+            <p class="text-xs sm:text-sm text-gray-400 mb-6 max-w-xs">
+                Orbit Rhythm Precision Game. Press any key or tap on time. Don't miss a beat!
+            </p>
+
+
+            <!-- Level Selection List -->
+            <div class="w-full space-y-2 mb-6 max-h-56 overflow-y-auto pr-1" id="levelListContainer">
+                <!-- Injected via JavaScript -->
+            </div>
+
+
+            <!-- Settings Grid: Speed & Sudden Death -->
+            <div class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <!-- Speed Multiplier Options -->
+                <div class="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-white/5">
+                    <span class="text-xs font-orbitron text-gray-400 font-bold">SPEED:</span>
+                    <div class="flex gap-1" id="speedOptions">
+                        <button data-speed="1.0" class="speed-btn px-2.5 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold font-orbitron transition">1.0x</button>
+                        <button data-speed="1.25" class="speed-btn px-2.5 py-1 bg-slate-800 text-gray-400 hover:text-white rounded-lg text-xs font-bold font-orbitron transition">1.25x</button>
+                        <button data-speed="1.5" class="speed-btn px-2.5 py-1 bg-slate-800 text-gray-400 hover:text-white rounded-lg text-xs font-bold font-orbitron transition">1.5x</button>
+                        <button data-speed="2.0" class="speed-btn px-2.5 py-1 bg-slate-800 text-gray-400 hover:text-white rounded-lg text-xs font-bold font-orbitron transition">2.0x</button>
+                    </div>
+                </div>
+
+
+                <!-- Sudden Death Toggle -->
+                <div class="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-white/5">
+                    <span class="text-xs font-orbitron text-gray-400 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-skull text-red-500"></i> MISS = OUT:
+                    </span>
+                    <button id="suddenDeathToggleBtn" class="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold font-orbitron transition">
+                        ENABLED
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- Start Button -->
+            <button id="startBtn" class="w-full py-4 bg-gradient-to-r from-red-600 via-purple-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-black font-orbitron rounded-2xl shadow-xl hover:shadow-cyan-500/25 transition transform active:scale-95 text-lg tracking-widest">
+                START DANCE
+            </button>
+
+
+            <!-- Game Instructions Footer -->
+            <div class="mt-4 text-xs text-gray-400 flex items-center justify-center gap-4 border-t border-white/10 pt-3 w-full">
+                <span><i class="fa-solid fa-keyboard text-cyan-400 mr-1"></i> Space / Any Key / Click</span>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- GAME OVER (OUT) OVERLAY -->
+    <div id="gameOverMenu" class="absolute inset-0 z-40 flex items-center justify-center p-4 bg-red-950/85 backdrop-blur-xl hidden">
+        <div class="glass-panel w-full max-w-md p-6 sm:p-8 rounded-3xl text-center shadow-2xl relative border border-red-500/30">
+           
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-600/20 border-2 border-red-500 flex items-center justify-center animate-bounce">
+                <i class="fa-solid fa-skull text-4xl text-red-500"></i>
+            </div>
+
+
+            <h2 class="text-3xl font-black font-orbitron tracking-wider text-red-500 mb-1">
+                OUT! (GAME OVER)
+            </h2>
+            <p class="text-xs text-red-300/80 mb-6 font-semibold">Missed Timing in Sudden Death Mode</p>
+
+
+            <div class="bg-black/50 p-4 rounded-2xl border border-white/5 mb-6 text-left space-y-2 font-orbitron text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">TRACK PROGRESS:</span>
+                    <span id="failProgress" class="text-yellow-400 font-bold">0%</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">TILE NODE:</span>
+                    <span id="failTile" class="text-cyan-400 font-bold">0 / 0</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">COMBO REACHED:</span>
+                    <span id="failCombo" class="text-white font-bold">0</span>
+                </div>
+            </div>
+
+
+            <div class="grid grid-cols-2 gap-3">
+                <button id="failRetryBtn" class="py-3 bg-red-600 hover:bg-red-500 text-white font-bold font-orbitron rounded-xl transition active:scale-95 shadow-lg shadow-red-600/30">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> RETRY
+                </button>
+                <button id="failMenuBtn" class="py-3 bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold font-orbitron rounded-xl transition active:scale-95 border border-slate-700">
+                    MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- GAME OVER / RESULTS OVERLAY -->
+    <div id="resultsMenu" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl hidden">
+        <div class="glass-panel w-full max-w-md p-6 sm:p-8 rounded-3xl text-center shadow-2xl relative border border-white/10">
+           
+            <h2 id="resultTitle" class="text-3xl font-black font-orbitron tracking-wider text-cyan-400 mb-2">
+                LEVEL CLEAR!
+            </h2>
+            <p id="resultSubtitle" class="text-xs text-gray-400 mb-6">Excellent Rhythm & Precision</p>
+
+
+            <!-- Big Grade Circle -->
+            <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-900/50 to-slate-900 border-2 border-cyan-500/50 flex items-center justify-center shadow-inner">
+                <span id="resultRank" class="text-5xl font-black font-orbitron text-yellow-400 drop-shadow-lg">S</span>
+            </div>
+
+
+            <!-- Performance Stats Grid -->
+            <div class="grid grid-cols-2 gap-3 mb-8 text-left bg-black/40 p-4 rounded-2xl border border-white/5 font-orbitron">
+                <div>
+                    <div class="text-xs text-gray-400">FINAL SCORE</div>
+                    <div id="resScore" class="text-xl font-bold text-white">000000</div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-400">ACCURACY</div>
+                    <div id="resAccuracy" class="text-xl font-bold text-emerald-400">100%</div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-400">MAX COMBO</div>
+                    <div id="resMaxCombo" class="text-xl font-bold text-cyan-300">0</div>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-400">PERFECT / MISS</div>
+                    <div id="resHits" class="text-sm font-bold text-gray-300 mt-1">0 / 0</div>
+                </div>
+            </div>
+
+
+            <!-- Action buttons -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="retryBtn" class="py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold font-orbitron rounded-xl transition active:scale-95 border border-slate-700">
+                    <i class="fa-solid fa-rotate-right mr-1"></i> RETRY
+                </button>
+                <button id="menuBtn" class="py-3 bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-500 hover:to-blue-500 text-white font-bold font-orbitron rounded-xl transition active:scale-95 shadow-lg">
+                    MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PAUSE OVERLAY -->
+    <div id="pauseMenu" class="absolute inset-0 z-30 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md hidden">
+        <div class="glass-panel w-full max-w-sm p-6 rounded-3xl text-center border border-white/10 shadow-2xl">
+            <h2 class="text-2xl font-black font-orbitron text-white tracking-widest mb-6">GAME PAUSED</h2>
+            <div class="space-y-3">
+                <button id="resumeBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold font-orbitron rounded-xl transition">
+                    RESUME
+                </button>
+                <button id="restartPauseBtn" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-gray-200 font-bold font-orbitron rounded-xl transition border border-slate-700">
+                    RESTART
+                </button>
+                <button id="quitPauseBtn" class="w-full py-3 bg-red-900/40 hover:bg-red-800/60 text-red-300 font-bold font-orbitron rounded-xl transition border border-red-800/40">
+                    QUIT TO MENU
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        /**
+         * A Dance of Fire and Ice - Enhanced Rhythm Engine
+         */
+
+
+        // --- AUDIO SYNTHESIZER ENGINE (Web Audio API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.initialized = false;
+            }
+
+
+            init() {
+                if (this.initialized) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                this.initialized = true;
+            }
+
+
+            ensureState() {
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+
+            playHit(isRedActive, type = 'perfect', soundType = 'synth') {
+                if (!this.initialized) return;
+                this.ensureState();
+
+
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+
+                if (type === 'miss') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(100, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+                    gain.gain.setValueAtTime(0.5, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                } else if (soundType === 'piano') {
+                    osc.type = 'triangle';
+                    const basePitch = isRedActive ? 659.25 : 329.63; // E5 or E4 note
+                    osc.frequency.setValueAtTime(basePitch, now);
+
+
+                    const osc2 = this.ctx.createOscillator();
+                    const gain2 = this.ctx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(basePitch * 2, now);
+                    gain2.gain.setValueAtTime(0.15, now);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                    osc2.connect(gain2);
+                    gain2.connect(this.ctx.destination);
+                    osc2.start(now);
+                    osc2.stop(now + 0.15);
+
+
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                } else if (soundType === 'fast') {
+                    osc.type = 'square';
+                    const basePitch = isRedActive ? 880 : 523.25; // High synth pitches
+                    osc.frequency.setValueAtTime(basePitch, now);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                } else {
+                    osc.type = isRedActive ? 'triangle' : 'sine';
+                    let baseFreq = isRedActive ? 440 : 587.33;
+                    if (type === 'great') baseFreq *= 0.95;
+
+
+                    osc.frequency.setValueAtTime(baseFreq, now);
+                    osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.4, now + 0.08);
+
+
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                }
+
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+
+                osc.start(now);
+                osc.stop(now + 0.3);
+            }
+        }
+
+
+        const audio = new SoundEngine();
+
+
+        // Level pattern helper generators
+        function generateRushEAngles() {
+            const pattern = [];
+            for (let i = 0; i < 6; i++) pattern.push(0);
+            for (let repeat = 0; repeat < 4; repeat++) {
+                pattern.push(0, 90, 0, 90, 180, 270, 180, 270);
+                pattern.push(45, 135, 225, 315, 45, 135, 225, 315);
+            }
+            for (let i = 0; i < 10; i++) pattern.push(i % 2 === 0 ? 0 : 90);
+            for (let i = 0; i < 8; i++) pattern.push(180);
+            for (let i = 0; i < 12; i++) pattern.push(i % 2 === 0 ? 270 : 180);
+            for (let i = 0; i < 16; i++) pattern.push((i * 90) % 360);
+            return pattern;
+        }
+
+
+        function generateSpiralAngles() {
+            const pattern = [0, 0, 0];
+            for (let i = 0; i < 16; i++) {
+                pattern.push(60, 60, 120, 60, 120);
+            }
+            for (let i = 0; i < 12; i++) {
+                pattern.push(300, 300, 240);
+            }
+            return pattern;
+        }
+
+
+        function generateBumblebeeAngles() {
+            const pattern = [];
+            for (let i = 0; i < 6; i++) pattern.push(0);
+            for (let i = 0; i < 40; i++) {
+                pattern.push(i % 2 === 0 ? 90 : 270);
+            }
+            for (let i = 0; i < 20; i++) {
+                pattern.push(i % 2 === 0 ? 45 : 315);
+            }
+            return pattern;
+        }
+
+
+        // --- LEVEL DEFINITIONS ---
+        const PRESET_LEVELS = [
+            {
+                id: 1,
+                title: "1. IGNITION & FROST",
+                bpm: 110,
+                soundType: 'synth',
+                difficulty: 'EASY',
+                angles: [0, 0, 0, 90, 90, 0, 0, 270, 270, 0, 0, 0, 0]
+            },
+            {
+                id: 2,
+                title: "2. ZIGZAG SYNCHRONY",
+                bpm: 135,
+                soundType: 'synth',
+                difficulty: 'MEDIUM',
+                angles: [0, 45, 315, 45, 315, 0, 90, 180, 90, 180, 270, 0, 0, 0]
+            },
+            {
+                id: 3,
+                title: "3. RUSH E (PIANO SPRINT)",
+                bpm: 175,
+                soundType: 'piano',
+                difficulty: 'EXTREME',
+                angles: generateRushEAngles()
+            },
+            {
+                id: 4,
+                title: "4. SPIRAL NIGHTMARE",
+                bpm: 160,
+                soundType: 'synth',
+                difficulty: 'HARD',
+                angles: generateSpiralAngles()
+            },
+            {
+                id: 5,
+                title: "5. FLIGHT OF THE BUMBLEBEE",
+                bpm: 220,
+                soundType: 'fast',
+                difficulty: 'INSANE',
+                angles: generateBumblebeeAngles()
+            }
+        ];
+
+
+        // System Configuration
+        let selectedSpeedMultiplier = 1.0;
+        let suddenDeath = true; // Instant Game Over on MISS
+        let currentLevel = PRESET_LEVELS[0];
+        let isPlaying = false;
+        let isPaused = false;
+        let autoPlay = false;
+
+
+        // Path Nodes & Track Logic
+        const TILE_DISTANCE = 90;
+        const PLANET_ORBIT_RADIUS = TILE_DISTANCE / 2;
+       
+        // Timing window thresholds (in Radians)
+        const TIMING_WINDOW_PERFECT = 0.35; // ~20 deg
+        const TIMING_WINDOW_GREAT = 0.68;   // ~39 deg
+
+
+        let pathNodes = [];
+        let currentTileIndex = 0;
+
+
+        let anchorPlanet = 'red';
+        let currentAngle = 0;
+        let rotationDirection = 1;
+        let targetAngle = 0;
+
+
+        // Stats
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let totalHits = 0;
+        let perfectHits = 0;
+        let greatHits = 0;
+        let missHits = 0;
+
+
+        let cameraX = 0;
+        let cameraY = 0;
+
+
+        let particles = [];
+        let backgroundPulse = 0;
+        let isFirstStepPending = true; // 시작 직후 첫 타일 즉사 방지 플래그
+
+
+        // --- CANVAS DOM INITIALIZATION ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+
+        function buildLevelPath(level) {
+            pathNodes = [];
+            let currX = 0;
+            let currY = 0;
+
+
+            pathNodes.push({ x: currX, y: currY, angle: 0, hit: true, status: 'start' });
+
+
+            let accumAngle = 0;
+            for (let i = 0; i < level.angles.length; i++) {
+                accumAngle += level.angles[i];
+                const rad = (accumAngle * Math.PI) / 180;
+                currX += Math.cos(rad) * TILE_DISTANCE;
+                currY += Math.sin(rad) * TILE_DISTANCE;
+
+
+                pathNodes.push({
+                    x: currX,
+                    y: currY,
+                    angle: accumAngle,
+                    hit: false,
+                    status: 'pending'
+                });
+            }
+        }
+
+
+        function populateLevelList() {
+            const container = document.getElementById('levelListContainer');
+            container.innerHTML = '';
+
+
+            PRESET_LEVELS.forEach((level) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full p-3 sm:p-4 rounded-2xl flex items-center justify-between border transition text-left ${
+                    level.id === currentLevel.id
+                    ? 'bg-gradient-to-r from-red-950/60 to-blue-950/60 border-cyan-500/50 text-white shadow-lg'
+                    : 'bg-slate-900/60 border-white/5 text-gray-300 hover:bg-slate-800/60'
+                }`;
+
+
+                let badgeColor = 'text-green-400';
+                if (level.difficulty === 'HARD') badgeColor = 'text-yellow-400';
+                if (level.difficulty === 'EXTREME') badgeColor = 'text-red-400';
+                if (level.difficulty === 'INSANE') badgeColor = 'text-purple-400';
+
+
+                btn.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black font-orbitron text-cyan-400 border border-white/10">
+                            ${level.id}
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm font-orbitron">${level.title}</div>
+                            <div class="text-xs text-gray-400 font-mono mt-0.5">${level.angles.length} NODES • <span class="${badgeColor} font-bold">${level.difficulty}</span></div>
+                        </div>
+                    </div>
+                    <div class="text-right font-orbitron">
+                        <span class="px-2 py-1 bg-white/10 rounded-lg text-xs font-bold text-cyan-300">${level.bpm} BPM</span>
+                    </div>
+                `;
+
+
+                btn.onclick = () => {
+                    currentLevel = level;
+                    populateLevelList();
+                };
+
+
+                container.appendChild(btn);
+            });
+        }
+
+
+        // Sudden Death toggle handlers
+        const sdToggleBtn = document.getElementById('suddenDeathToggleBtn');
+        const sdHudBtn = document.getElementById('suddenDeathHudBtn');
+
+
+        function updateSuddenDeathUI() {
+            sdToggleBtn.textContent = suddenDeath ? 'ENABLED' : 'DISABLED';
+            sdToggleBtn.className = suddenDeath
+                ? 'px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold font-orbitron transition'
+                : 'px-3 py-1 bg-slate-800 text-gray-400 rounded-lg text-xs font-bold font-orbitron transition';
+           
+            document.getElementById('sdStatus').textContent = suddenDeath ? 'ON' : 'OFF';
+            sdHudBtn.classList.toggle('bg-red-900/80', suddenDeath);
+            sdHudBtn.classList.toggle('border-red-500', suddenDeath);
+        }
+
+
+        sdToggleBtn.onclick = () => { suddenDeath = !suddenDeath; updateSuddenDeathUI(); };
+        sdHudBtn.onclick = () => { suddenDeath = !suddenDeath; updateSuddenDeathUI(); };
+
+
+        // Speed option buttons
+        document.querySelectorAll('.speed-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.speed-btn').forEach(b => {
+                    b.classList.remove('bg-blue-600', 'text-white');
+                    b.classList.add('bg-slate-800', 'text-gray-400');
+                });
+                e.target.classList.remove('bg-slate-800', 'text-gray-400');
+                e.target.classList.add('bg-blue-600', 'text-white');
+                selectedSpeedMultiplier = parseFloat(e.target.dataset.speed);
+                document.getElementById('hudSpeed').textContent = selectedSpeedMultiplier.toFixed(2) + 'x';
+            };
+        });
+
+
+        const autoPlayBtn = document.getElementById('autoPlayBtn');
+        autoPlayBtn.onclick = () => {
+            autoPlay = !autoPlay;
+            document.getElementById('autoPlayStatus').textContent = autoPlay ? 'ON' : 'OFF';
+            autoPlayBtn.classList.toggle('border-purple-500', autoPlay);
+            autoPlayBtn.classList.toggle('bg-purple-900/50', autoPlay);
+        };
+
+
+        function startNewGame() {
+            audio.init();
+            buildLevelPath(currentLevel);
+
+
+            currentTileIndex = 0;
+            anchorPlanet = 'red';
+            rotationDirection = 1;
+
+
+            const firstTargetRad = (pathNodes[1].angle * Math.PI) / 180;
+            targetAngle = firstTargetRad;
+            currentAngle = firstTargetRad - Math.PI * rotationDirection;
+
+
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            totalHits = 0;
+            perfectHits = 0;
+            greatHits = 0;
+            missHits = 0;
+
+
+            particles = [];
+            isFirstStepPending = true; // 게임 시작 시 초기화
+
+
+            updateHUD();
+
+
+            document.getElementById('hudLevelTitle').textContent = currentLevel.title;
+            document.getElementById('hudBpm').textContent = Math.round(currentLevel.bpm * selectedSpeedMultiplier);
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('resultsMenu').classList.add('hidden');
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('pauseMenu').classList.add('hidden');
+
+
+            isPlaying = true;
+            isPaused = false;
+            lastTime = performance.now();
+        }
+
+
+        function updateHUD() {
+            document.getElementById('hudScore').textContent = score.toString().padStart(6, '0');
+            const accuracy = totalHits > 0 ? (((perfectHits + greatHits * 0.7) / totalHits) * 100).toFixed(1) : 100.0;
+            document.getElementById('hudAccuracy').textContent = accuracy + '%';
+           
+            const progress = Math.min(100, Math.floor((currentTileIndex / (pathNodes.length - 1)) * 100));
+            document.getElementById('hudProgress').textContent = progress + '%';
+        }
+
+
+        function showJudgment(text, colorClass) {
+            const el = document.getElementById('judgmentText');
+            const comboEl = document.getElementById('comboCounter');
+
+
+            el.textContent = text;
+            el.className = `text-4xl sm:text-6xl font-black font-orbitron transition-all duration-150 tracking-widest ${colorClass}`;
+            el.style.opacity = '1';
+            el.style.transform = 'scale(1.1)';
+
+
+            if (combo > 1) {
+                comboEl.textContent = `${combo} COMBO`;
+                comboEl.style.opacity = '1';
+            } else {
+                comboEl.style.opacity = '0';
+            }
+
+
+            setTimeout(() => {
+                el.style.opacity = '0';
+                el.style.transform = 'scale(0.8)';
+            }, 300);
+        }
+
+
+        function handleInput(event) {
+            if (!isPlaying || isPaused) return;
+
+
+            const keyDisp = document.getElementById('keyDisplay');
+            if (event && event.key) {
+                keyDisp.textContent = `KEY: ${event.key.toUpperCase()}`;
+            } else {
+                keyDisp.textContent = `CLICK / TAP`;
+            }
+            keyDisp.classList.add('border-cyan-400', 'bg-cyan-500/20');
+            setTimeout(() => keyDisp.classList.remove('border-cyan-400', 'bg-cyan-500/20'), 150);
+
+
+            if (currentTileIndex >= pathNodes.length - 1) return;
+
+
+            const nextIndex = currentTileIndex + 1;
+            const targetNode = pathNodes[nextIndex];
+
+
+            let diff = Math.abs(currentAngle - targetAngle);
+            diff = diff % (Math.PI * 2);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+
+            let hitType = 'miss';
+            if (diff <= TIMING_WINDOW_PERFECT) {
+                hitType = 'perfect';
+            } else if (diff <= TIMING_WINDOW_GREAT) {
+                hitType = 'great';
+            }
+
+
+            processTileHit(hitType, targetNode);
+        }
+
+
+        function triggerGameOver() {
+            isPlaying = false;
+            audio.playHit(false, 'miss');
+           
+            const activeNode = pathNodes[currentTileIndex];
+            if (activeNode) {
+                createParticles(activeNode.x, activeNode.y, '#ef4444', 40);
+            }
+
+
+            const progress = Math.min(100, Math.floor((currentTileIndex / (pathNodes.length - 1)) * 100));
+            document.getElementById('failProgress').textContent = progress + '%';
+            document.getElementById('failTile').textContent = `${currentTileIndex} / ${pathNodes.length - 1}`;
+            document.getElementById('failCombo').textContent = maxCombo;
+
+
+            setTimeout(() => {
+                document.getElementById('gameOverMenu').classList.remove('hidden');
+            }, 300);
+        }
+
+
+        function processTileHit(hitType, targetNode) {
+            const isRedActive = anchorPlanet === 'red';
+            isFirstStepPending = false; // 첫 입력 성공으로 플래그 해제
+
+
+            if (hitType === 'perfect') {
+                score += 300;
+                combo++;
+                perfectHits++;
+                totalHits++;
+                showJudgment('PERFECT', 'text-cyan-400 text-glow-blue');
+                audio.playHit(isRedActive, 'perfect', currentLevel.soundType);
+                createParticles(targetNode.x, targetNode.y, isRedActive ? '#ef4444' : '#3b82f6', 20);
+            } else if (hitType === 'great') {
+                score += 150;
+                combo++;
+                greatHits++;
+                totalHits++;
+                showJudgment('GREAT', 'text-emerald-400');
+                audio.playHit(isRedActive, 'great', currentLevel.soundType);
+                createParticles(targetNode.x, targetNode.y, '#10b981', 12);
+            } else {
+                combo = 0;
+                missHits++;
+                totalHits++;
+                showJudgment('MISS', 'text-red-500 text-glow-red');
+                createParticles(targetNode.x, targetNode.y, '#f43f5e', 15);
+
+
+                if (suddenDeath) {
+                    triggerGameOver();
+                    return;
+                } else {
+                    audio.playHit(isRedActive, 'miss', currentLevel.soundType);
+                }
+            }
+
+
+            maxCombo = Math.max(maxCombo, combo);
+            targetNode.hit = true;
+            targetNode.status = hitType;
+            currentTileIndex++;
+
+
+            anchorPlanet = anchorPlanet === 'red' ? 'blue' : 'red';
+            rotationDirection = -rotationDirection;
+
+
+            if (currentTileIndex < pathNodes.length - 1) {
+                const nextTargetNode = pathNodes[currentTileIndex + 1];
+                const prevNode = pathNodes[currentTileIndex];
+               
+                const dx = nextTargetNode.x - prevNode.x;
+                const dy = nextTargetNode.y - prevNode.y;
+                targetAngle = Math.atan2(dy, dx);
+            } else {
+                setTimeout(showResults, 600);
+            }
+
+
+            backgroundPulse = 1.0;
+            updateHUD();
+        }
+
+
+        function createParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 7;
+                particles.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    color,
+                    life: 1.0,
+                    size: 3 + Math.random() * 4
+                });
+            }
+        }
+
+
+        function showResults() {
+            isPlaying = false;
+            const accuracy = totalHits > 0 ? ((perfectHits + greatHits * 0.7) / totalHits) * 100 : 100;
+           
+            let rank = 'F';
+            if (accuracy >= 98) rank = 'S';
+            else if (accuracy >= 92) rank = 'A';
+            else if (accuracy >= 80) rank = 'B';
+            else if (accuracy >= 70) rank = 'C';
+
+
+            document.getElementById('resScore').textContent = score.toString().padStart(6, '0');
+            document.getElementById('resAccuracy').textContent = accuracy.toFixed(1) + '%';
+            document.getElementById('resMaxCombo').textContent = maxCombo;
+            document.getElementById('resHits').textContent = `${perfectHits} / ${missHits}`;
+            document.getElementById('resultRank').textContent = rank;
+
+
+            document.getElementById('resultsMenu').classList.remove('hidden');
+        }
+
+
+        let lastTime = performance.now();
+
+
+        function updateGame(dt) {
+            if (!isPlaying || isPaused) return;
+
+
+            const baseBpm = currentLevel.bpm * selectedSpeedMultiplier;
+            const speedRadPerSec = (baseBpm / 60) * Math.PI * 2;
+
+
+            currentAngle += rotationDirection * speedRadPerSec * dt;
+
+
+            // Sudden Death Over-rotational Miss Check 제거됨
+            // 행성이 여러 바퀴를 돌아도 오버 로테이션으로 죽지 않으며, 플레이어가 입력할 때까지 계속 회전합니다.
+
+
+            if (autoPlay && currentTileIndex < pathNodes.length - 1) {
+                let diff = Math.abs(currentAngle - targetAngle);
+                diff = diff % (Math.PI * 2);
+                if (diff > Math.PI) diff = Math.PI * 2 - diff;
+
+
+                if (diff < 0.08) {
+                    processTileHit('perfect', pathNodes[currentTileIndex + 1]);
+                }
+            }
+
+
+            if (pathNodes.length > 0 && currentTileIndex < pathNodes.length) {
+                const currNode = pathNodes[currentTileIndex];
+                cameraX += (currNode.x - cameraX) * 0.1;
+                cameraY += (currNode.y - cameraY) * 0.1;
+            }
+
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= dt * 2.5;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+
+            backgroundPulse = Math.max(0, backgroundPulse - dt * 2);
+        }
+
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+
+            bgCtx.save();
+            bgCtx.fillStyle = `rgba(15, 23, 42, ${0.4 + backgroundPulse * 0.3})`;
+            bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+            bgCtx.restore();
+
+
+            if (!isPlaying && pathNodes.length === 0) return;
+
+
+            ctx.save();
+            ctx.translate(canvas.width / 2 - cameraX, canvas.height / 2 - cameraY);
+
+
+            // Track lines
+            ctx.beginPath();
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+
+            for (let i = 0; i < pathNodes.length; i++) {
+                if (i === 0) ctx.moveTo(pathNodes[i].x, pathNodes[i].y);
+                else ctx.lineTo(pathNodes[i].x, pathNodes[i].y);
+            }
+            ctx.stroke();
+
+
+            // Track nodes
+            for (let i = 0; i < pathNodes.length; i++) {
+                const node = pathNodes[i];
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 16, 0, Math.PI * 2);
+
+
+                if (i === currentTileIndex) {
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.shadowColor = '#f59e0b';
+                    ctx.shadowBlur = 15;
+                } else if (node.hit) {
+                    ctx.fillStyle = node.status === 'perfect' ? '#06b6d4' : (node.status === 'great' ? '#10b981' : '#f43f5e');
+                    ctx.shadowBlur = 0;
+                } else {
+                    ctx.fillStyle = '#1e293b';
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.stroke();
+            }
+
+
+            // Dual Planets
+            const activeNode = pathNodes[currentTileIndex] || { x: 0, y: 0 };
+            let redX, redY, blueX, blueY;
+
+
+            if (anchorPlanet === 'red') {
+                redX = activeNode.x;
+                redY = activeNode.y;
+                blueX = redX + Math.cos(currentAngle) * PLANET_ORBIT_RADIUS;
+                blueY = redY + Math.sin(currentAngle) * PLANET_ORBIT_RADIUS;
+            } else {
+                blueX = activeNode.x;
+                blueY = activeNode.y;
+                redX = blueX + Math.cos(currentAngle) * PLANET_ORBIT_RADIUS;
+                redY = blueY + Math.sin(currentAngle) * PLANET_ORBIT_RADIUS;
+            }
+
+
+            ctx.beginPath();
+            ctx.moveTo(redX, redY);
+            ctx.lineTo(blueX, blueY);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.stroke();
+
+
+            ctx.beginPath();
+            ctx.arc(redX, redY, 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = anchorPlanet === 'red' ? 25 : 10;
+            ctx.fill();
+
+
+            ctx.beginPath();
+            ctx.arc(blueX, blueY, 18, 0, Math.PI * 2);
+            ctx.fillStyle = '#3b82f6';
+            ctx.shadowColor = '#3b82f6';
+            ctx.shadowBlur = anchorPlanet === 'blue' ? 25 : 10;
+            ctx.fill();
+
+
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+
+
+            ctx.restore();
+        }
+
+
+        function gameLoop(time) {
+            const dt = Math.min((time - lastTime) / 1000, 0.1);
+            lastTime = time;
+
+
+            updateGame(dt);
+            render();
+
+
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // --- LISTENERS ---
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' || e.key === 'p' || e.key === 'P') {
+                if (isPlaying) {
+                    isPaused = !isPaused;
+                    document.getElementById('pauseMenu').classList.toggle('hidden', !isPaused);
+                }
+                return;
+            }
+            if (e.code === 'Space' || e.key) {
+                handleInput(e);
+            }
+        });
+
+
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            handleInput(e);
+        });
+
+
+        document.getElementById('startBtn').onclick = startNewGame;
+        document.getElementById('retryBtn').onclick = startNewGame;
+        document.getElementById('failRetryBtn').onclick = startNewGame;
+       
+        document.getElementById('menuBtn').onclick = () => {
+            document.getElementById('resultsMenu').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            isPlaying = false;
+        };
+        document.getElementById('failMenuBtn').onclick = () => {
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            isPlaying = false;
+        };
+        document.getElementById('pauseBtn').onclick = () => {
+            if (isPlaying) {
+                isPaused = true;
+                document.getElementById('pauseMenu').classList.remove('hidden');
+            }
+        };
+        document.getElementById('resumeBtn').onclick = () => {
+            isPaused = false;
+            document.getElementById('pauseMenu').classList.hidden = true;
+            document.getElementById('pauseMenu').classList.add('hidden');
+        };
+        document.getElementById('restartPauseBtn').onclick = startNewGame;
+        document.getElementById('quitPauseBtn').onclick = () => {
+            document.getElementById('pauseMenu').classList.add('hidden');
+            document.getElementById('mainMenu').classList.remove('hidden');
+            isPlaying = false;
+        };
+
+
+        populateLevelList();
+        updateSuddenDeathUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

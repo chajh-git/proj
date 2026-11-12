@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2대2 캐주얼 배구 게임</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #1e1e2e;
+      color: #fff;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      user-select: none;
+    }
+    #game-container {
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #313244;
+      width: 100%;
+      max-width: 900px;
+    }
+    canvas {
+      display: block;
+      background: #181825;
+      width: 100%;
+      height: auto;
+    }
+    .controls-info {
+      margin-top: 15px;
+      background: #313244;
+      padding: 12px 24px;
+      border-radius: 8px;
+      display: flex;
+      gap: 15px;
+      font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .key {
+      background: #f38ba8;
+      color: #11111b;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+
+<div id="game-container">
+  <canvas id="gameCanvas" width="900" height="500"></canvas>
+</div>
+
+
+<div class="controls-info">
+  <div><span class="key">← →</span> 이동</div>
+  <div><span class="key">Space</span> 점프</div>
+  <div><span class="key">D</span> 정밀 서브</div>
+  <div><span class="key">S</span> 리시브</div>
+  <div><span class="key">A</span> 토스</div>
+  <div><span class="key">W</span> 스파이크</div>
+</div>
+
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+
+let gameState = 'SERVE';
+let scores = { team1: 0, team2: 0 };
+let servingTeam = 1;
+let touches = { team1: 0, team2: 0 };
+let lastTouchPlayer = null;
+let isReceived = false;
+let aiServeTimer = null;
+
+
+const gravity = 0.22; // 표준 물리 중력 가속도
+
+
+const ball = {
+  x: 180, y: 280, vx: 0, vy: 0, radius: 14,
+  reset(team) {
+    this.x = team === 1 ? 180 : 720;
+    this.y = 280;
+    this.vx = 0;
+    this.vy = 0;
+  }
+};
+
+
+class Player {
+  constructor(x, y, color, isAI, team, id) {
+    this.x = x;
+    this.y = y;
+    this.startX = x;
+    this.startY = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.color = color;
+    this.isAI = isAI;
+    this.team = team;
+    this.id = id;
+    this.isGrounded = true;
+  }
+
+
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+
+
+    if (!this.isGrounded) {
+      this.vy += 0.35;
+    }
+
+
+    if (this.y >= 400) {
+      this.y = 400;
+      this.vy = 0;
+      this.isGrounded = true;
+    }
+
+
+    const minX = this.team === 1 ? 25 : 475;
+    const maxX = this.team === 1 ? 425 : 875;
+    this.x = Math.max(minX, Math.min(maxX, this.x));
+  }
+
+
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y - 18, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(this.x - 11, this.y - 10, 22, 28);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(this.id, this.x, this.y + 7);
+  }
+}
+
+
+const players = [
+  new Player(180, 400, '#f38ba8', false, 1, 1),
+  new Player(300, 400, '#fab387', true, 1, 2),
+  new Player(600, 400, '#a6e3a1', true, 2, 3),
+  new Player(720, 400, '#89b4fa', true, 2, 4)
+];
+
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyD') executeServe();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+
+canvas.addEventListener('click', () => executeServe());
+
+
+// 1. 서브 메커니즘: 포물선 물리 공식을 이용한 상대 수비수 위치 타겟팅
+function executeServe() {
+  if (gameState === 'SERVE' && servingTeam === 1) {
+    ball.x = 180;
+    ball.y = 280;
+    isReceived = false;
+   
+    const targetPlayer = players[2]; // 상대팀 전방 선수(Player 3: x=600)
+    const targetX = targetPlayer.x;
+    const targetY = targetPlayer.y - 10;
+
+
+    ball.vy = -8.5; // 고정 수직 속도
+   
+    // y(t) = y0 + vy*t + 0.5*g*t^2 공식으로 도달 시간(t) 산출
+    const a = 0.5 * gravity;
+    const b = ball.vy;
+    const c = ball.y - targetY;
+    const t = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+   
+    // 타겟 X 좌표에 정확히 떨어지도록 수평 속도 계산
+    ball.vx = (targetX - ball.x) / t;
+    gameState = 'PLAYING';
+  }
+}
+
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+
+function update() {
+  const p1 = players[0];
+  p1.vx = 0;
+
+
+  // 2. 이동 제한: 리시브(첫 터치) 전까지 조작 및 AI 이동 완전 고정
+  if (isReceived) {
+    if (keys['ArrowLeft']) p1.vx = -3.2;
+    if (keys['ArrowRight']) p1.vx = 3.2;
+    if (keys['Space'] && p1.isGrounded) {
+      p1.vy = -10.5;
+      p1.isGrounded = false;
+    }
+  }
+
+
+  if (gameState === 'SERVE') {
+    isReceived = false;
+    if (servingTeam === 1) {
+      ball.x = 180;
+      ball.y = 280;
+    } else {
+      ball.x = 720;
+      ball.y = 280;
+      if (!aiServeTimer) {
+        aiServeTimer = setTimeout(() => {
+          if (gameState === 'SERVE' && servingTeam === 2) {
+            const targetPlayer = players[0]; // 플레이어(Player 1: x=180) 위치 타겟팅
+            const targetX = targetPlayer.x;
+            const targetY = targetPlayer.y - 10;
+
+
+            ball.vy = -8.5;
+            const a = 0.5 * gravity;
+            const b = ball.vy;
+            const c = ball.y - targetY;
+            const t = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+            ball.vx = (targetX - ball.x) / t;
+
+
+            gameState = 'PLAYING';
+          }
+          aiServeTimer = null;
+        }, 1200);
+      }
+    }
+  }
+
+
+  players.forEach(p => {
+    if (p.isAI && gameState === 'PLAYING') {
+      if (!isReceived) {
+        p.vx = 0; // 리시브 전 AI 이동 잠금
+      } else {
+        if (lastTouchPlayer === p.id) {
+          p.vx = (p.startX - p.x) * 0.03;
+        } else {
+          const isBallInMyCourt = (p.team === 1 && ball.x < 440) || (p.team === 2 && ball.x > 460);
+          if (isBallInMyCourt) {
+            const targetX = ball.x;
+            if (p.x < targetX - 5) p.vx = 3.2;
+            else if (p.x > targetX + 5) p.vx = -3.2;
+            else p.vx = 0;
+
+
+            if (ball.y < 290 && Math.abs(ball.x - p.x) < 35 && p.isGrounded) {
+              p.vy = -9.5;
+              p.isGrounded = false;
+            }
+          } else {
+            p.vx = (p.startX - p.x) * 0.03;
+          }
+        }
+      }
+    }
+    p.update();
+  });
+
+
+  if (gameState === 'PLAYING') {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+    ball.vy += gravity;
+
+
+    // 네트 물리 충돌
+    if (ball.x > 440 && ball.x < 460 && ball.y > 270) {
+      ball.vx *= -0.6;
+      ball.x = ball.x < 450 ? 439 : 461;
+    }
+
+
+    // 3. 3단 연계 시스템 (리시브 -> 토스 -> 스파이크)
+    players.forEach(p => {
+      const dx = ball.x - p.x;
+      const dy = ball.y - (p.y - 10);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+
+      if (dist < ball.radius + 25) {
+        const teamTouches = p.team === 1 ? touches.team1 : touches.team2;
+
+
+        if (lastTouchPlayer !== p.id && teamTouches < 3) {
+          lastTouchPlayer = p.id;
+          isReceived = true; // 첫 번째 타구 성공 시 이동 잠금 해제
+
+
+          if (p.team === 1) {
+            touches.team1++;
+            touches.team2 = 0;
+          } else {
+            touches.team2++;
+            touches.team1 = 0;
+          }
+
+
+          const currentTouches = p.team === 1 ? touches.team1 : touches.team2;
+
+
+          if (!p.isAI) {
+            // Team 1 (왼쪽 팀) 연계 궤적 정밀 설정
+            if (currentTouches === 1 || keys['KeyS']) {
+              // 1단: 리시브 -> 우리팀 코트 뒤쪽 방향(왼쪽)으로 높게 띄움
+              ball.vx = -1.5;
+              ball.vy = -10.5;
+            } else if (currentTouches === 2 || keys['KeyA']) {
+              // 2단: 토스 -> 네트 앞(x=400~420 구역) 정점을 향해 높고 완만하게 전진
+              ball.vx = 3.5;
+              ball.vy = -11.5;
+            } else if (currentTouches === 3 || keys['KeyW']) {
+              // 3단: 스파이크 -> 상대팀 코트 바닥을 향해 대각선 아래로 강타
+              ball.vx = 9.5;
+              ball.vy = 6.0;
+            }
+          } else {
+            // AI (Team 2 또는 AI 팀) 연계 궤적
+            const dir = p.team === 1 ? 1 : -1;
+            if (currentTouches === 1) {
+              // 1단 리시브: 자기 코트 뒤쪽으로 띄움
+              ball.vx = -1.5 * dir;
+              ball.vy = -10.5;
+            } else if (currentTouches === 2) {
+              // 2단 토스: 네트 근처로 띄움
+              ball.vx = 3.5 * dir;
+              ball.vy = -11.5;
+            } else {
+              // 3단 스파이크: 상대 코트로 강타
+              ball.vx = 9.5 * dir;
+              ball.vy = 6.0;
+            }
+          }
+        }
+      }
+    });
+
+
+    if (ball.y >= 415) {
+      if (ball.x < 450) {
+        scores.team2++;
+        servingTeam = 2;
+      } else {
+        scores.team1++;
+        servingTeam = 1;
+      }
+      resetRally();
+    }
+  }
+}
+
+
+function resetRally() {
+  touches.team1 = 0;
+  touches.team2 = 0;
+  lastTouchPlayer = null;
+  isReceived = false;
+
+
+  if (scores.team1 >= 10 || scores.team2 >= 10) {
+    gameState = 'END';
+  } else {
+    gameState = 'SERVE';
+    ball.reset(servingTeam);
+  }
+}
+
+
+function draw() {
+  ctx.fillStyle = '#181825';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+  ctx.fillStyle = '#f38ba8';
+  ctx.fillRect(0, 420, canvas.width, 80);
+
+
+  ctx.fillStyle = '#cdd6f4';
+  ctx.fillRect(447, 270, 6, 150);
+
+
+  // 4. UI 및 컨트롤 레이아웃
+  ctx.fillStyle = '#cdd6f4';
+  ctx.font = 'bold 30px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${scores.team1} : ${scores.team2}`, 450, 45);
+
+
+  ctx.font = '15px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`터치: ${touches.team1}/3`, 30, 455);
+  ctx.textAlign = 'right';
+  ctx.fillText(`터치: ${touches.team2}/3`, 870, 455);
+
+
+  ctx.textAlign = 'center';
+  if (gameState === 'SERVE') {
+    ctx.font = '19px sans-serif';
+    ctx.fillStyle = '#f9e2af';
+    if (servingTeam === 1) {
+      ctx.fillText('D키 또는 클릭으로 상대 선수 위치로 정밀 서브!', 450, 95);
+    } else {
+  ctx.fillText('상대팀 서브 준비 중...', 450, 95);
+    }
+  } else if (gameState === 'PLAYING' && !isReceived) {
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#f38ba8';
+    ctx.fillText('첫 리시브 전까지 위치가 고정됩니다!', 450, 95);
+  } else if (gameState === 'END') {
+    ctx.font = 'bold 36px sans-serif';
+    ctx.fillStyle = '#f9e2af';
+    ctx.fillText(scores.team1 >= 10 ? 'TEAM 1 승리!' : 'TEAM 2 승리!', 450, 180);
+  }
+
+
+  players.forEach(p => p.draw());
+
+
+  ctx.fillStyle = '#f9e2af';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+
+gameLoop();
+</script>
+</body>
+</html>

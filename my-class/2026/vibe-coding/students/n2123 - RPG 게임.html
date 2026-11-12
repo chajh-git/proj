@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>고양이 건너 (Idle Cat Gunner)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+       
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+       
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 2px;
+        }
+
+
+        /* Pulse animation for active merge slots */
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(234, 179, 8, 0.4); }
+            50% { border-color: rgba(234, 179, 8, 1); }
+        }
+        .active-slot {
+            animation: pulse-border 1.5s infinite;
+        }
+
+
+        /* Float text for damage */
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-30px) scale(1.2); }
+        }
+        .damage-num {
+            position: absolute;
+            animation: float-up 0.6s ease-out forwards;
+            pointer-events: none;
+            font-weight: 900;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+
+        /* Recoil CSS Effect */
+        .recoil-active {
+            transform: translateX(-6px) rotate(-3deg);
+            transition: transform 0.04s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white flex flex-col items-center justify-center min-h-screen p-0 m-0 overflow-hidden">
+
+
+    <!-- MAIN COMPACT CONTAINER (Max 400px width, tight height) -->
+    <div class="w-full max-w-[400px] h-[100vh] max-h-[720px] bg-slate-900 flex flex-col justify-between shadow-2xl relative border-x border-slate-800">
+       
+        <!-- HEADER STATS BAR -->
+        <header class="bg-slate-950/90 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between text-xs z-20">
+            <div class="flex items-center gap-2">
+                <span class="font-jua text-amber-400 text-sm flex items-center gap-1">
+                    🪙 <span id="goldDisplay">0</span>
+                </span>
+                <span class="font-jua text-pink-400 text-xs flex items-center gap-1">
+                    🌈 <span id="gemDisplay">0</span>
+                </span>
+            </div>
+           
+            <div class="flex items-center gap-2">
+                <div class="bg-slate-800 px-2 py-0.5 rounded text-[11px] font-bold text-slate-300">
+                    STAGE <span id="stageDisplay" class="text-amber-300">1</span>
+                </div>
+                <button id="soundToggleBtn" onclick="toggleSound()" class="bg-slate-800 p-1 rounded text-xs hover:bg-slate-700 active:scale-95 transition">
+                    🔊
+                </button>
+            </div>
+        </header>
+
+
+        <!-- BATTLE ARENA (COMPACT CANVAS & VISUAL FX) -->
+        <div class="relative w-full h-[190px] bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950 border-b border-slate-800 overflow-hidden flex-shrink-0">
+            <!-- Stage Progress & Boss Bar -->
+            <div class="absolute top-2 left-3 right-3 z-10 flex flex-col gap-1">
+                <div class="flex justify-between items-center text-[10px] text-slate-400 font-bold px-1">
+                    <span id="stageName">1-1 바이러스 소탕</span>
+                    <span id="enemyHpText" class="text-red-400">100 / 100</span>
+                </div>
+                <div class="w-full bg-slate-950/80 rounded-full h-2 p-0.5 border border-slate-800">
+                    <div id="hpBar" class="bg-gradient-to-r from-red-500 to-pink-500 h-full rounded-full transition-all duration-75" style="width: 100%;"></div>
+                </div>
+            </div>
+
+
+            <!-- Floating Damage Container -->
+            <div id="damageLayer" class="absolute inset-0 pointer-events-none z-30"></div>
+
+
+            <!-- Canvas for Shooting Effects (Bullets, Shells, Lasers) -->
+            <canvas id="fxCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-10"></canvas>
+
+
+            <!-- CAT SQUAD (LEFT SIDE) -->
+            <div id="catSquad" class="absolute left-3 bottom-4 flex flex-col gap-1.5 z-20 transition-all duration-200">
+                <!-- Dynamic Cat Heroes populated JS -->
+            </div>
+
+
+            <!-- ENEMY AREA (RIGHT SIDE) -->
+            <div id="enemyArea" class="absolute right-6 bottom-5 flex flex-col items-center justify-center z-20 cursor-pointer">
+                <div id="enemySprite" class="text-5xl filter drop-shadow-[0_0_12px_rgba(239,68,68,0.5)] transition-transform duration-75 active:scale-90 select-none">
+                    🦠
+                </div>
+                <!-- Enemy Shadow -->
+                <div class="w-12 h-2 bg-black/40 rounded-full blur-[2px] mt-1"></div>
+            </div>
+        </div>
+
+
+        <!-- WEAPON EQUIPMENT SLOTS (UP TO 3 WEAPONS) -->
+        <div class="bg-slate-950/80 border-b border-slate-800 p-1.5 flex items-center justify-between px-3 gap-2 z-10">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <span>🔫 장착 슬롯</span>
+                <span class="text-[9px] text-amber-400/80">(최대 3개)</span>
+            </div>
+           
+            <div class="flex items-center gap-2">
+                <!-- Slot 1 -->
+                <div id="equipSlot0" onclick="unequipSlot(0)" class="w-10 h-10 bg-slate-800/80 rounded-lg border border-slate-700 flex flex-col items-center justify-center relative cursor-pointer hover:border-amber-400/50 transition">
+                    <span id="equipIcon0" class="text-base">🔒</span>
+                    <span id="equipLevel0" class="text-[9px] font-bold text-amber-300 absolute bottom-0.5">Empty</span>
+                </div>
+                <!-- Slot 2 -->
+                <div id="equipSlot1" onclick="unequipSlot(1)" class="w-10 h-10 bg-slate-800/80 rounded-lg border border-slate-700 flex flex-col items-center justify-center relative cursor-pointer hover:border-amber-400/50 transition">
+                    <span id="equipIcon1" class="text-base">🔒</span>
+                    <span id="equipLevel1" class="text-[9px] font-bold text-amber-300 absolute bottom-0.5">Empty</span>
+                </div>
+                <!-- Slot 3 -->
+                <div id="equipSlot2" onclick="unequipSlot(2)" class="w-10 h-10 bg-slate-800/80 rounded-lg border border-slate-700 flex flex-col items-center justify-center relative cursor-pointer hover:border-amber-400/50 transition">
+                    <span id="equipIcon2" class="text-base">🔒</span>
+                    <span id="equipLevel2" class="text-[9px] font-bold text-amber-300 absolute bottom-0.5">Empty</span>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- TAB CONTENT SECTION (FLEX-1 FOR STRICT VERTICAL FIT) -->
+        <div class="flex-1 bg-slate-900 overflow-hidden relative flex flex-col">
+           
+            <!-- TAB 1: ⚔️ 무기합성 (MERGE GRID) -->
+            <div id="tabMerge" class="tab-content active h-full flex flex-col p-2 justify-between">
+                <!-- Action Header Bar -->
+                <div class="flex items-center justify-between mb-1">
+                    <button onclick="buyWeapon()" class="flex-1 mr-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-95 text-slate-950 font-jua text-xs py-1.5 px-3 rounded-lg shadow-md flex items-center justify-center gap-1.5 transition">
+                        <span>🔨 무기 구매</span>
+                        <span class="bg-black/20 text-slate-950 px-1.5 py-0.5 rounded text-[10px]" id="buyCostDisplay">🪙 10</span>
+                    </button>
+                   
+                    <button id="autoMergeBtn" onclick="toggleAutoMerge()" class="bg-slate-800 border border-slate-700 hover:bg-slate-700 active:scale-95 text-[11px] font-bold text-slate-300 py-1.5 px-2.5 rounded-lg flex items-center gap-1 transition">
+                        <span>🔄 자동합성</span>
+                        <span id="autoMergeStatus" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    </button>
+                </div>
+
+
+                <!-- 4x4 Grid Container -->
+                <div class="grid grid-cols-4 gap-1.5 flex-1 items-center justify-center my-auto">
+                    <!-- 16 Grid Slots dynamically generated -->
+                    <script>
+                        for(let i = 0; i < 16; i++) {
+                            document.write(`
+                                <div id="grid${i}" onclick="handleGridClick(${i})" class="aspect-square bg-slate-950/60 rounded-lg border border-slate-800/80 flex flex-col items-center justify-center relative cursor-pointer hover:bg-slate-800/50 transition select-none">
+                                    <span id="gridIcon${i}" class="text-xl"></span>
+                                    <span id="gridLevel${i}" class="text-[9px] font-bold text-amber-400 absolute bottom-0.5"></span>
+                                </div>
+                            `);
+                        }
+                    </script>
+                </div>
+
+
+                <div class="text-[10px] text-slate-400 text-center mt-1">
+                    💡 동일 등급 무기를 터치하면 자동 전달/합성됩니다.
+                </div>
+            </div>
+
+
+            <!-- TAB 2: ⚡ 능력치 (GOLD UPGRADES) -->
+            <div id="tabStats" class="tab-content hidden h-full p-2.5 overflow-y-auto space-y-2">
+                <!-- Upgrade 1: Attack Power -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-center text-lg">⚔️</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">공격력 증가</div>
+                            <div class="text-[10px] text-slate-400">Lv.<span id="statAtkLv">1</span> (+<span id="statAtkVal">0</span>)</div>
+                        </div>
+                    </div>
+                    <button onclick="upgradeStat('atk')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🪙 <span id="statAtkCost">10</span>
+                    </button>
+                </div>
+
+
+                <!-- Upgrade 2: Attack Speed -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-center text-lg">⚡</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">공격 속도</div>
+                            <div class="text-[10px] text-slate-400">Lv.<span id="statSpdLv">1</span> (+<span id="statSpdVal">0</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="upgradeStat('spd')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🪙 <span id="statSpdCost">25</span>
+                    </button>
+                </div>
+
+
+                <!-- Upgrade 3: Critical Rate -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-center text-lg">🎯</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">치명타 확률</div>
+                            <div class="text-[10px] text-slate-400">Lv.<span id="statCritLv">1</span> (<span id="statCritVal">5</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="upgradeStat('crit')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🪙 <span id="statCritCost">50</span>
+                    </button>
+                </div>
+
+
+                <!-- Upgrade 4: Gold Gain -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-emerald-500/10 border border-emerald-500/30 rounded-lg flex items-center justify-center text-lg">💰</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">골드 획득량</div>
+                            <div class="text-[10px] text-slate-400">Lv.<span id="statGoldLv">1</span> (+<span id="statGoldVal">0</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="upgradeStat('gold')" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🪙 <span id="statGoldCost">30</span>
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- TAB 3: 🌈 무지개상점 (PERMANENT RAINBOW GEM SHOP) -->
+            <div id="tabRainbow" class="tab-content hidden h-full p-2.5 overflow-y-auto space-y-2">
+                <div class="bg-gradient-to-r from-indigo-950 to-purple-950 border border-indigo-800 p-2 rounded-xl mb-1 text-center">
+                    <div class="text-xs font-bold text-pink-300">🌈 환생 전용 영구 능력치</div>
+                    <div class="text-[10px] text-slate-400">환생을 해도 초기화되지 않는 보너스입니다!</div>
+                </div>
+
+
+                <!-- Permanent Boost 1: Perm Atk Multiply -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-pink-500/10 border border-pink-500/30 rounded-lg flex items-center justify-center text-lg">🚀</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">영구 공격력 증폭</div>
+                            <div class="text-[10px] text-pink-400">Lv.<span id="rbAtkLv">0</span> (+<span id="rbAtkVal">0</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="buyRainbowStat('atk')" class="bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🌈 <span id="rbAtkCost">1</span>
+                    </button>
+                </div>
+
+
+                <!-- Permanent Boost 2: Perm Base Gold -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-center text-lg">💎</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">기본 드랍 골드 폭증</div>
+                            <div class="text-[10px] text-amber-400">Lv.<span id="rbGoldLv">0</span> (+<span id="rbGoldVal">0</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="buyRainbowStat('gold')" class="bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🌈 <span id="rbGoldCost">1</span>
+                    </button>
+                </div>
+
+
+                <!-- Permanent Boost 3: Perm Crit Damage -->
+                <div class="bg-slate-950/60 border border-slate-800 p-2 rounded-xl flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-red-500/10 border border-red-500/30 rounded-lg flex items-center justify-center text-lg">💥</div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">치명타 피해량</div>
+                            <div class="text-[10px] text-red-400">Lv.<span id="rbCritDmgLv">0</span> (+<span id="rbCritDmgVal">0</span>%)</div>
+                        </div>
+                    </div>
+                    <button onclick="buyRainbowStat('critDmg')" class="bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold text-xs py-1.5 px-3 rounded-lg active:scale-95 transition">
+                        🌈 <span id="rbCritDmgCost">2</span>
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- TAB 4: 🔄 환생 (REBIRTH SYSTEM) -->
+            <div id="tabRebirth" class="tab-content hidden h-full p-3 flex flex-col justify-between items-center text-center">
+                <div class="mt-2 space-y-2">
+                    <div class="text-4xl animate-bounce">🌈</div>
+                    <h2 class="text-lg font-jua text-amber-300">시간 이동 환생</h2>
+                    <p class="text-xs text-slate-300 px-4 leading-relaxed">
+                        환생하면 스테이지, 골드, 무기 grid가 초기화되지만 <span class="text-pink-400 font-bold">무지개 보석(🌈)</span>을 획득하여 영구 능력치를 강화할 수 있습니다!
+                    </p>
+                </div>
+
+
+                <div class="bg-slate-950/80 border border-slate-800 w-full p-3 rounded-xl space-y-2">
+                    <div class="text-xs text-slate-400">환생 조건: Stage 5 이상 달성</div>
+                    <div class="text-sm font-bold text-slate-200">
+                        획득 예상 무지개 보석: <span id="rebirthRewardDisplay" class="text-pink-400 font-jua text-base">0개</span>
+                    </div>
+                </div>
+
+
+                <button id="rebirthBtn" onclick="triggerRebirth()" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-jua text-sm py-3 rounded-xl shadow-lg active:scale-95 transition opacity-50 cursor-not-allowed">
+                    🔄 환생하고 무지개 보석 받기
+                </button>
+            </div>
+
+
+        </div>
+
+
+        <!-- BOTTOM TAB NAVIGATION BAR -->
+        <nav class="bg-slate-950 border-t border-slate-800 grid grid-cols-4 z-20 text-[11px] font-bold">
+            <button onclick="switchTab('Merge')" id="navMerge" class="py-2.5 text-amber-400 border-t-2 border-amber-400 flex flex-col items-center justify-center gap-0.5">
+                <span class="text-sm">⚔️</span>
+                <span>합성</span>
+            </button>
+            <button onclick="switchTab('Stats')" id="navStats" class="py-2.5 text-slate-400 border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 hover:text-slate-200">
+                <span class="text-sm">⚡</span>
+                <span>능력치</span>
+            </button>
+            <button onclick="switchTab('Rainbow')" id="navRainbow" class="py-2.5 text-slate-400 border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 hover:text-slate-200">
+                <span class="text-sm">🌈</span>
+                <span>무지개</span>
+            </button>
+            <button onclick="switchTab('Rebirth')" id="navRebirth" class="py-2.5 text-slate-400 border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 hover:text-slate-200">
+                <span class="text-sm">🔄</span>
+                <span>환생</span>
+            </button>
+        </nav>
+
+
+    </div>
+
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        // --- WEAPON DATA DATABASE ---
+        const WEAPONS = [
+            { id: 1, name: "권총", icon: "🔫", atk: 12, rate: 600, color: "#38bdf8" },
+            { id: 2, name: "더블 권총", icon: "🔫🔫", atk: 28, rate: 550, color: "#60a5fa" },
+            { id: 3, name: "샷건", icon: "💥", atk: 65, rate: 700, color: "#a78bfa" },
+            { id: 4, name: "기관단총", icon: "🌩️", atk: 120, rate: 350, color: "#f43f5e" },
+            { id: 5, name: "소총", icon: "🎯", atk: 260, rate: 450, color: "#fb923c" },
+            { id: 6, name: "플라즈마건", icon: "🔮", atk: 550, rate: 400, color: "#c084fc" },
+            { id: 7, name: "레이저 포", icon: "⚡", atk: 1200, rate: 300, color: "#38edf8" },
+            { id: 8, name: "로켓포", icon: "🚀", atk: 2700, rate: 650, color: "#facc15" },
+            { id: 9, name: "은하 캐논", icon: "🌌", atk: 6000, rate: 380, color: "#e879f9" },
+            { id: 10, name: "신성한 포격", icon: "👑", atk: 15000, rate: 250, color: "#f43f5e" }
+        ];
+
+
+        // --- ENEMY DATA ---
+        const ENEMY_EMOJIS = ["🦠", "👾", "🧫", "☣️", "🛸", "🐲"];
+
+
+        // --- GAME STATE ---
+        let gameState = {
+            gold: 0,
+            rainbowGems: 0,
+            stage: 1,
+            subStage: 1,
+            buyCost: 10,
+            autoMerge: false,
+            soundOn: true,
+           
+            // Grid Slots (16 slots)
+            grid: Array(16).fill(null),
+            // Equipment Slots (Up to 3 weapons)
+            equipped: [1, null, null], // Default weapon Tier 1 in slot 0
+
+
+            // Gold Upgrades
+            stats: {
+                atkLv: 1,
+                spdLv: 1,
+                critLv: 1,
+                goldLv: 1
+            },
+
+
+            // Permanent Rainbow Shop Upgrades
+            rainbow: {
+                atkLv: 0,
+                goldLv: 0,
+                critDmgLv: 0
+            }
+        };
+
+
+        // --- ENEMY STATE ---
+        let currentEnemy = {
+            maxHp: 25,
+            hp: 25,
+            emoji: "🦠",
+            goldReward: 5
+        };
+
+
+        let selectedGridIndex = null;
+        let audioCtx = null;
+
+
+        // --- AUDIO SYNTHESIZER (WEB AUDIO API) ---
+        function playSound(type) {
+            if (!gameState.soundOn) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+
+                const now = audioCtx.currentTime;
+
+
+                if (type === 'shoot') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'hit') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(120, now);
+                    osc.frequency.linearRampToValueAtTime(40, now + 0.05);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'merge') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } else if (type === 'rebirth') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(200, now);
+                    osc.frequency.linearRampToValueAtTime(600, now + 0.4);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch (e) {
+                // Audio context error ignore
+            }
+        }
+
+
+        function toggleSound() {
+            gameState.soundOn = !gameState.soundOn;
+            document.getElementById('soundToggleBtn').innerText = gameState.soundOn ? '🔊' : '🔇';
+        }
+
+
+        // --- INIT & CANVAS SETUP ---
+        const canvas = document.getElementById('fxCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let bullets = [];
+
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+
+
+        window.addEventListener('resize', resizeCanvas);
+
+
+        // --- GAME LOOP ---
+        let lastTime = performance.now();
+        let weaponCooldowns = [0, 0, 0];
+
+
+        function initGame() {
+            resizeCanvas();
+            spawnEnemy();
+            updateUI();
+            updateCatSquadUI();
+            requestAnimationFrame(gameLoop);
+
+
+            // Auto merge interval
+            setInterval(() => {
+                if (gameState.autoMerge) {
+                    performAutoMerge();
+                }
+            }, 800);
+        }
+
+
+        function gameLoop(time) {
+            const dt = time - lastTime;
+            lastTime = time;
+
+
+            // Attack Logic for Equipped Weapons
+            updateCombat(dt);
+
+
+            // Canvas Render (Bullets, Shells, Effects)
+            renderFX(dt);
+
+
+            requestAnimationFrame(gameLoop);
+        }
+
+
+        // --- COMBAT LOGIC ---
+        function getWeaponAtk(weaponTier) {
+            if (!weaponTier) return 0;
+            const w = WEAPONS.find(item => item.id === weaponTier);
+            if (!w) return 0;
+
+
+            // Stats calculation: (Base Weapon ATK + Gold ATK) * (1 + Perm Rainbow ATK)
+            const baseAtk = w.atk;
+            const goldAtkBonus = (gameState.stats.atkLv - 1) * 8;
+            const rainbowMultiplier = 1 + (gameState.rainbow.atkLv * 0.25);
+
+
+            return Math.floor((baseAtk + goldAtkBonus) * rainbowMultiplier);
+        }
+
+
+        function getWeaponRate(weaponTier) {
+            if (!weaponTier) return 1000;
+            const w = WEAPONS.find(item => item.id === weaponTier);
+            const baseRate = w ? w.rate : 600;
+            const spdDiscount = (gameState.stats.spdLv - 1) * 2; // -2% cooldown per level
+            return Math.max(150, baseRate * (1 - spdDiscount / 100));
+        }
+
+
+        function updateCombat(dt) {
+            for (let i = 0; i < 3; i++) {
+                const weaponTier = gameState.equipped[i];
+                if (!weaponTier) continue;
+
+
+                weaponCooldowns[i] -= dt;
+                if (weaponCooldowns[i] <= 0) {
+                    // FIRE WEAPON!
+                    fireWeapon(i, weaponTier);
+                    weaponCooldowns[i] = getWeaponRate(weaponTier);
+                }
+            }
+        }
+
+
+        function fireWeapon(slotIdx, weaponTier) {
+            const catElem = document.getElementById(`catHero${slotIdx}`);
+            if (catElem) {
+                catElem.classList.add('recoil-active');
+                setTimeout(() => catElem.classList.remove('recoil-active'), 60);
+            }
+
+
+            playSound('shoot');
+
+
+            // Visual effect: Shell Eject particle
+            const squadRect = document.getElementById('catSquad').getBoundingClientRect();
+            const arenaRect = canvas.parentElement.getBoundingClientRect();
+           
+            const originX = 60;
+            const originY = 120 - (slotIdx * 35);
+
+
+            // Spawn brass shell particle
+            particles.push({
+                x: originX,
+                y: originY,
+                vx: -1.5 - Math.random(),
+                vy: -2 - Math.random(),
+                gravity: 0.2,
+                life: 1.0,
+                color: '#facc15',
+                size: 2
+            });
+
+
+            // Calculate Damage & Crit
+            let atk = getWeaponAtk(weaponTier);
+            const critRate = 5 + (gameState.stats.critLv - 1) * 2; // Base 5% + 2% per lv
+            const isCrit = Math.random() * 100 < critRate;
+
+
+            if (isCrit) {
+                const critDmgBonus = 1.5 + (gameState.rainbow.critDmgLv * 0.2);
+                atk = Math.floor(atk * critDmgBonus);
+            }
+
+
+            // Spawn Bullet
+            const targetX = arenaRect.width - 70;
+            const targetY = arenaRect.height - 60;
+
+
+            bullets.push({
+                x: originX,
+                y: originY,
+                tx: targetX,
+                ty: targetY,
+                speed: 12,
+                color: WEAPONS[weaponTier - 1]?.color || '#facc15',
+                damage: atk,
+                isCrit: isCrit
+            });
+        }
+
+
+        function applyDamage(damage, isCrit) {
+            currentEnemy.hp -= damage;
+            playSound('hit');
+
+
+            // Floating Damage Number
+            showDamageNum(damage, isCrit);
+
+
+            // Enemy hit scale animation
+            const sprite = document.getElementById('enemySprite');
+            sprite.style.transform = 'scale(0.85)';
+            setTimeout(() => sprite.style.transform = 'scale(1)', 50);
+
+
+            // Particle sparks on hit
+            const arenaRect = canvas.parentElement.getBoundingClientRect();
+            for (let i = 0; i < (isCrit ? 8 : 4); i++) {
+                particles.push({
+                    x: arenaRect.width - 70,
+                    y: arenaRect.height - 60,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    gravity: 0.1,
+                    life: 0.8,
+                    color: isCrit ? '#ef4444' : '#fbbf24',
+                    size: isCrit ? 3.5 : 2
+                });
+            }
+
+
+            if (currentEnemy.hp <= 0) {
+                onEnemyDefeated();
+            }
+
+
+            updateEnemyHPUI();
+        }
+
+
+        function onEnemyDefeated() {
+            // Gold Drop Calculation
+            const baseGold = currentEnemy.goldReward;
+            const goldStatBonus = 1 + ((gameState.stats.goldLv - 1) * 0.15); // +15% per level
+            const rainbowGoldBonus = 1 + (gameState.rainbow.goldLv * 0.50);  // +50% per level
+
+
+            const reward = Math.floor(baseGold * goldStatBonus * rainbowGoldBonus);
+            gameState.gold += reward;
+
+
+            // Stage Progression
+            gameState.subStage++;
+            if (gameState.subStage > 5) {
+                gameState.stage++;
+                gameState.subStage = 1;
+            }
+
+
+            spawnEnemy();
+            updateUI();
+        }
+
+
+        function spawnEnemy() {
+            const stageMultiplier = Math.pow(1.35, gameState.stage - 1) * Math.pow(1.08, gameState.subStage - 1);
+            const baseHp = 25 * stageMultiplier;
+
+
+            currentEnemy.maxHp = Math.floor(baseHp);
+            currentEnemy.hp = currentEnemy.maxHp;
+            currentEnemy.goldReward = Math.floor(6 * stageMultiplier);
+
+
+            const emojiIndex = (gameState.stage - 1) % ENEMY_EMOJIS.length;
+            currentEnemy.emoji = ENEMY_EMOJIS[emojiIndex];
+
+
+            document.getElementById('enemySprite').innerText = currentEnemy.emoji;
+            document.getElementById('stageName').innerText = `STAGE ${gameState.stage}-${gameState.subStage}`;
+            updateEnemyHPUI();
+        }
+
+
+        function updateEnemyHPUI() {
+            const pct = Math.max(0, (currentEnemy.hp / currentEnemy.maxHp) * 100);
+            document.getElementById('hpBar').style.width = `${pct}%`;
+            document.getElementById('enemyHpText').innerText = `${Math.ceil(currentEnemy.hp)} / ${currentEnemy.maxHp}`;
+        }
+
+
+        function showDamageNum(dmg, isCrit) {
+            const container = document.getElementById('damageLayer');
+            const num = document.createElement('div');
+            num.className = `damage-num ${isCrit ? 'text-red-400 text-base font-black z-40' : 'text-amber-300 text-xs'}`;
+            num.innerText = isCrit ? `💥 ${dmg}` : `${dmg}`;
+           
+            // Random offset right near enemy
+            const offsetX = 280 + (Math.random() * 30 - 15);
+            const offsetY = 100 + (Math.random() * 30 - 15);
+
+
+            num.style.left = `${offsetX}px`;
+            num.style.top = `${offsetY}px`;
+
+
+            container.appendChild(num);
+            setTimeout(() => num.remove(), 600);
+        }
+
+
+        // --- CANVAS PARTICLES & BULLETS RENDER ---
+        function renderFX(dt) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+            // Update & Render Bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                const dx = b.tx - b.x;
+                const dy = b.ty - b.y;
+                const dist = Math.hypot(dx, dy);
+
+
+                if (dist < b.speed) {
+                    // Hit Enemy
+                    applyDamage(b.damage, b.isCrit);
+                    bullets.splice(i, 1);
+                } else {
+                    b.x += (dx / dist) * b.speed;
+                    b.y += (dy / dist) * b.speed;
+
+
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.isCrit ? 4 : 2.5, 0, Math.PI * 2);
+                    ctx.fillStyle = b.color;
+                    ctx.shadowColor = b.color;
+                    ctx.shadowBlur = 6;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+
+            // Update & Render Particles
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                p.life -= dt * 0.002;
+
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.fillStyle = p.color;
+                    ctx.globalAlpha = p.life;
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                    ctx.globalAlpha = 1.0;
+                }
+            }
+        }
+
+
+        // --- DYNAMIC CAT SQUAD MANAGEMENT ---
+        function updateCatSquadUI() {
+            const squadContainer = document.getElementById('catSquad');
+            squadContainer.innerHTML = '';
+
+
+            const CAT_EMOJIS = ["🐱", "😺", "😻"];
+            let equippedCount = 0;
+
+
+            for (let i = 0; i < 3; i++) {
+                const wTier = gameState.equipped[i];
+                const slotElem = document.getElementById(`equipSlot${i}`);
+                const iconElem = document.getElementById(`equipIcon${i}`);
+                const lvlElem = document.getElementById(`equipLevel${i}`);
+
+
+                if (wTier) {
+                    equippedCount++;
+                    const wData = WEAPONS.find(item => item.id === wTier);
+                    iconElem.innerText = wData ? wData.icon : "🔫";
+                    lvlElem.innerText = `Lv.${wTier}`;
+                    slotElem.classList.add('border-amber-400');
+                } else {
+                    iconElem.innerText = "🔒";
+                    lvlElem.innerText = "Empty";
+                    slotElem.classList.remove('border-amber-400');
+                }
+            }
+
+
+            // Spawn Cat Heroes equal to active weapon count (1 ~ 3)
+            const catCount = Math.max(1, equippedCount);
+            for (let i = 0; i < catCount; i++) {
+                const catDiv = document.createElement('div');
+                catDiv.id = `catHero${i}`;
+                catDiv.className = "flex items-center gap-1.5 transition-all duration-150";
+               
+                const weaponTier = gameState.equipped[i];
+                const wIcon = weaponTier ? WEAPONS[weaponTier - 1]?.icon || "🔫" : "✊";
+
+
+                catDiv.innerHTML = `
+                    <div class="text-3xl filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] select-none">${CAT_EMOJIS[i]}</div>
+                    <div class="text-sm bg-slate-950/80 px-1.5 py-0.5 rounded border border-slate-700 font-bold">${wIcon}</div>
+                `;
+                squadContainer.appendChild(catDiv);
+            }
+        }
+
+
+        function unequipSlot(slotIdx) {
+            if (gameState.equipped[slotIdx] === null) return;
+
+
+            // Find empty grid slot
+            const emptyIdx = gameState.grid.findIndex(val => val === null);
+            if (emptyIdx !== -1) {
+                gameState.grid[emptyIdx] = gameState.equipped[slotIdx];
+                gameState.equipped[slotIdx] = null;
+                updateCatSquadUI();
+                updateUI();
+            } else {
+                alert("합성 그리드가 가득 차서 해제할 수 없습니다!");
+            }
+        }
+
+
+        // --- MERGE GRID & WEAPON BUYING ---
+        function buyWeapon() {
+            if (gameState.gold < gameState.buyCost) return;
+
+
+            const emptyIdx = gameState.grid.findIndex(val => val === null);
+            if (emptyIdx === -1) return; // Grid Full
+
+
+            gameState.gold -= gameState.buyCost;
+            gameState.grid[emptyIdx] = 1; // Buy Tier 1 Weapon
+            gameState.buyCost = Math.floor(gameState.buyCost * 1.15);
+
+
+            updateUI();
+            playSound('hit');
+        }
+
+
+        function handleGridClick(index) {
+            const clickedTier = gameState.grid[index];
+
+
+            if (selectedGridIndex === null) {
+                // First Selection
+                if (clickedTier !== null) {
+                    selectedGridIndex = index;
+                    highlightSlot(index, true);
+                }
+            } else if (selectedGridIndex === index) {
+                // Deselect
+                highlightSlot(selectedGridIndex, false);
+                selectedGridIndex = null;
+            } else {
+                // Second Selection (Merge or Swap or Equip)
+                const sourceTier = gameState.grid[selectedGridIndex];
+
+
+                if (clickedTier === sourceTier && sourceTier < WEAPONS.length) {
+                    // MERGE!
+                    gameState.grid[index] = sourceTier + 1;
+                    gameState.grid[selectedGridIndex] = null;
+                    playSound('merge');
+                } else if (clickedTier === null) {
+                    // MOVE
+                    gameState.grid[index] = sourceTier;
+                    gameState.grid[selectedGridIndex] = null;
+                } else {
+                    // SWAP
+                    gameState.grid[index] = sourceTier;
+                    gameState.grid[selectedGridIndex] = clickedTier;
+                }
+
+
+                highlightSlot(selectedGridIndex, false);
+                selectedGridIndex = null;
+               
+                // Try Auto-Equip best weapons
+                autoEquipBestWeapons();
+                updateUI();
+            }
+        }
+
+
+        function highlightSlot(index, isActive) {
+            const slot = document.getElementById(`grid${index}`);
+            if (isActive) {
+                slot.classList.add('active-slot', 'bg-amber-500/20');
+            } else {
+                slot.classList.remove('active-slot', 'bg-amber-500/20');
+            }
+        }
+
+
+        function toggleAutoMerge() {
+            gameState.autoMerge = !gameState.autoMerge;
+            const statusDot = document.getElementById('autoMergeStatus');
+            if (gameState.autoMerge) {
+                statusDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+            } else {
+                statusDot.className = "w-2 h-2 rounded-full bg-slate-500";
+            }
+        }
+
+
+        function performAutoMerge() {
+            let merged = false;
+
+
+            for (let i = 0; i < 16; i++) {
+                if (!gameState.grid[i]) continue;
+
+
+                for (let j = i + 1; j < 16; j++) {
+                    if (gameState.grid[i] && gameState.grid[i] === gameState.grid[j] && gameState.grid[i] < WEAPONS.length) {
+                        gameState.grid[i] += 1;
+                        gameState.grid[j] = null;
+                        merged = true;
+                        playSound('merge');
+                        break;
+                    }
+                }
+                if (merged) break;
+            }
+
+
+            if (merged) {
+                autoEquipBestWeapons();
+                updateUI();
+            }
+        }
+
+
+        function autoEquipBestWeapons() {
+            // Find all available weapon tiers on grid & currently equipped
+            let allWeapons = [];
+
+
+            for (let i = 0; i < 16; i++) {
+                if (gameState.grid[i]) {
+                    allWeapons.push({ type: 'grid', index: i, tier: gameState.grid[i] });
+                }
+            }
+
+
+            for (let i = 0; i < 3; i++) {
+                if (gameState.equipped[i]) {
+                    allWeapons.push({ type: 'equip', index: i, tier: gameState.equipped[i] });
+                }
+            }
+
+
+            // Sort descending by Tier
+            allWeapons.sort((a, b) => b.tier - a.tier);
+
+
+            // Top 3 best weapons go to equipped slots
+            let newEquipped = [null, null, null];
+            let usedGridIndices = new Set();
+
+
+            for (let i = 0; i < Math.min(3, allWeapons.length); i++) {
+                newEquipped[i] = allWeapons[i].tier;
+                if (allWeapons[i].type === 'grid') {
+                    usedGridIndices.add(allWeapons[i].index);
+                }
+            }
+
+
+            // Remove equipped ones from grid
+            usedGridIndices.forEach(idx => {
+                gameState.grid[idx] = null;
+            });
+
+
+            // If an equipped weapon dropped off top 3, return to grid if space allows
+            for (let i = 3; i < allWeapons.length; i++) {
+                if (allWeapons[i].type === 'equip') {
+                    const emptyGridIdx = gameState.grid.findIndex(v => v === null);
+                    if (emptyGridIdx !== -1) {
+                        gameState.grid[emptyGridIdx] = allWeapons[i].tier;
+                    }
+                }
+            }
+
+
+            gameState.equipped = newEquipped;
+            updateCatSquadUI();
+        }
+
+
+        // --- UPGRADES & RAINBOW SHOP ---
+        function upgradeStat(type) {
+            if (type === 'atk') {
+                const cost = Math.floor(10 * Math.pow(1.2, gameState.stats.atkLv - 1));
+                if (gameState.gold >= cost) {
+                    gameState.gold -= cost;
+                    gameState.stats.atkLv++;
+                }
+            } else if (type === 'spd') {
+                const cost = Math.floor(25 * Math.pow(1.25, gameState.stats.spdLv - 1));
+                if (gameState.gold >= cost) {
+                    gameState.gold -= cost;
+                    gameState.stats.spdLv++;
+                }
+            } else if (type === 'crit') {
+                const cost = Math.floor(50 * Math.pow(1.3, gameState.stats.critLv - 1));
+                if (gameState.gold >= cost) {
+                    gameState.gold -= cost;
+                    gameState.stats.critLv++;
+                }
+            } else if (type === 'gold') {
+                const cost = Math.floor(30 * Math.pow(1.22, gameState.stats.goldLv - 1));
+                if (gameState.gold >= cost) {
+                    gameState.gold -= cost;
+                    gameState.stats.goldLv++;
+                }
+            }
+            updateUI();
+        }
+
+
+        function buyRainbowStat(type) {
+            if (type === 'atk') {
+                const cost = gameState.rainbow.atkLv + 1;
+                if (gameState.rainbowGems >= cost) {
+                    gameState.rainbowGems -= cost;
+                    gameState.rainbow.atkLv++;
+                }
+            } else if (type === 'gold') {
+                const cost = gameState.rainbow.goldLv + 1;
+                if (gameState.rainbowGems >= cost) {
+                    gameState.rainbowGems -= cost;
+                    gameState.rainbow.goldLv++;
+                }
+            } else if (type === 'critDmg') {
+                const cost = (gameState.rainbow.critDmgLv + 1) * 2;
+                if (gameState.rainbowGems >= cost) {
+                    gameState.rainbowGems -= cost;
+                    gameState.rainbow.critDmgLv++;
+                }
+            }
+            updateUI();
+        }
+
+
+        // --- REBIRTH SYSTEM ---
+        function triggerRebirth() {
+            if (gameState.stage < 5) return;
+
+
+            const rewardGems = Math.floor((gameState.stage - 4) * 2);
+            if (rewardGems <= 0) return;
+
+
+            gameState.rainbowGems += rewardGems;
+
+
+            // Reset Soft Progress
+            gameState.gold = 0;
+            gameState.stage = 1;
+            gameState.subStage = 1;
+            gameState.buyCost = 10;
+            gameState.grid = Array(16).fill(null);
+            gameState.equipped = [1, null, null];
+
+
+            gameState.stats = {
+                atkLv: 1,
+                spdLv: 1,
+                critLv: 1,
+                goldLv: 1
+            };
+
+
+            playSound('rebirth');
+            spawnEnemy();
+            updateCatSquadUI();
+            updateUI();
+            switchTab('Merge');
+        }
+
+
+        // --- TAB NAVIGATION ---
+        function switchTab(tabName) {
+            const tabs = ['Merge', 'Stats', 'Rainbow', 'Rebirth'];
+            tabs.forEach(t => {
+                const content = document.getElementById(`tab${t}`);
+                const navBtn = document.getElementById(`nav${t}`);
+
+
+                if (t === tabName) {
+                    content.classList.remove('hidden');
+                    navBtn.className = "py-2.5 text-amber-400 border-t-2 border-amber-400 flex flex-col items-center justify-center gap-0.5";
+                } else {
+                    content.classList.add('hidden');
+                    navBtn.className = "py-2.5 text-slate-400 border-t-2 border-transparent flex flex-col items-center justify-center gap-0.5 hover:text-slate-200";
+                }
+            });
+        }
+
+
+        // --- UI REFRESH ---
+        function updateUI() {
+            // Stats Header
+            document.getElementById('goldDisplay').innerText = gameState.gold.toLocaleString();
+            document.getElementById('gemDisplay').innerText = gameState.rainbowGems;
+            document.getElementById('stageDisplay').innerText = `${gameState.stage}-${gameState.subStage}`;
+            document.getElementById('buyCostDisplay').innerText = `🪙 ${gameState.buyCost}`;
+
+
+            // Grid Slots UI
+            for (let i = 0; i < 16; i++) {
+                const tier = gameState.grid[i];
+                const iconElem = document.getElementById(`gridIcon${i}`);
+                const lvlElem = document.getElementById(`gridLevel${i}`);
+
+
+                if (tier) {
+                    const wData = WEAPONS.find(item => item.id === tier);
+                    iconElem.innerText = wData ? wData.icon : "🔫";
+                    lvlElem.innerText = `Lv.${tier}`;
+                } else {
+                    iconElem.innerText = "";
+                    lvlElem.innerText = "";
+                }
+            }
+
+
+            // Stat Upgrades UI
+            document.getElementById('statAtkLv').innerText = gameState.stats.atkLv;
+            document.getElementById('statAtkVal').innerText = (gameState.stats.atkLv - 1) * 8;
+            document.getElementById('statAtkCost').innerText = Math.floor(10 * Math.pow(1.2, gameState.stats.atkLv - 1));
+
+
+            document.getElementById('statSpdLv').innerText = gameState.stats.spdLv;
+            document.getElementById('statSpdVal').innerText = (gameState.stats.spdLv - 1) * 2;
+            document.getElementById('statSpdCost').innerText = Math.floor(25 * Math.pow(1.25, gameState.stats.spdLv - 1));
+
+
+            document.getElementById('statCritLv').innerText = gameState.stats.critLv;
+            document.getElementById('statCritVal').innerText = 5 + (gameState.stats.critLv - 1) * 2;
+            document.getElementById('statCritCost').innerText = Math.floor(50 * Math.pow(1.3, gameState.stats.critLv - 1));
+
+
+            document.getElementById('statGoldLv').innerText = gameState.stats.goldLv;
+            document.getElementById('statGoldVal').innerText = (gameState.stats.goldLv - 1) * 15;
+            document.getElementById('statGoldCost').innerText = Math.floor(30 * Math.pow(1.22, gameState.stats.goldLv - 1));
+
+
+            // Rainbow Shop UI
+            document.getElementById('rbAtkLv').innerText = gameState.rainbow.atkLv;
+            document.getElementById('rbAtkVal').innerText = gameState.rainbow.atkLv * 25;
+            document.getElementById('rbAtkCost').innerText = gameState.rainbow.atkLv + 1;
+
+
+            document.getElementById('rbGoldLv').innerText = gameState.rainbow.goldLv;
+            document.getElementById('rbGoldVal').innerText = gameState.rainbow.goldLv * 50;
+            document.getElementById('rbGoldCost').innerText = gameState.rainbow.goldLv + 1;
+
+
+            document.getElementById('rbCritDmgLv').innerText = gameState.rainbow.critDmgLv;
+            document.getElementById('rbCritDmgVal').innerText = gameState.rainbow.critDmgLv * 20;
+            document.getElementById('rbCritDmgCost').innerText = (gameState.rainbow.critDmgLv + 1) * 2;
+
+
+            // Rebirth UI
+            const rewardGems = Math.max(0, Math.floor((gameState.stage - 4) * 2));
+            document.getElementById('rebirthRewardDisplay').innerText = `${rewardGems}개`;
+
+
+            const rebirthBtn = document.getElementById('rebirthBtn');
+            if (gameState.stage >= 5 && rewardGems > 0) {
+                rebirthBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                rebirthBtn.classList.add('hover:scale-105');
+            } else {
+                rebirthBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                rebirthBtn.classList.remove('hover:scale-105');
+            }
+        }
+
+
+        // --- START GAME ON LOAD ---
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>

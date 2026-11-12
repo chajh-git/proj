@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>12+ 편의점</title>
+<style>
+:root{--bg:#101820;--panel:#182632;--panel2:#223544;--line:#385064;--text:#f2f7fb;--muted:#a9bac8;--accent:#55d6a0;--red:#ff6464;--yellow:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:#0b1118;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+#game{position:fixed;inset:0}canvas{display:block}
+#hud{position:fixed;inset:14px 14px auto;display:flex;justify-content:space-between;gap:10px;pointer-events:none}
+.pill{background:#101820d9;border:1px solid #52697b;border-radius:12px;padding:9px 13px;font-size:14px;box-shadow:0 5px 20px #0005}
+#objective{position:fixed;right:16px;top:72px;width:min(300px,45vw);background:#101820e8;border:1px solid #52697b;border-radius:12px;padding:12px;font-size:14px}
+#objective b{color:var(--accent)}#crosshair{position:fixed;left:50%;top:50%;width:8px;height:8px;border:1px solid #fff;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 5px #000}
+#hint{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#101820e8;border:1px solid #52697b;border-radius:12px;padding:10px 16px;pointer-events:none;text-align:center;min-width:210px}
+#toast{position:fixed;left:50%;top:18%;transform:translateX(-50%);background:#172b36;border:1px solid var(--accent);border-radius:12px;padding:12px 18px;display:none;z-index:30}
+.overlay{position:fixed;inset:0;background:#071018d9;display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
+.window{width:min(720px,96vw);max-height:88vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 20px 70px #0009}
+h1,h2,h3,p{margin-top:0}h1{font-size:clamp(28px,5vw,48px);margin-bottom:8px}h2{font-size:23px}p,.muted{color:var(--muted);line-height:1.5}
+button{border:1px solid #547084;background:var(--panel2);color:var(--text);padding:10px 14px;border-radius:10px;font-weight:650;cursor:pointer}
+button:hover{border-color:var(--accent);filter:brightness(1.12)}button.primary{background:#167a59;border-color:#55d6a0}button.danger{border-color:#b95050}button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tabs{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}.tabs button.active{background:#167a59;border-color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.card{background:#20313e;border:1px solid #3a5263;border-radius:12px;padding:13px}.card h3{margin-bottom:5px}.price{color:var(--yellow);font-weight:750}
+#modal{display:none}.small{font-size:12px;color:var(--muted)}.bigmoney{font-size:34px;font-weight:850;color:var(--accent)}
+input{background:#0c151d;color:white;border:1px solid #52697b;border-radius:9px;padding:10px;width:130px}
+#start .window{text-align:center}#start .sub{font-size:17px;max-width:580px;margin:10px auto 22px}
+#placement{display:none;position:fixed;bottom:85px;left:50%;transform:translateX(-50%);background:#101820e8;border:1px solid #52697b;border-radius:14px;padding:12px;z-index:10;text-align:center}
+#placement .row{justify-content:center}
+#dayend .window{text-align:center}
+#hammer{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;font-size:26px;padding:0;z-index:12;background:#101820e8;border-color:#52697b}#hammer.on{background:#167a59;border-color:var(--accent);box-shadow:0 0 14px #55d6a0aa}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud" style="display:none"><div class="pill">💵 <span id="cash">
+100.00</span>　📅DAY<spanid="day">1</span></div><divclass="pill">🧾오늘매출<spanid="sales">0.00</span></div></div>
+<div id="objective" style="display:none"><b>튜토리얼</b><div id="objectiveText">컴퓨터를 켜세요.</div></div>
+<div id="crosshair" style="display:none"></div><div id="hint" style="display:none">WASD 이동 · 마우스 시점 · E 상호작용</div>
+<div id="toast"></div>
+<button id="hammer" title="가구 이동 (F)" onclick="toggleMove()" style="display:none">🔨</button>
+<div id="placement"><b id="placeTitle">배치 모드</b><div class="small">시점을 움직여 위치 조정 · 클릭/E 설치 · R 회전 · Q 취소</div><div class="row" style="margin-top:8px"><button onclick="rotatePlacement()">회전 (R)</button><button class="primary" onclick="confirmPlacement()">설치</button><button onclick="cancelPlacement()">취소</button></div></div>
+<div id="start" class="overlay"><div class="window"><div style="font-size:52px">🏪</div><h1>12+ 편의점</h1><p class="sub">작은 편의점의 사장님이 되어 상품을 사고, 손님을 응대하고, 가게를 성장시키세요.</p><div class="row" style="justify-content:center"><button class="primary" id="startBtn">게임 시작</button></div><p class="small" style="margin-top:18px">조작: WASD 이동 · 마우스 시점 · E 상호작용 · ESC 마우스 잠금 해제</p></div></div>
+<div id="modal" class="overlay"><div class="window"><div class="between"><h2 id="modalTitle">컴퓨터</h2><button onclick="closeModal()">닫기 ✕</button></div><div id="modalBody"></div></div></div>
+<div id="dayend" class="overlay" style="display:none"><div class="window"><div style="font-size:42px">🌙</div><h1>DAY <span id="endDay">1</span> 결산</h1><p>오늘 영업이 종료되었습니다.</p><div class="cards"><div class="card"><div class="muted">판매 수익</div><div class="bigmoney" id="endSales">0</div></div><divclass="card"><divclass="muted">구매비용</div><divclass="bigmoney"id="endCosts"style="color:#ffd166">0</div></div><div class="card"><div class="muted">대출 이자</div><div class="bigmoney" id="endInterest" style="color:#ff9b75">0</div></div></div><h2style="margin-top:20px">오늘총이익</h2><divclass="bigmoney"id="endProfit">0</div><p class="small">판매 수익 − 구매 비용 − 대출 이자</p><button class="primary" id="nextDay">다음 날 시작</button></div></div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+let scene,camera,renderer,controls,raycaster,mouse;
+let cameraYaw=0,cameraPitch=0;
+let started=false,locked=false,computerOn=false,shopTab='판매 물건',cash=100,sales=0,costs=0,day=1,debt=0,baseDebt=0,employees={cashier:0,stock:0},shelfCount=0,counterCount=0,warehouseBought=false,expansions=0;
+let tutorial=0,currentApp='shop',delivery=null,placement=null,selectedObject=null,customers=[],customerTimer=0,scanned=0,checkoutItems=[],doorLocked=false,storeOpen=true,toastTimer;
+const staff=[];let mainCounter,clock,autoT=0,doorLeaf;const PROD={bread:{n:"빵",s:4,c:0xc58b49},drink:{n:"음료수",s:3,c:0x3fa7d6},chips:{n:"과자",s:2.5,c:0xe85d4a},ramen:{n:"라면",s:3.5,c:0xe9a23b}};
+const interactables=[],movables=[],products=[],stock={bread:0,drink:0,chips:0,ramen:0};
+const $=id=>document.getElementById(id);
+function money(n){return '$'+n.toFixed(2)}
+function notify(s){('toast').textContent=s;('toast').style.display='block';clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').style.display='none',2300)}
+function setObjective(s){$('objectiveText').textContent=s}
+function init(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x9bb8c8);scene.fog=new THREE.Fog(0x9bb8c8,18,55);clock=new THREE.Clock();
+ camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,100);camera.position.set(0,1.65,7);cameraYaw=0;cameraPitch=0;camera.rotation.order='YXZ';
+ renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;$('game').appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xffffff,0x53616b,2));
+ let sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(5,10,6);sun.castShadow=true;scene.add(sun);
+ const mat=(c)=>new THREE.MeshStandardMaterial({color:c,roughness:.82});
+ const floor=new THREE.Mesh(new THREE.BoxGeometry(12,.2,12),mat(0xb9aa8c));floor.position.set(0,-.1,0);floor.receiveShadow=true;scene.add(floor);
+ function wall(x,y,z,w,h,d,color=0xe8e2d6){let m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m}
+ wall(0,1.8,-6,12,3.6,.25);wall(-6,1.8,0,.25,3.6,12);wall(6,1.8,0,.25,3.6,12);
+ // 앞면: 출입구(폭2) + 유리 쇼윈도
+ wall(-3.5,1.8,6,5,3.6,.25);wall(0,3.15,6,2,.9,.25);wall(3.5,.45,6,5,.9,.25);wall(3.5,3.15,6,5,.9,.25);
+ let glass=new THREE.Mesh(new THREE.BoxGeometry(5,1.8,.06),new THREE.MeshStandardMaterial({color:0x75c7df,transparent:true,opacity:.25}));glass.position.set(3.5,1.8,6);scene.add(glass);
+ doorLeaf=wall(0,1.35,6.17,2,2.7,.08,0x557b8d);doorLeaf.userData={type:'door',name:'가게 문'};interactables.push(doorLeaf);
+ let outside=new THREE.Mesh(new THREE.BoxGeometry(35,.15,25),mat(0x777e78));outside.position.set(0,-.25,15);scene.add(outside);
+ mainCounter=makeFurniture('기본 카운터','counter',-2,0,-3,0,true);equipCounter(mainCounter);
+ makeFurniture('기본 선반','shelf',3,0,-3,0,true);
+ wall(0,3.2,-5.82,2.2,.45,.05,0x1c604e);
+ raycaster=new THREE.Raycaster();mouse=new THREE.Vector2();
+ window.addEventListener('resize',onResize);document.addEventListener('keydown',keyDown);document.addEventListener('keyup',keyUp);renderer.domElement.addEventListener('click',canvasClick);document.addEventListener('mousemove',mouseMove);
+ refreshShelves();syncStaff();animate();
+}
+function makeFurniture(name,type,x,y,z,color,initial=false){
+ let g=new THREE.Group(),B=(w,h,d,c,px,py,pz)=>{let m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c,roughness:.8}));m.position.set(px,py,pz);m.castShadow=m.receiveShadow=true;g.add(m)};
+ if(type==='counter'){B(2.1,.95,1,0xe8ebee,0,.48,0);B(2.2,.1,1.1,0x737b83,0,1,0);B(2.12,.48,.045,0x9ca5ae,0,.48,.51)}
+ else{B(.06,1.9,.65,0xf2f3f4,-.87,.95,0);B(.06,1.9,.65,0xf2f3f4,.87,.95,0);B(1.8,1.9,.04,0xe1e5e8,0,.95,-.3);for(let i=0;i<4;i++)B(1.8,.05,.65,0xe1e5e8,0,.12+i*.58,0)}
+ g.position.set(x,y,z);g.userData={type,name,initial,baseY:y};scene.add(g);movables.push(g);return g;
+}
+function equipCounter(g){let B=(w,h,d,c,x,y,z,t)=>{let m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c}));m.position.set(x,y,z);m.castShadow=true;if(t){m.userData={type:t};interactables.push(m)}g.add(m)};
+ B(.4,.04,.3,0x303b42,0,1.07,-.05);B(.06,.25,.06,0x303b42,0,1.2,-.05);B(.65,.48,.08,0x18232a,0,1.5,-.08,'computer');
+ B(.36,.12,.42,0x26323a,.42,1.11,.05,'scanner');B(.24,.025,.28,0xe64a4a,.42,1.175,.05);B(.36,.12,.42,0x59636d,.92,1.11,.05,'reader');B(.22,.025,.18,0x4d9bba,.92,1.175,.05)}
+function prodMesh(k){let T=THREE,g={bread:()=>[new T.CapsuleGeometry(.08,.12,4,8),.16],drink:()=>[new T.CylinderGeometry(.06,.06,.3,12),.3],chips:()=>[new T.BoxGeometry(.26,.34,.07),.34],ramen:()=>[new T.CylinderGeometry(.12,.09,.18,14),.18]}[k](),m=new T.Mesh(g[0],new T.MeshStandardMaterial({color:PROD[k].c,roughness:.7}));if(k==='bread')m.rotation.z=1.57;m.userData={type:'product',kind:k,name:PROD[k].n,h:g[1]};m.castShadow=true;return m}
+function refreshShelves(){products.length=0;let sh=movables.filter(o=>o.userData.type==='shelf'&&o.visible);movables.filter(o=>o.userData.type==='shelf').forEach(s=>[...s.children].filter(c=>c.userData.type==='product').forEach(c=>s.remove(c)));let n=0;for(const k in PROD)for(let i=0;i<stock[k];i++,n++){let s=sh[Math.floor(n/15)];if(!s)return;let j=n%15,m=prodMesh(k);m.position.set(-.68+(j%5)*.34,.145+Math.floor(j/5)*.58+m.userData.h/2,0);s.add(m);products.push(m)}}
+// ---------- 충돌 ----------
+function fp(t,x,z,ry){let w=t==='counter'?1.1:.95,d=t==='counter'?.55:.36;if(Math.round(ry/(Math.PI/2))%2)[w,d]=[d,w];return[x-w,x+w,z-d,z+d]}
+function rects(){let r=[[-40,-5.85,-40,6.2],[5.85,40,-40,6.2],[-40,40,-40,-5.85],[-40,-1,5.85,6.2],[1,40,5.85,6.2]];if(doorLocked)r.push([-1,1,5.85,6.2]);movables.forEach(o=>{if(o.visible)r.push(fp(o.userData.type,o.position.x,o.position.z,o.rotation.y))});return r}
+function hit(x,z,r){return rects().some(q=>x>q[0]-r&&x<q[1]+r&&z>q[2]-r&&z<q[3]+r)}
+// ---------- 사람(손님/직원) ----------
+function mk(shirt,hat){let g=new THREE.Group(),A=(geo,c,x,y,z)=>{let m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:c,roughness:.8}));m.position.set(x,y,z);m.castShadow=true;g.add(m);return m},C=THREE.CylinderGeometry,L=(r,l,c,x,y)=>{let m=A(new C(r,r,l,8),c,x,y,0);m.geometry.translate(0,-l/2,0);return m},S=THREE.SphereGeometry;
+ A(new C(.2,.24,.62,10),shirt,0,1.05,0);A(new S(.21,14,12),0xe5b58d,0,1.6,0);A(new S(.225,14,8,0,6.283,0,1.57),hat,0,1.63,0);A(new S(.03,6,6),0x222222,-.07,1.62,.19);A(new S(.03,6,6),0x222222,.07,1.62,.19);
+ let s={mesh:g,walk:0,act:0,carry:0,ph:0,t:0,L:[L(.09,.75,0x2d3b46,-.11,.75),L(.09,.75,0x2d3b46,.11,.75),L(.07,.6,shirt,-.29,1.34),L(.07,.6,shirt,.29,1.34)]};scene.add(g);return s}
+function pose(p,dt){p.ph+=dt*9;let s=Math.sin(p.ph),[a,b,c,d]=p.L;a.rotation.x=s*.7*p.walk;b.rotation.x=-s*.7*p.walk;if(p.act)c.rotation.x=d.rotation.x=-1.2+Math.sin(p.ph*1.3)*.3;else if(p.carry)c.rotation.x=d.rotation.x=-.8;else{c.rotation.x=-s*.6*p.walk;d.rotation.x=s*.6*p.walk}}
+function faceYaw(m,y){let d=((y-m.rotation.y+Math.PI)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)-Math.PI;m.rotation.y+=d*.2}
+function loc(o,x,z){o.updateMatrixWorld();let v=new THREE.Vector3(x,0,z);o.localToWorld(v);return{x:v.x,z:v.z}}
+function walkTo(p,tx,tz,dt,sp){let m=p.mesh,dx=tx-m.position.x,dz=tz-m.position.z,d=Math.hypot(dx,dz);if(d<.12)return true;let a0=Math.atan2(dx,dz),st=Math.min(d,sp*dt);for(const o of [0,.6,-.6,1.2,-1.2,1.8,-1.8]){let a=a0+o,nx=m.position.x+Math.sin(a)*st,nz=m.position.z+Math.cos(a)*st;if(!hit(nx,nz,.27)){m.position.set(nx,0,nz);faceYaw(m,a);p.walk=1;p.stk=0;return false}}if((p.stk=(p.stk||0)+dt)>2.5){m.position.set(tx,0,tz);p.stk=0}return false}
+function syncStaff(){['cashier','stock'].forEach(r=>{let n=staff.filter(s=>s.role===r).length;for(let i=n;i<employees[r];i++){let s=mk(r==='cashier'?0x167a59:0xffd166,0x2b2b33);s.role=r;s.i=i;s.ready=0;s.mesh.position.set(0,0,9.5+i*.5);staff.push(s)}})}
+function stepStaff(s,dt){s.walk=0;s.act=0;if(placement)return;let ct=mainCounter;if(s.mesh.position.z>5.2){walkTo(s,0,4.6,dt,1.9);return}
+ if(s.role==='cashier'){let p=loc(ct,(s.i%2?-1:1)*(.45+(s.i>>1)*.6),-1.05);s.ready=walkTo(s,p.x,p.z,dt,1.9);if(s.ready)faceYaw(s.mesh,ct.rotation.y)}
+ else{let sh=movables.filter(o=>o.userData.type==='shelf'&&o.visible);if(!sh.length)return;if(!s.tg||!s.tg.visible)s.tg=sh[Math.random()*sh.length|0];let p=loc(s.tg,-.5+(s.i%3)*.5,.85);if(walkTo(s,p.x,p.z,dt,1.6)){faceYaw(s.mesh,s.tg.rotation.y+Math.PI);s.act=1;if((s.t+=dt)>3){s.t=0;s.tg=sh[Math.random()*sh.length|0]}}}}
+function stepCustomer(c,dt){c.walk=0;c.act=0;let m=c.mesh,ct=mainCounter,S=s=>{c.s=s;c.t=0},go=(x,z)=>walkTo(c,x,z,dt,1.7);
+ if(c.s==='enter'){if(go(0,4.6)){let pool=products.map(p=>p.userData.kind);for(let n=1+(Math.random()*3|0);n--&&pool.length;)c.want.push(pool.splice(Math.random()*pool.length|0,1)[0]);S('pick')}}
+ else if(c.s==='pick'){let k=c.want[0];if(!k){S('toCounter');return}let pr=products.find(p=>p.userData.kind===k);if(!pr){c.want.shift();return}let sh=pr.parent,p=loc(sh,pr.position.x,.85);if(go(p.x,p.z)){faceYaw(m,sh.rotation.y+Math.PI);c.act=1;if((c.t+=dt)>1){c.want.shift();stock[k]--;c.bag.push(k);c.carry=1;refreshShelves();c.t=0}}}
+ else if(c.s==='toCounter'){if(!c.bag.length){notify('재고가 없어 손님이 그냥 돌아갑니다.');c.out=[[0,4.6],[0,10]];S('leave');return}let p=loc(ct,-.45,1.25);if(go(p.x,p.z))S('place')}
+ else if(c.s==='place'){faceYaw(m,ct.rotation.y+Math.PI);c.act=1;if((c.t+=dt)>.9){c.bag.forEach((k,i)=>{let it=prodMesh(k);it.position.set(-.9+i*.3,1.05+it.userData.h/2,.22);ct.add(it);checkoutItems.push({name:PROD[k].n,price:PROD[k].s,mesh:it})});c.bag=[];c.carry=0;scanned=0;S('wait');notify('손님이 상품을 카운터에 놓았습니다.'+(staff.some(s=>s.role==='cashier')?'':' 바코드 스캐너를 클릭하세요.'))}}
+ else if(c.s==='wait'){faceYaw(m,ct.rotation.y+Math.PI);if(c.paid){c.carry=1;c.out=[[0,4.6],[0,10]];S('leave')}}
+ else if(c.s==='leave'){let w=c.out[0];if(!w){scene.remove(m);customers.splice(customers.indexOf(c),1)}else if(go(w[0],w[1]))c.out.shift()}}
+function updateNPC(dt){customers.slice().forEach(c=>stepCustomer(c,dt));staff.forEach(s=>stepStaff(s,dt));let cs=staff.filter(s=>s.role==='cashier'&&s.ready);if(!placement&&cs.length&&checkoutItems.length){autoT+=dt;cs.forEach(s=>s.act=1);if(autoT>1.1/cs.length){autoT=0;scanned<checkoutItems.length?scanNext():finishCheckout()}}else autoT=0;customers.concat(staff).forEach(p=>pose(p,dt))}
+
+let moveMode=false;function syncHammer(){$('hammer').classList.toggle('on',moveMode)}function toggleMove(){if(placement)return;moveMode=!moveMode;syncHammer();notify(moveMode?'🔨 이동 모드: 옮길 가구를 바라보고 클릭하세요. (다시 누르면 해제)':'이동 모드 해제')}
+let keys={};function keyDown(e){keys[e.code]=true;if(e.code==='KeyE'){placement?confirmPlacement():interact()}if(e.code==='KeyF')toggleMove();if(e.code==='KeyR'&&placement)rotatePlacement();if(e.code==='KeyQ'&&placement)cancelPlacement();if(e.code==='Escape'&&locked)document.exitPointerLock()}
+function keyUp(e){keys[e.code]=false}
+function onResize(){if(!camera)return;camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function mouseMove(e){if(!locked)return;cameraYaw-=e.movementX*.0028;cameraPitch-=e.movementY*.0028;cameraPitch=Math.max(-1.35,Math.min(1.35,cameraPitch));camera.rotation.set(cameraPitch,cameraYaw,0,'YXZ')}
+function canvasClick(){if(!started)return;if(!locked){renderer.domElement.requestPointerLock();return}if(placement){confirmPlacement();return}let target=lookTarget();if(target){handleTarget(target)}}
+document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===renderer.domElement;$('hint').textContent=locked?'WASD 이동 · 마우스 이동: 시점 회전 · E 상호작용':'게임 화면을 클릭해 시점 조작 시작';});
+function lookTarget(){raycaster.setFromCamera(new THREE.Vector2(0,0),camera);let hits=raycaster.intersectObjects([...interactables,...movables,...products],true);if(!hits.length)return null;let o=hits[0].object;while(o.parent&&!o.userData.type)o=o.parent;return hits[0].distance<4?o:null}
+function interact(){if(!started||('modal').style.display==='flex'||('dayend').style.display==='flex')return;let t=lookTarget();if(t)handleTarget(t);else notify('가까이에서 물건을 바라보세요.')}
+function handleTarget(o){
+ if(o.userData.type==='product'&&o.parent&&o.parent.userData.type)o=o.parent;
+ let type=o.userData.type;
+ if(type==='computer'){if(tutorial===0){computerOn=true;tutorial=1;setObjective('상품 구매 앱에서 빵을 구매하세요.')}openComputer();return}
+ if(type==='door'){if(doorLocked)notify('문이 잠겨 있습니다.');else if(tutorial===7||tutorial>=8){if(customers.length)notify('손님이 있어요. 응대를 마친 뒤 닫아주세요.');else{doorLocked=true;storeOpen=false;showDayEnd()}}else notify('아직 튜토리얼 목표를 완료하지 않았어요.');return}
+ if(type==='scanner'){if(checkoutItems.length){scanNext()}else notify('먼저 손님이 상품을 카운터에 놓아야 해요.');return}
+ if(type==='reader'){if(scanned>=checkoutItems.length&&checkoutItems.length){finishCheckout()}else notify('먼저 모든 상품의 바코드를 찍으세요.');return}
+ if(type==='delivery'){if(delivery){let d=delivery;scene.remove(d.mesh);delivery=null;interactables.splice(interactables.indexOf(o),1);if(d.kind==='shelf'||d.kind==='counter'||d.kind==='warehouseShelf'){beginPlacement(d.kind,d.name)}else{stock[d.kind]=(stock[d.kind]||0)+d.qty;refreshShelves();notify(d.name+' '+d.qty+'개를 선반에 진열했습니다.');if(tutorial===2&&d.kind==='bread'){tutorial=3;setObjective('빵이 진열되었습니다! 첫 손님이 오면 계산을 도와주세요.');spawnCustomer()}}}return}
+ if(movables.includes(o)){if(moveMode){moveMode=false;syncHammer();beginMove(o)}else notify('가구를 옮기려면 아래 망치 버튼(또는 F)을 누르세요.');return}
+}
+function openComputer(){document.exitPointerLock();currentApp='shop';$('modal').style.display='flex';renderComputer()}
+function closeModal(){$('modal').style.display='none'}
+function renderComputer(){
+ $('modalTitle').textContent='💻 컴퓨터';
+ ('modalBody').innerHTML=`<divclass="tabs"><buttonclass="{currentApp==='shop'?'active':''}" onclick="currentApp='shop';renderComputer()">물건 구매 앱</button><button class="currentApp==='bank'?'active':''"onclick="currentApp='bank';renderComputer()">은행앱</button><buttonclass="{currentApp==='employees'?'active':''}" onclick="currentApp='employees';renderComputer()">직원 구매 앱</button></div><div id="appContent"></div>`;
+ let c=$('appContent');
+ if(currentApp==='bank'){
+ c.innerHTML=`<p>대출 이자는 최초 대출 원금 기준 하루 5% 단리입니다.</p><div class="card"><div>남은 대출 원금</div><div class="bigmoney">${money(baseDebt)}</div><div>누적 이자 포함 남은 빚: ${money(debt)}</div></div><p style="margin-top:14px">대출 금액 <input id="loanAmount" type="number" min="1" value="100"></p><div class="row"><button class="primary" onclick="takeLoan()">돈 빌리기</button><button onclick="repayLoan()">돈 갚기</button></div>`;
+ return;
+ }
+ if(currentApp==='employees'){
+ let price=[100,200,450,700,1000,1500];
+ c.innerHTML=['stock','cashier'].map(id=>{let name=id==='stock'?'창고 관리 지원':'계산원',count=employees[id];return `<div class="card" style="margin-bottom:10px"><h3>name({count}/6)</h3><p>다음 고용 가격: ${count<6?money(price[count]):'최대 고용'}</p><button count>=6||(id==='stock'&&!warehouseBought)?'disabled':''onclick="hire('{id}')">${id==='stock'&&!warehouseBought?'창고 구매 후 가능':'고용하기'}</button></div>`}).join('');
+ return;
+ }
+ $('modalTitle').textContent='💻 물건 구매 앱';
+ ('modalBody').innerHTML=`<divclass="tabs">{['판매 물건','가게 물건','편의점 확장'].map(t=>`<button class="shopTab===t?'active':''"onclick="shopTab='{t}';renderComputer()">${t}</button>`).join('')}</div><div id="shopContent"></div>`;
+ c=$('shopContent');
+ if(shopTab==='판매 물건'){
+ const items=[['bread','빵',2,4,'🍞'],['drink','음료수',1.5,3,'🥤'],['chips','과자',1.2,2.5,'🍟'],['ramen','라면',1.8,3.5,'🍜']];
+ c.innerHTML='<div class="cards">'+items.map(([id,n,p,s,ico])=>`<div class="card"><h3>${ico} ${n}</h3><p>구매
+p.toFixed(2)·판매
+{s.toFixed(2)}</p><p>보유 재고: stock[id]||0개</p><buttonclass="primary"onclick="buyProduct('{id}','n',{p},5)">5개 구매 · $${(p*5).toFixed(2)}</button></div>`).join('')+'</div>';
+ }else if(shopTab==='가게 물건'){
+ let arr=[['shelf','선반',80],['counter','카운터',120],['warehouseShelf','창고용 선반',65]];
+ c.innerHTML='<div class="cards">'+arr.map(([id,n,p])=>`<div class="card"><h3>🪑 n</h3><pclass="price">${p.toFixed(2)}</p><button id==='warehouseShelf'&&!warehouseBought?'disabled':''onclick="buyFurniture('{id}','n',{p})">${id==='warehouseShelf'&&!warehouseBought?'창고 구매 후 잠금 해제':'구매하기'}</button></div>`).join('')+'</div><p class="small">구매한 가구는 배송 후 설치할 수 있고, 설치한 뒤에도 다시 이동할 수 있어요. 컴퓨터는 최초 카운터에만 있습니다.</p>';
+ }else{
+ c.innerHTML=`<div class="cards"><div class="card"><h3>🏪 편의점 확장</h3><p>확장 횟수: expansions/3</p><pclass="price">${[500,1200,2500][expansions]??'완료'}</p><button expansions>=3?'disabled':''onclick="expandStore()">확장하기</button></div><divclass="card"><h3>📦창고구매</h3><p>{warehouseBought?'창고 구매 완료':'편의점 옆 창고 잠금 해제'}</p><p class="price">$400</p><button ${warehouseBought?'disabled':''} onclick="buyWarehouse()">구매하기</button></div></div>`;
+ }
+}
+function buyProduct(id,name,price,qty){let total=price*qty;if(cash<total){notify('돈이 부족합니다.');return}cash-=total;costs+=total;updateHud();spawnDelivery(id,name,qty);if(tutorial===1&&id==='bread'){tutorial=2;setObjective('편의점 앞 배송 상자를 클릭하세요.')}closeModal();notify(name+' 배송이 도착했습니다!')}
+function buyFurniture(id,name,price){if(tutorial===5&&id==='shelf'){price=0;tutorial=6;setObjective('배송 상자를 클릭하고 선반을 설치하세요.')}if(id==='warehouseShelf'&&!warehouseBought)return;if(cash<price){notify('돈이 부족합니다.');return}cash-=price;costs+=price;updateHud();spawnDelivery(id,name,1);closeModal();notify(name+' 배송이 도착했습니다!')}
+function buyWarehouse(){if(cash<400)return notify('돈이 부족합니다.');cash-=400;costs+=400;warehouseBought=true;updateHud();renderComputer();notify('창고를 구매했습니다! 편의점 구석 문으로 들어갈 수 있어요.')}
+function expandStore(){if(expansions>=3)return;let p=[500,1200,2500][expansions];if(cash<p)return notify('돈이 부족합니다.');cash-=p;costs+=p;expansions++;updateHud();renderComputer();notify('편의점이 확장되었습니다!')}
+function spawnDelivery(kind,name,qty){let box=new THREE.Mesh(new THREE.BoxGeometry(.75,.65,.65),new THREE.MeshStandardMaterial({color:0xb98b55}));box.position.set(2.8,.35,7.6);box.userData={type:'delivery'};scene.add(box);interactables.push(box);delivery={kind,name,qty,mesh:box};}
+function beginPlacement(kind,name,moveObj=null){if(placement)return;let obj=moveObj||makeFurniture(name,kind,0,0,0,kind==='counter'?0xe8ebee:0xf2f3f4);if(!moveObj)obj.visible=false;let ghost=obj.clone();ghost.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.48;o.material.color.set(0x35e68b)}});scene.add(ghost);ghost.visible=true;if(moveObj)obj.visible=false;placement={kind,name,obj,ghost,old:obj.position.clone(),rotation:obj.rotation.y};('placement').style.display='block';('placeTitle').textContent=name+' 배치';movePlacementFromView()}
+function beginMove(obj){beginPlacement(obj.userData.type,obj.userData.name,obj)}
+function movePlacementFromView(){if(!placement)return;let d=new THREE.Vector3(),c=camera.position;camera.getWorldDirection(d);let p=new THREE.Vector3();if(d.y<-.08)p.copy(c).addScaledVector(d,-c.y/d.y);else p.set(c.x+d.x,0,c.z+d.z).sub(new THREE.Vector3(c.x,0,c.z)).setLength(4).add(c);let f=new THREE.Vector3(p.x-c.x,0,p.z-c.z);if(f.length()>6){f.setLength(6);p.set(c.x+f.x,0,c.z+f.z)}let gx=Math.round(p.x*4)/4,gz=Math.round(p.z*4)/4,r=fp(placement.kind,gx,gz,placement.rotation);placement.ghost.position.set(gx,0,gz);placement.ghost.rotation.y=placement.rotation;let ok=r[0]>-5.8&&r[1]<5.8&&r[2]>-5.8&&r[3]<5.8&&!(r[1]>-1.6&&r[0]<1.6&&r[3]>4.3)&&!rects().slice(5).some(q=>r[0]<q[1]+.05&&r[1]>q[0]-.05&&r[2]<q[3]+.05&&r[3]>q[2]-.05);placement.valid=ok;placement.ghost.traverse(o=>{if(o.isMesh)o.material.color.set(ok?0x35e68b:0xff4545)})}
+function rotatePlacement(){if(!placement)return;placement.rotation+=Math.PI/2;placement.ghost.rotation.y=placement.rotation}
+function confirmPlacement(){if(!placement)return;if(!placement.valid)return notify('여기에는 설치할 수 없습니다.');placement.obj.position.copy(placement.ghost.position);placement.obj.rotation.y=placement.rotation;placement.obj.visible=true;placement.obj.userData.placed=1;scene.remove(placement.ghost);placement=null;refreshShelves();$('placement').style.display='none';if(tutorial===6){tutorial=7;setObjective('가게 문을 잠그고 첫 영업일을 마무리하세요.')}notify('설치 완료!')}
+function cancelPlacement(){if(!placement)return;let o=placement.obj;if(o.userData.initial||o.userData.placed)o.visible=true;else{scene.remove(o);movables.splice(movables.indexOf(o),1);if(!delivery)spawnDelivery(placement.kind,placement.name,1)}scene.remove(placement.ghost);placement=null;$('placement').style.display='none'}
+function updateHud(){('cash').textContent=money(cash);('sales').textContent=money(sales);$('day').textContent=day}
+function scanNext(){if(scanned>=checkoutItems.length)return;let it=checkoutItems[scanned++];it.mesh.position.z-=.45;notify('삑! '+it.name+' 스캔 완료 🔴');if(scanned===checkoutItems.length)notify('모든 상품 스캔 완료!'+(staff.some(s=>s.role==='cashier')?'':' 카드 리더기를 클릭하세요.'))}
+function finishCheckout(){let total=checkoutItems.reduce((a,x)=>a+x.price,0);checkoutItems.forEach(x=>x.mesh.parent&&x.mesh.parent.remove(x.mesh));sales+=total;cash+=total;updateHud();checkoutItems=[];scanned=0;customers.forEach(c=>c.paid=1);notify('결제 완료! +'+money(total));if(tutorial===3){tutorial=5;setObjective('컴퓨터에서 가게 물건 탭을 열고 선반을 구매하세요. (튜토리얼 무료)')}}
+function spawnCustomer(){if(!storeOpen||customers.length||!mainCounter)return;let c=mk(Math.random()*0xffffff|0,[0x2b2b33,0x5a3b22,0x8a6a3a][Math.random()*3|0]);c.mesh.position.set(0,0,10);c.s='enter';c.want=[];c.bag=[];c.out=[];customers.push(c)}
+function showDayEnd(){customers.forEach(c=>scene.remove(c.mesh));customers=[];checkoutItems.forEach(x=>x.mesh.parent&&x.mesh.parent.remove(x.mesh));checkoutItems=[];scanned=0;let interest=debt>0?baseDebt*.05:0;debt+=interest;let profit=sales-costs-interest;('endDay').textContent=day;('endSales').textContent=money(sales);('endCosts').textContent=money(costs);('endInterest').textContent=money(interest);('endProfit').textContent=money(profit);('dayend').style.display='flex';document.exitPointerLock()}
+$('nextDay').onclick=()=>{$('dayend').style.display='none';day++;sales=0;costs=0;doorLocked=false;storeOpen=true;tutorial=8;updateHud();setObjective('손님을 응대하세요. 영업을 끝내려면 가게 문을 누르세요.');notify('DAY '+day+' 시작!')};
+function openBank(){document.exitPointerLock();$('modal').style.display='flex';currentApp='bank';renderComputer()}
+function takeLoan(){let n=Math.max(0,Number($('loanAmount').value)||0);if(!n)return;cash+=n;baseDebt+=n;debt+=n;updateHud();renderComputer();notify(money(n)+' 대출 완료')}
+function repayLoan(){let n=Math.min(cash,debt);cash-=n;let principalPay=Math.min(baseDebt,n);baseDebt-=principalPay;debt-=n;updateHud();renderComputer();notify(money(n)+' 상환 완료')}
+function openEmployees(){document.exitPointerLock();$('modal').style.display='flex';currentApp='employees';renderComputer()}
+function hire(id){let price=[100,200,450,700,1000,1500],n=employees[id];if(n>=6)return;if(id==='stock'&&!warehouseBought)return;if(cash<price[n])return notify('돈이 부족합니다.');cash-=price[n];costs+=price[n];employees[id]++;syncStaff();updateHud();renderComputer();notify('직원을 고용했습니다!')}
+function showHint(){let t=lookTarget();if(!t)return;$('hint').textContent='E 또는 클릭: '+(t.userData.name||({computer:'컴퓨터',scanner:'바코드 스캐너',reader:'카드 리더기',door:'가게 문',delivery:'택배 상자'}[t.userData.type]||'상호작용'))}
+function animate(){requestAnimationFrame(animate);let dt=Math.min(.05,clock.getDelta());if(started){let f=new THREE.Vector3();camera.getWorldDirection(f);f.y=0;f.normalize();let rt=new THREE.Vector3().crossVectors(f,new THREE.Vector3(0,1,0)).normalize(),mv=new THREE.Vector3();if(keys.KeyW)mv.add(f);if(keys.KeyS)mv.sub(f);if(keys.KeyD)mv.add(rt);if(keys.KeyA)mv.sub(rt);if(mv.lengthSq()){mv.normalize().multiplyScalar(4.8*dt);let P=camera.position;if(!hit(P.x+mv.x,P.z,.3))P.x+=mv.x;if(!hit(P.x,P.z+mv.z,.3))P.z+=mv.z;P.x=Math.max(-14,Math.min(14,P.x));P.z=Math.min(14,P.z)}if(placement)movePlacementFromView();showHint();customerTimer+=dt;if(customerTimer>20&&tutorial>=8){customerTimer=0;spawnCustomer()}updateNPC(dt)}if(doorLeaf)doorLeaf.position.x+=((doorLocked?0:-2.1)-doorLeaf.position.x)*Math.min(1,dt*8);renderer.render(scene,camera)}
+$('startBtn').onclick=()=>{init();started=true;$('start').style.display='none';('hud').style.display='flex';('objective').style.display='block';('crosshair').style.display='block';('hint').style.display='block';$('hammer').style.display='block';setObjective('컴퓨터를 켜세요.');renderer.domElement.requestPointerLock();updateHud();};
+</script>
+</body>
+</html>

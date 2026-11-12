@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>저주받은 저택 - 침대 시작</title>
+<style>
+  body { margin: 0; background: #000; overflow: hidden; font-family: monospace; }
+  #start {
+    position: absolute; inset: 0; background: #111; color: #eee;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; cursor: pointer; text-align: center;
+  }
+  #ui {
+    position: absolute; top: 10px; left: 10px; color: white;
+    background: rgba(0,0,0,0.8); padding: 10px; border-radius: 5px;
+    pointer-events: none; z-index: 50;
+  }
+  #noteView {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: #f4e4c1; color: #3a2610; border: 3px solid #8b5a2b;
+    padding: 28px 48px; border-radius: 6px; z-index: 80; text-align: center;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8); pointer-events: none;
+  }
+  #noteView .num { font-size: 72px; font-weight: bold; letter-spacing: 12px; margin: 10px 0; }
+  #noteView .hint { font-size: 14px; opacity: 0.7; }
+  #pad {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(20,12,6,0.95); color: #eee; border: 2px solid #8b5a2b;
+    padding: 24px 32px; border-radius: 8px; z-index: 90;
+    flex-direction: column; align-items: center; gap: 12px; text-align: center;
+  }
+  #pad input { font: 28px monospace; width: 6ch; text-align: center; background: #000; color: #fd8; border: 1px solid #8b5a2b; padding: 6px; }
+  #pad button { font: 16px monospace; padding: 6px 16px; margin: 0 4px; cursor: pointer; }
+  #padMsg { color: #f88; min-height: 1.2em; }
+  #cross { position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; background: white; border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; z-index: 40; }
+</style>
+</head>
+<body>
+<div id="start">
+  <h2>저주받은 저택</h2>
+  <p>클릭해서 시작</p>
+  <p>침대에서 깨어납니다</p>
+  <p>WASD 이동 · 마우스(드래그) 또는 ←→ 시점 · E 상호작용 · F 손전등</p>
+</div>
+<div id="ui">
+  <div id="msg">눈이 떠진다...</div>
+  <div id="inv">소지품: 없음</div>
+</div>
+<div id="cross"></div>
+<div id="noteView" style="display:none">
+  <div>쪽지</div>
+  <div>비밀번호</div>
+  <div class="num">472</div>
+  <div class="hint">E를 누르면 닫힙니다</div>
+</div>
+<div id="pad" style="display:none">
+  <div>비밀번호를 입력하세요</div>
+  <input id="padInput" maxlength="6" inputmode="numeric" autocomplete="off">
+  <div id="padMsg"></div>
+  <div><button id="padOk">확인</button><button id="padCancel">취소</button></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const startEl = document.getElementById('start');
+const msgEl = document.getElementById('msg');
+const invEl = document.getElementById('inv');
+function setMsg(t){ msgEl.textContent = t; }
+function setInv(a){ invEl.textContent = '소지품: ' + (a.length ? a.join(', ') : '없음'); }
+
+let scene, camera, renderer, flash;
+let yaw = 0, pitch = 0, keys = {};
+let inv = [], hasKey = false, doorOpen = false, hasNote = false, escaped = false;
+let started = false, waking = true, wakeTime = 0;
+let walls = []; // 충돌용
+let bedDoor = null, bedDoorOpening = false, bedDoorCollider = null;
+
+startEl.onclick = () => {
+  startEl.style.display = 'none';
+  try {
+    const p = document.body.requestPointerLock();
+    if (p && p.catch) p.catch(() => {}); // 포인터 락이 막혀도 계속 진행
+  } catch (e) {}
+  window.focus();
+  if (!started) { started = true; init(); } // 일시정지 후 재개할 때 장면이 다시 만들어지지 않게
+};
+
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1008);
+  scene.fog = new THREE.Fog(0x1a1008, 10, 30);
+
+  camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 100);
+  camera.position.set(0, 0.5, 1.5); // 침대 위
+  yaw = Math.PI;                    // 문 쪽(+z)을 바라보고 시작
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = yaw;
+
+  renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x332211, 0.3));
+  flash = new THREE.SpotLight(0xfff5e0, 8, 15, Math.PI/5, 0.5);
+  camera.add(flash);
+  flash.position.set(0.1, 0.1, 0);
+  flash.target.position.set(0, 0, -1);
+  camera.add(flash.target);
+  scene.add(camera);
+
+  // 나무 바닥
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshStandardMaterial({color:0x6b4423, roughness:0.8}));
+  floor.rotation.x = -Math.PI/2;
+  scene.add(floor);
+
+  // 나무 천장
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshStandardMaterial({color:0x4a3018, side:THREE.DoubleSide}));
+  ceil.rotation.x = Math.PI/2;
+  ceil.position.y = 3.5;
+  scene.add(ceil);
+
+  function addWall(x, y, z, w, h, d) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({color:0x8b5a2b, roughness:0.7}) // 나무 벽지 색
+    );
+    m.position.set(x, y, z);
+    scene.add(m);
+    walls.push({x: x - w/2, z: z - d/2, w, d}); // 충돌 박스
+    return m;
+  }
+
+  // ===== 침실 =====
+  addWall(0, 1.75, -5, 10.3, 3.5, 0.3); // 뒤 (모서리 틈 방지로 약간 넓게)
+  addWall(-5, 1.75, -1, 0.3, 3.5, 8);   // 왼쪽
+  addWall(5, 1.75, -1, 0.3, 3.5, 8);    // 오른쪽
+  addWall(-4.5, 1.75, 3, 7, 3.5, 0.3);  // 앞 왼쪽 (x -8 ~ -1)
+  addWall(4.5, 1.75, 3, 7, 3.5, 0.3);   // 앞 오른쪽 (x 1 ~ 8), 가운데 x -1 ~ 1은 문 구멍
+  // 문 위쪽 벽 (충돌 없음, 보이기만 함)
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(2, 0.7, 0.3), new THREE.MeshStandardMaterial({color:0x8b5a2b, roughness:0.7}));
+  lintel.position.set(0, 3.15, 3);
+  scene.add(lintel);
+
+  // 진짜 침대
+  const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.4, 3.4), new THREE.MeshStandardMaterial({color:0x5a3a22}));
+  bedFrame.position.set(0, 0.2, 0.5);
+  scene.add(bedFrame);
+  const mattress = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, 3.0), new THREE.MeshStandardMaterial({color:0x6a4a3a}));
+  mattress.position.set(0, 0.55, 0.5);
+  scene.add(mattress);
+  const headboard = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.2, 0.2), new THREE.MeshStandardMaterial({color:0x4a2a1a}));
+  headboard.position.set(0, 1.1, 2.1);
+  scene.add(headboard);
+  const pillow1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.5), new THREE.MeshStandardMaterial({color:0x8a6a5a}));
+  pillow1.position.set(-0.5, 0.8, 1.6);
+  scene.add(pillow1);
+  const pillow2 = pillow1.clone();
+  pillow2.position.x = 0.5;
+  scene.add(pillow2);
+
+  // 침실 문
+  // 왼쪽 경첩(x=-0.9)을 축으로 회전하는 문
+  bedDoor = new THREE.Group();
+  bedDoor.position.set(-0.9, 0, 3);
+  const doorMat = new THREE.MeshStandardMaterial({color:0x7a4a2a, roughness:0.6});
+  const doorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.8, 0.15), doorMat);
+  doorPanel.position.set(0.9, 1.4, 0); // 경첩 기준으로 오른쪽에 위치
+  bedDoor.add(doorPanel);
+  const handleMat = new THREE.MeshStandardMaterial({color:0xddaa44, metalness:0.8, roughness:0.3});
+  [0.12, -0.12].forEach(dz => {
+    const handle = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 12), handleMat);
+    handle.position.set(1.55, 1.3, dz);
+    bedDoor.add(handle);
+  });
+  bedDoor.userData = {type:'bedDoor', center: new THREE.Vector3(0, 1.4, 3)};
+  scene.add(bedDoor);
+  // 닫혀 있는 동안 지나갈 수 없게 하는 충돌 박스
+  bedDoorCollider = {x: -1, z: 2.85, w: 2, d: 0.3};
+  walls.push(bedDoorCollider);
+
+  // ===== 바깥 복도/방 =====
+  addWall(0, 1.75, 9, 16.3, 3.5, 0.3);   // 뒤
+  addWall(-8, 1.75, 6, 0.3, 3.5, 6.3);   // 왼쪽
+  addWall(8, 1.75, 6, 0.3, 3.5, 6.3);    // 오른쪽
+  // 앞쪽 벽은 위의 침실 앞 벽(z=3)이 겸하므로 따로 만들지 않음
+
+  // 메인 문
+  const mainDoor = new THREE.Mesh(new THREE.BoxGeometry(2, 2.8, 0.3), new THREE.MeshStandardMaterial({color:0x6a3a1a}));
+  mainDoor.position.set(0, 1.4, 6.2);
+  mainDoor.userData = {type:'mainDoor'};
+  scene.add(mainDoor);
+
+  // 출구
+  const exit = new THREE.Mesh(new THREE.BoxGeometry(2, 2.8, 0.3), new THREE.MeshStandardMaterial({color:0x5a2a12}));
+  exit.position.set(0, 1.4, 8.7);
+  exit.userData = {type:'exit'};
+  scene.add(exit);
+
+  // 아이템
+  const key = new THREE.Mesh(new THREE.BoxGeometry(0.3,0.08,0.5), new THREE.MeshStandardMaterial({color:0xffdd88, emissive:0xaa7700, emissiveIntensity:1}));
+  key.position.set(-3, 0.4, 7);
+  key.userData = {type:'key'};
+  scene.add(key);
+
+  const note = new THREE.Mesh(new THREE.BoxGeometry(0.4,0.03,0.28), new THREE.MeshStandardMaterial({color:0xf8e8c8, emissive:0x443311, emissiveIntensity:0.3}));
+  note.position.set(3, 0.4, 7.5);
+  note.userData = {type:'note'};
+  scene.add(note);
+
+  document.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code === 'KeyF') {
+      flash.intensity = flash.intensity > 0 ? 0 : 8;
+      setMsg(flash.intensity ? '손전등 켜짐' : '손전등 꺼짐');
+    }
+    if (e.code === 'KeyE' && !waking) {
+      if (noteViewEl.style.display !== 'none') hideNote();
+      else interact();
+    }
+  });
+  document.addEventListener('keyup', e => keys[e.code] = false);
+
+  let dragging = false;
+  document.addEventListener('mousedown', () => { dragging = true; });
+  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('mousemove', e => {
+    if ((document.pointerLockElement || dragging) && !waking) {
+      yaw -= e.movementX * 0.002;
+      pitch -= e.movementY * 0.002;
+      pitch = Math.max(-1, Math.min(1, pitch));
+    }
+  });
+
+  document.addEventListener('pointerlockchange', () => {
+    if (!document.pointerLockElement && started && !escaped && !padOpen) {
+      startEl.style.display = 'flex';
+      startEl.innerHTML = '<h2>일시정지</h2><p>클릭해서 계속</p>';
+    }
+  });
+
+  animate();
+}
+
+function checkCollision(nx, nz) {
+  const r = 0.4;
+  for (const w of walls) {
+    if (nx + r > w.x && nx - r < w.x + w.w && nz + r > w.z && nz - r < w.z + w.d) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function interact() {
+  let closest = null, minD = 2.2;
+  scene.children.forEach(o => {
+    if (o.userData && o.userData.type) {
+      const d = camera.position.distanceTo(o.userData.center || o.position);
+      if (d < minD) { minD = d; closest = o; }
+    }
+  });
+  if (!closest) { setMsg('가까운 것이 없습니다'); return; }
+
+  const t = closest.userData.type;
+  if (t === 'bedDoor') {
+    bedDoorOpening = true;
+    closest.userData.type = null; // 더 이상 상호작용 불가
+    const i = walls.indexOf(bedDoorCollider);
+    if (i >= 0) walls.splice(i, 1);  // 충돌 제거 → 지나갈 수 있음
+    setMsg('끼익... 침실 문이 열린다.');
+  } else if (t === 'key' && !hasKey) {
+    hasKey = true; inv.push('열쇠'); setInv(inv);
+    setMsg('열쇠를 주웠다!'); scene.remove(closest);
+  } else if (t === 'note' && !hasNote) {
+    hasNote = true; inv.push('쪽지(비밀번호 472)'); setInv(inv);
+    setMsg('쪽지를 주웠다. 비밀번호는 472'); scene.remove(closest);
+    showNote();
+  } else if (t === 'mainDoor' && hasKey && !doorOpen) {
+    doorOpen = true; inv = inv.filter(i=>i!=='열쇠'); setInv(inv);
+    setMsg('문을 열었다!'); scene.remove(closest);
+  } else if (t === 'mainDoor') {
+    setMsg('잠긴 문이다.');
+  } else if (t === 'exit' && !escaped) {
+    if (!doorOpen) setMsg('출구는 잠겨 있다. 먼저 메인 문을 열어야 한다.');
+    else if (!hasNote) setMsg('비밀번호가 필요하다. 어딘가에 단서가 있을 것이다.');
+    else openPad();
+  }
+}
+
+// ===== 쪽지 보기 =====
+const noteViewEl = document.getElementById('noteView');
+let noteTimer = null;
+function showNote() {
+  noteViewEl.style.display = 'block';
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(hideNote, 6000); // 6초 뒤 자동으로 닫힘
+}
+function hideNote() {
+  noteViewEl.style.display = 'none';
+  clearTimeout(noteTimer);
+}
+
+// ===== 비밀번호 입력창 (prompt 대신) =====
+const padEl = document.getElementById('pad');
+const padInput = document.getElementById('padInput');
+const padMsgEl = document.getElementById('padMsg');
+let padOpen = false;
+
+function openPad() {
+  padOpen = true;
+  keys = {};
+  document.exitPointerLock();
+  padEl.style.display = 'flex';
+  padInput.value = '';
+  padMsgEl.textContent = '';
+  setTimeout(() => padInput.focus(), 0);
+}
+function closePad() {
+  padOpen = false;
+  padEl.style.display = 'none';
+  if (!escaped) {
+    try { const p = document.body.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+}
+function submitPad() {
+  if (padInput.value.trim() === '472') {
+    escaped = true; padOpen = false;
+    padEl.style.display = 'none';
+    setMsg('탈출 성공!');
+    startEl.style.display = 'flex';
+    startEl.style.cursor = 'default';
+    startEl.onclick = null;
+    startEl.innerHTML = '<h2>탈출 성공!</h2><p>저주받은 저택에서 빠져나왔습니다.</p>';
+  } else {
+    padMsgEl.textContent = '틀렸습니다';
+    padInput.value = '';
+    padInput.focus();
+  }
+}
+document.getElementById('padOk').onclick = submitPad;
+document.getElementById('padCancel').onclick = closePad;
+padInput.addEventListener('keydown', e => {
+  e.stopPropagation(); // 입력 중 키가 게임 조작으로 전달되지 않게
+  if (e.code === 'Enter') submitPad();
+  if (e.code === 'Escape') closePad();
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (!started || escaped) { if(renderer) renderer.render(scene,camera); return; }
+
+  if (waking) {
+    wakeTime += 0.016;
+    const t = Math.min(wakeTime / 2.2, 1);
+    camera.position.y = 0.5 + t * 1.1;
+    if (t >= 1) {
+      waking = false;
+      camera.position.y = 1.6;
+      setMsg('일어났다. 문을 열고 나가세요.');
+    }
+    renderer.render(scene, camera);
+    return;
+  }
+
+  // 문 열리는 모션: 부드럽게 감속하며 바깥쪽으로 약 100도 회전
+  if (bedDoor && bedDoorOpening) {
+    const target = -1.75;
+    bedDoor.rotation.y += (target - bedDoor.rotation.y) * 0.06;
+    if (Math.abs(target - bedDoor.rotation.y) < 0.005) {
+      bedDoor.rotation.y = target;
+      bedDoorOpening = false;
+    }
+  }
+
+  const spd = 0.1;
+  const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  let nx = camera.position.x;
+  let nz = camera.position.z;
+  if (keys['KeyW']||keys['ArrowUp']) { nx += fwd.x * spd; nz += fwd.z * spd; }
+  if (keys['KeyS']||keys['ArrowDown']) { nx -= fwd.x * spd; nz -= fwd.z * spd; }
+  if (keys['KeyA']) { nx -= right.x * spd; nz -= right.z * spd; }
+  if (keys['KeyD']) { nx += right.x * spd; nz += right.z * spd; }
+  if (keys['ArrowLeft']) yaw += 0.04;   // 키보드로 시점 회전
+  if (keys['ArrowRight']) yaw -= 0.04;
+
+  if (!checkCollision(nx, camera.position.z)) camera.position.x = nx;
+  if (!checkCollision(camera.position.x, nz)) camera.position.z = nz;
+
+  camera.position.y = 1.6;
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = yaw;
+  camera.rotation.x = pitch;
+
+  renderer.render(scene, camera);
+}
+
+window.onresize = () => {
+  if (!camera) return;
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+};
+setInv([]);
+</script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+ <!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>야구선수 키우기 시뮬레이션</title>
+<style>
+:root{--bg:#070a10;--fg:#e8eef7;--card:#101722;--ac:#ff4d57;--mu:#8c9bb0;--bd:#223049;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;padding:12px;background:radial-gradient(1000px 380px at 50% -8%,#1b2f55 0,transparent 65%),var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+main{max-width:1000px;margin:auto}
+.c{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--ac);border-radius:10px;padding:14px;margin-bottom:10px}
+h1{font-size:24px;margin:8px 0}h3{margin:0 0 8px}
+button{font:inherit;padding:9px 14px;border-radius:6px;border:1px solid var(--ac);background:var(--ac);color:#fff;cursor:pointer;margin:3px}
+button.g{background:none;color:var(--ac)}button.on{outline:2px solid #fff}
+:focus-visible{outline:2px solid #fff;outline-offset:2px}
+input,select{font:inherit;padding:8px;border-radius:6px;border:1px solid var(--bd);background:var(--card);color:var(--fg);width:100%;margin:3px 0 9px}
+label{font-size:13px;color:var(--mu)}
+label.ck{display:inline-block;background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:6px 12px;margin:4px;color:var(--fg);font-size:14px;cursor:pointer}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}
+td,th{padding:4px 8px;border-bottom:1px solid var(--bd);text-align:left}.me td{font-weight:700;color:var(--ac)}
+.sm{font-size:12px;color:var(--mu)}
+.bar{height:8px;background:var(--bd);border-radius:4px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;width:0;background:var(--ac)}
+.rh{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gb{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:30px;font-weight:800;color:#fff;flex:none}
+.gS{background:#c8102e}.gA{background:#e0702b}.gB{background:#2f7d57}.gC{background:#5f7085}.gD{background:#3a4658}
+.rt{font-size:17px;font-weight:700}.dl{margin-left:auto;text-align:right;font-size:22px;font-weight:800;white-space:nowrap}.dl small{display:block;font-size:14px;color:#3ddc84}
+.rs{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px;margin:12px 0;text-align:center}
+.rs div{background:var(--bg);border-radius:8px;padding:10px 4px;font-size:12px;color:var(--mu)}.rs b{display:block;font-size:24px;line-height:1.2;color:var(--fg)}
+.ev{margin:8px 0;font-weight:600}
+.pw{position:relative}canvas{width:100%;display:block;border-radius:8px;background:#000;cursor:crosshair}
+.hud{position:absolute;left:8px;top:8px;background:#000b;color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;line-height:1.5;max-width:60%}
+.pbx{position:absolute;left:8px;top:96px;display:flex;flex-direction:column}
+[hidden]{display:none!important}
+</style></head><body><main><div id="app"></div></main>
+<script>
+const $=i=>document.getElementById(i),R=(a,b)=>a+Math.random()*(b-a),P=p=>Math.random()<p,cl=(v,a,b)=>Math.max(a,Math.min(b,v)),pk=a=>a[Math.floor(Math.random()*a.length)];
+const rn=()=>{let s=0;for(let i=0;i<6;i++)s+=Math.random();return(s-3)*1.41},po=l=>{const L=Math.exp(-l);let k=0,p=1;do{k++;p*=Math.random()}while(p>L);return k-1};
+const TM=["키움 히어로즈","한화 이글스","NC 다이노스","롯데 자이언츠","SSG 랜더스","두산 베어스","LG 트윈스","기아 타이거즈","KT 위즈","삼성 라이온즈"],FUT=TM.map(t=>t.split(" ")[0]+" 2군").concat(["상무","울산 웨일즈"]);
+const POS=["투수","포수","1루수","2루수","3루수","유격수","좌익수","중견수","우익수"],PT=["포심","투심","커터","슬라이더","커브","체인지업","포크","싱커"],BS=["파워","송구","수비","주루","정확","인내"],PS=["제구","구속","구위","수비","멘탈"],BW=[.25,.1,.15,.1,.25,.15],PW=[.25,.25,.25,.05,.2],HSN=["청룡기","봉황대기","대통령배","황금사자기"];
+let S=null,M=null,TI=0;
+const ovr=()=>{const s=S,w=s.isP?PW:BW,cp=s.lvl=="hs"?60:s.lvl=="univ"?80:105;return Math.round(cl(s.st.reduce((a,v,i)=>a+v*w[i],0)+s.pb,30,cp))};
+const L0=()=>({G:0,PA:0,AB:0,H:0,HR:0,RBI:0,BB:0,SB:0,IP:0,ER:0,K:0,W:0,L:0}),add=(a,b)=>{for(const k in b)a[k]=(a[k]||0)+b[k];return a};
+const ltx=l=>S.isP?`${l.IP.toFixed(1)}이닝 · ERA ${(l.IP?l.ER*9/l.IP:0).toFixed(2)} · ${l.K}K · 
+l.W승{l.L}패`:`타율 ${(l.AB?l.H/l.AB:0).toFixed(3).slice(1)} · 안타 ${l.H} · 홈런 ${l.HR} · 타점 ${l.RBI} · 볼넷 ${l.BB} · 도루 ${l.SB}`;
+const big=l=>(S.isP?[["ERA",(l.IP?l.ER*9/l.IP:0).toFixed(2)],["탈삼진",l.K],["승",l.W],["패",l.L],["이닝",l.IP.toFixed(0)]]:[["타율",(l.AB?l.H/l.AB:0).toFixed(3).slice(1)],["안타",l.H],["홈런",l.HR],["타점",l.RBI],["볼넷",l.BB]]).map(x=>`<div><b>x[1]</b>{x[0]}</div>`).join("");
+const gr=z=>z>1?"S":z>.35?"A":z>-.5?"B":z>-1.2?"C":"D";
+function bline(n,z){const s=S,e=ovr()+z*8,a=cl(.17+e*.0016+(s.st[4]-50)*.0006,.15,.42),hrr=cl((s.st[0]-30)*.0011+(e-50)*.0004,0,.14),bb=cl(.04+s.st[5]*.0012+(e-50)*.0004,.03,.2),l={G:n,PA:0,AB:0,H:0,HR:0,RBI:0,BB:0,SB:0};
+ for(let g=0;g<n;g++){const pa=P(.7)?4:5;for(let i=0;i<pa;i++){l.PA++;if(P(bb)){l.BB++;continue}l.AB++;if(P(a)){l.H++;if(P(Math.min(1,hrr/a))){l.HR++;l.RBI+=1+(P(.25)?1:0)}else if(P(.13))l.RBI++}else if(P(.04))l.RBI++}if(P(s.st[3]*.0011))l.SB++}return l}
+function pline(n,z){const s=S,e=ovr()+z*8,era=cl(7.2-e*.05-(s.st[0]-50)*.01,1.5,9),k9=cl(4+(s.st[1]+s.st[2]-90)*.045+(e-50)*.03,3,14),l={IP:0,ER:0,K:0,W:0,L:0};
+ for(let i=0;i<n;i++){const ip=cl(R(4,7.2)+(s.st[4]-50)*.01,3,8),er=po(era*ip/9);l.IP+=ip;l.ER+=er;l.K+=po(k9*ip/9);if(er<=2&&P(.55))l.W++;else if(er>=4&&P(.6))l.L++}return l}
+const ln=(n,z)=>S.isP?pline(n,z):bline(n,z);
+function grow(z){const s=S,y=s.age<=21?1.3:s.age<=25?1:s.age<=30?.6:-.3,old=ovr();
+ s.st=s.st.map((v,i)=>{const f=s.foc.includes(i),d=(f?R(2.5,5):R(.6,1.8))*y+(f?z*1.2:z*.3);return Math.round(cl(v+(s.age<=30?Math.max(0,d):d),20,99))});
+ s.pb+=s.age<=30?Math.max(0,z)*1.3:z*1.3;const cp=s.lvl=="hs"?60:s.lvl=="univ"?80:105,w=s.isP?PW:BW,raw=s.st.reduce((a,v,i)=>a+v*w[i],0)+s.pb;if(raw>cp)s.pb-=raw-cp;if(s.age<=30&&ovr()<old)s.pb+=old-ovr()}
+
+
+function title(){S=null;clearInterval(TI);$('app').innerHTML=`<div class="c" style="text-align:center;padding:40px 14px"><h1>⚾ 야구선수 키우기</h1><p class="sm">고교 18세에서 프로 레전드까지</p><button onclick="create()">시작</button></div>`}
+function create(){('app').innerHTML=`<divclass="c"><h3>선수만들기(18세시작)</h3><divclass="row"><div><label>이름</label><inputid="n"maxlength="10"placeholder="이름"></div><div><label>포지션</label><selectid="p"onchange="pts()">{POS.map((x,i)=>`<option value="i">{x}</option>`).join("")}</select></div><div><label>등번호</label><input id="no" type="number" min="0" max="99" value="1"></div><div><label>출신 고등학교</label><input id="sc" maxlength="12" placeholder="예: 부산고"></div></div><div id="pt"></div><button onclick="nx()">다음: 성장 요소 선택</button></div>`;pts()}
+function pts(){('pt').innerHTML=('p').value=="0"?`<label>구종 선택 (최대 4개)</label><div>${PT.map((x,i)=>`<label class="ck"><input type="checkbox" class="pc" value="${x}" i==0?"checked":""style="width:auto;margin:04px00">{x}</label>`).join("")}</div>`:""}
+function nx(){const p=+$('p').value,isP=p==0,pit=[...document.querySelectorAll('.pc')].filter(x=>x.checked).map(x=>x.value).slice(0,4);
+ S={nm:('n').value||"무명",pi:p,pos:POS[p],isP,no:+('no').value||0,sch:$('sc').value||"무명고",pit:isP&&pit.length?pit:["포심"],age:18,Y:2026,lvl:"hs",pb:0,foc:[],hist:[],log:[],tot:L0(),team:null,uy:0,titles:0,zm:0};focScr()}
+function focScr(){const n=S.isP?PS:BS;('app').innerHTML=`<divclass="c"><h3>성장시키고싶은요소(최대3개)</h3><pclass="sm">고른요소는시즌마다더빨리성장하고,성적이좋으면더크게올라요.</p>{n.map((x,i)=>`<label class="ck"><input type="checkbox" class="fc" value="i"style="width:auto;margin:06px00">{x}</label>`).join("")}<p class="sm" id="fm"></p><button onclick="go0()">시작</button></div>`}
+function go0(){const f=[...document.querySelectorAll('.fc')].filter(x=>x.checked).map(x=>+x.value).slice(0,3);if(!f.length){$('fm').textContent="하나 이상 골라주세요.";return}
+ S.foc=f;S.st=(S.isP?PS:BS).map((_,i)=>Math.round(35+R(-4,4)+(f.includes(i)?6:0)));hsIntro()}
+function hsIntro(){const s=S;('app').innerHTML=`<divclass="c"><h3>{s.nm} #${s.no} · ${s.pos} · ${s.sch}</h3><p><b style="font-size:26px">OVR ${ovr()}</b> <span class="sm">고교 최대 60 · s.isP?"구종:"+s.pit.join(","):""</span></p><divclass="rs">{s.st.map((v,i)=>`<div><b>v</b>{(s.isP?PS:BS)[i]}</div>`).join("")}</div><p class="sm">청룡기 · 봉황대기 · 대통령배 · 황금사자기에서 능력치에 따라 성적이 정해져요.</p><button onclick="hsS()">고교 시즌 시작</button></div>`}
+function card(ttl,rows,z,o0,o1,btn,ex,l){return`<div class="c"><div class="rh"><div class="gb ggr(z)">{gr(z)}</div><div><div class="rt">${S.Y-1}년 ttl</div><divclass="sm">{S.age-1}세 · S.sch</div></div><divclass="dl">{o0} → o1<small>{o1-o0>=0?"+":""}o1-o0</small></div></div><divclass="rs">{big(l)}</div>ex||""<divclass="sc"><table>{rows.map(r=>`<tr><td>r[0]<td>{r[1]}<td>${r[2]}`).join("")}</table></div>${btn}</div>`}
+function hsS(){const s=S,z=rn(),o0=ovr(),tot=L0(),rows=[];
+ HSN.forEach(n=>{const sc=ovr()/60+z*.18+rn()*.2,i=sc<.5?0:sc<.75?1:sc<.95?2:sc<1.1?3:4,l=ln(s.isP?(i>1?2:1):i+2,z+rn()*.4);add(tot,l);if(i==4)s.titles++;rows.push([n,["16강 탈락","8강 탈락","4강 탈락","준우승","우승"][i],ltx(l)])});
+ grow(z);const o1=ovr();add(s.tot,tot);s.hist.push(`${s.Y} 고교 · ${ltx(tot)} · OVR o0→{o1}`);s.age++;s.Y++;
+ $('app').innerHTML=card("고교 4대 대회",rows,z,o0,o1,`<button onclick="draftScr()">19세 드래프트로</button>`,"",tot)}
+function unS(){const s=S,z=rn(),o0=ovr(),l=ln(s.isP?12:40,z);grow(z);const o1=ovr();add(s.tot,l);s.hist.push(`${s.Y} 대학 · ${ltx(l)} · OVR o0→{o1}`);s.age++;s.Y++;s.uy++;
+ ('app').innerHTML=card("대학리그",[["대학리그","시즌",ltx(l)]],z,o0,o1,s.uy%2==0?`<buttononclick="draftScr()">{s.age}세 드래프트로</button>`:`<button onclick="unS()">다음 대학 시즌</button>`,"",l)}
+function toUniv(){S.lvl="univ";S.uy=0;unS()}
+const dp=()=>{const o=ovr();return S.lvl=="hs"?(o>=60?1:cl((o-40)*.045,.03,.95)):(o>=72?1:cl((o-50)*.05,.04,.97))};
+function draftScr(){const s=S,o=ovr(),p=dp(),sc=cl((o-40)/20,0,1),c=(1-sc)*60+1,lo=Math.max(1,Math.round(c-2)),hi=Math.round(c+5),last=s.lvl=="univ"&&s.age>=23,tn=[];
+ for(let i=lo;i<=Math.min(hi,lo+9);i++){const t=TM[(i-1)%10];if(!tn.includes(t))tn.push(t)}
+ ('app').innerHTML=`<divclass="c"><h3>KBO드래프트({s.age}세)</h3><p>오버롤 <b>o</b>·지명확률<b>{Math.round(p*100)}%</b>s.lvl=="hs"&&o>=60?"·고교최대오버롤이라100%지명":""</p><p>예상지명<b>{lo}~hi순위</b>({Math.ceil(lo/10)}~${Math.ceil(hi/10)}라운드 · ${Math.ceil(lo/10)<=2?"1·2라운드면 1군에서 시작":"3라운드 이후는 퓨처스에서 시작"})<br>예상 지명팀: ${tn.slice(0,4).join(", ")}</p><p class="sm">지명 순서: TM.map(t=>t.split("")[0]).join("→")</p><buttononclick="applyD()">드래프트신청</button>{last?"":`<button class="g" onclick="toUniv()">${s.lvl=="hs"?"대학 진학":"대학 2시즌 더"}</button>`}</div>`}
+function applyD(){const s=S,sc=cl((ovr()-40)/20,0,1);
+ if(P(dp())){const pos=Math.round(1+(1-sc)*60+R(0,4)),r=Math.ceil(pos/10);s.team=(pos-1)%10;s.lvl=r<=2?"kbo":"fut";s.hist.push(`${s.Y} 드래프트 ${r}라운드 ${pos}순위 · ${TM[s.team]}`);
+  ('app').innerHTML=`<divclass="c"><h3>🎉드래프트지명!</h3><p><b>{TM[s.team]}</b> · ${r}라운드 pos순위<br>{r<=2?"1군에서 프로 인생을 시작해요.":"퓨처스리그("+FUT[s.team]+")에서 시작해요. 성적이 좋으면 1군으로 올라와요."}</p><button onclick="proStart()">프로 첫 시즌</button></div>`}
+ else if(s.age>=23)retire("드래프트에 지명받지 못해 선수 생활을 마칩니다.");
+ else $('app').innerHTML=`<div class="c"><h3>지명받지 못했어요</h3><p>대학에서 더 성장한 뒤 다시 도전할 수 있어요.</p><button onclick="toUniv()">대학 진학</button></div>`}
+
+
+function proStart(){const s=S;s.g=0;s.z=rn();s.zm=0;s.sl=L0();s.pc=0;s.ev=[0,0,0].map(()=>Math.round(R(10,138))).sort((a,b)=>a-b);s.run=false;seasonScr()}
+function seasonScr(){const s=S,fut=s.lvl=="fut";('app').innerHTML=`<divclass="c"><h3>{s.nm} #${s.no} ${s.pos} · ${s.age}세 · ${fut?FUT[s.team]+" (퓨처스)":TM[s.team]+" (1군)"} · ${s.Y} 시즌</h3><p><b style="font-size:26px">OVR ${ovr()}</b> <span class="sm">성장 요소: s.foc.map(i=>(s.isP?PS:BS)[i]).join(",")</span></p><divclass="rs">{s.st.map((v,i)=>`<div><b>v</b>{(s.isP?PS:BS)[i]}</div>`).join("")}</div></div><div class="c"><h3>시즌 진행 (144경기)</h3><div class="bar"><i id="pg" style="width:s.g/144*100%"></i></div><pclass="sm"id="gm">{s.g} / 144 경기</p><p id="stt">ltx(s.sl)</p><buttonid="rb"onclick="runT()">{s.run?"⏸ 일시정지":"▶ 시즌 진행"}</button><button class="g" onclick="retire('스스로 은퇴를 선언했습니다.')">은퇴</button><div id="ev"></div></div>`}
+function runT(){const s=S;s.run=!s.run;$('rb').textContent=s.run?"⏸ 일시정지":"▶ 시즌 진행";clearInterval(TI);if(s.run)TI=setInterval(tick,140)}
+function tick(){const s=S;if(!s||!s.run||M)return;const nxt=s.ev.length?s.ev[0]:144;if(s.g>=nxt&&s.ev.length)return offer();if(s.g>=144)return endS();
+ const n=Math.min(6,nxt-s.g,144-s.g);let l;if(s.isP){s.pc+=n/5;const k=Math.floor(s.pc);s.pc-=k;l=pline(k,s.z+s.zm)}else l=bline(n,s.z+s.zm);add(s.sl,l);s.g+=n;
+ ('pg').style.width=s.g/144*100+"%";('gm').textContent=`s.g/144경기`;('stt').textContent=ltx(s.sl);if(s.ev.length&&s.g>=s.ev[0])offer();else if(s.g>=144)endS()}
+function offer(){const s=S;s.run=false;clearInterval(TI);s.ev.shift();('rb').textContent="▶시즌진행";('ev').innerHTML=`<p class="ev">⚾ 직접 플레이 기회! (${s.g}경기째 · ${s.isP?"1이닝 등판":"결정적 타석"})</p><button onclick="play3()">직접 플레이</button><button class="g" onclick="skipP()">시뮬레이션으로 넘기기</button>`}
+function skipP(){$('ev').innerHTML="";runT()}
+function stand(N,me){const o=N.map((_,i)=>[R(0,1)+(i==me?(ovr()-60)/150:0),i]).sort((a,b)=>b[0]-a[0]),W=N.map((_,r)=>Math.round(144*(.62-.24*r/(N.length-1))+R(-3,3)));
+ return{rk:o.findIndex(x=>x[1]==me)+1,html:`<div class="sc"><table><tr><th>#</th><th>팀</th><th>승</th><th>패</th></tr>${o.map((x,r)=>`<tr class="${x[1]==me?"me":""}"><td>r+1<td>{N[x[1]]}<td>W[r]<td>{144-W[r]}`).join("")}</table></div>`}}
+function endS(){const s=S;clearInterval(TI);s.run=false;const z=s.z+s.zm,o0=ovr(),fut=s.lvl=="fut",st=stand(fut?FUT:TM,s.team);let ex=`<p class="ev">${fut?"퓨처스리그":"KBO"} ${st.rk}위</p>`;
+ if(!fut&&st.rk==1&&P(.6)){s.titles++;ex=`<p class="ev">🏆 한국시리즈 우승!</p>`+ex}
+ grow(z);const o1=ovr();add(s.tot,s.sl);s.hist.push(`${s.Y} ${fut?"퓨처스":"1군"} ${FUT[s.team]||""} · ${ltx(s.sl)} · OVR o0→{o1}`);
+ if(fut&&P(cl((o1-55)*.05+(z>.35?.25:0),.05,.9))){s.lvl="kbo";ex=`<p class="ev">⬆ 1군(KBO) 콜업!</p>`+ex}else if(!fut&&z<-1&&o1<65&&P(.5)){s.lvl="fut";ex=`<p class="ev">⬇ 부진으로 퓨처스에 내려갑니다.</p>`+ex}
+ const l=s.sl;s.age++;s.Y++;('app').innerHTML=card(fut?"퓨처스시즌":"KBO시즌",[["시즌",`{st.rk}위`,ltx(l)]],z,o0,o1,s.age>=40?`<button onclick="retire('40세가 되어 은퇴합니다.')">은퇴</button>`:`<button onclick="proStart()">다음 시즌</button>`,ex+st.html,l)}
+function retire(m){const s=S;clearInterval(TI);M=null;const t=s.tot,r=s.isP?`통산 ${t.W}승 ${t.L}패 · ${t.IP.toFixed(0)}이닝 · ERA ${(t.IP?t.ER*9/t.IP:0).toFixed(2)} · ${t.K}K`:`통산 타율 ${(t.AB?t.H/t.AB:0).toFixed(3).slice(1)} · 안타 ${t.H} · 홈런 ${t.HR} · 타점 ${t.RBI}`;
+ $('app').innerHTML=`<div class="c"><h1>은퇴 — s.nm</h1><pclass="sm">{m}</p><p><b>${r}</b></p><p>최종 OVR ${ovr()} · 우승 ${s.titles}회 · s.age세</p>{s.hist.map(x=>`<p class="sm">${x}</p>`).join("")}<button onclick="title()">새 게임</button></div>`}
+
+
+/* ===== 3D 직접 플레이 ===== */
+const WD=960,HD=540,MV={포심:[0,.15],투심:[.5,0],커터:[-.35,0],슬라이더:[-1.1,-.2],커브:[0,-1.4],체인지업:[.4,-.5],포크:[0,-1.2],싱커:[.6,-.5]},VO={포심:0,투심:-3,커터:-6,슬라이더:-9,커브:-18,체인지업:-14,포크:-12,싱커:-5};
+const CL=P=>{const o=[];for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],ia=a[0]>=1,ib=b[0]>=1;if(ia)o.push(a);if(ia!=ib){const t=(1-a[0])/(b[0]-a[0]);o.push([1,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t])}}return o};
+function play3(){const s=S;s.run=false;clearInterval(TI);const isP=s.isP;
+ $('app').innerHTML=`<div class="pw"><canvas id="cv" width="960" height="540"></canvas><div class="hud" id="hud"></div><div class="pbx" id="pbx"></div></div><div class="c" id="md"></div>`;
+ const cv=$('cv');M={isP,c:cv.getContext('2d'),cam:isP?{x:21.4,h:2.3,cs:-1,sn:0}:{x:-2.4,h:1.15,cs:1,sn:0},f:WD/2/Math.tan(isP?.17:.52),hz:HD*(isP?.26:.38),bat:{zx:0,zy:0},mx:480,my:300,aim:{x:0,y:0},mode:"c",sel:s.pit[0],ph:"idle",cnt:{b:0,s:0},out:0,runs:0,h:0,k:0,bb:0,bs:[0,0,0],msg:"",last:"",done:0,sw:null,pull:0,pt:"포심",fin:{x:0,y:0},v:140,T:1,t0:0,t1:0};
+ const pos=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)*WD/(r.width||WD),(e.clientY-r.top)*HD/(r.height||HD)]};
+ cv.onmousemove=e=>{const[x,y]=pos(e),m=M;if(!m)return;m.mx=x;m.my=y;if(m.isP){m.aim.x=cl((x-480)/180,-1.9,1.9);m.aim.y=cl(-(y-300)/130,-1.9,1.9)}else{const d0=2.4,Y=(x-WD/2)*d0/m.f,Z=m.cam.h-(y-m.hz)*d0/m.f;m.bat.zx=Y/.215;m.bat.zy=(Z-.8)/.3}};
+ cv.onmousedown=e=>{const m=M;if(!m||m.done)return;if(m.isP){if(m.ph=="idle")throwP()}else if(m.ph=="fl"&&m.sw==null){m.sw=performance.now();if(m.mode=="b")m.pull=1}};
+ if(isP){('pbx').innerHTML=s.pit.map(p=>`<buttonclass="{p==M.sel?"":"g"}" onclick="selP('p')">{p}</button>`).join("");M.msg="구종을 고르고, 마우스로 조준한 뒤 클릭해 투구하세요";$('md').innerHTML=`<p class="sm">마우스 이동 = 조준 · 클릭 = 투구 · 오른쪽 조준판에서 위치 확인</p>`}
+ else{mdBtn();M.msg="공이 오면 마우스로 배트를 맞추고 클릭해 스윙하세요";setTimeout(np,900)}
+ requestAnimationFrame(loop)}
+function mdBtn(){('md').innerHTML=`<pclass="sm">마우스로배트위치이동·클릭=스윙(번트선택시클릭=배트빼기,클릭안하면자동번트)</p>`+[["p","파워(장타↑컨택↓)"],["c","컨택(컨택↑파워↓)"],["b","번트"]].map(x=>`<buttonclass="{M.mode==x[0]?"":"g"}" onclick="mode('x[0]')">{x[1]}</button>`).join("")}
+function mode(k){M.mode=k;mdBtn()}
+function selP(p){M.sel=p;('pbx').innerHTML=S.pit.map(q=>`<buttonclass="{q==p?"":"g"}" onclick="selP('q')">{q}</button>`).join("")}
+function np(){const m=M;if(!m||m.done)return;m.ph="wind";m.tw=performance.now();m.sw=null;m.pull=0;m.pt=pk(["포심","포심","슬라이더","커브","체인지업","포크"]);m.v=Math.round(cl(142+rn()*4+VO[m.pt],105,158));m.T=.75+(160-m.v)*.012;
+ const inz=P(.58);m.fin=inz?{x:R(-.95,.95),y:R(-.95,.95)}:{x:pk([-1,1])*R(1.05,1.6),y:R(-1.4,1.4)};m.mv=MV[m.pt];m.msg=""}
+function throwP(){const m=M,s=S,st=s.st,err=cl((100-st[0])*.008+.06,.05,.9);m.ph="fl";m.pt=m.sel;m.v=Math.round(cl(118+st[1]*.42+VO[m.pt],95,162));m.T=.75+(160-m.v)*.012;m.t1=performance.now();m.mv=MV[m.pt];
+ m.fin={x:cl(m.aim.x+rn()*err*.6,-2,2),y:cl(m.aim.y+rn()*err*.6,-2,2)};m.msg=`${m.pt} ${m.v}km/h`}
+function bat(code){const m=M;m.done=1;const l=L0(),zr={S:0,B:0};let txt,z=0;
+ if(code=="K"){txt="삼진 아웃…";l.AB=1;z=-.2}else if(code=="BB"){txt="볼넷!";l.BB=1;z=.1}else if(code=="OUT"){txt="아웃";l.AB=1;z=-.05}else if(code=="1B"){txt="안타!";l.AB=1;l.H=1;z=.25}else if(code=="2B"){txt="2루타!";l.AB=1;l.H=1;l.RBI=1;z=.4}else{txt="홈런!!";l.AB=1;l.H=1;l.HR=1;l.RBI=1;z=.6}
+ m.msg=txt;('md').innerHTML=`<pclass="ev">{txt}</p><button onclick="endP(JSON.stringify(l).replace(/"/g,"&quot;"),{z},'직접 타석: ${txt}')">경기로 돌아가기</button>`}
+function endP(l,z,t){const s=S;add(s.sl,l);s.zm+=z;M=null;s.run=true;seasonScr();('ev').innerHTML=`<pclass="ev">{t}</p>`;clearInterval(TI);TI=setInterval(tick,140)}
+function tick3(){const m=M,now=performance.now();
+ if(!m.isP){if(m.ph=="wind"&&now-m.tw>900){m.ph="fl";m.t1=now}
+  else if(m.ph=="fl"&&now>m.t1+m.T*1000+250){m.ph="res";m.tr=now;bres()}
+  else if(m.ph=="res"&&now-m.tr>1000&&!m.done)np()}
+ else if(m.ph=="fl"&&now>m.t1+m.T*1000+250){m.ph="res";m.tr=now;pres()}
+ else if(m.ph=="res"&&now-m.tr>900&&!m.done){m.ph="idle";m.msg="다음 투구를 준비하세요"}}
+function bres(){const m=M,s=S,f=m.fin,inz=Math.abs(f.x)<=1&&Math.abs(f.y)<=1,o=ovr();let r;
+ if(m.mode=="b"){if(m.pull)r=inz?"S":"B";else{const x=Math.random(),h=.06+s.st[3]*.002;r=x<h?"1B":x<h+.4+s.st[4]*.002?"OUT":x<.9?"F":"S"}}
+ else if(m.sw==null)r=inz?"S":"B";
+ else{const dt=(m.sw-m.t1-m.T*1000)/1000,w=.07+(s.st[4]-30)*.0012,d=Math.hypot(m.bat.zx-f.x,m.bat.zy-f.y),cm=m.mode=="c"?1.15:.82,pw=m.mode=="c"?.75:1.3,q=cl(1-Math.abs(dt)/(w*2.4)*.6-d*.5,0,1);
+  if(Math.abs(dt)>.27||!P(cl(q*cm*(.6+o/120),0,.97)))r="S";else if(q<.4&&P(.6))r="F";else{const sc=q*.5+s.st[0]/140*pw*.62+rn()*.1;r=sc>1?"HR":sc>.82?"2B":sc>.6?"1B":"OUT"}}
+ const c=m.cnt;
+ if(r=="S"){c.s++;m.msg=m.sw!=null&&!m.pull?"헛스윙 스트라이크":"스트라이크";if(c.s>=3)return setTimeout(()=>bat("K"),700)}
+ else if(r=="B"){c.b++;m.msg="볼";if(c.b>=4)return setTimeout(()=>bat("BB"),700)}
+ else if(r=="F"){if(c.s<2)c.s++;m.msg="파울"}
+ else{m.msg={OUT:"타구 — 아웃","1B":"안타!","2B":"2루타!",HR:"홈런!!"}[r];return setTimeout(()=>bat(r),800)}}
+function pres(){const m=M,s=S,f=m.fin,ax=Math.abs(f.x),ay=Math.abs(f.y),inz=ax<=1&&ay<=1,mx=Math.max(ax,ay),edge=1-mx,st=s.st,rep=m.last==m.pt;let r;
+ if(!P(inz?.68:mx<1.4?.38:.1))r=inz?"S":"B";
+ else{const c=cl(.8-(st[2]-40)*.0045-(m.pt=="포심"?0:.04)-(inz?0:.3)+(edge>.55?.1:0)+(rep?.05:0),.08,.9);
+  if(!P(c))r="S";else if(P(.33))r="F";else{const x=Math.random(),hr=.025+(edge>.55?.05:0)+(60-st[2])*.0005,h=.2+(edge>.55?.07:0)+(50-st[2])*.002;r=x<hr?"HR":x<hr+.05?"2B":x<hr+.05+h?"1B":"OUT"}}
+ m.last=m.pt;const c=m.cnt,b=m.bs;let pa=null;
+ if(r=="S"){c.s++;m.msg="스트라이크";if(c.s>=3){pa="K"}}else if(r=="B"){c.b++;m.msg="볼";if(c.b>=4)pa="BB"}else if(r=="F"){if(c.s<2)c.s++;m.msg="파울"}else pa=r;
+ if(pa){m.cnt={b:0,s:0};if(pa=="K"){m.out++;m.k++;m.msg="삼진!"}else if(pa=="OUT"){m.out++;m.msg="범타 아웃"}
+  else if(pa=="BB"){m.bb++;m.msg="볼넷";if(!b[0])b[0]=1;else if(!b[1])b[1]=1;else if(!b[2])b[2]=1;else m.runs++}
+  else if(pa=="1B"){m.h++;m.msg="안타 허용";m.runs+=b[2];m.bs=[1,b[0],b[1]]}
+  else if(pa=="2B"){m.h++;m.msg="2루타 허용";m.runs+=b[2]+b[1];m.bs=[0,1,b[0]]}
+  else{m.h++;m.runs+=1+b[0]+b[1]+b[2];m.bs=[0,0,0];m.msg="피홈런!"}
+  if(m.out>=3){m.done=1;const l={IP:1,ER:m.runs,K:m.k,W:0,L:0},z=(1.2-m.runs)*.2+m.k*.05;$('md').innerHTML=`<p class="ev">이닝 종료 — 실점 ${m.runs} · 피안타 ${m.h} · 삼진 ${m.k} · 볼넷 m.bb</p><buttononclick="endP({JSON.stringify(l).replace(/"/g,"&quot;")},${z},'직접 등판: 1이닝 ${m.runs}실점 ${m.k}K')">경기로 돌아가기</button>`}}}
+function draw3(){const m=M,c=m.c,f=m.f,hz=m.hz,cm=m.cam,now=performance.now();
+ const pj=(X,Y,Z)=>[(X-cm.x)*cm.cs+Y*cm.sn,-(X-cm.x)*cm.sn+Y*cm.cs,cm.h-Z],sx=p=>WD/2+f*p[1]/p[0],sy=p=>hz+f*p[2]/p[0];
+ const pl=(Q,col)=>{const q=CL(Q);if(q.length<3)return;c.fillStyle=col;c.beginPath();q.forEach((p,i)=>i?c.lineTo(sx(p),sy(p)):c.moveTo(sx(p),sy(p)));c.fill()};
+ const seg=(A,B,col,w)=>{let a=A,b=B;if(a[0]<1&&b[0]<1)return;if(a[0]<1){const t=(1-a[0])/(b[0]-a[0]);a=[1,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]}else if(b[0]<1){const t=(1-b[0])/(a[0]-b[0]);b=[1,b[1]+(a[1]-b[1])*t,b[2]+(a[2]-b[2])*t]}c.strokeStyle=col;c.lineWidth=w;c.lineCap="round";c.beginPath();c.moveTo(sx(a),sy(a));c.lineTo(sx(b),sy(b));c.stroke()};
+ const g=c.createLinearGradient(0,0,0,hz);g.addColorStop(0,"#0b1630");g.addColorStop(1,"#4a78b0");c.fillStyle=g;c.fillRect(0,0,WD,hz);c.fillStyle="#2d6a35";c.fillRect(0,hz,WD,HD-hz);
+ pl([pj(-3,-40,0),pj(-3,40,0),pj(120,40,0),pj(120,-40,0)],"#2d6a35");
+ pl([pj(-3,0,0),pj(21,23,0),pj(41.5,0,0),pj(21,-23,0)],"#9a6b3f");pl([pj(5,0,0),pj(20,14.5,0),pj(34,0,0),pj(20,-14.5,0)],"#2d6a35");
+ const circ=(X,Y,r,col)=>{const Q=[];for(let i=0;i<16;i++)Q.push(pj(X+r*Math.cos(i/16*6.283),Y+r*Math.sin(i/16*6.283),0));pl(Q,col)};
+ circ(0,0,3.2,"#9a6b3f");circ(18.4,0,2.7,"#9a6b3f");
+ pl([pj(.22,-.22,0),pj(.22,.22,0),pj(0,.22,0),pj(-.2,0,0),pj(0,-.22,0)],"#fff");
+ [[19.4,19.4],[38.8,0],[19.4,-19.4]].forEach(b=>pl([pj(b[0]-.3,b[1]-.3,0),pj(b[0]+.3,b[1]-.3,0),pj(b[0]+.3,b[1]+.3,0),pj(b[0]-.3,b[1]+.3,0)],"#fff"));
+ seg(pj(0,0,0),pj(90,90,0),"#fff",2);seg(pj(0,0,0),pj(90,-90,0),"#fff",2);
+ for(let i=0;i<14;i++){const a=-.96+i*.137,b=a+.137,A=[110*Math.cos(a),110*Math.sin(a)],B=[110*Math.cos(b),110*Math.sin(b)];pl([pj(A[0],A[1],0),pj(B[0],B[1],0),pj(B[0],B[1],3.5),pj(A[0],A[1],3.5)],"#0f2a1b");pl([pj(A[0],A[1],3.5),pj(B[0],B[1],3.5),pj(B[0],B[1],16),pj(A[0],A[1],16)],i%2?"#24304a":"#2b3857")}
+ pl([pj(-20,-45,0),pj(-20,45,0),pj(-20,45,10),pj(-20,-45,10)],"#16213a");pl([pj(-20,-45,10),pj(-20,45,10),pj(-20,45,22),pj(-20,-45,22)],"#26334f");
+ const man=(X,Y,ang,col,ar)=>{const cx=Math.cos(ang),cy=Math.sin(ang),Pt=(a,b,z)=>pj(X+cx*a-cy*b,Y+cy*a+cx*b,z),hp=Pt(0,0,.95);if(hp[0]<2)return;const k=f/hp[0],W=(A,B,w,cl2)=>seg(A,B,cl2,Math.max(1,w*k)),sh=Pt(0,0,1.5),hd=Pt(.05,0,1.75),gp=pj(X,Y,0);
+  c.fillStyle="#0005";c.beginPath();c.ellipse(sx(gp),sy(gp),.45*k,.12*k,0,0,7);c.fill();
+  W(Pt(0,.12,0),hp,.17,"#eee");W(Pt(0,-.12,0),hp,.17,"#eee");W(hp,sh,.36,col);W(sh,Pt(.5*Math.sin(ar)+.05,.3,1.35-.6*Math.cos(ar)),.12,"#e0ac84");W(sh,Pt(0,-.3,1.0),.12,"#e0ac84");
+  c.fillStyle="#e0ac84";c.beginPath();c.arc(sx(hd),sy(hd),.13*k,0,7);c.fill();c.fillStyle=col;c.beginPath();c.arc(sx(hd),sy(hd)-.05*k,.14*k,3.14,6.28);c.fill()};
+ if(!m.isP){const e=m.ph=="wind"?(now-m.tw)/900:m.ph=="fl"?1+(now-m.t1)/320:0;man(18.4,0,Math.PI,"#e8e8e8",m.ph=="idle"?0:Math.min(e,2)*Math.PI*1.2)}
+ else man(0,-1.0,Math.PI/2,"#2a4ea0",0);
+ if(m.ph=="fl"||(m.ph=="res"&&m.done!==1)){const t=cl((now-m.t1)/(m.T*1000),0,1.03),sg=m.isP?-1:1,Yf=sg*m.fin.x*.215,Zf=.8+m.fin.y*.3,u=t,mvx=m.mv[0]*.35,mvz=m.mv[1]*.35,bp=pj(17.8*(1-u),Yf*u+sg*mvx*(u*u*u-u),1.9+(Zf-1.9)*u+mvz*(u*u*u-u));
+  if(bp[0]>=1){const k=f/bp[0];c.fillStyle="#fff";c.strokeStyle="#c33";c.lineWidth=Math.max(1,.012*k);c.beginPath();c.arc(sx(bp),sy(bp),Math.max(2.5,.06*k),0,7);c.fill();c.stroke()}}
+ if(!m.isP){const Z=[[.5,1.1]],y0=.215;[[-y0,.5],[y0,.5],[y0,1.1],[-y0,1.1]].forEach((p,i,a)=>{const q=a[(i+1)%4];seg(pj(0,p[0],p[1]),pj(0,q[0],q[1]),"#ffffffaa",2)});
+  [-y0/3,y0/3].forEach(y=>seg(pj(0,y,.5),pj(0,y,1.1),"#ffffff44",1));[.7,.9].forEach(z=>seg(pj(0,-y0,z),pj(0,y0,z),"#ffffff44",1));
+  const mx=m.mx,my=m.my,p=m.sw!=null&&!m.pull?cl((now-m.sw)/160,0,1):0,hx=mx+130*(1-p)-60*p,hy=my-110*(1-p)+25*p;
+  c.strokeStyle="#c9a06a";c.lineWidth=9;c.lineCap="round";c.beginPath();c.moveTo(780,560);c.lineTo(hx,hy);c.stroke();c.strokeStyle="#fff";c.lineWidth=2;c.beginPath();c.arc(mx,my,16,0,7);c.stroke()}
+ else{const bx=800,by=130,ww=140,hh=170;c.fillStyle="#000a";c.fillRect(bx-ww/2-14,by-hh/2-14,ww+28,hh+60);c.strokeStyle="#fff";c.lineWidth=2;c.strokeRect(bx-50,by-60,100,120);c.strokeStyle="#fff5";c.lineWidth=1;c.beginPath();[-17,17].forEach(x=>{c.moveTo(bx+x,by-60);c.lineTo(bx+x,by+60)});[-20,20].forEach(y=>{c.moveTo(bx-50,by+y);c.lineTo(bx+50,by+y)});c.stroke();
+  c.fillStyle="#ff4d57";c.beginPath();c.arc(bx+m.aim.x*50,by-m.aim.y*60,6,0,7);c.fill();if(m.ph=="res"&&!m.done||m.ph=="res"){c.fillStyle="#fff";c.beginPath();c.arc(bx+m.fin.x*50,by-m.fin.y*60,5,0,7);c.fill()}
+  c.fillStyle="#fff";c.font="12px sans-serif";c.fillText("조준판 (빨강=조준, 흰색=실제 위치)",bx-ww/2-6,by+hh/2+10)}
+ c.fillStyle="#fff";c.font="bold 26px sans-serif";c.textAlign="center";c.fillText(m.msg||"",WD/2,HD-34);c.textAlign="left";
+ const hu=m.isP?`<b>${m.out}아웃</b> · 실점 ${m.runs} · 삼진 ${m.k} · 볼넷 ${m.bb} · 피안타 m.h<br>카운트B{m.cnt.b} S${m.cnt.s} · 주자 m.bs.map(x=>x?"●":"○").join("")`:`<b>직접타석</b>·카운트B{m.cnt.b} Sm.cnt.s<br>{m.ph=="fl"||m.ph=="res"?`상대 투구: ${m.pt} ${m.v}km/h`:"투수가 준비 중…"} · 모드 ${{p:"파워",c:"컨택",b:"번트"}[m.mode]}`;
+ if(m.hu!==hu){m.hu=hu;$('hud').innerHTML=hu}}
+function loop(){if(!M)return;try{tick3();draw3()}catch(e){console.error(e)}requestAnimationFrame(loop)}
+title();
+</script></body></html>

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>포세이돈의 삼지창 강화전설</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ocean: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                            950: '#061626',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Jua', sans-serif;
+            background-color: #050b14;
+        }
+        .jua-font { font-family: 'Jua', sans-serif; }
+       
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(56, 189, 248, 0.5)); }
+            50% { filter: drop-shadow(0 0 35px rgba(56, 189, 248, 0.95)); }
+        }
+        .trident-glow { animation: pulse-glow 2.5s infinite ease-in-out; }
+
+
+        @keyframes god-glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.9)) drop-shadow(0 0 40px rgba(239, 68, 68, 0.7)); }
+            50% { filter: drop-shadow(0 0 45px rgba(168, 85, 247, 1)) drop-shadow(0 0 65px rgba(56, 189, 248, 1)); }
+        }
+        .trident-god-glow { animation: god-glow 1.5s infinite ease-in-out; }
+
+
+        @keyframes float-item {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(1.5deg); }
+        }
+        .float-anim { animation: float-item 3s ease-in-out infinite; }
+
+
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            20% { transform: translate(-8px, 4px) rotate(-4deg); }
+            40% { transform: translate(8px, -4px) rotate(4deg); }
+            60% { transform: translate(-6px, -2px) rotate(-2deg); }
+            80% { transform: translate(6px, 2px) rotate(2deg); }
+        }
+        .shake-anim { animation: shake 0.4s ease-in-out; }
+
+
+        @keyframes flash-success {
+            0% { background-color: rgba(34, 197, 94, 0.35); }
+            100% { background-color: transparent; }
+        }
+        .flash-green { animation: flash-success 0.6s ease-out; }
+
+
+        @keyframes flash-fail {
+            0% { background-color: rgba(239, 68, 68, 0.35); }
+            100% { background-color: transparent; }
+        }
+        .flash-red { animation: flash-fail 0.6s ease-out; }
+
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #091322;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between selection:bg-ocean-500 selection:text-white">
+
+
+    <!-- 상단 헤더 -->
+    <header class="bg-[#09111e]/90 backdrop-blur border-b border-slate-800/80 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-2.5">
+                <i data-lucide="anchor" class="w-7 h-7 text-ocean-400"></i>
+                <h1 class="jua-font text-2xl tracking-wide bg-gradient-to-r from-ocean-400 via-sky-300 to-indigo-300 bg-clip-text text-transparent">
+                    포세이돈의 삼지창 강화전설
+                </h1>
+            </div>
+            <!-- 자원 표시 바 -->
+            <div class="flex items-center space-x-4 bg-[#050b14] px-4 py-2 rounded-2xl border border-slate-800/80 shadow-inner">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="coins" class="w-5 h-5 text-amber-400"></i>
+                    <span id="money-display" class="font-bold text-amber-300 text-lg">1,000,000</span>
+                    <span class="text-xs text-slate-400 font-medium">원</span>
+                </div>
+                <div class="h-4 w-px bg-slate-800"></div>
+                <div class="flex items-center space-x-2" title="소지중인 강화 보호권">
+                    <i data-lucide="shield" class="w-5 h-5 text-emerald-400"></i>
+                    <span id="shield-display" class="font-bold text-emerald-300 text-lg">0</span>
+                    <span class="text-xs text-slate-400 font-medium">개</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="max-w-4xl w-full mx-auto px-4 py-6 flex-grow grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+       
+        <!-- 왼쪽: 삼지창 강화 메인 화면 -->
+        <div id="main-card" class="md:col-span-7 bg-[#09111e] border border-slate-800/90 rounded-3xl p-6 shadow-2xl flex flex-col items-center relative overflow-hidden transition-all duration-300">
+           
+            <!-- 단계 뱃지 -->
+            <div class="absolute top-4 left-4 bg-[#06101e] border border-slate-800 px-3.5 py-1.5 rounded-xl flex items-center space-x-2 shadow-sm z-10">
+                <span class="text-xs text-slate-400">현재 강화:</span>
+                <span id="level-badge" class="jua-font text-xl text-ocean-400">+0 강</span>
+            </div>
+
+
+            <!-- 삼지창 이름 표시 뱃지 -->
+            <div class="absolute top-4 right-4 bg-[#06101e] border border-slate-800/80 px-3 py-1 rounded-xl flex items-center shadow-sm z-10">
+                <span id="trident-name" class="jua-font text-xs text-sky-300">녹슨 훈련용 삼지창</span>
+            </div>
+
+
+            <!-- 파괴 상태 오버레이 -->
+            <div id="destroy-overlay" class="absolute inset-0 bg-[#050b14]/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 hidden">
+                <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4 text-red-500 border border-red-500/40 animate-bounce">
+                    <i data-lucide="zap-off" class="w-8 h-8"></i>
+                </div>
+                <h3 class="jua-font text-2xl text-red-400 mb-2">삼지창이 파괴되었습니다!</h3>
+                <p class="text-slate-400 text-sm text-center mb-6">강화 실패로 인해 삼지창이 산산조각 났습니다.<br>새로운 기본 삼지창을 받아 다시 시작하세요!</p>
+                <button onclick="resetTrident()" class="jua-font bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white px-6 py-3 rounded-xl shadow-lg shadow-red-900/40 transition-all flex items-center space-x-2 cursor-pointer">
+                    <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                    <span>새 삼지창 받기 (+0)</span>
+                </button>
+            </div>
+
+
+            <!-- 삼지창 시각 일러스트 (매 단계별 완전 다채로운 SVG) -->
+            <div class="my-6 relative flex items-center justify-center min-h-[220px] w-full">
+                <div id="glow-bg" class="absolute w-48 h-48 bg-ocean-500/10 rounded-full blur-2xl -z-10 transition-all duration-500"></div>
+                <div id="trident-container" class="trident-glow float-anim p-4 transition-transform duration-300 flex items-center justify-center">
+                    <svg id="trident-svg" class="w-48 h-48 transition-all duration-500" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- JS에서 단계별로 독창적인 SVG 내역 전면 주입 -->
+                    </svg>
+                </div>
+            </div>
+
+
+            <!-- 확률 정보 패널 -->
+            <div class="w-full grid grid-cols-3 gap-2 bg-[#050b14]/80 p-3 rounded-2xl border border-slate-800/80 mb-5 text-center text-xs">
+                <div>
+                    <span class="text-slate-400 block mb-1">성공 확률</span>
+                    <span id="prob-success" class="font-bold text-emerald-400 text-sm">100%</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-1">실패 확률</span>
+                    <span id="prob-fail" class="font-bold text-amber-400 text-sm">0%</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block mb-1">파괴 확률</span>
+                    <span id="prob-destroy" class="font-bold text-rose-400 text-sm">0%</span>
+                </div>
+            </div>
+
+
+            <!-- 강화 비용 및 예상 판매가 -->
+            <div class="w-full space-y-2 mb-6">
+                <div class="flex justify-between items-center text-sm bg-[#050b14]/50 px-4 py-2.5 rounded-xl border border-slate-800/80">
+                    <span class="text-slate-400 flex items-center space-x-2"><i data-lucide="wrench" class="w-4 h-4 text-ocean-400"></i><span>강화 비용</span></span>
+                    <span id="upgrade-cost" class="font-bold text-ocean-300">10,000 원</span>
+                </div>
+                <div class="flex justify-between items-center text-sm bg-[#050b14]/50 px-4 py-2.5 rounded-xl border border-slate-800/80">
+                    <span class="text-slate-400 flex items-center space-x-2"><i data-lucide="tag" class="w-4 h-4 text-amber-400"></i><span>판매 가격 (현재 비용 x 10)</span></span>
+                    <span id="sell-price" class="font-bold text-amber-300">100,000 원</span>
+                </div>
+            </div>
+
+
+            <!-- 액션 버튼 그룹 -->
+            <div class="w-full grid grid-cols-2 gap-3">
+                <button onclick="upgradeTrident()" id="btn-upgrade" class="jua-font bg-gradient-to-r from-ocean-600 via-sky-600 to-indigo-600 hover:from-ocean-500 hover:to-indigo-500 active:scale-95 text-white py-3.5 px-4 rounded-2xl shadow-lg shadow-ocean-950 transition-all flex items-center justify-center space-x-2 text-lg cursor-pointer">
+                    <i data-lucide="sparkles" class="w-5 h-5"></i>
+                    <span>강화하기</span>
+                </button>
+                <button onclick="sellTrident()" id="btn-sell" class="jua-font bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 active:scale-95 text-white py-3.5 px-4 rounded-2xl shadow-lg shadow-amber-950 transition-all flex items-center justify-center space-x-2 text-lg cursor-pointer">
+                    <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+                    <span>판매하기</span>
+                </button>
+            </div>
+
+
+        </div>
+
+
+        <!-- 오른쪽: 상점 및 로그 -->
+        <div class="md:col-span-5 flex flex-col space-y-6">
+           
+            <!-- 상점 박스 -->
+            <div class="bg-[#09111e] border border-slate-800/90 rounded-3xl p-5 shadow-xl">
+                <div class="flex items-center space-x-2 mb-4">
+                    <i data-lucide="shopping-bag" class="w-5 h-5 text-emerald-400"></i>
+                    <h2 class="jua-font text-lg text-slate-200">포세이돈 상점</h2>
+                </div>
+                <div class="bg-[#050b14]/80 p-4 rounded-2xl border border-slate-800/80 flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-sm text-slate-200 flex items-center space-x-1.5">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-emerald-400"></i>
+                            <span>강화 보호권</span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">강화 실패 시 파괴를 1회 방어합니다.</p>
+                        <span class="inline-block mt-2 font-bold text-emerald-400 text-sm">50,000 원</span>
+                    </div>
+                    <button onclick="buyShield()" class="jua-font bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-4 py-2.5 rounded-xl text-sm shadow-md transition-all cursor-pointer">
+                        구매하기
+                    </button>
+                </div>
+            </div>
+
+
+            <!-- 강화 기록 로그 박스 -->
+            <div class="bg-[#09111e] border border-slate-800/90 rounded-3xl p-5 shadow-xl flex flex-col h-80">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="scroll" class="w-5 h-5 text-indigo-400"></i>
+                        <h2 class="jua-font text-lg text-slate-200">강화 일지</h2>
+                    </div>
+                    <span class="text-xs text-slate-500">최근 기록</span>
+                </div>
+                <!-- 로그 출력 컨테이너 -->
+                <div id="log-container" class="bg-[#050b14]/80 border border-slate-800/80 rounded-2xl p-3 flex-grow overflow-y-auto space-y-2 text-xs font-mono">
+                    <div class="text-slate-400">[시스템] 포세이돈의 삼지창 강화전설 게임에 오신 것을 환영합니다!</div>
+                </div>
+            </div>
+
+
+        </div>
+
+
+    </main>
+
+
+    <!-- 하단 푸터 -->
+    <footer class="text-center py-4 text-xs text-slate-500 border-t border-slate-900/60">
+        포세이돈의 삼지창 강화전설 &copy; 2026. 최고 30강 전설에 도전해보세요!
+    </footer>
+
+
+    <!-- 커스텀 모달 -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-[#09111e] border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div id="modal-icon" class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center bg-ocean-500/20 text-ocean-400 border border-ocean-500/30">
+                <i data-lucide="info" class="w-6 h-6"></i>
+            </div>
+            <h3 id="modal-title" class="jua-font text-xl text-slate-100 mb-2">알림</h3>
+            <p id="modal-message" class="text-sm text-slate-300 mb-6 leading-relaxed">메시지 내용</p>
+            <button onclick="closeModal()" class="jua-font bg-ocean-600 hover:bg-ocean-500 text-white w-full py-2.5 rounded-xl shadow-md transition-all cursor-pointer">
+                확인
+            </button>
+        </div>
+    </div>
+
+
+    <!-- JavaScript 로직 -->
+    <script>
+        let gameState = {
+            money: 1000000,
+            level: 0,
+            shields: 0
+        };
+
+
+        // 매 +0 ~ +30 단계별 고유 삼지창 이름 31개
+        const tridentNames = [
+            "녹슨 훈련용 삼지창", "단단한 철제 삼지창", "강화 청동 삼지창", "어부의 조개 삼지창", "파도 문양 삼지창", "깊은 바다 뼈 삼지창",
+            "푸른 산호 삼지창", "수정 박힌 창", "기류 창날 삼지창", "바다 뱀의 삼지창", "해일에 매료된 창",
+            "마법 산호 삼지창", "심해 지능 삼지창", "네레이드의 섬광창", "용오름 삼지창", "푸른 수정룡의 삼지창",
+            "황금 조개 왕실창", "황금 파도 룬 삼지창", "바다의 영혼 삼지창", "왕실 심해 수호창", "황금 용의 삼지창",
+            "붉은 심해 번개창", "지옥 해구 삼지창", "혈파도 몰아치는 창", "심해 신의 룬 삼지창", "크라켄의 심장창",
+            "성공의 별빛 삼지창", "천상 은하수 삼지창", "신성한 은하 파도창", "우주 바다 멸망창", "포세이돈의 절대 신화 창"
+        ];
+
+
+        // 31가지 완전히 서로 다른 단계별 SVG 외형 렌더링 함수
+        function renderTridentSVG(level) {
+            const svg = document.getElementById('trident-svg');
+            const container = document.getElementById('trident-container');
+            const glowBg = document.getElementById('glow-bg');
+            const nameEl = document.getElementById('trident-name');
+           
+            nameEl.textContent = tridentNames[level] || `강화 삼지창 +${level}`;
+           
+            container.className = 'p-4 transition-transform duration-300 flex items-center justify-center float-anim ';
+           
+            let color = '#38bdf8'; // 기본 sky-400
+            let bgGlow = 'bg-sky-500/10';
+            let html = '';
+
+
+            // 색상 및 글로우 세팅
+            if(level <= 5) {
+                color = '#38bdf8'; bgGlow = 'bg-sky-500/15'; container.classList.add('trident-glow');
+            } else if(level <= 10) {
+                color = '#60a5fa'; bgGlow = 'bg-blue-500/25'; container.classList.add('trident-glow');
+            } else if(level <= 15) {
+                color = '#c084fc'; bgGlow = 'bg-purple-500/30'; container.classList.add('trident-glow');
+            } else if(level <= 20) {
+                color = '#fbbf24'; bgGlow = 'bg-amber-500/35'; container.classList.add('trident-glow');
+            } else if(level <= 25) {
+                color = '#f87171'; bgGlow = 'bg-rose-500/40'; container.classList.add('trident-glow');
+            } else {
+                color = 'url(#mythicGrad)'; bgGlow = 'bg-gradient-to-r from-amber-500/40 via-purple-500/40 to-sky-500/40'; container.classList.add('trident-god-glow');
+            }
+            glowBg.className = `absolute w-52 h-52 ${bgGlow} rounded-full blur-3xl -z-10`;
+
+
+            // 매 0강 ~ 30강 전용 SVG 형상 31개 정의
+            const stepDesigns = [
+                // 0강: 민자 단조로운 삼지창
+                `<path d="M50 85 L50 40 M50 40 L35 30 L35 15 M50 40 L65 30 L65 15 M50 40 L50 10" stroke="${color}" stroke-width="3"/>`,
+                // 1강: 하단에 마디 손잡이 추가
+                `<path d="M50 88 L50 35 M50 35 L32 25 L32 15 M50 35 L68 25 L68 15 M50 35 L50 10" stroke="${color}" stroke-width="3.5"/><circle cx="50" cy="85" r="2.5" fill="${color}"/>`,
+                // 2강: 날 끝이 넓어짐
+                `<path d="M50 90 L50 35 M50 40 L30 25 L30 12 L35 20 M50 40 L70 25 L70 12 L65 20 M50 35 L50 8 L46 16 M50 8 L54 16" stroke="${color}" stroke-width="3.5"/>`,
+                // 3강: 중앙에 둥근 보석 조개 받침
+                `<path d="M50 88 L50 42 M50 42 C 35 38, 28 25, 28 12 M50 42 C 65 38, 72 25, 72 12 M50 42 L50 8" stroke="${color}" stroke-width="4"/><circle cx="50" cy="42" r="4" fill="${color}"/>`,
+                // 4강: 가드 날개 구부러짐
+                `<path d="M50 90 L50 38 M50 50 L25 35 L20 15 M50 50 L75 35 L80 15 M50 38 L50 6" stroke="${color}" stroke-width="4"/><path d="M42 80 L58 80" stroke="${color}" stroke-width="3"/>`,
+                // 5강: 날개 삼각 조개 장식
+                `<path d="M50 90 L50 35 M50 45 L25 30 L25 10 M50 45 L75 30 L75 10 M50 35 L50 5" stroke="${color}" stroke-width="4"/><polygon points="50,45 42,55 58,55" stroke="${color}" stroke-width="2"/>`,
+
+
+                // 6강: 해양 파도 날개 모양
+                `<path d="M50 90 L50 35 Q 20 40 20 12 M50 35 Q 80 40 80 12 M50 35 L50 6" stroke="${color}" stroke-width="4"/><path d="M40 70 L60 70" stroke="${color}" stroke-width="4"/>`,
+                // 7강: 화살촉 조개 날 3개
+                `<path d="M50 90 L50 35 M50 40 L22 28 L22 15 L28 22 M50 40 L78 28 L78 15 L72 22 M50 35 L50 5 L45 15 M50 5 L55 15" stroke="${color}" stroke-width="4"/>`,
+                // 8강: 중앙 룬 마름모 장식
+                `<path d="M50 90 L50 45 M50 30 L50 5 M50 45 L20 30 L20 12 M50 45 L80 30 L80 12" stroke="${color}" stroke-width="4.5"/><polygon points="50,30 58,37.5 50,45 42,37.5" fill="${color}"/>`,
+                // 9강: 이중 가드 링
+                `<path d="M50 92 L50 35 M50 45 L18 30 L18 10 M50 45 L82 30 L82 10 M50 35 L50 5" stroke="${color}" stroke-width="4.5"/><circle cx="50" cy="50" r="7" stroke="${color}" stroke-width="2.5"/><circle cx="50" cy="75" r="4" fill="${color}"/>`,
+                // 10강: 뱀 문양 꼬임 곡선
+                `<path d="M50 92 L50 55 C 45 48, 55 42, 50 35 M50 35 L50 5 M50 35 Q 15 35 15 10 M50 35 Q 85 35 85 10" stroke="${color}" stroke-width="5"/>`,
+
+
+                // 11강: 수정 보석 이중날
+                `<path d="M50 92 L50 30 M50 50 L25 35 L20 8 M50 50 L75 35 L80 8 M50 30 L50 2" stroke="${color}" stroke-width="5"/><polygon points="50,20 60,35 50,50 40,35" fill="${color}"/>`,
+                // 12강: 번개 문양 미세 가드
+                `<path d="M50 90 L50 30 M50 40 L30 45 L20 15 M50 40 L70 45 L80 15 M50 30 L50 5" stroke="${color}" stroke-width="5"/><path d="M30 25 L20 15 L28 12 M70 25 L80 15 L72 12" stroke="${color}" stroke-width="3"/>`,
+                // 13강: 해구 날개 4개 확장
+                `<path d="M50 90 L50 30 M50 55 L15 40 L15 20 M50 55 L85 40 L85 20 M50 40 L28 25 L28 10 M50 40 L72 25 L72 10 M50 30 L50 2" stroke="${color}" stroke-width="4.5"/>`,
+                // 14강: 둥근 달 모양 해양 창
+                `<path d="M50 92 L50 30 M50 30 L50 4 C 20 15, 20 45, 50 55 C 80 45, 80 15, 50 30" stroke="${color}" stroke-width="4.5"/><circle cx="50" cy="30" r="5" fill="${color}"/>`,
+                // 15강: 산호 가지 갈퀴 날
+                `<path d="M50 92 L50 35 M50 50 L20 35 L12 10 L22 20 M50 50 L80 35 L88 10 L78 20 M50 35 L50 4 L44 14 L56 14" stroke="${color}" stroke-width="5"/><circle cx="50" cy="65" r="6" fill="${color}"/>`,
+
+
+                // 16강: 황금 가시 왕실창
+                `<path d="M50 95 L50 25 M50 45 L15 30 L15 8 M50 45 L85 30 L85 8 M50 25 L50 2" stroke="${color}" stroke-width="5.5"/><path d="M35 70 L65 70 M30 78 L70 78" stroke="${color}" stroke-width="4"/>`,
+                // 17강: 원형 해파리 룬 포탈
+                `<circle cx="50" cy="45" r="16" stroke="${color}" stroke-width="4"/><path d="M50 95 L50 61 M50 29 L50 2 M34 45 L10 25 L10 5 M66 45 L90 25 L90 5" stroke="${color}" stroke-width="5"/>`,
+                // 18강: 거대한 낫 모양 삼지창
+                `<path d="M50 95 L50 35 M50 45 C 10 30, 5 15, 25 5 M50 45 C 90 30, 95 15, 75 5 M50 35 L50 2" stroke="${color}" stroke-width="5.5"/><polygon points="50,35 58,45 50,55 42,45" fill="${color}"/>`,
+                // 19강: 심해 수호자 투구 가드
+                `<path d="M50 95 L50 25 M50 60 L10 40 L20 10 M50 60 L90 40 L80 10 M50 25 L50 2" stroke="${color}" stroke-width="5.5"/><path d="M30 60 Q 50 75 70 60" stroke="${color}" stroke-width="4"/>`,
+                // 20강: 3중 드래곤 조개 가드
+                `<path d="M50 95 L50 20 M50 45 L15 30 L10 5 M50 45 L85 30 L90 5 M50 20 L50 0" stroke="${color}" stroke-width="6"/><circle cx="50" cy="45" r="8" fill="${color}"/><circle cx="50" cy="80" r="5" stroke="${color}" stroke-width="3"/>`,
+
+
+                // 21강: 붉은 번개 혈파창
+                `<path d="M50 95 L50 20 L40 35 L50 20 M50 50 L10 30 L5 5 M50 50 L90 30 L95 5" stroke="${color}" stroke-width="6"/><path d="M25 50 L50 20 L75 50" stroke="${color}" stroke-width="4"/>`,
+                // 22강: 지옥 크라켄 촉수날
+                `<path d="M50 95 L50 30 M50 60 C 20 60, 5 35, 10 2 M50 60 C 80 60, 95 35, 90 2 M50 30 L50 0" stroke="${color}" stroke-width="6"/><circle cx="50" cy="30" r="7" fill="${color}"/>`,
+                // 23강: 이중 해일 서기창
+                `<path d="M50 95 L50 15 M50 40 L18 25 L12 2 M50 40 L82 25 L88 2 M50 15 L50 -2 M30 35 L12 2 M70 35 L88 2" stroke="${color}" stroke-width="5.5"/>`,
+                // 24강: 혈룬 거대 날개 창
+                `<path d="M50 95 L50 20 M50 55 Q 0 40 0 5 M50 55 Q 100 40 100 5 M50 20 L50 -2" stroke="${color}" stroke-width="6.5"/><polygon points="50,20 62,38 50,56 38,38" fill="${color}"/>`,
+                // 25강: 악마 심해 수호창
+                `<path d="M50 95 L50 15 M50 65 L5 45 L12 0 M50 65 L95 45 L88 0 M50 15 L50 -4" stroke="${color}" stroke-width="6.5"/><path d="M30 65 L50 85 L70 65" stroke="${color}" stroke-width="4"/>`,
+
+
+                // 26강: 은하수 별빛 창날
+                `<path d="M50 95 L50 15 M50 50 L10 35 L15 0 M50 50 L90 35 L85 0 M50 15 L50 -5" stroke="${color}" stroke-width="6.5"/><polygon points="50,5 55,20 70,20 57,28 62,43 50,33 38,43 43,28 30,20 45,20" fill="${color}"/>`,
+                // 27강: 천상 성운 이중 링 창
+                `<circle cx="50" cy="40" r="22" stroke="${color}" stroke-width="5"/><path d="M50 95 L50 62 M50 18 L50 -5 M28 40 L0 20 L8 -2 M72 40 L100 20 L92 -2" stroke="${color}" stroke-width="6"/>`,
+                // 28강: 4중 날개 천상 시공창
+                `<path d="M50 95 L50 10 M50 55 L5 40 L0 5 M50 55 L95 40 L100 5 M50 35 L20 25 L15 0 M50 35 L80 25 L85 0 M50 10 L50 -6" stroke="${color}" stroke-width="6"/>`,
+                // 29강: 우주 무지개 포탈 창
+                `<path d="M50 95 L50 10 M50 60 C -10 40, -5 10, 10 -5 M50 60 C 110 40, 105 10, 90 -5 M50 10 L50 -8" stroke="${color}" stroke-width="7"/><circle cx="50" cy="35" r="14" fill="${color}"/><circle cx="50" cy="35" r="6" fill="#050b14"/>`,
+                // 30강: 포세이돈 신화 절대창 (MAX)
+                `<defs>
+                    <linearGradient id="mythicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f59e0b"/>
+                        <stop offset="33%" stop-color="#ec4899"/>
+                        <stop offset="66%" stop-color="#8b5cf6"/>
+                        <stop offset="100%" stop-color="#38bdf8"/>
+                    </linearGradient>
+                </defs>
+                <path d="M50 98 L50 10" stroke="url(#mythicGrad)" stroke-width="8"/>
+                <path d="M50 65 Q -5 45 -5 0 L 15 20 M -5 0 L -12 15" stroke="url(#mythicGrad)" stroke-width="7"/>
+                <path d="M50 65 Q 105 45 105 0 L 85 20 M 105 0 L 112 15" stroke="url(#mythicGrad)" stroke-width="7"/>
+                <path d="M50 10 L50 -10 L35 12 M50 -10 L65 12" stroke="url(#mythicGrad)" stroke-width="8"/>
+                <polygon points="50,20 68,42 50,64 32,42" fill="url(#mythicGrad)"/>
+                <circle cx="50" cy="42" r="6" fill="#ffffff"/>
+                <path d="M20 82 L80 82 M25 88 L75 88" stroke="url(#mythicGrad)" stroke-width="5"/>`
+            ];
+
+
+            html = stepDesigns[level] || stepDesigns[0];
+            svg.innerHTML = html;
+        }
+
+
+        // 강화 단계별 데이터 (비용 및 확률 계산)
+        function getUpgradeData(level) {
+            let cost = Math.floor(10000 * Math.pow(1.36, level));
+            let successProb = 100;
+            let failProb = 0;
+            let destroyProb = 0;
+
+
+            if (level === 0) {
+                successProb = 100; failProb = 0; destroyProb = 0;
+            } else if (level <= 5) {
+                successProb = 100 - (level * 5); // 95% -> 75%
+                failProb = 100 - successProb;
+                destroyProb = 0;
+            } else if (level <= 10) {
+                successProb = 75 - ((level - 5) * 6); // 69% -> 45%
+                failProb = 100 - successProb - ((level - 5) * 2);
+                destroyProb = 100 - successProb - failProb;
+            } else if (level <= 20) {
+                successProb = 40 - ((level - 10) * 2.5); // 37.5% -> 15%
+                destroyProb = Math.min(30, 10 + (level - 10) * 2);
+                failProb = 100 - successProb - destroyProb;
+            } else if (level < 30) {
+                successProb = Math.max(1, 15 - ((level - 20) * 1.3)); // 13.7% -> 2%
+                destroyProb = 35 + ((level - 20) * 1.5);
+                failProb = 100 - successProb - destroyProb;
+            } else {
+                // Max Level 30
+                successProb = 0;
+                failProb = 0;
+                destroyProb = 0;
+            }
+
+
+            let sellPrice = (level === 0) ? 50000 : cost * 10;
+
+
+            return {
+                cost: cost,
+                sellPrice: sellPrice,
+                success: Math.max(0, Math.round(successProb * 10) / 10),
+                fail: Math.max(0, Math.round(failProb * 10) / 10),
+                destroy: Math.max(0, Math.round(destroyProb * 10) / 10)
+            };
+        }
+
+
+        // 화면 UI 업데이트
+        function updateUI() {
+            const data = getUpgradeData(gameState.level);
+           
+            document.getElementById('money-display').textContent = gameState.money.toLocaleString();
+            document.getElementById('shield-display').textContent = gameState.shields;
+           
+            if (gameState.level >= 30) {
+                document.getElementById('level-badge').textContent = `+30 강 (MAX)`;
+                document.getElementById('level-badge').className = 'jua-font text-xl text-amber-400 animate-pulse';
+            } else {
+                document.getElementById('level-badge').textContent = `+${gameState.level} 강`;
+                document.getElementById('level-badge').className = 'jua-font text-xl text-ocean-400';
+            }
+
+
+            document.getElementById('prob-success').textContent = `${data.success}%`;
+            document.getElementById('prob-fail').textContent = `${data.fail}%`;
+            document.getElementById('prob-destroy').textContent = `${data.destroy}%`;
+
+
+            document.getElementById('upgrade-cost').textContent = `${data.cost.toLocaleString()} 원`;
+            document.getElementById('sell-price').textContent = `${data.sellPrice.toLocaleString()} 원`;
+
+
+            renderTridentSVG(gameState.level);
+            lucide.createIcons();
+        }
+
+
+        // 강화 일지 기록 추가
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('log-container');
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+           
+            const logItem = document.createElement('div');
+           
+            let colorClass = 'text-slate-300';
+            if (type === 'success') colorClass = 'text-emerald-400 font-bold';
+            if (type === 'fail') colorClass = 'text-amber-400';
+            if (type === 'destroy') colorClass = 'text-rose-400 font-bold';
+            if (type === 'system') colorClass = 'text-sky-400';
+           
+            logItem.className = `${colorClass} leading-relaxed`;
+            logItem.innerHTML = `<span class="text-slate-500">[${timeStr}]</span> ${message}`;
+           
+            container.appendChild(logItem);
+            container.scrollTop = container.scrollHeight;
+        }
+
+
+        // 시각적 피드백 효과
+        function triggerFlash(type) {
+            const card = document.getElementById('main-card');
+            const container = document.getElementById('trident-container');
+           
+            if (type === 'success') {
+                card.classList.add('flash-green');
+                setTimeout(() => card.classList.remove('flash-green'), 600);
+            } else {
+                card.classList.add('flash-red');
+                container.classList.add('shake-anim');
+                setTimeout(() => {
+                    card.classList.remove('flash-red');
+                    container.classList.remove('shake-anim');
+                }, 400);
+            }
+        }
+
+
+        // 강화 시도
+        function upgradeTrident() {
+            if (gameState.level >= 30) {
+                showModal('최고 단계 달성', '이미 포세이돈의 최고 단계 삼지창(+30강)을 완성하셨습니다!');
+                return;
+            }
+
+
+            const data = getUpgradeData(gameState.level);
+
+
+            if (gameState.money < data.cost) {
+                showModal('자금 부족', '강화 비용이 부족합니다! 삼지창을 판매하거나 이전 자금을 활용하세요.');
+                return;
+            }
+
+
+            // 비용 차감
+            gameState.money -= data.cost;
+
+
+            const rand = Math.random() * 100;
+           
+            if (rand < data.success) {
+                // 강화 성공
+                gameState.level++;
+                triggerFlash('success');
+                addLog(`+${gameState.level - 1} ➔ +${gameState.level} 강화 성공! (${tridentNames[gameState.level]})`, 'success');
+            } else if (rand < data.success + data.fail) {
+                // 강화 실패 (단계 유지)
+                triggerFlash('fail');
+                addLog(`+${gameState.level} 강화 실패 (단계 유지)`, 'fail');
+            } else {
+                // 파괴 위험 발생
+                if (gameState.shields > 0) {
+                    gameState.shields--;
+                    triggerFlash('fail');
+                    addLog(`강화 실패! 🛡️ 강화 보호권으로 삼지창 파괴를 방어했습니다! (+${gameState.level} 유지)`, 'system');
+                } else {
+                    // 삼지창 파괴
+                    triggerFlash('fail');
+                    addLog(`💥 강화 실패로 삼지창이 파괴되었습니다! (+${gameState.level})`, 'destroy');
+                    document.getElementById('destroy-overlay').classList.remove('hidden');
+                }
+            }
+
+
+            updateUI();
+        }
+
+
+        // 삼지창 판매
+        function sellTrident() {
+            const data = getUpgradeData(gameState.level);
+            const gainedMoney = data.sellPrice;
+
+
+            gameState.money += gainedMoney;
+            addLog(`+${gameState.level} 삼지창을 ${gainedMoney.toLocaleString()}원에 판매했습니다!`, 'system');
+           
+            gameState.level = 0;
+            updateUI();
+        }
+
+
+        // 파괴 후 새 삼지창 받기
+        function resetTrident() {
+            gameState.level = 0;
+            document.getElementById('destroy-overlay').classList.add('hidden');
+            addLog(`새로운 기본 삼지창(+0)을 지급받았습니다.`, 'system');
+            updateUI();
+        }
+
+
+        // 보호권 구매
+        function buyShield() {
+            const shieldPrice = 50000;
+            if (gameState.money < shieldPrice) {
+                showModal('자금 부족', '강화 보호권 구매 금액(50,000원)이 부족합니다.');
+                return;
+            }
+
+
+            gameState.money -= shieldPrice;
+            gameState.shields++;
+            addLog(`강화 보호권을 구매했습니다. (현재 ${gameState.shields}개 소지)`, 'system');
+            updateUI();
+        }
+
+
+        // 커스텀 모달
+        function showModal(title, message) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+
+        function closeModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+
+        // 초기화 실행
+        window.onload = function() {
+            updateUI();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>

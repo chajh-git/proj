@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>스트리트 파이터 2D 대전 게임</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .arcade-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+        .glow-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+        .glow-blue { box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
+        .glow-gold { box-shadow: 0 0 20px rgba(245, 158, 11, 0.9); }
+        canvas { image-rendering: pixelated; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-red-500 selection:text-white">
+
+
+    <!-- Top Navigation Header -->
+    <header class="w-full bg-slate-900 border-b border-slate-800 px-4 py-2 flex justify-between items-center z-20">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-gamepad text-yellow-400 text-2xl animate-pulse"></i>
+            <h1 class="text-xl font-extrabold tracking-wider bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 bg-clip-text text-transparent">
+                STREET FIGHTER 2D - VS AI
+            </h1>
+        </div>
+        <div class="text-xs md:text-sm text-slate-400 flex items-center gap-4">
+            <span><i class="fa-solid fa-keyboard mr-1"></i> A/D:이동 | Space:점프 | F:방어 | Shift:구르기</span>
+            <span class="hidden md:inline text-amber-400 font-bold"><i class="fa-solid fa-trophy mr-1"></i> AI 난이도 시스템 탑재</span>
+        </div>
+    </header>
+
+
+    <!-- Main Game Container -->
+    <main class="flex-1 flex flex-col items-center justify-center p-2 md:p-4 relative">
+        <div class="relative w-full max-w-5xl bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+           
+            <!-- HUD / Status Overlay -->
+            <div class="absolute top-0 left-0 w-full p-4 flex flex-col gap-2 z-10 pointer-events-none">
+                <!-- Health Bars & Timer -->
+                <div class="flex justify-between items-center gap-2 md:gap-6">
+                    <!-- Player 1 HP -->
+                    <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-extrabold text-sm md:text-lg text-red-400 tracking-wider">RYU (1P)</span>
+                            <span id="p1-hp-text" class="text-xs font-bold text-slate-300">100 HP</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-5 md:h-7 rounded-lg p-1 border border-slate-700 shadow-inner flex justify-end">
+                            <div id="p1-hp-bar" class="h-full bg-gradient-to-l from-red-500 to-amber-500 rounded transition-all duration-150 w-full glow-red"></div>
+                        </div>
+                        <!-- P1 Special Meter & Cooldowns -->
+                        <div class="flex justify-between items-center mt-1 gap-2">
+                            <div class="flex-1 bg-slate-800 h-2 md:h-3 rounded-full p-0.5 border border-slate-700">
+                                <div id="p1-special-bar" class="h-full bg-cyan-400 rounded-full transition-all duration-200 w-0"></div>
+                            </div>
+                            <span id="p1-cd-text" class="text-[10px] font-bold text-amber-400">READY</span>
+                        </div>
+                    </div>
+
+
+                    <!-- Round Timer & Difficulty Badge -->
+                    <div class="flex flex-col items-center justify-center px-3 py-1 bg-slate-950/80 rounded-xl border border-slate-700 shadow-lg min-w-[70px] md:min-w-[90px]">
+                        <span id="game-timer" class="arcade-font text-xl md:text-3xl text-yellow-400">60</span>
+                        <span id="diff-badge" class="text-[10px] font-extrabold text-blue-400 mt-1 uppercase">중수 (MEDIUM)</span>
+                    </div>
+
+
+                    <!-- Player 2 HP (AI) -->
+                    <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between items-center mb-1">
+                            <span id="p2-hp-text" class="text-xs font-bold text-slate-300">100 HP</span>
+                            <span id="p2-name" class="font-extrabold text-sm md:text-lg text-blue-400 tracking-wider">KEN (AI)</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-5 md:h-7 rounded-lg p-1 border border-slate-700 shadow-inner">
+                            <div id="p2-hp-bar" class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded transition-all duration-150 w-full glow-blue"></div>
+                        </div>
+                        <!-- P2 Special Meter -->
+                        <div class="flex justify-between items-center mt-1 gap-2">
+                            <span id="p2-cd-text" class="text-[10px] font-bold text-amber-400">READY</span>
+                            <div class="flex-1 bg-slate-800 h-2 md:h-3 rounded-full p-0.5 border border-slate-700 flex justify-end">
+                                <div id="p2-special-bar" class="h-full bg-cyan-400 rounded-full transition-all duration-200 w-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Game Canvas -->
+            <canvas id="gameCanvas" class="w-full h-[350px] sm:h-[420px] md:h-[500px] block"></canvas>
+
+
+            <!-- Start / GameOver Menu Overlay -->
+            <div id="menu-overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col justify-center items-center p-6 z-30 transition-all duration-300">
+                <div class="text-center mb-3">
+                    <h2 class="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 mb-1 arcade-font tracking-wide">
+                        STREET FIGHTER 2D
+                    </h2>
+                    <p class="text-slate-400 text-xs md:text-sm">지능형 AI 거리조절 & 키 조작 업데이트</p>
+                </div>
+
+
+                <div id="result-message" class="hidden arcade-font text-2xl md:text-4xl text-yellow-400 animate-bounce tracking-widest my-3">
+                    PLAYER 1 WIN!
+                </div>
+
+
+                <!-- Difficulty Select Buttons -->
+                <div class="w-full max-w-md my-3">
+                    <p class="text-center text-xs font-bold text-slate-300 mb-2">AI 난이도 선택</p>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button id="diff-easy" class="py-2 rounded-xl bg-slate-800 border-2 border-slate-600 font-bold text-slate-300 text-xs shadow-md hover:bg-slate-700 transition cursor-pointer">
+                            🌱 초보
+                        </button>
+                        <button id="diff-medium" class="py-2 rounded-xl bg-blue-600 border-2 border-blue-400 font-bold text-white text-xs shadow-md hover:bg-blue-500 transition cursor-pointer">
+                            ⚔️ 중수
+                        </button>
+                        <button id="diff-hard" class="py-2 rounded-xl bg-slate-800 border-2 border-slate-600 font-bold text-slate-300 text-xs shadow-md hover:bg-slate-700 transition cursor-pointer">
+                            🔥 고수
+                        </button>
+                    </div>
+                </div>
+
+
+                <!-- Start Game Button -->
+                <button id="start-btn" class="mt-2 group relative inline-flex items-center justify-center px-8 py-3.5 font-bold text-white transition-all duration-200 bg-gradient-to-r from-red-600 to-orange-500 rounded-2xl shadow-xl hover:shadow-red-500/50 hover:scale-105 active:scale-95 cursor-pointer">
+                    <i class="fa-solid fa-play mr-2"></i>
+                    <span id="start-btn-text" class="text-base md:text-lg">게임 시작 (START)</span>
+                </button>
+
+
+                <!-- Controls Guide Box -->
+                <div class="mt-4 bg-slate-900/90 border border-slate-700 p-3.5 rounded-xl max-w-lg w-full text-xs text-slate-300 grid grid-cols-2 gap-3">
+                    <div>
+                        <p class="font-bold text-red-400 mb-1 border-b border-slate-700 pb-1">기본 조작</p>
+                        <p>이동: <b class="text-white">A / D</b></p>
+                        <p>점프: <b class="text-yellow-300">Spacebar</b></p>
+                        <p>앉기: <b class="text-white">S</b></p>
+                        <p>방어(가드): <b class="text-cyan-300">F</b> (누르고 있기)</p>
+                        <p>구르기 회피: <b class="text-emerald-300">Left Shift</b></p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-yellow-400 mb-1 border-b border-slate-700 pb-1">공격 및 필살기</p>
+                        <p>약펀치: <b class="text-white">1</b> (0.2s 쿨타임/긴사거리)</p>
+                        <p>약킥: <b class="text-white">2</b> (0.2s 쿨타임/긴사거리)</p>
+                        <p>강펀치: <b class="text-white">Q</b> (0.6s 쿨타임/강력함)</p>
+                        <p>강킥: <b class="text-white">E</b> (0.6s 쿨타임/강력함)</p>
+                        <p>스킬: <b class="text-cyan-300">Z(장풍) X(승룡) C(용권) V(초필살기)</b></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <!-- Mobile Virtual Touch Controller -->
+    <div class="w-full max-w-5xl mx-auto px-4 pb-4 md:hidden flex justify-between items-center gap-2">
+        <div class="grid grid-cols-3 gap-1 w-28 h-28">
+            <div></div>
+            <button id="btn-up" class="bg-slate-800 active:bg-slate-700 rounded text-xs border border-slate-600">점프</button>
+            <div></div>
+            <button id="btn-left" class="bg-slate-800 active:bg-slate-700 rounded text-xs border border-slate-600">◀</button>
+            <button id="btn-down" class="bg-slate-800 active:bg-slate-700 rounded text-xs border border-slate-600">▼</button>
+            <button id="btn-right" class="bg-slate-800 active:bg-slate-700 rounded text-xs border border-slate-600">▶</button>
+        </div>
+
+
+        <div class="grid grid-cols-4 gap-1 text-[9px]">
+            <button id="btn-guard" class="w-10 h-10 bg-slate-600 active:bg-slate-500 rounded font-bold border border-slate-400">방어</button>
+            <button id="btn-lpunch" class="w-10 h-10 bg-red-800 active:bg-red-700 rounded font-bold border border-red-500">약펀(1)</button>
+            <button id="btn-hpunch" class="w-10 h-10 bg-red-600 active:bg-red-500 rounded font-bold border border-red-300">강펀(Q)</button>
+            <button id="btn-sk1" class="w-10 h-10 bg-cyan-700 active:bg-cyan-600 rounded font-bold border border-cyan-400">장풍(Z)</button>
+           
+            <button id="btn-dodge" class="w-10 h-10 bg-emerald-600 active:bg-emerald-500 rounded font-bold border border-emerald-400">구르기</button>
+            <button id="btn-lkick" class="w-10 h-10 bg-amber-800 active:bg-amber-700 rounded font-bold border border-amber-500">약킥(2)</button>
+            <button id="btn-hkick" class="w-10 h-10 bg-amber-600 active:bg-amber-500 rounded font-bold border border-amber-300">강킥(E)</button>
+            <button id="btn-sk2" class="w-10 h-10 bg-cyan-600 active:bg-cyan-500 rounded font-bold border border-cyan-300">승룡(X)</button>
+           
+            <button id="btn-sk3" class="w-10 h-10 bg-purple-700 active:bg-purple-600 rounded font-bold border border-purple-400 col-start-3">용권(C)</button>
+            <button id="btn-sk4" class="w-10 h-10 bg-yellow-600 active:bg-yellow-500 rounded font-bold border border-yellow-300">필살(V)</button>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="w-full bg-slate-900 border-t border-slate-800 py-2 text-center text-xs text-slate-500">
+        HTML5 Canvas & Web Audio API Engine | AI Footsies & Difficulty Update
+    </footer>
+
+
+    <!-- JavaScript Core Game Engine -->
+    <script>
+        // --- Web Audio Sound FX Synthesizer ---
+        class SoundFX {
+            constructor() { this.ctx = null; }
+            init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+            playPunch(isHeavy = false) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                const startFreq = isHeavy ? 260 : 160;
+                const duration = isHeavy ? 0.18 : 0.08;
+                osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, this.ctx.currentTime + duration);
+                gain.gain.setValueAtTime(isHeavy ? 0.6 : 0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            }
+            playKick(isHeavy = false) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                const startFreq = isHeavy ? 320 : 210;
+                const duration = isHeavy ? 0.2 : 0.1;
+                osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + duration);
+                gain.gain.setValueAtTime(isHeavy ? 0.7 : 0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            }
+            playGuard() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.1);
+            }
+            playDodge() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playHadoken() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(850, this.ctx.currentTime + 0.2);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.45);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.45);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.45);
+            }
+            playShoryuken() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(900, this.ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 0.35);
+            }
+            playHit(isHeavy = false) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                const duration = isHeavy ? 0.15 : 0.08;
+                osc.frequency.setValueAtTime(isHeavy ? 180 : 100, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(20, this.ctx.currentTime + duration);
+                gain.gain.setValueAtTime(isHeavy ? 0.5 : 0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            }
+        }
+
+
+        const audio = new SoundFX();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+
+        function resizeCanvas() { canvas.width = 1024; canvas.height = 576; }
+        resizeCanvas();
+
+
+        const GRAVITY = 0.7;
+        let gameTimer = 60;
+        let timerInterval = null;
+        let isGameOver = false;
+        let animationFrameId = null;
+
+
+        // Difficulty Settings: 'easy' | 'medium' | 'hard'
+        let aiDifficulty = 'medium';
+        let aiDecisionTimer = 0;
+        let aiMoveDirection = 0; // -1: left, 1: right, 0: stop
+        let aiMoveDuration = 0;
+
+
+        let screenShakeTime = 0;
+        let screenShakeIntensity = 0;
+        let particles = [];
+
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.size = Math.random() * 6 + 3;
+                this.color = color;
+                this.alpha = 1;
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.alpha -= 0.04; }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+                ctx.restore();
+            }
+        }
+
+
+        function createHitParticles(x, y, color = '#fef08a') {
+            for (let i = 0; i < 12; i++) particles.push(new Particle(x, y, color));
+        }
+
+
+        function triggerScreenShake(intensity = 10, duration = 10) {
+            screenShakeIntensity = intensity;
+            screenShakeTime = duration;
+        }
+
+
+        const keys = {
+            a: { pressed: false },
+            d: { pressed: false },
+            s: { pressed: false },
+            f: { pressed: false } // Guard
+        };
+
+
+        class Projectile {
+            constructor({ position, velocity, color, owner, isBeam = false }) {
+                this.position = position;
+                this.velocity = velocity;
+                this.radius = isBeam ? 35 : 20;
+                this.color = color;
+                this.owner = owner;
+                this.active = true;
+                this.isBeam = isBeam;
+            }
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 20;
+                ctx.fill();
+                ctx.closePath();
+                ctx.restore();
+            }
+            update() {
+                this.draw();
+                this.position.x += this.velocity.x;
+                if (this.position.x < -50 || this.position.x > canvas.width + 50) this.active = false;
+            }
+        }
+
+
+        class Fighter {
+            constructor({ position, velocity, color, isPlayer2 = false, name = "RYU" }) {
+                this.position = position;
+                this.velocity = velocity;
+                this.width = 60;
+                this.height = 130;
+                this.color = color;
+                this.isPlayer2 = isPlayer2;
+                this.name = name;
+                this.health = 100;
+                this.superMeter = 0;
+                this.isGrounded = false;
+                this.isCrouching = false;
+                this.isGuarding = false;
+                this.facing = isPlayer2 ? 'left' : 'right';
+
+
+                this.isAttacking = false;
+                this.attackType = null;
+                this.cooldownUntil = 0;
+
+
+                this.isDodging = false;
+                this.dodgeTimer = 0;
+                this.isInvulnerable = false;
+
+
+                this.isHit = false;
+                this.hitTimer = 0;
+                this.knockbackVelX = 0;
+            }
+
+
+            draw() {
+                ctx.save();
+                // Shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.ellipse(this.position.x + this.width / 2, canvas.height - 80, 35, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+
+                if (this.isInvulnerable) ctx.globalAlpha = 0.5;
+
+
+                if (this.isHit) ctx.fillStyle = '#ffffff';
+                else if (this.isGuarding) ctx.fillStyle = '#38bdf8';
+                else ctx.fillStyle = this.color;
+
+
+                const currentHeight = this.isCrouching ? this.height * 0.65 : (this.isDodging ? this.height * 0.5 : this.height);
+                const currentY = (this.isCrouching || this.isDodging) ? this.position.y + (this.height - currentHeight) : this.position.y;
+
+
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 8;
+                ctx.fillRect(this.position.x, currentY, this.width, currentHeight);
+
+
+                // Shield Arc
+                if (this.isGuarding) {
+                    ctx.strokeStyle = '#60a5fa';
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    const shieldX = this.facing === 'right' ? this.position.x + this.width + 5 : this.position.x - 5;
+                    ctx.arc(shieldX, currentY + currentHeight / 2, 40, -Math.PI / 2, Math.PI / 2, this.facing !== 'right');
+                    ctx.stroke();
+                }
+
+
+                // Head & Bandana
+                ctx.fillStyle = '#fca5a5';
+                ctx.fillRect(this.position.x + (this.facing === 'right' ? 15 : 5), currentY - 25, 40, 30);
+                ctx.fillStyle = this.isPlayer2 ? '#f59e0b' : '#ef4444';
+                ctx.fillRect(this.position.x + (this.facing === 'right' ? 10 : 5), currentY - 25, 45, 8);
+
+
+                ctx.fillStyle = '#000000';
+                const eyeX = this.facing === 'right' ? this.position.x + 40 : this.position.x + 15;
+                ctx.fillRect(eyeX, currentY - 18, 6, 6);
+
+
+                // Attack Hitboxes Rendering
+                if (this.isAttacking) {
+                    ctx.fillStyle = (this.attackType.includes('heavy') || this.attackType.includes('skill')) ? '#f97316' : '#fde047';
+                    if (this.attackType === 'lightPunch') {
+                        const punchX = this.facing === 'right' ? this.position.x + this.width : this.position.x - 75;
+                        ctx.fillRect(punchX, currentY + 15, 75, 15);
+                    } else if (this.attackType === 'heavyPunch') {
+                        const punchX = this.facing === 'right' ? this.position.x + this.width : this.position.x - 65;
+                        ctx.fillRect(punchX, currentY + 10, 65, 25);
+                    } else if (this.attackType === 'lightKick') {
+                        const kickX = this.facing === 'right' ? this.position.x + this.width : this.position.x - 80;
+                        ctx.fillRect(kickX, currentY + 45, 80, 18);
+                    } else if (this.attackType === 'heavyKick') {
+                        const kickX = this.facing === 'right' ? this.position.x + this.width : this.position.x - 55;
+                        ctx.fillRect(kickX, currentY + 40, 55, 30);
+                    } else if (this.attackType === 'shoryuken') {
+                        const upperX = this.facing === 'right' ? this.position.x + 10 : this.position.x - 30;
+                        ctx.fillStyle = '#ef4444';
+                        ctx.fillRect(upperX, currentY - 40, 70, 80);
+                    } else if (this.attackType === 'tatsumaki') {
+                        const spinX = this.facing === 'right' ? this.position.x - 20 : this.position.x - 40;
+                        ctx.fillStyle = '#a855f7';
+                        ctx.fillRect(spinX, currentY + 30, 120, 30);
+                    }
+                }
+
+
+                ctx.restore();
+            }
+
+
+            update() {
+                this.draw();
+
+
+                if (!this.isAttacking && !this.isDodging) {
+                    if (this.isPlayer2) this.facing = (this.position.x < player1.position.x) ? 'right' : 'left';
+                    else this.facing = (this.position.x > player2.position.x) ? 'left' : 'right';
+                }
+
+
+                if (Math.abs(this.knockbackVelX) > 0.1) {
+                    this.position.x += this.knockbackVelX;
+                    this.knockbackVelX *= 0.82;
+                } else {
+                    this.knockbackVelX = 0;
+                }
+
+
+                this.position.x += this.velocity.x;
+                this.position.y += this.velocity.y;
+
+
+                if (this.isDodging) {
+                    this.dodgeTimer++;
+                    this.velocity.x = this.facing === 'right' ? 9 : -9;
+                    if (this.dodgeTimer > 20) {
+                        this.isDodging = false;
+                        this.isInvulnerable = false;
+                        this.dodgeTimer = 0;
+                    }
+                }
+
+
+                const groundY = canvas.height - 90;
+                if (this.position.y + this.height >= groundY) {
+                    this.velocity.y = 0;
+                    this.position.y = groundY - this.height;
+                    this.isGrounded = true;
+                } else {
+                    this.velocity.y += GRAVITY;
+                    this.isGrounded = false;
+                }
+
+
+                if (this.position.x < 10) this.position.x = 10;
+                if (this.position.x + this.width > canvas.width - 10) this.position.x = canvas.width - 10 - this.width;
+
+
+                if (this.isHit) {
+                    this.hitTimer++;
+                    if (this.hitTimer > 12) {
+                        this.isHit = false;
+                        this.hitTimer = 0;
+                    }
+                }
+            }
+
+
+            dodge() {
+                if (this.isDodging || this.isAttacking || this.isHit || !this.isGrounded) return;
+                this.isDodging = true;
+                this.isInvulnerable = true;
+                this.dodgeTimer = 0;
+                audio.playDodge();
+            }
+
+
+            attack(type) {
+                const now = Date.now();
+                if (now < this.cooldownUntil || this.isAttacking || this.isHit || this.isDodging || this.isGuarding) return;
+
+
+                // Cooldown Rules: Light (1, 2) = 0.2s | Heavy (Q, E) = 0.6s
+                let cooldownTime = 200;
+                if (type === 'heavyPunch' || type === 'heavyKick') cooldownTime = 600;
+                if (type.startsWith('skill') || type === 'shoryuken' || type === 'tatsumaki') cooldownTime = 700;
+
+
+                this.cooldownUntil = now + cooldownTime;
+                this.isAttacking = true;
+                this.attackType = type;
+
+
+                const cdText = this.isPlayer2 ? document.getElementById('p2-cd-text') : document.getElementById('p1-cd-text');
+                if (cdText) {
+                    cdText.textContent = "BUSY";
+                    cdText.className = "text-[10px] font-bold text-red-500 animate-pulse";
+                    setTimeout(() => {
+                        cdText.textContent = "READY";
+                        cdText.className = "text-[10px] font-bold text-amber-400";
+                    }, cooldownTime);
+                }
+
+
+                if (type === 'lightPunch' || type === 'heavyPunch') audio.playPunch(type === 'heavyPunch');
+                if (type === 'lightKick' || type === 'heavyKick') audio.playKick(type === 'heavyKick');
+
+
+                if (type === 'skill1') { // Hadoken (Z)
+                    audio.playHadoken();
+                    const projVelX = this.facing === 'right' ? 13 : -13;
+                    const projX = this.facing === 'right' ? this.position.x + this.width + 10 : this.position.x - 10;
+                    projectiles.push(new Projectile({
+                        position: { x: projX, y: this.position.y + 40 },
+                        velocity: { x: projVelX, y: 0 },
+                        color: this.isPlayer2 ? '#f97316' : '#38bdf8',
+                        owner: this
+                    }));
+                }
+
+
+                if (type === 'skill2') { // Shoryuken (X)
+                    this.attackType = 'shoryuken';
+                    audio.playShoryuken();
+                    this.velocity.y = -14;
+                    this.velocity.x = this.facing === 'right' ? 5 : -5;
+                }
+
+
+                if (type === 'skill3') { // Tatsumaki (C)
+                    this.attackType = 'tatsumaki';
+                    audio.playKick(true);
+                    this.velocity.x = this.facing === 'right' ? 12 : -12;
+                }
+
+
+                if (type === 'skill4') { // Ultra Super (V)
+                    if (this.superMeter >= 100) {
+                        this.superMeter = 0;
+                        updateSuperMeters();
+                        audio.playHadoken();
+                        const projVelX = this.facing === 'right' ? 18 : -18;
+                        const projX = this.facing === 'right' ? this.position.x + this.width + 10 : this.position.x - 10;
+                        projectiles.push(new Projectile({
+                            position: { x: projX, y: this.position.y + 30 },
+                            velocity: { x: projVelX, y: 0 },
+                            color: '#eab308',
+                            owner: this,
+                            isBeam: true
+                        }));
+                    }
+                }
+
+
+                const attackDuration = (type === 'heavyPunch' || type === 'heavyKick') ? 250 : 150;
+                setTimeout(() => {
+                    this.isAttacking = false;
+                    this.attackType = null;
+                }, attackDuration);
+            }
+
+
+            takeDamage(amount, knockbackForce = 10, attackerFacing = 'right') {
+                if (this.isInvulnerable) return;
+
+
+                if (this.isGuarding) {
+                    amount *= 0.10;
+                    knockbackForce = 0;
+                    audio.playGuard();
+                    createHitParticles(this.position.x + this.width / 2, this.position.y + 40, '#60a5fa');
+                } else {
+                    this.isHit = true;
+                    this.hitTimer = 0;
+                    audio.playHit(knockbackForce >= 15);
+                    const dir = attackerFacing === 'right' ? 1 : -1;
+                    this.knockbackVelX = dir * knockbackForce;
+                    triggerScreenShake(knockbackForce >= 15 ? 14 : 6, knockbackForce >= 15 ? 12 : 6);
+                    createHitParticles(this.position.x + this.width / 2, this.position.y + 30, knockbackForce >= 15 ? '#f97316' : '#fef08a');
+                }
+
+
+                this.health -= amount;
+                if (this.health < 0) this.health = 0;
+
+
+                this.superMeter = Math.min(100, this.superMeter + 12);
+                updateSuperMeters();
+
+
+                const hpBar = this.isPlayer2 ? document.getElementById('p2-hp-bar') : document.getElementById('p1-hp-bar');
+                const hpText = this.isPlayer2 ? document.getElementById('p2-hp-text') : document.getElementById('p1-hp-text');
+                hpBar.style.width = `${this.health}%`;
+                hpText.textContent = `${Math.ceil(this.health)} HP`;
+            }
+
+
+            // Enhanced Smart Spacing AI Engine
+            updateAI(target) {
+                if (!this.isPlayer2 || isGameOver) return;
+
+
+                aiDecisionTimer++;
+                const distance = Math.abs(this.position.x - target.position.x);
+
+
+                // Difficulty Parameters
+                let reactionInterval = 12; // Lower = Faster
+                let guardChance = 0.2;
+                let attackChance = 0.4;
+                let dodgeChance = 0.1;
+
+
+                if (aiDifficulty === 'easy') {
+                    reactionInterval = 20;
+                    guardChance = 0.05;
+                    attackChance = 0.25;
+                    dodgeChance = 0.05;
+                } else if (aiDifficulty === 'medium') {
+                    reactionInterval = 10;
+                    guardChance = 0.3;
+                    attackChance = 0.5;
+                    dodgeChance = 0.2;
+                } else if (aiDifficulty === 'hard') { // Expert
+                    reactionInterval = 4;
+                    guardChance = 0.7;
+                    attackChance = 0.75;
+                    dodgeChance = 0.45;
+                }
+
+
+                // Dynamic Movement (Footsies / Stepping back & forth)
+                if (aiMoveDuration > 0) {
+                    aiMoveDuration--;
+                    this.velocity.x = aiMoveDirection * 5;
+                } else {
+                    this.velocity.x = 0;
+                }
+
+
+                if (aiDecisionTimer % reactionInterval === 0) {
+                    // 1. Reactive Guard (Defend against Player's heavy attacks or skills)
+                    if (target.isAttacking && distance < 130 && Math.random() < guardChance) {
+                        this.isGuarding = true;
+                        setTimeout(() => this.isGuarding = false, aiDifficulty === 'hard' ? 350 : 250);
+                        return;
+                    }
+
+
+                    // 2. Dodge/Roll on high difficulty
+                    if (target.isAttacking && distance < 100 && Math.random() < dodgeChance) {
+                        this.dodge();
+                        return;
+                    }
+
+
+                    // 3. Spacing & Distance Management
+                    const idealMinDist = 110;
+                    const idealMaxDist = 180;
+
+
+                    if (distance < idealMinDist) {
+                        // Too close: Back up or counter attack
+                        if (Math.random() < attackChance) {
+                            const attacks = ['lightPunch', 'lightKick', 'heavyPunch', 'skill2'];
+                            this.attack(attacks[Math.floor(Math.random() * attacks.length)]);
+                        } else {
+                            aiMoveDirection = (this.position.x > target.position.x) ? 1 : -1; // Step Back
+                            aiMoveDuration = 10;
+                        }
+                    } else if (distance >= idealMinDist && distance <= idealMaxDist) {
+                        // Sweet Spot (Footsies): Weave & Poke
+                        if (Math.random() < attackChance) {
+                            const pokes = ['lightPunch', 'lightKick', 'skill1', 'skill3'];
+                            this.attack(pokes[Math.floor(Math.random() * pokes.length)]);
+                        } else {
+                            // Random step forward/backward to bait player
+                            aiMoveDirection = Math.random() < 0.5 ? 1 : -1;
+                            aiMoveDuration = 12;
+                        }
+                    } else {
+                        // Far distance: Approach slowly or cast Fireball / Ultimate
+                        if (this.superMeter >= 100 && Math.random() < 0.8) {
+                            this.attack('skill4');
+                        } else if (Math.random() < 0.4) {
+                            this.attack('skill1');
+                        } else {
+                            aiMoveDirection = (this.position.x > target.position.x) ? -1 : 1; // Step Forward
+                            aiMoveDuration = 15;
+                        }
+                    }
+                }
+            }
+        }
+
+
+        let projectiles = [];
+        let player1 = new Fighter({ position: { x: 150, y: 200 }, velocity: { x: 0, y: 0 }, color: '#ef4444', name: "RYU" });
+        let player2 = new Fighter({ position: { x: 800, y: 200 }, velocity: { x: 0, y: 0 }, color: '#3b82f6', isPlayer2: true, name: "KEN" });
+
+
+        function updateSuperMeters() {
+            document.getElementById('p1-special-bar').style.width = `${player1.superMeter}%`;
+            document.getElementById('p2-special-bar').style.width = `${player2.superMeter}%`;
+        }
+
+
+        function drawStage() {
+            ctx.save();
+            if (screenShakeTime > 0) {
+                screenShakeTime--;
+                ctx.translate((Math.random() - 0.5) * screenShakeIntensity, (Math.random() - 0.5) * screenShakeIntensity);
+            }
+
+
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGrad.addColorStop(0, '#0f172a'); skyGrad.addColorStop(0.7, '#1e1b4b'); skyGrad.addColorStop(1, '#311b92');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
+            ctx.fillStyle = 'rgba(254, 240, 138, 0.15)';
+            ctx.beginPath(); ctx.arc(canvas.width / 2, 120, 100, 0, Math.PI * 2); ctx.fill();
+
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(100, 180, 50, 300); ctx.fillRect(874, 180, 50, 300); ctx.fillRect(50, 150, 924, 30);
+
+
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(0, canvas.height - 95, canvas.width, 5);
+        }
+
+
+        function checkHitboxCollision(attacker, defender) {
+            if (!attacker.isAttacking || defender.isInvulnerable) return false;
+
+
+            let attackRange = 75;
+            if (attacker.attackType === 'lightKick') attackRange = 80;
+            if (attacker.attackType === 'heavyPunch') attackRange = 65;
+            if (attacker.attackType === 'heavyKick') attackRange = 55;
+            if (attacker.attackType === 'shoryuken' || attacker.attackType === 'tatsumaki') attackRange = 90;
+
+
+            const attackX = attacker.facing === 'right' ? attacker.position.x + attacker.width : attacker.position.x - attackRange;
+            const attackY = attacker.isCrouching ? attacker.position.y + 40 : attacker.position.y + 10;
+
+
+            return (
+                attackX < defender.position.x + defender.width &&
+                attackX + attackRange > defender.position.x &&
+                attackY < defender.position.y + defender.height &&
+                attackY + 50 > defender.position.y
+            );
+        }
+
+
+        function animate() {
+            animationFrameId = requestAnimationFrame(animate);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawStage();
+
+
+            player1.update();
+            player2.update();
+
+
+            if (!player1.isDodging) {
+                player1.velocity.x = 0;
+                if (keys.a.pressed) player1.velocity.x = -6;
+                else if (keys.d.pressed) player1.velocity.x = 6;
+            }
+
+
+            player2.updateAI(player1);
+
+
+            // Hit Detection P1 -> P2
+            if (checkHitboxCollision(player1, player2)) {
+                const type = player1.attackType;
+                player1.isAttacking = false;
+                let dmg = 7, knockback = 8;
+                if (type === 'heavyPunch') { dmg = 15; knockback = 22; }
+                if (type === 'lightKick') { dmg = 8; knockback = 10; }
+                if (type === 'heavyKick') { dmg = 18; knockback = 26; }
+                if (type === 'shoryuken') { dmg = 20; knockback = 28; }
+                if (type === 'tatsumaki') { dmg = 16; knockback = 20; }
+                player2.takeDamage(dmg, knockback, player1.facing);
+            }
+
+
+            // Hit Detection P2 -> P1
+            if (checkHitboxCollision(player2, player1)) {
+                const type = player2.attackType;
+                player2.isAttacking = false;
+                let dmg = 7, knockback = 8;
+                if (type === 'heavyPunch') { dmg = 15; knockback = 22; }
+                if (type === 'lightKick') { dmg = 8; knockback = 10; }
+                if (type === 'heavyKick') { dmg = 18; knockback = 26; }
+                if (type === 'shoryuken') { dmg = 20; knockback = 28; }
+                if (type === 'tatsumaki') { dmg = 16; knockback = 20; }
+                player1.takeDamage(dmg, knockback, player2.facing);
+            }
+
+
+            projectiles.forEach((proj, index) => {
+                if (!proj.active) { projectiles.splice(index, 1); return; }
+                proj.update();
+                const target = proj.owner === player1 ? player2 : player1;
+                const dist = Math.abs(proj.position.x - (target.position.x + target.width / 2));
+                if (!target.isInvulnerable && dist < (proj.isBeam ? 50 : 35)) {
+                    proj.active = false;
+                    target.takeDamage(proj.isBeam ? 35 : 22, 28, proj.velocity.x > 0 ? 'right' : 'left');
+                }
+            });
+
+
+            particles.forEach((p, idx) => {
+                if (p.alpha <= 0) particles.splice(idx, 1);
+                else { p.update(); p.draw(); }
+            });
+
+
+            ctx.restore();
+
+
+            if (player1.health <= 0 || player2.health <= 0) {
+                endGame(player1.health > 0 ? "PLAYER 1 WIN!" : "AI (KEN) WIN!");
+            }
+        }
+
+
+        function startTimer() {
+            gameTimer = 60;
+            document.getElementById('game-timer').textContent = gameTimer;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                gameTimer--;
+                document.getElementById('game-timer').textContent = gameTimer;
+                if (gameTimer <= 0) {
+                    clearInterval(timerInterval);
+                    endGame(player1.health >= player2.health ? "PLAYER 1 WIN!" : "AI (KEN) WIN!");
+                }
+            }, 1000);
+        }
+
+
+        function endGame(message) {
+            isGameOver = true;
+            cancelAnimationFrame(animationFrameId);
+            clearInterval(timerInterval);
+            const resultMsg = document.getElementById('result-message');
+            resultMsg.textContent = message;
+            resultMsg.classList.remove('hidden');
+            document.getElementById('start-btn-text').textContent = "다시 하기 (RESTART)";
+            document.getElementById('menu-overlay').classList.remove('hidden');
+        }
+
+
+        function startGame() {
+            audio.init();
+            player1 = new Fighter({ position: { x: 150, y: 200 }, velocity: { x: 0, y: 0 }, color: '#ef4444', name: "RYU" });
+            player2 = new Fighter({ position: { x: 800, y: 200 }, velocity: { x: 0, y: 0 }, color: '#3b82f6', isPlayer2: true, name: "KEN (AI)" });
+            projectiles = []; particles = []; isGameOver = false;
+
+
+            document.getElementById('p1-hp-bar').style.width = '100%';
+            document.getElementById('p2-hp-bar').style.width = '100%';
+            document.getElementById('p1-hp-text').textContent = '100 HP';
+            document.getElementById('p2-hp-text').textContent = '100 HP';
+            updateSuperMeters();
+            document.getElementById('menu-overlay').classList.add('hidden');
+
+
+            startTimer();
+            animate();
+        }
+
+
+        // Updated Key Mappings according to User Request
+        window.addEventListener('keydown', (e) => {
+            if (isGameOver) return;
+            switch (e.key) {
+                case 'a': case 'A': keys.a.pressed = true; break;
+                case 'd': case 'D': keys.d.pressed = true; break;
+                case 's': case 'S': player1.isCrouching = true; break;
+                case ' ': if (player1.isGrounded) player1.velocity.y = -16; break; // Spacebar Jump
+                case 'f': case 'F': player1.isGuarding = true; break; // F Key Defense
+                case 'Shift': player1.dodge(); break; // Dodge/Roll
+
+
+                // Attack Keys
+                case '1': player1.attack('lightPunch'); break; // 0.2s Light Punch
+                case '2': player1.attack('lightKick'); break;  // 0.2s Light Kick
+                case 'q': case 'Q': player1.attack('heavyPunch'); break; // 0.6s Heavy Punch
+                case 'e': case 'E': player1.attack('heavyKick'); break;  // 0.6s Heavy Kick
+
+
+                // Skill Keys
+                case 'z': case 'Z': player1.attack('skill1'); break; // Skill 1 (Hadoken)
+                case 'x': case 'X': player1.attack('skill2'); break; // Skill 2 (Shoryuken)
+                case 'c': case 'C': player1.attack('skill3'); break; // Skill 3 (Tatsumaki)
+                case 'v': case 'V': player1.attack('skill4'); break; // Skill 4 (Super)
+            }
+        });
+
+
+        window.addEventListener('keyup', (e) => {
+            switch (e.key) {
+                case 'a': case 'A': keys.a.pressed = false; break;
+                case 'd': case 'D': keys.d.pressed = false; break;
+                case 's': case 'S': player1.isCrouching = false; break;
+                case 'f': case 'F': player1.isGuarding = false; break;
+            }
+        });
+
+
+        // Touch Control Bindings
+        const bindTouchBtn = (id, onStart, onEnd) => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); if (onEnd) onEnd(); });
+            btn.addEventListener('mousedown', onStart);
+            btn.addEventListener('mouseup', () => { if (onEnd) onEnd(); });
+        };
+
+
+        bindTouchBtn('btn-left', () => keys.a.pressed = true, () => keys.a.pressed = false);
+        bindTouchBtn('btn-right', () => keys.d.pressed = true, () => keys.d.pressed = false);
+        bindTouchBtn('btn-up', () => { if (player1.isGrounded) player1.velocity.y = -16; });
+        bindTouchBtn('btn-down', () => player1.isCrouching = true, () => player1.isCrouching = false);
+        bindTouchBtn('btn-guard', () => player1.isGuarding = true, () => player1.isGuarding = false);
+        bindTouchBtn('btn-dodge', () => player1.dodge());
+        bindTouchBtn('btn-lpunch', () => player1.attack('lightPunch'));
+        bindTouchBtn('btn-hpunch', () => player1.attack('heavyPunch'));
+        bindTouchBtn('btn-lkick', () => player1.attack('lightKick'));
+        bindTouchBtn('btn-hkick', () => player1.attack('heavyKick'));
+        bindTouchBtn('btn-sk1', () => player1.attack('skill1'));
+        bindTouchBtn('btn-sk2', () => player1.attack('skill2'));
+        bindTouchBtn('btn-sk3', () => player1.attack('skill3'));
+        bindTouchBtn('btn-sk4', () => player1.attack('skill4'));
+
+
+        // Difficulty Selection Buttons Handlers
+        const btnEasy = document.getElementById('diff-easy');
+        const btnMedium = document.getElementById('diff-medium');
+        const btnHard = document.getElementById('diff-hard');
+        const diffBadge = document.getElementById('diff-badge');
+
+
+        function setDifficulty(diff) {
+            aiDifficulty = diff;
+            const selectedStyle = "py-2 rounded-xl bg-blue-600 border-2 border-blue-400 font-bold text-white text-xs shadow-md cursor-pointer";
+            const unselectedStyle = "py-2 rounded-xl bg-slate-800 border-2 border-slate-600 font-bold text-slate-300 text-xs shadow-md hover:bg-slate-700 cursor-pointer";
+
+
+            btnEasy.className = diff === 'easy' ? selectedStyle : unselectedStyle;
+            btnMedium.className = diff === 'medium' ? selectedStyle : unselectedStyle;
+            btnHard.className = diff === 'hard' ? selectedStyle : unselectedStyle;
+
+
+            if (diff === 'easy') { diffBadge.textContent = "초보 (EASY)"; diffBadge.className = "text-[10px] font-extrabold text-emerald-400 mt-1 uppercase"; }
+            if (diff === 'medium') { diffBadge.textContent = "중수 (MEDIUM)"; diffBadge.className = "text-[10px] font-extrabold text-blue-400 mt-1 uppercase"; }
+            if (diff === 'hard') { diffBadge.textContent = "고수 (HARD)"; diffBadge.className = "text-[10px] font-extrabold text-red-500 mt-1 uppercase animate-pulse"; }
+        }
+
+
+        btnEasy.addEventListener('click', () => setDifficulty('easy'));
+        btnMedium.addEventListener('click', () => setDifficulty('medium'));
+        btnHard.addEventListener('click', () => setDifficulty('hard'));
+
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        drawStage();
+    </script>
+</body>
+</html>
