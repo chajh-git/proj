@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>나에게 딱 맞는 인생책 찾기 | 정교한 북 큐레이션 서비스</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+
+   <script>
+       tailwind.config = {
+           theme: {
+               extend: {
+                   colors: {
+                       bookBg: '#FDFBF7',
+                       bookCard: '#FFFFFF',
+                       bookNavy: '#1E293B',
+                       bookWarm: '#4A3B32',
+                       bookAccent: '#C86D51',
+                       bookAccentHover: '#B25B41',
+                       bookGold: '#D97706',
+                       bookSage: '#5B7065',
+                       bookCream: '#F4EFEB'
+                   },
+                   fontFamily: {
+                       serif: ['"Noto Serif KR"', 'serif'],
+                       sans: ['Pretendard', 'sans-serif']
+                   }
+               }
+           }
+       }
+   </script>
+
+
+   <style>
+       body {
+           background-color: #FDFBF7;
+           font-family: 'Pretendard', sans-serif;
+           color: #2D3748;
+           background-image: radial-gradient(#E2D8CE 0.75px, transparent 0.75px);
+           background-size: 24px 24px;
+       }
+
+
+       .serif-title {
+           font-family: 'Noto Serif KR', serif;
+       }
+
+
+       .fade-in {
+           animation: fadeIn 0.4s ease-out forwards;
+       }
+
+
+       @keyframes fadeIn {
+           from { opacity: 0; transform: translateY(12px); }
+           to { opacity: 1; transform: translateY(0); }
+       }
+
+
+       .option-card {
+           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+       }
+
+
+       .option-card:hover {
+           transform: translateY(-2px);
+           border-color: #C86D51;
+           box-shadow: 0 8px 20px -4px rgba(200, 109, 81, 0.15);
+       }
+
+
+       .option-card.selected {
+           border-color: #C86D51;
+           background-color: #FFF8F6;
+           box-shadow: 0 0 0 2px #C86D51;
+       }
+
+
+       ::-webkit-scrollbar {
+           width: 6px;
+       }
+       ::-webkit-scrollbar-track {
+           background: #F4EFEB;
+       }
+       ::-webkit-scrollbar-thumb {
+           background: #D1C5B8;
+           border-radius: 4px;
+       }
+   </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-800 antialiased selection:bg-rose-100 selection:text-rose-900">
+
+
+   <!-- Header Navigation -->
+   <header class="w-full border-b border-stone-200/60 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+       <div class="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
+           <div class="flex items-center space-x-2.5 cursor-pointer" onclick="resetToHome()">
+               <div class="w-9 h-9 rounded-full bg-bookWarm text-amber-50 flex items-center justify-center font-serif font-bold text-lg shadow-sm">
+                   <i class="fa-solid fa-book-open text-amber-200 text-sm"></i>
+               </div>
+               <span class="serif-title font-bold text-lg text-slate-900 tracking-tight">북큐레이터 Pro</span>
+           </div>
+           <span class="text-xs font-medium px-3 py-1 rounded-full bg-stone-100 text-stone-600 border border-stone-200/80 flex items-center">
+               <i class="fa-solid fa-sparkles text-amber-500 mr-1.5"></i>28+ 권 맞춤 큐레이션
+           </span>
+       </div>
+   </header>
+
+
+   <!-- Main Content Container -->
+   <main class="max-w-3xl mx-auto px-4 py-8 md:py-12 flex-grow w-full">
+
+
+       <!-- 1. START SCREEN -->
+       <div id="screen-start" class="fade-in space-y-8 text-center my-auto">
+           <div class="inline-block p-3 bg-amber-100/60 text-bookAccent rounded-full mb-2">
+               <i class="fa-solid fa-book-bookmark text-3xl md:text-4xl"></i>
+           </div>
+          
+           <div class="space-y-4">
+               <h1 class="serif-title text-3xl md:text-5xl font-bold text-slate-900 leading-tight">
+                   나에게 딱 맞는 <br class="hidden sm:inline"/>
+                   <span class="text-bookAccent underline decoration-amber-300 decoration-wavy underline-offset-8">인생책</span>을 찾아드릴게요
+               </h1>
+               <p class="text-stone-600 text-base md:text-lg max-w-lg mx-auto font-light leading-relaxed">
+                   독서 속도, 취향 장르, 마음 상태, 목적까지 세분화된 5가지 질문!<br/>
+                   풍부해진 28권의 데이터베이스로 중복 없이 다채로운 최고의 책들을 추천해 드립니다.
+               </p>
+           </div>
+
+
+           <!-- Feature Badges -->
+           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-xl mx-auto py-4 text-xs font-medium text-stone-600">
+               <div class="bg-white p-3 rounded-xl border border-stone-200/70 shadow-sm flex flex-col items-center gap-1.5">
+                   <i class="fa-solid fa-layer-group text-amber-500 text-base"></i>
+                   <span>28권+ 다채로운 DB</span>
+               </div>
+               <div class="bg-white p-3 rounded-xl border border-stone-200/70 shadow-sm flex flex-col items-center gap-1.5">
+                   <i class="fa-solid fa-sliders text-rose-500 text-base"></i>
+                   <span>다차원 매칭 알고리즘</span>
+               </div>
+               <div class="bg-white p-3 rounded-xl border border-stone-200/70 shadow-sm flex flex-col items-center gap-1.5">
+                   <i class="fa-solid fa-shapes text-emerald-600 text-base"></i>
+                   <span>다양한 카테고리 조합</span>
+               </div>
+               <div class="bg-white p-3 rounded-xl border border-stone-200/70 shadow-sm flex flex-col items-center gap-1.5">
+                   <i class="fa-solid fa-store text-indigo-500 text-base"></i>
+                   <span>3대 서점 즉시 연동</span>
+               </div>
+           </div>
+
+
+           <div class="pt-4">
+               <button onclick="startQuiz()" class="w-full sm:w-auto px-10 py-4 bg-bookAccent hover:bg-bookAccentHover text-white font-semibold text-lg rounded-2xl shadow-lg shadow-bookAccent/25 transform transition hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center mx-auto space-x-3">
+                   <span>책찾기 시작하기</span>
+                   <i class="fa-solid fa-arrow-right text-sm"></i>
+               </button>
+               <p class="text-xs text-stone-400 mt-3"><i class="fa-regular fa-clock mr-1"></i>소요 시간: 약 1분</p>
+           </div>
+       </div>
+
+
+       <!-- 2. QUIZ SCREEN -->
+       <div id="screen-quiz" class="hidden fade-in space-y-6">
+           <div class="bg-white p-5 rounded-2xl border border-stone-200/70 shadow-sm space-y-3">
+               <div class="flex justify-between items-center text-xs font-semibold text-stone-500">
+                   <span id="quiz-step-text" class="text-bookAccent">질문 1 / 5</span>
+                   <span id="quiz-progress-percent">20% 완료</span>
+               </div>
+               <div class="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+                   <div id="quiz-progress-bar" class="bg-bookAccent h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 20%"></div>
+               </div>
+           </div>
+
+
+           <div class="bg-white rounded-2xl p-6 md:p-8 border border-stone-200/70 shadow-sm space-y-6">
+               <div>
+                   <span id="question-category" class="inline-block px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full mb-3">
+                       카테고리
+                   </span>
+                   <h2 id="question-title" class="serif-title text-xl md:text-2xl font-bold text-slate-900 leading-snug">
+                       질문 제목이 들어갑니다.
+                   </h2>
+               </div>
+
+
+               <div id="options-container" class="space-y-3">
+                   <!-- Dynamic rendering of options -->
+               </div>
+           </div>
+
+
+           <div class="flex items-center justify-between pt-2">
+               <button id="btn-prev" onclick="prevQuestion()" class="px-5 py-2.5 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-100 text-sm font-medium transition disabled:opacity-40 disabled:hover:bg-transparent">
+                   <i class="fa-solid fa-chevron-left mr-1.5"></i> 이전
+               </button>
+               <div class="text-xs text-stone-400">
+                   항목을 클릭하면 자동으로 진행됩니다
+               </div>
+           </div>
+       </div>
+
+
+       <!-- 3. LOADING SCREEN -->
+       <div id="screen-loading" class="hidden fade-in text-center py-16 space-y-6">
+           <div class="relative w-24 h-24 mx-auto">
+               <div class="absolute inset-0 rounded-full border-4 border-amber-200 border-t-bookAccent animate-spin"></div>
+               <div class="absolute inset-0 flex items-center justify-center text-bookAccent">
+                   <i class="fa-solid fa-book-open text-2xl animate-pulse"></i>
+               </div>
+           </div>
+           <div class="space-y-2">
+               <h3 class="serif-title text-2xl font-bold text-slate-900">다차원 알고리즘 분석 중...</h3>
+               <p class="text-stone-500 text-sm max-w-md mx-auto">28권의 다채로운 도서 DB에서 사용자의 독서 속도, 선호 난이도, 현재 감정과 가장 일치하는 최적의 추천 조합을 다각도로 계산합니다.</p>
+           </div>
+       </div>
+
+
+       <!-- 4. RESULT SCREEN -->
+       <div id="screen-result" class="hidden fade-in space-y-8">
+           <div class="bg-gradient-to-br from-bookWarm to-slate-800 text-white p-6 md:p-8 rounded-3xl shadow-md space-y-3 relative overflow-hidden">
+               <div class="absolute -right-6 -bottom-6 opacity-10 text-9xl">
+                   <i class="fa-solid fa-book"></i>
+               </div>
+               <div class="inline-flex items-center space-x-2 px-3 py-1 bg-white/10 rounded-full text-amber-200 text-xs font-medium backdrop-blur-sm">
+                   <i class="fa-solid fa-user-astronaut"></i>
+                   <span>나의 독서 페르소나 리포트</span>
+               </div>
+               <h2 id="result-persona-title" class="serif-title text-2xl md:text-3xl font-bold text-amber-100 leading-tight">
+                   "지적 호기심과 감성적 치유를 함께 추구하는 멀티 탐독가"
+               </h2>
+               <p id="result-persona-desc" class="text-stone-300 text-sm leading-relaxed max-w-2xl">
+                   당신의 응답 데이터를 다각도로 종합한 결과입니다. 아래의 맞춤 추천 도서들은 유저님의 읽는 속도와 목적, 감정에 맞춰 서로 다른 분야에서 엄선되었습니다.
+               </p>
+           </div>
+
+
+           <div class="space-y-5">
+               <div class="flex items-center justify-between">
+                   <div>
+                       <h3 class="serif-title text-xl font-bold text-slate-900">다각도 맞춤 추천 도서 4선</h3>
+                       <p class="text-xs text-stone-500">장르/성향의 중복을 최소화한 다채로운 큐레이션 결과</p>
+                   </div>
+                   <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2.5 py-1 rounded-full">
+                       <i class="fa-solid fa-check mr-1"></i>정교 매칭 완료
+                   </span>
+               </div>
+
+
+               <div id="books-list-container" class="space-y-5">
+                   <!-- Dynamic rendering of book cards -->
+               </div>
+           </div>
+
+
+           <div class="bg-white p-6 rounded-2xl border border-stone-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+               <div class="text-center sm:text-left">
+                   <h4 class="font-bold text-slate-900 text-sm">추천 결과가 마음에 드셨나요?</h4>
+                   <p class="text-xs text-stone-500">지인들과 나의 독서 페르소나 및 추천 도서 리스트를 공유해 보세요!</p>
+               </div>
+               <div class="flex items-center space-x-3 w-full sm:w-auto">
+                   <button onclick="shareResult()" class="flex-1 sm:flex-none px-4 py-2.5 bg-stone-100 hover:bg-stone-200 text-slate-700 text-sm font-semibold rounded-xl transition flex items-center justify-center space-x-2">
+                       <i class="fa-solid fa-share-nodes"></i>
+                       <span>결과 공유하기</span>
+                   </button>
+                   <button onclick="resetToHome()" class="flex-1 sm:flex-none px-5 py-2.5 bg-bookAccent hover:bg-bookAccentHover text-white text-sm font-semibold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+                       <i class="fa-solid fa-rotate-right"></i>
+                       <span>다시 하기</span>
+                   </button>
+               </div>
+           </div>
+       </div>
+
+
+   </main>
+
+
+   <!-- Toast Notification -->
+   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-3 rounded-full shadow-xl text-sm font-medium transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center space-x-2">
+       <i class="fa-solid fa-circle-check text-emerald-400"></i>
+       <span id="toast-message">클립보드에 복사되었습니다.</span>
+   </div>
+
+
+   <footer class="w-full border-t border-stone-200/60 bg-stone-50 py-6 text-center text-xs text-stone-400">
+       <div class="max-w-4xl mx-auto px-4 space-y-1">
+           <p>© 2026 북큐레이터 Pro. 교보문고 · 알라딘 · YES24 최신 검색 시스템 완벽 연동</p>
+           <p>다채로운 28개 도서 데이터베이스와 세분화된 유사도 매칭 엔진 기반 서비스</p>
+       </div>
+   </footer>
+
+
+   <script>
+       // 1. EXTENDED BOOK DATABASE (28 Books across 5 main categories)
+       const bookDatabase = [
+           // --- 소설 / 문학 (8권) ---
+           {
+               id: "lit_1",
+               title: "삼체",
+               author: "류츠신",
+               publisher: "자음과모음",
+               category: "SF / 스릴러",
+               mainGroup: "novel",
+               difficulty: 4, // 1~5 (난이도/분량)
+               speed: 3,
+               rating: 9.8,
+               reviewsCount: "15,200+",
+               coverBg: "from-indigo-900 to-slate-950",
+               coverIcon: "fa-user-astronaut",
+               tags: ["sf", "fiction", "immersion", "deep", "space", "thriller"],
+               desc: "외계 문명과의 접촉을 둘러싼 경이로운 상상력과 압도적 과학 스릴러. 한번 시작하면 놓을 수 없는 대서사시입니다.",
+               targetTraits: ["sf", "fiction", "deep", "fun"]
+           },
+           {
+               id: "lit_2",
+               title: "모순",
+               author: "양귀자",
+               publisher: "쓰다",
+               category: "한국소설 / 대표작",
+               mainGroup: "novel",
+               difficulty: 3,
+               speed: 4,
+               rating: 9.9,
+               reviewsCount: "24,100+",
+               coverBg: "from-amber-800 to-stone-900",
+               coverIcon: "fa-feather-pointed",
+               tags: ["fiction", "classic", "healing", "humanities", "deep"],
+               desc: "20대 여성 안진진의 치열한 일상과 삶의 입체적 모순을 파헤치는 명작 소설. 섬세한 문장과 묵직한 통찰을 전합니다.",
+               targetTraits: ["fiction", "deep", "classic", "healing"]
+           },
+           {
+               id: "lit_3",
+               title: "불편한 편의점",
+               author: "김호연",
+               publisher: "나무옆의자",
+               category: "힐링소설 / 드라마",
+               mainGroup: "novel",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.8,
+               reviewsCount: "32,000+",
+               coverBg: "from-amber-600 to-amber-900",
+               coverIcon: "fa-store",
+               tags: ["healing", "fiction", "easy", "short", "fast"],
+               desc: "청파동 골목 편의점에서 펼쳐지는 웃음과 가슴 뭉클한 이웃들의 이야기. 독서 입문자도 부담 없이 읽기 좋습니다.",
+               targetTraits: ["healing", "fiction", "easy", "short"]
+           },
+           {
+               id: "lit_4",
+               title: "구의 증명",
+               author: "최진영",
+               publisher: "은행나무",
+               category: "한국소설 / 로맨스",
+               mainGroup: "novel",
+               difficulty: 2,
+               speed: 5,
+               rating: 9.6,
+               reviewsCount: "18,400+",
+               coverBg: "from-rose-800 to-stone-900",
+               coverIcon: "fa-heart-broken",
+               tags: ["fiction", "romance", "deep", "emotional", "short"],
+               desc: "사랑하는 이를 잃은 비극적이고 아름다운 지독한 사랑의 기록. 강렬한 감정적 여운과 몰입을 느끼고 싶을 때 추천합니다.",
+               targetTraits: ["fiction", "emotional", "short", "deep"]
+           },
+           {
+               id: "lit_5",
+               title: "지구 끝의 온실",
+               author: "김초엽",
+               publisher: "자음과모음",
+               category: "한국 SF / 힐링",
+               mainGroup: "novel",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.7,
+               reviewsCount: "21,000+",
+               coverBg: "from-emerald-800 to-teal-950",
+               coverIcon: "fa-seedling",
+               tags: ["sf", "fiction", "healing", "emotional", "easy"],
+               desc: "멸망 이후의 세계에서 싹튼 온기와 희망의 정원. 따뜻한 감성과 참신한 SF적 지평을 동시에 선물합니다.",
+               targetTraits: ["sf", "healing", "fiction", "easy"]
+           },
+           {
+               id: "lit_6",
+               title: "나미야 잡화점의 기적",
+               author: "히가시노 게이고",
+               publisher: "현대문학",
+               category: "미스터리 / 감성소설",
+               mainGroup: "novel",
+               difficulty: 2,
+               speed: 5,
+               rating: 9.8,
+               reviewsCount: "40,000+",
+               coverBg: "from-orange-700 to-stone-900",
+               coverIcon: "fa-envelope-open-text",
+               tags: ["fiction", "thriller", "healing", "immersion", "fast"],
+               desc: "오래된 잡화점에서 일어나는 시공간을 초월한 고민 상담. 흥미진진한 복선 구성과 벅찬 감동을 고루 갖췄습니다.",
+               targetTraits: ["fiction", "thriller", "healing", "fun"]
+           },
+           {
+               id: "lit_7",
+               title: "데미안",
+               author: "헤르만 헤세",
+               publisher: "민음사",
+               category: "세계문학 / 고전",
+               mainGroup: "novel",
+               difficulty: 4,
+               speed: 3,
+               rating: 9.6,
+               reviewsCount: "29,500+",
+               coverBg: "from-stone-700 to-zinc-900",
+               coverIcon: "fa-egg",
+               tags: ["classic", "humanities", "deep", "philosophy", "self"],
+               desc: "알을 깨고 나와 자기 자신에게로 이르는 진정한 여정. 방황하는 자아를 정립하는 나침반이 되어줄 고전 명작입니다.",
+               targetTraits: ["classic", "deep", "philosophy", "humanities"]
+           },
+           {
+               id: "lit_8",
+               title: "바깥은 여름",
+               author: "김애란",
+               publisher: "문학동네",
+               category: "단편소설집",
+               mainGroup: "novel",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.5,
+               reviewsCount: "14,300+",
+               coverBg: "from-sky-800 to-slate-900",
+               coverIcon: "fa-cloud-rain",
+               tags: ["fiction", "short", "emotional", "healing", "easy"],
+               desc: "일상의 균열 속에서 상실을 겪은 이들을 보듬는 정교한 7편의 단편. 짧게 끊어 읽기 부담 없는 진한 소설집입니다.",
+               targetTraits: ["short", "fiction", "emotional", "easy"]
+           },
+
+
+           // --- 인문 / 철학 / 역사 / 심리 (5권) ---
+           {
+               id: "hum_1",
+               title: "마흔에 읽는 쇼펜하우어",
+               author: "강용수",
+               publisher: "유노북스",
+               category: "서양철학 / 인문",
+               mainGroup: "humanities",
+               difficulty: 3,
+               speed: 3,
+               rating: 9.7,
+               reviewsCount: "19,200+",
+               coverBg: "from-teal-800 to-slate-900",
+               coverIcon: "fa-brain",
+               tags: ["philosophy", "humanities", "healing", "deep", "self"],
+               desc: "삶이 외롭고 고달플 때 쇼펜하우어가 전하는 명쾌한 철학. 고통을 완화하고 독립적 마음을 가꾸는 자생력을 높여줍니다.",
+               targetTraits: ["philosophy", "humanities", "healing", "deep"]
+           },
+           {
+               id: "hum_2",
+               title: "사피엔스",
+               author: "유발 하라리",
+               publisher: "김영사",
+               category: "세계사 / 인류학",
+               mainGroup: "humanities",
+               difficulty: 4,
+               speed: 2,
+               rating: 9.8,
+               reviewsCount: "35,000+",
+               coverBg: "from-amber-900 to-zinc-950",
+               coverIcon: "fa-globe-americas",
+               tags: ["history", "humanities", "deep", "science", "insight"],
+               desc: "유인원에서 인류의 신까지, 인류 역사 전체를 통찰하는 압도적 지적 시야. 대작의 깊은 감동을 만끽할 수 있습니다.",
+               targetTraits: ["history", "humanities", "deep", "insight"]
+           },
+           {
+               id: "hum_3",
+               title: "기분의 언어",
+               author: "유은정",
+               publisher: "아몬드",
+               category: "심리학 / 멘탈케어",
+               mainGroup: "humanities",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.5,
+               reviewsCount: "8,900+",
+               coverBg: "from-indigo-700 to-purple-950",
+               coverIcon: "fa-comments",
+               tags: ["psychology", "healing", "easy", "self", "emotional"],
+               desc: "내가 스쳐 지나쳤던 무수한 감정들의 진짜 이름을 찾아주는 마음 심리학. 감정의 주인이 되는 법을 안내합니다.",
+               targetTraits: ["psychology", "healing", "easy", "emotional"]
+           },
+           {
+               id: "hum_4",
+               title: "소크라테스의 변명",
+               author: "플라톤",
+               publisher: "돋을새김",
+               category: "동서양철학 / 고전",
+               mainGroup: "humanities",
+               difficulty: 3,
+               speed: 3,
+               rating: 9.4,
+               reviewsCount: "11,000+",
+               coverBg: "from-amber-800 to-yellow-950",
+               coverIcon: "fa-landmark",
+               tags: ["philosophy", "classic", "humanities", "deep"],
+               desc: "검미되지 않은 삶은 살 가치가 없다. 지혜에 대한 탐구와 삶의 진정한 용기가 무엇인지 일깨워주는 진정한 고전.",
+               targetTraits: ["philosophy", "classic", "deep", "humanities"]
+           },
+           {
+               id: "hum_5",
+               title: "총 균 쇠",
+               author: "재레드 다이아몬드",
+               publisher: "문학사상",
+               category: "역사 / 문명사",
+               mainGroup: "humanities",
+               difficulty: 5,
+               speed: 1,
+               rating: 9.7,
+               reviewsCount: "27,000+",
+               coverBg: "from-stone-800 to-neutral-950",
+               coverIcon: "fa-shield-halved",
+               tags: ["history", "humanities", "deep", "insight"],
+               desc: "무기, 병균, 금속이 어떻게 인류 문명의 불평등을 결정지었는가? 인류 역사의 근본 원인을 해부하는 대작입니다.",
+               targetTraits: ["history", "humanities", "deep", "insight"]
+           },
+
+
+           // --- 자기계발 / 동기부여 / 재테크 (5권) ---
+           {
+               id: "dev_1",
+               title: "세이노의 가르침",
+               author: "세이노",
+               publisher: "데이원",
+               category: "자기계발 / 처세",
+               mainGroup: "selfdev",
+               difficulty: 3,
+               speed: 4,
+               rating: 9.6,
+               reviewsCount: "45,000+",
+               coverBg: "from-slate-900 to-black",
+               coverIcon: "fa-fire-flame-curved",
+               tags: ["self", "motivation", "practical", "business", "hardcore"],
+               desc: "피와 살이 되는 거칠지만 직설적인 실전 인생 직언. 안주하는 일상에 호되게 자극을 주어 행동을 유도합니다.",
+               targetTraits: ["self", "motivation", "practical", "business"]
+           },
+           {
+               id: "dev_2",
+               title: "아주 작은 습관의 힘",
+               author: "제임스 클리어",
+               publisher: "비즈니스북스",
+               category: "습관 / 자기계발",
+               mainGroup: "selfdev",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.8,
+               reviewsCount: "38,000+",
+               coverBg: "from-blue-700 to-indigo-950",
+               coverIcon: "fa-chart-line",
+               tags: ["self", "habit", "practical", "easy", "motivation"],
+               desc: "하루 1%의 미세한 변화가 만드는 거대한 차이. 과학적인 방법으로 나쁜 습관을 버리고 시스템을 만드는 시스템 개조서.",
+               targetTraits: ["self", "habit", "practical", "easy"]
+           },
+           {
+               id: "dev_3",
+               title: "돈의 속성",
+               author: "김승호",
+               publisher: "스노우폭스북스",
+               category: "경제 / 재테크",
+               mainGroup: "selfdev",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.7,
+               reviewsCount: "39,000+",
+               coverBg: "from-emerald-900 to-slate-950",
+               coverIcon: "fa-coins",
+               tags: ["business", "money", "practical", "self", "insight"],
+               desc: "돈을 인격체로 바라보는 최고 부자의 통찰. 자산 관리는 물론 인생을 대하는 청렴한 태도를 가르쳐줍니다.",
+               targetTraits: ["business", "money", "practical", "self"]
+           },
+           {
+               id: "dev_4",
+               title: "원씽 (The One Thing)",
+               author: "게리 켈러",
+               publisher: "비즈니스북스",
+               category: "시간관리 / 몰입",
+               mainGroup: "selfdev",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.6,
+               reviewsCount: "22,000+",
+               coverBg: "from-red-800 to-stone-900",
+               coverIcon: "fa-bullseye",
+               tags: ["self", "focus", "practical", "motivation", "easy"],
+               desc: "복잡한 세상을 뚫고 단 하나의 단 하나의 핵심 목표에 집중하는 법. 과부하된 당신의 일상에 기적 같은 단순함을 줍니다.",
+               targetTraits: ["self", "focus", "practical", "motivation"]
+           },
+           {
+               id: "dev_5",
+               title: "역발상 투자전략",
+               author: "켄 피셔",
+               publisher: "에프엔미디어",
+               category: "투자 / 경제학",
+               mainGroup: "selfdev",
+               difficulty: 4,
+               speed: 2,
+               rating: 9.5,
+               reviewsCount: "7,500+",
+               coverBg: "from-slate-800 to-stone-950",
+               coverIcon: "fa-arrow-trend-up",
+               tags: ["business", "money", "deep", "insight"],
+               desc: "대중의 편견을 뒤집어 이익을 창출하는 역발상의 거장 켄 피셔의 대작. 깊이 있는 투자 철학을 세워줍니다.",
+               targetTraits: ["business", "money", "deep", "insight"]
+           },
+
+
+           // --- 에세이 / 시 / 감성 (5권) ---
+           {
+               id: "ess_1",
+               title: "메리골드 마음 세탁소",
+               author: "윤정은",
+               publisher: "북로망스",
+               category: "감성에세이 / 소설",
+               mainGroup: "essay",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.5,
+               reviewsCount: "13,000+",
+               coverBg: "from-rose-600 to-pink-900",
+               coverIcon: "fa-heart",
+               tags: ["essay", "healing", "easy", "emotional", "short"],
+               desc: "얼룩진 마음의 상처를 깨끗하게 지워주는 따스한 온기의 힐링북. 지쳐있을 때 잔잔한 공감과 휴식을 줍니다.",
+               targetTraits: ["essay", "healing", "easy", "emotional"]
+           },
+           {
+               id: "ess_2",
+               title: "마음챙김의 시",
+               author: "류시화 엮음",
+               publisher: "수오서재",
+               category: "시집 / 힐링",
+               mainGroup: "essay",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.8,
+               reviewsCount: "16,000+",
+               coverBg: "from-sky-700 to-indigo-950",
+               coverIcon: "fa-feather",
+               tags: ["poetry", "healing", "short", "easy", "emotional"],
+               desc: "삶의 고단함을 위로하는 한 줄의 여운. 긴 글을 읽을 여력이 없을 때 시 한 구절로 고요한 평화를 선물합니다.",
+               targetTraits: ["poetry", "healing", "short", "easy"]
+           },
+           {
+               id: "ess_3",
+               title: "기분을 관리하면 인생이 관리된다",
+               author: "김다슬",
+               publisher: "클라우드나인",
+               category: "에세이 / 동기부여",
+               mainGroup: "essay",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.4,
+               reviewsCount: "11,500+",
+               coverBg: "from-violet-700 to-purple-900",
+               coverIcon: "fa-sun",
+               tags: ["essay", "healing", "self", "easy", "short"],
+               desc: "감정에 흔들리지 않는 단단한 멘탈 리셋법. 부담 없는 문장으로 매일 나를 돌아보게 만듭니다.",
+               targetTraits: ["essay", "healing", "self", "easy"]
+           },
+           {
+               id: "ess_4",
+               title: "언어의 온도",
+               author: "이기주",
+               publisher: "말글터",
+               category: "일상에세이",
+               mainGroup: "essay",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.6,
+               reviewsCount: "31,000+",
+               coverBg: "from-amber-700 to-rose-900",
+               coverIcon: "fa-temperature-low",
+               tags: ["essay", "emotional", "healing", "easy", "short"],
+               desc: "말과 글이 가진 따뜻함과 차가움의 온도. 스쳐 지나가는 인연과 언어를 깊은 감성으로 관찰한 베스트셀러.",
+               targetTraits: ["essay", "emotional", "healing", "easy"]
+           },
+           {
+               id: "ess_5",
+               title: "어린 왕자",
+               author: "앙투안 드 생텍쥐페리",
+               publisher: "열린책들",
+               category: "세계고전 / 감성",
+               mainGroup: "essay",
+               difficulty: 1,
+               speed: 5,
+               rating: 9.9,
+               reviewsCount: "50,000+",
+               coverBg: "from-indigo-800 to-blue-950",
+               coverIcon: "fa-star",
+               tags: ["classic", "healing", "emotional", "short", "easy"],
+               desc: "어른들을 위한 영원한 동화. 가장 중요한 것은 눈에 보이지 않음을 다시금 고요하게 일깨워줍니다.",
+               targetTraits: ["classic", "healing", "emotional", "short"]
+           },
+
+
+           // --- 과학 / IT / 전문지식 (5권) ---
+           {
+               id: "sci_1",
+               title: "코스모스",
+               author: "칼 세이건",
+               publisher: "사이언스북스",
+               category: "교양과학 / 우주",
+               mainGroup: "science",
+               difficulty: 5,
+               speed: 1,
+               rating: 9.9,
+               reviewsCount: "26,000+",
+               coverBg: "from-purple-950 to-black",
+               coverIcon: "fa-meteor",
+               tags: ["science", "space", "deep", "humanities", "classic"],
+               desc: "광대한 우주 속 인간이라는 고귀한 존재의 탐구. 경외감과 지적 환희를 안겨주는 과학 교양서의 최고봉.",
+               targetTraits: ["science", "space", "deep", "humanities"]
+           },
+           {
+               id: "sci_2",
+               title: "물고기는 존재하지 않는다",
+               author: "룰루 밀러",
+               publisher: "곰출판",
+               category: "과학에세이 / 넌픽션",
+               mainGroup: "science",
+               difficulty: 3,
+               speed: 4,
+               rating: 9.8,
+               reviewsCount: "23,000+",
+               coverBg: "from-cyan-900 to-slate-950",
+               coverIcon: "fa-fish",
+               tags: ["science", "fiction", "deep", "insight", "thriller"],
+               desc: "사랑, 혼돈, 그리고 과학적 집착이 얽힌 경이로운 실화. 기존의 고정관념을 송두리째 뒤흔드는 반전이 숨어있습니다.",
+               targetTraits: ["science", "deep", "insight", "thriller"]
+           },
+           {
+               id: "sci_3",
+               title: "생각에 관한 생각",
+               author: "대니얼 카너먼",
+               publisher: "김영사",
+               category: "행동경제학 / 뇌과학",
+               mainGroup: "science",
+               difficulty: 4,
+               speed: 2,
+               rating: 9.7,
+               reviewsCount: "17,000+",
+               coverBg: "from-slate-800 to-indigo-950",
+               coverIcon: "fa-lightbulb",
+               tags: ["science", "psychology", "deep", "business", "insight"],
+               desc: "노벨경제학상 수상자가 밝혀내는 인간 직관의 착각과 합리적 의사결정의 비밀. 나의 판단력을 교정해 줍니다.",
+               targetTraits: ["science", "psychology", "deep", "insight"]
+           },
+           {
+               id: "sci_4",
+               title: "최재천의 공부",
+               author: "최재천, 안희경",
+               publisher: "김영사",
+               category: "생물학 / 공부법",
+               mainGroup: "science",
+               difficulty: 2,
+               speed: 4,
+               rating: 9.6,
+               reviewsCount: "9,800+",
+               coverBg: "from-emerald-900 to-stone-900",
+               coverIcon: "fa-graduation-cap",
+               tags: ["science", "humanities", "easy", "self", "insight"],
+               desc: "통섭의 학자 최재천 교수가 말하는 평생 배움의 즐거움. 질문하고 읽고 쓰는 공부의 가치를 쉽고 친근하게 전합니다.",
+               targetTraits: ["science", "easy", "self", "insight"]
+           },
+           {
+               id: "sci_5",
+               title: "AI 2041",
+               author: "카이푸 리, 체판",
+               publisher: "한빛비즈",
+               category: "인공지능 / 미래예측",
+               mainGroup: "science",
+               difficulty: 3,
+               speed: 3,
+               rating: 9.5,
+               reviewsCount: "8,200+",
+               coverBg: "from-blue-900 to-slate-950",
+               coverIcon: "fa-robot",
+               tags: ["sf", "science", "business", "insight", "practical"],
+               desc: "20년 후 인공지능이 바꿀 우리의 현실과 미래. 소설 형식의 스토리와 전문 해설이 매끄럽게 어우러집니다.",
+               targetTraits: ["sf", "science", "business", "insight"]
+           }
+       ];
+
+
+       // 2. QUIZ QUESTIONS & WEIGHT MAP (5 Questions / 오지선다)
+       const questions = [
+           {
+               id: 1,
+               category: "독서 속도 & 습관",
+               question: "책 한 권을 읽을 때 보통 어느 정도 속도나 패턴으로 읽으시나요?",
+               options: [
+                   { label: "① 집중력이 높아 하루~이틀 만에 끝까지 단숨에 읽는다", speed: 5, difficultyPref: 3, traits: ["fast", "immersion", "fiction"] },
+                   { label: "② 일주일 동안 매일 규칙적으로 조금씩 나눠 읽는다", speed: 3, difficultyPref: 3, traits: ["general", "habit"] },
+                   { label: "③ 한 달 이상 시간 날 때마다 여유롭게 펼쳐본다", speed: 2, difficultyPref: 2, traits: ["slow", "essay", "healing"] },
+                   { label: "④ 완독에 연연하지 않고 목차를 보고 필요한 부분만 골라 읽는다", speed: 4, difficultyPref: 4, traits: ["selective", "practical", "business", "self"] },
+                   { label: "⑤ 조금만 길어져도 집중이 힘들어 쉽게 중단하거나 포기한다", speed: 1, difficultyPref: 1, traits: ["easy", "short", "poetry", "beginner"] }
+               ]
+           },
+           {
+               id: 2,
+               category: "선호 장르 & 분위기",
+               question: "지금 가장 끌리는 책의 분야나 전체적인 분위기는 무엇인가요?",
+               options: [
+                   { label: "① 몰입감이 소름 돋는 소설 / SF / 스릴러 / 이야기 중심", speed: 4, difficultyPref: 3, traits: ["fiction", "sf", "thriller", "fun"] },
+                   { label: "② 지친 마음에 안식을 주는 감성에세이 / 시 / 따뜻한 가슴 이야기", speed: 5, difficultyPref: 1, traits: ["healing", "essay", "poetry", "emotional"] },
+                   { label: "③ 나의 동기부여, 성취, 부와 성공을 이끌어주는 자기계발/재테크", speed: 4, difficultyPref: 3, traits: ["self", "motivation", "business", "money", "practical"] },
+                   { label: "④ 인간과 세상의 깊이를 탐구하는 인문 / 역사 / 철학", speed: 2, difficultyPref: 4, traits: ["humanities", "philosophy", "history", "deep"] },
+                   { label: "⑤ 호기심을 자극하고 미래를 예견하는 교양과학 / IT / 미래전망", speed: 3, difficultyPref: 4, traits: ["science", "space", "psychology", "insight"] }
+               ]
+           },
+           {
+               id: 3,
+               category: "독서 목적",
+               question: "지금 당장 책을 읽음으로써 얻고자 하는 핵심 가치는 무엇인가요?",
+               options: [
+                   { label: "① 현실의 잡념을 잊게 만드는 자극적인 재미와 강렬한 몰입", speed: 5, difficultyPref: 3, traits: ["fun", "fiction", "immersion"] },
+                   { label: "② 스트레스로 지친 내 마음에 전달하는 진정한 휴식과 공감", speed: 4, difficultyPref: 1, traits: ["healing", "emotional", "essay"] },
+                   { label: "③ 현실적인 실력 향상, 습관 교정, 그리고 단단한 동기부여", speed: 4, difficultyPref: 3, traits: ["self", "habit", "practical", "motivation"] },
+                   { label: "④ 시야를 넓혀주고 지적인 격차를 만들어주는 깊은 통찰력", speed: 2, difficultyPref: 4, traits: ["deep", "insight", "humanities", "philosophy"] },
+                   { label: "⑤ 세상의 흐름을 이해하고 미래 기회를 잡기 위한 지식 습득", speed: 3, difficultyPref: 3, traits: ["business", "science", "money", "practical"] }
+               ]
+           },
+           {
+               id: 4,
+               category: "현재 내 마음 상태",
+               question: "요즘 당신의 마음 상태에 가장 가깝게 와닿는 문장은 무엇인가요?",
+               options: [
+                   { label: "① 무기력하고 지쳐있어 어떤 부담도 없는 따뜻한 위로가 필요하다", speed: 5, difficultyPref: 1, traits: ["healing", "easy", "essay", "short"] },
+                   { label: "② 자만하거나 나태해진 것 같아 솔직하고 강력한 자극이 필요하다", speed: 4, difficultyPref: 3, traits: ["motivation", "self", "practical"] },
+                   { label: "③ 답답한 현실에서 벗어나 새로운 상상과 다른 세상에 빠지고 싶다", speed: 5, difficultyPref: 3, traits: ["fiction", "sf", "fun", "thriller"] },
+                   { label: "④ 내 삶의 근본적인 고통이나 혼란을 다스릴 철학적 해답이 고프다", speed: 2, difficultyPref: 4, traits: ["philosophy", "humanities", "deep"] },
+                   { label: "⑤ 막연한 불안감을 떨치고 당장 실천 가능한 구체적 솔루션을 원한다", speed: 4, difficultyPref: 2, traits: ["practical", "business", "habit"] }
+               ]
+           },
+           {
+               id: 5,
+               category: "선호 분량 및 난이도",
+               question: "가장 읽기 편안하게 느껴지는 책의 난이도와 분량 수준은?",
+               options: [
+                   { label: "① 그림/시/여백이 많아 부담 없이 단숨에 넘겨보는 가벼운 책", speed: 5, difficultyPref: 1, traits: ["easy", "short", "poetry", "essay"] },
+                   { label: "② 200~300쪽 내외의 표준적이고 술술 잘 읽히는 부담 없는 책", speed: 4, difficultyPref: 2, traits: ["easy", "general", "fiction"] },
+                   { label: "③ 분량이 좀 되더라도 서사가 밀도 있고 묵직한 본리파 책", speed: 2, difficultyPref: 4, traits: ["deep", "fiction", "humanities"] },
+                   { label: "④ 다소 어렵고 방대하더라도 평생 자산이 되는 대작/고전", speed: 1, difficultyPref: 5, traits: ["classic", "deep", "history", "science"] },
+                   { label: "⑤ 가독성은 크게 개의치 않으며 평점과 검증이 끝난 명작", speed: 3, difficultyPref: 3, traits: ["general", "classic", "fiction"] }
+               ]
+           }
+       ];
+
+
+       // State Variables
+       let currentQuestionIdx = 0;
+       let userAnswers = [];
+
+
+       function startQuiz() {
+           currentQuestionIdx = 0;
+           userAnswers = [];
+           showScreen('screen-quiz');
+           renderQuestion();
+       }
+
+
+       function resetToHome() {
+           showScreen('screen-start');
+       }
+
+
+       function showScreen(screenId) {
+           const screens = ['screen-start', 'screen-quiz', 'screen-loading', 'screen-result'];
+           screens.forEach(id => {
+               const el = document.getElementById(id);
+               if (id === screenId) {
+                   el.classList.remove('hidden');
+               } else {
+                   el.classList.add('hidden');
+               }
+           });
+           window.scrollTo({ top: 0, behavior: 'smooth' });
+       }
+
+
+       function renderQuestion() {
+           const q = questions[currentQuestionIdx];
+           const total = questions.length;
+           const progressPercent = Math.round(((currentQuestionIdx + 1) / total) * 100);
+
+
+           document.getElementById('quiz-step-text').innerText = `질문 ${currentQuestionIdx + 1} / ${total}`;
+           document.getElementById('quiz-progress-percent').innerText = `${progressPercent}% 완료`;
+           document.getElementById('quiz-progress-bar').style.width = `${progressPercent}%`;
+
+
+           document.getElementById('question-category').innerText = q.category;
+           document.getElementById('question-title').innerText = q.question;
+
+
+           const container = document.getElementById('options-container');
+           container.innerHTML = '';
+
+
+           const selectedOptionIdx = userAnswers[currentQuestionIdx];
+
+
+           q.options.forEach((opt, idx) => {
+               const isSelected = selectedOptionIdx === idx;
+               const card = document.createElement('div');
+               card.className = `option-card p-4 rounded-xl border text-left cursor-pointer flex items-center justify-between space-x-3 transition ${
+                   isSelected ? 'selected border-bookAccent bg-rose-50/40' : 'border-stone-200/80 bg-white hover:border-stone-300'
+               }`;
+               card.onclick = () => selectOption(idx);
+
+
+               card.innerHTML = `
+                   <span class="text-sm md:text-base font-medium text-slate-800 leading-snug">${opt.label}</span>
+                   <div class="w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                       isSelected ? 'border-bookAccent bg-bookAccent text-white' : 'border-stone-300 bg-white'
+                   }">
+                       ${isSelected ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                   </div>
+               `;
+               container.appendChild(card);
+           });
+
+
+           document.getElementById('btn-prev').disabled = (currentQuestionIdx === 0);
+       }
+
+
+       function selectOption(optionIdx) {
+           userAnswers[currentQuestionIdx] = optionIdx;
+           renderQuestion();
+
+
+           setTimeout(() => {
+               if (currentQuestionIdx < questions.length - 1) {
+                   currentQuestionIdx++;
+                   renderQuestion();
+               } else {
+                   finishQuiz();
+               }
+           }, 250);
+       }
+
+
+       function prevQuestion() {
+           if (currentQuestionIdx > 0) {
+               currentQuestionIdx--;
+               renderQuestion();
+           }
+       }
+
+
+       function finishQuiz() {
+           showScreen('screen-loading');
+           setTimeout(() => {
+               calculateAndShowResult();
+           }, 1300);
+       }
+
+
+       function calculateAndShowResult() {
+           // Collect User Traits, Target Speed, and Target Difficulty
+           const userTraitMap = {};
+           let totalSpeedPref = 0;
+           let totalDiffPref = 0;
+
+
+           userAnswers.forEach((ansIdx, qIdx) => {
+               const opt = questions[qIdx].options[ansIdx];
+               totalSpeedPref += opt.speed;
+               totalDiffPref += opt.difficultyPref;
+               opt.traits.forEach(t => {
+                   userTraitMap[t] = (userTraitMap[t] || 0) + 1;
+               });
+           });
+
+
+           const avgUserSpeed = totalSpeedPref / questions.length;
+           const avgUserDiff = totalDiffPref / questions.length;
+
+
+           // Generate Dynamic User Persona
+           let personaTitle = "지적 호기심과 감성적 위로를 균형 있게 탐구하는 탐독가";
+           let personaDesc = "당신은 특정 분야에 치우치지 않고 책이 가진 본연의 즐거움과 지적 성장을 두루 갖춘 입체적인 독서 취향을 보유하고 있습니다. 읽는 속도와 난이도에 알맞은 균형 잡힌 도서들이 추천됩니다.";
+
+
+           if ((userTraitMap.fiction || 0) >= 3 || (userTraitMap.sf || 0) >= 2) {
+               personaTitle = "현실을 넘어 강렬한 이야기 속으로 빠져드는 몰입형 서사 탐험가";
+               personaDesc = "치밀한 복선, 몰입감 높은 사건 전개, 입체적인 세계관을 만났을 때 독서의 참맛을 느끼십니다. 답답한 일상을 환기해 줄 흥미진진한 작품들이 준비되었습니다.";
+           } else if ((userTraitMap.self || 0) >= 3 || (userTraitMap.motivation || 0) >= 2) {
+               personaTitle = "내일의 더 높은 나를 만드는 열정적 주도형 성장의 아이콘";
+               personaDesc = "독서를 단순한 유흥이 아닌 확실한 자기 발전과 행동의 디딤돌로 삼습니다. 현실을 직시하고 실행력을 높여주는 도서들에서 최고의 가치를 얻으실 것입니다.";
+           } else if ((userTraitMap.humanities || 0) >= 3 || (userTraitMap.philosophy || 0) >= 2 || (userTraitMap.history || 0) >= 2) {
+               personaTitle = "본질적 질문을 던지고 삶의 깊이를 넓히는 지적 아카이비스트";
+               personaDesc = "단순한 지식 전달을 넘어 인간과 세상의 근본을 통찰하는 무게감 있는 글에서 큰 충족감을 얻습니다. 깊이 있는 인문·철학 도서가 마음의 중심을 잡아줍니다.";
+           } else if ((userTraitMap.healing || 0) >= 3 || (userTraitMap.essay || 0) >= 3) {
+               personaTitle = "마음의 결을 다스리고 따뜻한 온기를 나르는 정서적 힐러";
+               personaDesc = "가장 편안한 자세로 문장이 주는 온기와 따스함을 감상하는 독서가입니다. 일상의 상처를 보듬어주는 섬세한 언어들이 큰 위로를 전달합니다.";
+           } else if ((userTraitMap.science || 0) >= 2) {
+               personaTitle = "우주와 인간의 법칙을 탐구하는 합리적 미래 지식인";
+               personaDesc = "과학적 사실과 미래 예측, 합리적인 판단력에 대한 원천적인 호기심이 왕성합니다. 세상을 넓게 바라보는 과학 교양서에서 지적 소름을 경험하실 수 있습니다.";
+           }
+
+
+           document.getElementById('result-persona-title').innerText = `"${personaTitle}"`;
+           document.getElementById('result-persona-desc').innerText = personaDesc;
+
+
+           // Score All 28 Books using Multi-dimensional Scoring
+           const scoredBooks = bookDatabase.map(book => {
+               let score = 0;
+
+
+               // 1. Tag Matching Score
+               book.targetTraits.forEach(trait => {
+                   if (userTraitMap[trait]) {
+                       score += userTraitMap[trait] * 3;
+                   }
+               });
+
+
+               // 2. Difficulty & Speed Alignment Score
+               const diffDiff = Math.abs(book.difficulty - avgUserDiff);
+               score += (5 - diffDiff) * 1.5;
+
+
+               // 3. Rating & Popularity Bonus
+               score += (book.rating - 9.0) * 2;
+
+
+               return { ...book, finalScore: score };
+           });
+
+
+           // Sort by score descending
+           scoredBooks.sort((a, b) => b.finalScore - a.finalScore);
+
+
+           // Diversification Filtering Engine (Ensure Max 1-2 books per Main Group)
+           const selectedBooks = [];
+           const groupCounts = { novel: 0, humanities: 0, selfdev: 0, essay: 0, science: 0 };
+
+
+           for (const book of scoredBooks) {
+               if (selectedBooks.length >= 4) break;
+
+
+               const currentGroupCount = groupCounts[book.mainGroup] || 0;
+               // Allow max 1 book per main category to guarantee rich diversity (or max 2 if needed)
+               if (currentGroupCount < 1) {
+                   selectedBooks.push(book);
+                   groupCounts[book.mainGroup] = currentGroupCount + 1;
+               }
+           }
+
+
+           // Fallback if less than 4 due to strict category limit
+           if (selectedBooks.length < 4) {
+               for (const book of scoredBooks) {
+                   if (selectedBooks.length >= 4) break;
+                   if (!selectedBooks.some(b => b.id === book.id)) {
+                       selectedBooks.push(book);
+                   }
+               }
+           }
+
+
+           // Render Result Cards
+           const container = document.getElementById('books-list-container');
+           container.innerHTML = '';
+
+
+           selectedBooks.forEach((book, index) => {
+               const searchKeyword = encodeURIComponent(`${book.title} ${book.author}`);
+               const kyoboUrl = `https://search.kyobobook.co.kr/search?keyword=${searchKeyword}`;
+               const aladinUrl = `https://www.aladin.co.kr/search/wsearchresult.aspx?SearchWord=${searchKeyword}`;
+               const yes24Url = `https://www.yes24.com/Product/Search?domain=ALL&query=${searchKeyword}`;
+
+
+               // Dynamic Reason Explanation
+               let dynamicReason = "선택하신 독서 속도와 난이도 선호에 가장 잘 어울리는 대표 검증작입니다.";
+               if (book.mainGroup === 'novel') {
+                   dynamicReason = "유저님이 원하시는 강력한 몰입감과 서사적 즐거움을 충족시켜 줄 최적의 소설입니다.";
+               } else if (book.mainGroup === 'selfdev') {
+                   dynamicReason = "나태함을 일깨우고 현실적인 성취와 행동을 이끌어내기에 더없이 유용한 지침서입니다.";
+               } else if (book.mainGroup === 'humanities') {
+                   dynamicReason = "깊이 있는 지적 통찰과 세상을 바라보는 새로운 눈을 만들어 줄 명작입니다.";
+               } else if (book.mainGroup === 'essay') {
+                   dynamicReason = "지친 마음에 휴식과 고요한 온기를 불어넣어 줄 부담 없는 감성 도서입니다.";
+               } else if (book.mainGroup === 'science') {
+                   dynamicReason = "합리적 호기심과 우주/지식에 대한 경외감을 선물해 줄 교양 과학서입니다.";
+               }
+
+
+               const card = document.createElement('div');
+               card.className = "bg-white rounded-2xl border border-stone-200/80 p-5 md:p-6 shadow-sm hover:shadow-md transition space-y-4";
+               card.innerHTML = `
+                   <div class="flex flex-col md:flex-row gap-5 items-start">
+                       <!-- Book Cover Graphic -->
+                       <div class="w-full md:w-32 h-44 bg-gradient-to-br ${book.coverBg} rounded-xl shadow-md flex flex-col justify-between p-4 text-white flex-shrink-0 relative overflow-hidden group">
+                           <div class="flex justify-between items-start">
+                               <span class="text-[10px] uppercase tracking-wider font-semibold opacity-75">RECOMMEND 0${index + 1}</span>
+                               <i class="fa-solid ${book.coverIcon} text-amber-200 opacity-80 text-lg"></i>
+                           </div>
+                           <div>
+                               <h4 class="serif-title font-bold text-base leading-tight line-clamp-2">${book.title}</h4>
+                               <p class="text-xs text-stone-300 mt-1">${book.author}</p>
+                           </div>
+                           <div class="text-[10px] text-amber-200/90 font-medium">${book.publisher}</div>
+                       </div>
+
+
+                       <!-- Book Content -->
+                       <div class="flex-grow space-y-3">
+                           <div class="flex flex-wrap items-center justify-between gap-2">
+                               <div class="flex items-center space-x-2">
+                                   <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-900">${book.category}</span>
+                                   <span class="text-xs font-bold text-amber-600 flex items-center">
+                                       <i class="fa-solid fa-star text-amber-400 mr-1"></i> ${book.rating}
+                                       <span class="text-stone-400 font-normal ml-1">(${book.reviewsCount})</span>
+                                   </span>
+                               </div>
+                               <span class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                                   <i class="fa-solid fa-bullseye mr-1"></i>맞춤 적합도 최고
+                               </span>
+                           </div>
+
+
+                           <h3 class="serif-title text-xl font-bold text-slate-900">${book.title}</h3>
+
+
+                           <div class="p-3 bg-stone-50 rounded-xl border border-stone-100 text-xs text-stone-600 space-y-1">
+                               <span class="font-semibold text-bookAccent"><i class="fa-solid fa-lightbulb mr-1"></i>추천 이유:</span>
+                               <p class="leading-relaxed">${dynamicReason}</p>
+                           </div>
+
+
+                           <p class="text-sm text-stone-600 leading-relaxed">${book.desc}</p>
+
+
+                           <!-- Tags -->
+                           <div class="flex flex-wrap gap-1.5 pt-1">
+                               ${book.tags.map(t => `<span class="text-[11px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md">#${t}</span>`).join('')}
+                           </div>
+
+
+                           <!-- Online Bookstore External Links -->
+                           <div class="pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                               <span class="font-medium text-stone-500">온라인 서점 검색 연동:</span>
+                               <div class="flex items-center space-x-2">
+                                   <a href="${kyoboUrl}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-700 rounded-lg transition font-medium">
+                                       교보문고 <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-0.5"></i>
+                                   </a>
+                                   <a href="${aladinUrl}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-stone-100 hover:bg-pink-50 hover:text-pink-600 text-stone-700 rounded-lg transition font-medium">
+                                       알라딘 <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-0.5"></i>
+                                   </a>
+                                   <a href="${yes24Url}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 bg-stone-100 hover:bg-blue-50 hover:text-blue-600 text-stone-700 rounded-lg transition font-medium">
+                                       YES24 <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-0.5"></i>
+                                   </a>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+               `;
+               container.appendChild(card);
+           });
+
+
+           showScreen('screen-result');
+       }
+
+
+       function shareResult() {
+           const dummyText = `[나에게 딱 맞는 인생책 찾기 Pro]\n나의 독서 페르소나와 다채로운 맞춤 책 추천 결과를 확인해 보세요!\nhttps://book-curator.example.com`;
+          
+           const textArea = document.createElement("textarea");
+           textArea.value = dummyText;
+           document.body.appendChild(textArea);
+           textArea.select();
+           try {
+               document.execCommand('copy');
+               showToast("결과 링크가 클립보드에 복사되었습니다!");
+           } catch (err) {
+               showToast("공유하기 기능이 활성화되었습니다.");
+           }
+           document.body.removeChild(textArea);
+       }
+
+
+       function showToast(msg) {
+           const toast = document.getElementById('toast');
+           document.getElementById('toast-message').innerText = msg;
+           toast.classList.remove('opacity-0', 'pointer-events-none');
+           setTimeout(() => {
+               toast.classList.add('opacity-0', 'pointer-events-none');
+           }, 2500);
+       }
+   </script>
+</body>
+</html>

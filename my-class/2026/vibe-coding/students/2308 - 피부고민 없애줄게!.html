@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>피부고민 없애줄게!</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Malgun Gothic', '맑은 고딕', sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 50%, #a5d6a7 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(46, 125, 50, 0.15);
+            max-width: 720px;
+            width: 100%;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        h1 { color: #2e7d32; font-size: 2.2em; margin-bottom: 15px; }
+        h2 { color: #388e3c; margin: 20px 0; }
+        h3 { color: #2e7d32; margin: 15px 0 10px; }
+        p { color: #455a64; line-height: 1.6; margin: 10px 0; }
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            margin: 8px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 180px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(46, 125, 50, 0.25); }
+        .btn-primary { background: #4caf50; color: white; }
+        .btn-secondary { background: #66bb6a; color: white; }
+        .btn-success { background: #81c784; color: #1b5e20; }
+        .btn-info { background: #a5d6a7; color: #1b5e20; }
+        .btn-back { background: #bdbdbd; color: #333; }
+        .question { font-size: 1.3em; margin: 30px 0; color: #2e7d32; }
+        .progress { font-size: 1.1em; color: #558b2f; margin-bottom: 20px; }
+        .result-type { font-size: 1.5em; color: #2e7d32; font-weight: bold; margin: 15px 0; }
+        .product-item { text-align: left; margin: 8px 0; padding: 10px 15px; background: #f1f8e9; border-radius: 8px; border-left: 4px solid #66bb6a; }
+        .tips, .routine { text-align: left; background: #f1f8e9; padding: 20px; border-radius: 12px; margin: 15px 0; line-height: 1.8; }
+        .disclaimer { font-size: 0.85em; color: #78909c; margin-top: 30px; }
+        .hidden { display: none; }
+        .option-btn { width: 220px; margin: 6px; }
+        .rec-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 20px 0; }
+        .rec-box { 
+            background: #f9fbe7; 
+            border-radius: 12px; 
+            padding: 18px; 
+            width: 300px; 
+            text-align: left; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: 1px solid #c5e1a5;
+        }
+        .metric { margin: 8px 0; }
+        .metric-label { font-weight: bold; color: #33691e; }
+        .stars { color: #ffb300; letter-spacing: 2px; font-size: 1.1em; }
+        .bar { 
+            height: 10px; 
+            background: #e0e0e0; 
+            border-radius: 5px; 
+            overflow: hidden; 
+            margin-top: 4px;
+        }
+        .bar-fill { height: 100%; background: #66bb6a; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 시작 화면 -->
+        <div id="start-screen">
+            <h1>피부고민 없애줄게!</h1>
+            <p>30개의 질문으로 나의 피부 타입을 분석하고<br>맞춤 스킨케어 팁과 추천 제품을 받아보세요!</p>
+            <button class="btn btn-primary" onclick="startQuiz()">시작하기</button>
+            <p class="disclaimer">※ 이 프로그램은 교육용이며, 심각한 피부 문제는 피부과 전문의와 상담하세요.</p>
+        </div>
+
+        <!-- 질문 화면 -->
+        <div id="quiz-screen" class="hidden">
+            <div class="progress" id="progress">질문 1 / 30</div>
+            <div class="question" id="question-text"></div>
+            <div id="options"></div>
+            <button class="btn btn-back" id="back-btn" onclick="goBack()" style="margin-top:20px;">← 뒤로가기</button>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div id="result-screen" class="hidden">
+            <h2>🎉 분석 결과 🎉</h2>
+            <div class="result-type" id="skin-type"></div>
+            <p id="acne-note"></p>
+            <button class="btn btn-success" onclick="showProducts()">올리브영 추천 제품 보기</button><br>
+            <button class="btn btn-secondary" onclick="showRoutine()">기초 스킨케어 루틴 보기</button><br>
+            <button class="btn btn-info" onclick="showTips()">피부 관리 팁 보기</button><br>
+            <button class="btn btn-primary" onclick="showBaseMakeup()">파데 & 쿠션 추천받기</button><br>
+            <button class="btn btn-back" onclick="showStart()" style="margin-top:20px;">처음으로</button>
+        </div>
+
+        <!-- 제품 화면 -->
+        <div id="products-screen" class="hidden">
+            <h2 id="products-title">추천 제품</h2>
+            <div id="products-list"></div>
+            <p class="disclaimer">※ 제품명은 인기 제품 예시입니다. 올리브영 앱/사이트에서 검색해 보세요!</p>
+            <button class="btn btn-back" onclick="showResult()">뒤로</button>
+        </div>
+
+        <!-- 루틴 화면 -->
+        <div id="routine-screen" class="hidden">
+            <h2>기초 스킨케어 순서</h2>
+            <div class="routine">
+                <strong>아침 루틴:</strong><br>
+                1. 가벼운 세안 (물세안 또는 순한 클렌저)<br>
+                2. 토너<br>
+                3. 세럼/앰플<br>
+                4. 크림 (건성이면 충분히)<br>
+                5. 선크림 (필수!)<br><br>
+                <strong>저녁 루틴:</strong><br>
+                1. 클렌징 (메이크업 있으면 오일/밤 → 폼)<br>
+                2. 토너<br>
+                3. 세럼/앰플<br>
+                4. 크림 (보습 강화)<br>
+                5. (선택) 수면팩
+            </div>
+            <p style="color:#2e7d32;">팁: 세안 후 3분 안에 보습제를 발라 수분을 잠그세요!</p>
+            <button class="btn btn-back" onclick="showResult()">뒤로</button>
+        </div>
+
+        <!-- 팁 화면 -->
+        <div id="tips-screen" class="hidden">
+            <h2>피부 관리 팁</h2>
+            <div class="tips">
+                • 여드름은 절대 짜지 마세요. (흉터 위험)<br>
+                • 충분한 수면과 물을 많이 마시세요.<br>
+                • 자극적인 음식, 단 음식은 줄이세요.<br>
+                • 선크림은 사계절 필수입니다.<br>
+                • 새로운 제품은 패치 테스트 후 사용하세요.<br>
+                • 베개 커버와 마스크를 자주 교체하세요.<br>
+                • 스트레스 관리가 피부에도 중요합니다.<br>
+                • 건성이면 보습 강화, 지성이면 유분 조절 + 보습.
+            </div>
+            <button class="btn btn-back" onclick="showResult()">뒤로</button>
+        </div>
+
+        <!-- 파데 & 쿠션 선택 (피부타입) -->
+        <div id="skin-select-screen" class="hidden">
+            <h2>파데 & 쿠션 추천 - 피부 타입 선택</h2>
+            <div id="skin-buttons"></div>
+            <button class="btn btn-back" onclick="showResult()" style="margin-top:20px;">뒤로</button>
+        </div>
+
+        <!-- 계절 선택 -->
+        <div id="season-screen" class="hidden">
+            <h2>계절을 선택하세요</h2>
+            <button class="btn option-btn" onclick="showBaseRec('봄')">봄</button>
+            <button class="btn option-btn" onclick="showBaseRec('여름')">여름</button>
+            <button class="btn option-btn" onclick="showBaseRec('가을')">가을</button>
+            <button class="btn option-btn" onclick="showBaseRec('겨울')">겨울</button>
+            <br>
+            <button class="btn btn-back" onclick="showSkinSelect()" style="margin-top:20px;">뒤로</button>
+        </div>
+
+        <!-- 베이스 추천 결과 (쿠션 + 파데 같이) -->
+        <div id="base-result-screen" class="hidden">
+            <h2>파데 & 쿠션 추천 결과</h2>
+            <p id="base-info"></p>
+            <div class="rec-container" id="recs"></div>
+            <p style="color:#2e7d32; margin-top:15px;">올리브영에서 해당 제품 검색 후 리뷰를 확인해 보세요!</p>
+            <button class="btn btn-back" onclick="showSkinSelect()">다시 선택</button>
+            <button class="btn btn-secondary" onclick="showResult()">결과로 돌아가기</button>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            "세안 후 피부가 당기고 건조한가요?",
+            "피부에 각질이 자주 일어나나요?",
+            "겨울이나 환절기에 피부가 더 건조해지나요?",
+            "화장이 쉽게 들뜨거나 각질이 부각되나요?",
+            "보습제를 바르지 않으면 피부가 푸석한가요?",
+            "입가나 눈가가 자주 건조한가요?",
+            "피부를 만지면 거칠게 느껴지나요?",
+            "수분 크림을 많이 발라도 금방 건조해지나요?",
+            "오후가 되면 T존(이마, 코)에 유분이 많이 나오나요?",
+            "모공이 크고 잘 보이나요?",
+            "피부가 번들번들한가요?",
+            "메이크업이 쉽게 무너지나요?",
+            "블랙헤드나 화이트헤드가 있나요?",
+            "세안 후 금방 유분이 올라오나요?",
+            "피지가 많이 분비되나요?",
+            "기름진 음식을 먹으면 트러블이 잘 나나요?",
+            "여드름이 자주 생기나요?",
+            "좁쌀 여드름이나 염증성 여드름이 있나요?",
+            "여드름 자국이 잘 남나요?",
+            "스트레스 받으면 트러블이 올라오나요?",
+            "생리 전에 여드름이 더 심해지나요?",
+            "여드름을 짜면 흉터가 남나요?",
+            "트러블 부위에 통증이 있나요?",
+            "T존은 지성, U존(볼)은 건성인가요?",
+            "피부가 예민해서 제품이 잘 맞지 않나요?",
+            "붉은기가 있거나 홍조가 있나요?",
+            "화장품 바꿀 때 자극을 느끼나요?",
+            "속건조(겉은 유분, 속은 건조)가 있나요?",
+            "계절에 따라 피부 상태가 많이 변하나요?",
+            "선크림을 잘 안 바르나요?"
+        ];
+
+        let currentQuestion = 0;
+        let answers = new Array(30).fill(0);
+        let skinType = "";
+        let dryScore = 0, oilyScore = 0, acneScore = 0;
+        let selectedSkin = "";
+
+        function hideAll() {
+            document.querySelectorAll('.container > div').forEach(el => el.classList.add('hidden'));
+        }
+
+        function showStart() {
+            hideAll();
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        function startQuiz() {
+            currentQuestion = 0;
+            answers = new Array(30).fill(0);
+            showQuestion();
+        }
+
+        function showQuestion() {
+            hideAll();
+            document.getElementById('quiz-screen').classList.remove('hidden');
+            document.getElementById('progress').textContent = `질문 ${currentQuestion + 1} / 30`;
+            document.getElementById('question-text').textContent = questions[currentQuestion];
+
+            const optionsDiv = document.getElementById('options');
+            optionsDiv.innerHTML = '';
+            const options = [
+                ["매우 그렇다", 4],
+                ["그렇다", 3],
+                ["그렇지 않다", 2],
+                ["매우 그렇지 않다", 1]
+            ];
+            options.forEach(([text, score]) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn option-btn';
+                btn.textContent = text;
+                btn.onclick = () => answerQuestion(score);
+                optionsDiv.appendChild(btn);
+            });
+
+            document.getElementById('back-btn').style.display = currentQuestion > 0 ? 'inline-block' : 'none';
+        }
+
+        function answerQuestion(score) {
+            answers[currentQuestion] = score;
+            currentQuestion++;
+            if (currentQuestion < 30) {
+                showQuestion();
+            } else {
+                calculateResult();
+            }
+        }
+
+        function goBack() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                showQuestion();
+            }
+        }
+
+        function calculateResult() {
+            dryScore = answers.slice(0, 8).reduce((a, b) => a + b, 0);
+            oilyScore = answers.slice(8, 16).reduce((a, b) => a + b, 0);
+            acneScore = answers.slice(16, 23).reduce((a, b) => a + b, 0);
+
+            if (oilyScore > 22 && dryScore > 20) {
+                skinType = "수부지 (유분 + 속건조)";
+            } else if (oilyScore > 20 && dryScore > 18) {
+                skinType = "복합성";
+            } else if (oilyScore > 22) {
+                skinType = "지성";
+            } else if (dryScore > 22) {
+                skinType = "건성";
+            } else {
+                skinType = "중성";
+            }
+            showResult();
+        }
+
+        function showResult() {
+            hideAll();
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('skin-type').textContent = `당신의 피부 타입: ${skinType}`;
+            const acneNote = document.getElementById('acne-note');
+            if (acneScore > 18) {
+                acneNote.textContent = "※ 여드름 고민이 있는 것으로 분석됩니다. 자극 없는 제품을 추천합니다.";
+                acneNote.style.color = "#c62828";
+            } else {
+                acneNote.textContent = "";
+            }
+        }
+
+        function getProducts() {
+            if (skinType.includes("건성")) {
+                return {
+                    "클렌저": "에스트라 아토배리어 365 버블 클렌저 또는 순한 밀크 클렌저",
+                    "토너": "라운드랩 독도 토너",
+                    "세럼/앰플": "웰라쥬 리얼 히알루로닉 블루 100 앰플",
+                    "크림": "에스트라 아토배리어 365 크림",
+                    "선크림": "라운드랩 자작나무 수분 선크림"
+                };
+            } else if (skinType.includes("지성") || skinType.includes("수부지")) {
+                return {
+                    "클렌저": "마녀공장 퓨어 앤 딥 폼 클렌저",
+                    "토너": "브링그린 대나무 히알루 토너 또는 모공 토너",
+                    "세럼/앰플": "웰라쥬 히알루론산 앰플 또는 나이아신아마이드 세럼",
+                    "크림": "가벼운 젤 크림 (닥터지 레드 블레미쉬 클리어 수딩 크림)",
+                    "선크림": "가벼운 무기자차 또는 매트 선크림"
+                };
+            } else if (skinType.includes("복합성")) {
+                return {
+                    "클렌저": "약산성 폼 클렌저",
+                    "토너": "보습과 유분 조절 토너",
+                    "세럼/앰플": "히알루론산 + 진정 세럼",
+                    "크림": "부위별로 다른 크림 사용 추천 (T존 가볍게, 볼 보습)",
+                    "선크림": "혼합 선크림"
+                };
+            } else {
+                return {
+                    "클렌저": "순한 약산성 클렌저",
+                    "토너": "기본 보습 토너",
+                    "세럼/앰플": "히알루론산 세럼",
+                    "크림": "에스트라 아토배리어 로션 또는 가벼운 크림",
+                    "선크림": "데일리 선크림"
+                };
+            }
+        }
+
+        function showProducts() {
+            hideAll();
+            document.getElementById('products-screen').classList.remove('hidden');
+            document.getElementById('products-title').textContent = `${skinType} 추천 제품 (올리브영)`;
+            const list = document.getElementById('products-list');
+            list.innerHTML = '';
+            const products = getProducts();
+            for (const [cat, prod] of Object.entries(products)) {
+                const div = document.createElement('div');
+                div.className = 'product-item';
+                div.innerHTML = `<strong>• ${cat}:</strong> ${prod}`;
+                list.appendChild(div);
+            }
+        }
+
+        function showRoutine() {
+            hideAll();
+            document.getElementById('routine-screen').classList.remove('hidden');
+        }
+
+        function showTips() {
+            hideAll();
+            document.getElementById('tips-screen').classList.remove('hidden');
+        }
+
+        function showBaseMakeup() {
+            showSkinSelect();
+        }
+
+        function showSkinSelect() {
+            hideAll();
+            document.getElementById('skin-select-screen').classList.remove('hidden');
+            const buttons = document.getElementById('skin-buttons');
+            buttons.innerHTML = '';
+            const types = ["건성", "지성", "복합성", "중성", "수부지"];
+            types.forEach(t => {
+                const btn = document.createElement('button');
+                btn.className = 'btn option-btn';
+                btn.textContent = t;
+                btn.onclick = () => selectSeason(t);
+                buttons.appendChild(btn);
+            });
+        }
+
+        function selectSeason(skin) {
+            selectedSkin = skin;
+            hideAll();
+            document.getElementById('season-screen').classList.remove('hidden');
+        }
+
+        function showBaseRec(season) {
+            hideAll();
+            document.getElementById('base-result-screen').classList.remove('hidden');
+            document.getElementById('base-info').textContent = `피부 타입: ${selectedSkin} | 계절: ${season}`;
+
+            const recs = getBaseRecs(selectedSkin, season);
+            const container = document.getElementById('recs');
+            container.innerHTML = '';
+
+            container.appendChild(createRecBox("쿠션 추천", recs.cushion));
+            container.appendChild(createRecBox("파운데이션 추천", recs.foundation));
+        }
+
+        function createRecBox(title, data) {
+            const box = document.createElement('div');
+            box.className = 'rec-box';
+            box.innerHTML = `
+                <h3>${title}</h3>
+                <p><strong>추천 제품:</strong> ${data.product}</p>
+                <div class="metric">
+                    <span class="metric-label">지속력:</span> <span class="stars">
+'★'.repeat(data.lasting){'☆'.repeat(5-data.lasting)}</span>
+                    <div class="bar"><div class="bar-fill" style="width:${data.lasting*20}%"></div></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">촉촉함:</span> <span class="stars">'★'.repeat(data.moisture){'☆'.repeat(5-data.moisture)}</span>
+                    <div class="bar"><div class="bar-fill" style="width:${data.moisture*20}%"></div></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">커버력:</span> <span class="stars">'★'.repeat(data.coverage){'☆'.repeat(5-data.coverage)}</span>
+                    <div class="bar"><div class="bar-fill" style="width:${data.coverage*20}%"></div></div>
+                </div>
+                <p style="margin-top:10px; font-size:0.95em;">${data.desc}</p>
+            `;
+            return box;
+        }
+
+        function getBaseRecs(skin, season) {
+            const isDry = skin.includes("건성") || skin.includes("수부지");
+            const isOily = skin.includes("지성") || skin.includes("복합성");
+            const isWinter = season === "가을" || season === "겨울";
+            const isSummer = season === "여름";
+
+            let cushion, foundation;
+
+            if (isDry) {
+                cushion = {
+                    product: isWinter ? "웨이크메이크 워터 글로우 코팅 밤 / 정샘물 스킨 누더 쿠션" : "에뛰드 클라우드 필터 쿠션",
+                    lasting: isSummer ? 3 : 4,
+                    moisture: 5,
+                    coverage: 3,
+                    desc: "촉촉하고 광이 살아있는 타입. 건조한 피부에 각질 부각이 적음."
+                };
+                foundation = {
+                    product: "클리오 킬커버 글로우 파운데이션",
+                    lasting: isSummer ? 3 : 4,
+                    moisture: 5,
+                    coverage: 4,
+                    desc: "보습력이 뛰어나고 자연스러운 광채. 건성 피부에 추천."
+                };
+            } else if (isOily) {
+                cushion = {
+                    product: "네이밍 제로 그래비티 커버핏 쿠션 / 토니모리 스킨톤 픽싱 커버 쿠션",
+                    lasting: 5,
+                    moisture: 2,
+                    coverage: 4,
+                    desc: "유분 조절이 잘 되고 지속력이 좋음. 매트~세미매트 마무리."
+                };
+                foundation = {
+                    product: "라네즈 네오 파운데이션 매트",
+                    lasting: 5,
+                    moisture: 2,
+                    coverage: 4,
+                    desc: "번들거림이 적고 오래 지속. 지성/복합성에 적합."
+                };
+            } else {
+                cushion = {
+                    product: "에뛰드 클라우드 필터 쿠션 / 중간 제형",
+                    lasting: 4,
+                    moisture: 4,
+                    coverage: 3,
+                    desc: "밸런스가 좋은 무난한 타입. 대부분의 피부에 잘 맞음."
+                };
+                foundation = {
+                    product: "자연스러운 글로우 파운데이션",
+                    lasting: 4,
+                    moisture: 4,
+                    coverage: 3,
+                    desc: "촉촉함과 지속력이 균형 잡힌 제품."
+                };
+            }
+
+            if (isSummer) {
+                cushion.moisture = Math.max(1, cushion.moisture - 1);
+                foundation.moisture = Math.max(1, foundation.moisture - 1);
+                cushion.lasting = Math.min(5, cushion.lasting + 1);
+                foundation.lasting = Math.min(5, foundation.lasting + 1);
+            } else if (isWinter) {
+                cushion.moisture = Math.min(5, cushion.moisture + 1);
+                foundation.moisture = Math.min(5, foundation.moisture + 1);
+            }
+
+            return { cushion, foundation };
+        }
+
+        showStart();
+    </script>
+</body>
+</html>

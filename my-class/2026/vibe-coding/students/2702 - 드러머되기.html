@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>드러머 되기</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:#0a0a0a;
+    color:white;
+    font-family:Arial;
+}
+
+#game{
+    width:100vw;
+    height:100vh;
+    position:relative;
+    background:linear-gradient(#1c1c1c,#050505);
+}
+
+h1{
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+    color:#4db3ff;
+    text-shadow:0 0 10px #4db3ff;
+}
+
+#ui{
+    position:absolute;
+    right:20px;
+    top:20px;
+    text-align:right;
+}
+
+#combo{
+    font-size:24px;
+    color:gold;
+}
+
+#gaugeBox{
+    width:230px;
+    height:18px;
+    background:#333;
+    border:2px solid white;
+    margin-top:10px;
+}
+
+#gauge{
+    width:100%;
+    height:100%;
+    background:lime;
+}
+
+#track{
+    position:absolute;
+    width:80%;
+    height:200px;
+    left:10%;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+#line{
+    position:absolute;
+    width:100%;
+    height:10px;
+    background:black;
+    border:2px solid #666;
+    top:50%;
+    transform:translateY(-50%);
+}
+
+#hitLine{
+    position:absolute;
+    left:160px;
+    width:8px;
+    height:110px;
+    background:red;
+    top:50%;
+    transform:translateY(-50%);
+    box-shadow:0 0 15px red;
+}
+
+.note{
+    position:absolute;
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    background:#3aa6ff;
+    top:50%;
+    transform:translateY(-50%);
+    box-shadow:0 0 12px #3aa6ff;
+}
+
+#drum{
+    position:absolute;
+    bottom:30px;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:120px;
+}
+
+#msg{
+    position:absolute;
+    width:100%;
+    text-align:center;
+    bottom:160px;
+    font-size:36px;
+}
+
+#start{
+    position:absolute;
+    inset:0;
+    background:black;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    z-index:10;
+}
+
+#start h2{
+    font-size:55px;
+    color:#4db3ff;
+}
+
+#result{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.95);
+    display:none;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    z-index:20;
+}
+
+button{
+    padding:12px 30px;
+    margin:10px;
+    border:none;
+    border-radius:10px;
+    font-size:18px;
+    cursor:pointer;
+}
+
+#restart{background:#4db3ff;color:white;}
+#exit{background:#ff4b4b;color:white;}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+<div id="start">
+<h2>드러머 되기</h2>
+<p>스페이스바로 시작</p>
+</div>
+
+<h1>드러머 되기</h1>
+
+<div id="ui">
+<div id="combo">콤보: 0</div>
+<div id="gaugeBox"><div id="gauge"></div></div>
+</div>
+
+<div id="track">
+<div id="line"></div>
+<div id="hitLine"></div>
+</div>
+
+<div id="msg"></div>
+
+<div id="drum">🥁</div>
+
+<div id="result">
+<h2>게임 종료</h2>
+<p id="stats"></p>
+<button id="restart">다시 하기</button>
+<button id="exit">나가기</button>
+</div>
+
+</div>
+
+<script>
+
+////////////////////////////////////////////////////
+// 기본 변수
+////////////////////////////////////////////////////
+
+let combo=0,maxCombo=0;
+let gauge=50;
+
+let good=0,bad=0;
+
+let notes=[];
+let created=0, finished=0;
+
+const TOTAL=60;
+
+let started=false;
+let ended=false;
+
+const hitX=160;
+const range=45;
+
+////////////////////////////////////////////////////
+// 속도 규칙 (요구사항 정확 반영)
+////////////////////////////////////////////////////
+
+function speed(){
+
+if(combo>=40) return 9;
+if(combo>=30) return 9;
+if(combo>=20) return 8;
+if(combo>=50) return 9; // 50은 40과 동일
+
+return 6; // 기본 중간 속도
+}
+
+////////////////////////////////////////////////////
+// 드럼 사운드
+////////////////////////////////////////////////////
+
+function drumSound(){
+const ctx=new AudioContext();
+const osc=ctx.createOscillator();
+const gain=ctx.createGain();
+
+osc.type="triangle";
+osc.frequency.value=120;
+
+gain.gain.setValueAtTime(1,ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.2);
+
+osc.connect(gain);
+gain.connect(ctx.destination);
+
+osc.start();
+osc.stop(ctx.currentTime+0.2);
+}
+
+////////////////////////////////////////////////////
+// 노트 생성 (간격 너무 붙지 않게 제한)
+////////////////////////////////////////////////////
+
+function spawn(){
+
+if(created>=TOTAL) return;
+
+let n=document.createElement("div");
+n.className="note";
+
+let x=document.getElementById("track").clientWidth+Math.random()*120;
+
+n.style.left=x+"px";
+
+document.getElementById("track").appendChild(n);
+
+notes.push({el:n,x:x,hit:false});
+
+created++;
+
+// 간격 너무 좁지 않게
+let delay = 500 + Math.random()*900;
+
+setTimeout(spawn,delay);
+}
+
+////////////////////////////////////////////////////
+// 메시지
+////////////////////////////////////////////////////
+
+function msg(t,c){
+const m=document.getElementById("msg");
+m.innerText=t;
+m.style.color=c;
+setTimeout(()=>m.innerText="",200);
+}
+
+////////////////////////////////////////////////////
+// 게이지 감소
+////////////////////////////////////////////////////
+
+function loseGauge(){
+
+gauge--;
+if(gauge<0)gauge=0;
+
+document.getElementById("gauge").style.width=(gauge*2)+"%";
+
+if(gauge<=0) endGame();
+}
+
+////////////////////////////////////////////////////
+// 루프
+////////////////////////////////////////////////////
+
+function loop(){
+
+if(ended)return;
+
+notes.forEach((n,i)=>{
+
+n.x-=speed();
+n.el.style.left=n.x+"px";
+
+// MISS (지나침)
+if(n.x<hitX-50 && !n.hit){
+
+n.hit=true;
+combo=0;
+bad++;
+loseGauge();
+msg("MISS","red");
+}
+
+// 제거
+if(n.x<-100){
+
+n.el.remove();
+notes.splice(i,1);
+finished++;
+
+if(finished>=TOTAL) endGame();
+}
+
+});
+
+requestAnimationFrame(loop);
+}
+
+////////////////////////////////////////////////////
+// 입력
+////////////////////////////////////////////////////
+
+document.addEventListener("keydown",e=>{
+
+if(e.code!=="Space")return;
+e.preventDefault();
+
+if(!started){
+started=true;
+document.getElementById("start").style.display="none";
+spawn();
+loop();
+return;
+}
+
+if(ended)return;
+
+let ok=false;
+
+notes.forEach(n=>{
+
+if(n.hit)return;
+
+if(Math.abs(n.x-hitX)<=range){
+
+n.hit=true;
+
+combo++;
+good++;
+
+if(combo>maxCombo)maxCombo=combo;
+
+document.getElementById("combo").innerText="콤보: "+combo;
+
+drumSound();
+msg("GOOD","lime");
+
+ok=true;
+}
+
+});
+
+if(!ok){
+
+combo=0;
+bad++;
+loseGauge();
+msg("MISS","red");
+}
+
+});
+
+////////////////////////////////////////////////////
+// 종료
+////////////////////////////////////////////////////
+
+function endGame(){
+
+if(ended)return;
+ended=true;
+
+setTimeout(()=>{
+
+document.getElementById("result").style.display="flex";
+
+document.getElementById("stats").innerHTML=
+`최대 콤보: ${maxCombo}<br>잘한 수: ${good}<br>틀린 수: ${bad}`;
+
+},2000);
+
+}
+
+////////////////////////////////////////////////////
+// 버튼
+////////////////////////////////////////////////////
+
+document.getElementById("restart").onclick=()=>location.reload();
+
+document.getElementById("exit").onclick=()=>{
+window.close();
+document.body.innerHTML="<h1 style='color:white;text-align:center;margin-top:40vh;'>게임 종료</h1>";
+};
+
+</script>
+
+</body>
+</html>

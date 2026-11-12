@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오늘 노래 추천</title>
+<style>
+:root{--bg:#faf7ff;--card:#fff;--tx:#241b3a;--sub:#6b6285;--ac:#7c4dff;--bd:#e3dcf5;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17122a;--card:#221b3d;--tx:#f1ecff;--sub:#a99fc8;--ac:#a98bff;--bd:#3a3060}}
+:root[data-theme="dark"]{--bg:#17122a;--card:#221b3d;--tx:#f1ecff;--sub:#a99fc8;--ac:#a98bff;--bd:#3a3060}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Noto Sans KR",system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.6rem;margin:8px 0 4px}p.s{color:var(--sub);margin:0 0 18px}
+section{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:1rem;margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--bd);background:transparent;color:var(--tx);padding:8px 14px;border-radius:999px;font-size:.95rem;cursor:pointer}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#fff}
+.go{width:100%;padding:14px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-size:1.05rem;font-weight:700;cursor:pointer;margin:6px 0 16px}
+.song{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px}
+.song b{font-size:1.1rem}.tag{color:var(--sub);font-size:.85rem;margin:4px 0 10px}
+.song a{display:inline-block;margin-right:8px;padding:8px 12px;border-radius:10px;text-decoration:none;font-size:.9rem;border:1px solid var(--ac);color:var(--ac)}
+.song a.yt{background:var(--ac);color:#fff}
+input.ar-in{width:100%;padding:11px 14px;border:1px solid var(--bd);border-radius:12px;background:transparent;color:var(--tx);font-size:1rem;font-family:inherit}input.ar-in:focus{outline:2px solid var(--ac);border-color:transparent}.hint{color:var(--sub);font-size:.82rem;margin:8px 0 0}.msg{border:1px dashed var(--ac);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:.92rem}.msg a{color:var(--ac)}
+.note{color:var(--sub);font-size:.8rem;margin-top:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>🎧 오늘 노래 추천</h1>
+<p class="s">기분과 분위기, 장르를 골라 보세요. 딱 맞는 노래를 추천해 드려요.</p>
+<div id="opts"></div>
+<section><h2>듣고 싶은 가수 <span style="color:var(--sub);font-weight:400">(선택)</span></h2><input class="ar-in" id="artist" type="text" placeholder="예: 아이유, Coldplay (비워 둬도 돼요)" autocomplete="off"><p class="hint">비워 두면 위에서 고른 조건만으로 추천해요.</p></section>
+<button class="go" id="go">노래 추천받기</button>
+<div id="out"></div>
+<p class="note">※ 가사는 저작권 때문에 화면에 직접 싣지 않고, '가사 보기' 버튼으로 검색 결과를 연결해 드려요. 노래 듣기는 유튜브 검색 결과로 연결됩니다. 추천 목록은 대표 곡을 모은 샘플 데이터이며 모든 곡을 담고 있지는 않습니다.</p>
+</main>
+<script>
+const G={mood:["기쁨","슬픔","우울","설렘","피곤","화남","평온","외로움"],vibe:["잔잔한","신나는","감성적인","몽환적인","힘이 나는","어두운"],genre:["발라드","인디","케이팝","팝송","힙합","R&B","록"]};
+const L={mood:"지금 기분은?",vibe:"듣고 싶은 분위기는?",genre:"좋아하는 장르는?"};
+// [제목, 가수, 장르, 기분[], 분위기[]]
+const S=[
+["밤편지","아이유","발라드",["평온","외로움","설렘"],["잔잔한","감성적인"]],
+["봄날","BTS","케이팝",["슬픔","외로움"],["감성적인","잔잔한"]],
+["Dynamite","BTS","팝송",["기쁨"],["신나는","힘이 나는"]],
+["Hype Boy","NewJeans","케이팝",["설렘","기쁨"],["신나는"]],
+["Ditto","NewJeans","케이팝",["외로움","설렘"],["몽환적인","잔잔한"]],
+["사건의 지평선","윤하","발라드",["슬픔","외로움"],["감성적인"]],
+["오래된 노래","스탠딩 에그","인디",["외로움","평온"],["잔잔한"]],
+["첫눈처럼 너에게 가겠다","에일리","발라드",["슬픔"],["감성적인"]],
+["그라데이션","10cm","인디",["설렘"],["잔잔한","감성적인"]],
+["봄이 좋냐??","10cm","인디",["기쁨","설렘"],["신나는"]],
+["나의 사춘기에게","볼빨간사춘기","인디",["피곤","외로움"],["잔잔한","감성적인"]],
+["TOMBOY","(여자)아이들","케이팝",["화남","기쁨"],["힘이 나는"]],
+["위잉위잉","혁오","인디",["피곤","우울"],["몽환적인"]],
+["Love wins all","아이유","발라드",["슬픔","외로움"],["감성적인","어두운"]],
+["Celebrity","아이유","케이팝",["기쁨","피곤"],["힘이 나는","신나는"]],
+["Supernova","aespa","케이팝",["화남","기쁨"],["힘이 나는"]],
+["Drama","aespa","케이팝",["화남"],["어두운","힘이 나는"]],
+["눈의 꽃","박효신","발라드",["슬픔"],["감성적인"]],
+["비도 오고 그래서","헤이즈","R&B",["우울","슬픔"],["감성적인","어두운"]],
+["우산","에픽하이","힙합",["우울","슬픔"],["감성적인","어두운"]],
+["아무노래","지코","힙합",["기쁨"],["신나는"]],
+["Beautiful","크러쉬","R&B",["설렘","외로움"],["감성적인"]],
+["아로하","조정석","발라드",["평온","설렘"],["잔잔한"]],
+["Counting Stars","OneRepublic","팝송",["피곤","평온"],["감성적인"]],
+["Someone Like You","Adele","팝송",["슬픔","외로움"],["감성적인"]],
+["Blinding Lights","The Weeknd","팝송",["기쁨","설렘"],["신나는"]],
+["Levitating","Dua Lipa","팝송",["기쁨"],["신나는"]],
+["Perfect","Ed Sheeran","팝송",["설렘","평온"],["잔잔한","감성적인"]],
+["Lose Yourself","Eminem","힙합",["화남"],["힘이 나는"]],
+["Fix You","Coldplay","록",["슬픔","피곤"],["감성적인"]],
+["Viva La Vida","Coldplay","록",["기쁨"],["힘이 나는"]],
+["Numb","Linkin Park","록",["화남","우울"],["어두운","힘이 나는"]],
+["lovely","Billie Eilish","팝송",["우울","외로움"],["어두운","몽환적인"]],
+["Ocean Eyes","Billie Eilish","팝송",["외로움"],["몽환적인"]],
+["Best Part","Daniel Caesar","R&B",["설렘","평온"],["잔잔한"]],
+["Redbone","Childish Gambino","R&B",["평온"],["몽환적인"]],
+["Love Dive","IVE","케이팝",["기쁨","화남"],["힘이 나는","신나는"]],
+["I AM","IVE","케이팝",["기쁨"],["힘이 나는"]],
+["Next Level","aespa","케이팝",["화남","기쁨"],["힘이 나는"]],
+["How Sweet","NewJeans","케이팝",["기쁨","설렘"],["신나는"]],
+["Attention","NewJeans","케이팝",["설렘"],["신나는","잔잔한"]],
+["Butter","BTS","케이팝",["기쁨","설렘"],["신나는"]],
+["Fake Love","BTS","케이팝",["우울","화남"],["어두운","힘이 나는"]],
+["좋은 날","아이유","케이팝",["기쁨","설렘"],["신나는"]],
+["너랑 나","아이유","케이팝",["설렘","기쁨"],["잔잔한"]],
+["거리에서","성시경","발라드",["슬픔","외로움"],["감성적인"]],
+["모든 날, 모든 순간","폴킴","발라드",["설렘","평온"],["잔잔한","감성적인"]],
+["어떻게 이별까지 사랑하겠어, 널 사랑하는 거지","AKMU","발라드",["슬픔","외로움"],["감성적인"]],
+["Panda Bear","혁오","인디",["피곤","우울"],["몽환적인"]],
+["주저하는 연인들을 위해","잔나비","인디",["설렘","외로움"],["감성적인","잔잔한"]],
+["뜨거운 여름밤은 가고 남은 건 볼품없지만","잔나비","인디",["외로움","슬픔"],["감성적인"]],
+["Hello","Adele","팝송",["슬픔","외로움"],["감성적인"]],
+["Shallow","Lady Gaga & Bradley Cooper","팝송",["외로움","설렘"],["감성적인"]],
+["Happy","Pharrell Williams","팝송",["기쁨"],["신나는"]],
+["Shake It Off","Taylor Swift","팝송",["기쁨","화남"],["신나는","힘이 나는"]],
+["cardigan","Taylor Swift","팝송",["외로움","우울"],["몽환적인","감성적인"]],
+["bad guy","Billie Eilish","팝송",["화남"],["어두운"]],
+["Sunflower","Post Malone & Swae Lee","팝송",["평온","기쁨"],["잔잔한"]],
+["Stay","The Kid LAROI & Justin Bieber","팝송",["설렘","기쁨"],["신나는"]],
+["Heat Waves","Glass Animals","팝송",["외로움","평온"],["몽환적인"]],
+["Yellow","Coldplay","록",["평온","설렘"],["잔잔한","감성적인"]],
+["Boulevard of Broken Dreams","Green Day","록",["우울","외로움"],["어두운"]],
+["Mr. Brightside","The Killers","록",["화남","설렘"],["힘이 나는","신나는"]],
+["Believer","Imagine Dragons","록",["화남","피곤"],["힘이 나는"]],
+["HUMBLE.","Kendrick Lamar","힙합",["화남"],["힘이 나는"]],
+["Snooze","SZA","R&B",["설렘","평온"],["잔잔한","몽환적인"]],
+["Pink + White","Frank Ocean","R&B",["평온","외로움"],["몽환적인"]],
+["In Bloom","제로베이스원 (ZEROBASEONE)","케이팝",["기쁨","설렘"],["신나는","힘이 나는"]],
+["Crush (가시)","제로베이스원 (ZEROBASEONE)","케이팝",["우울","설렘"],["감성적인","어두운"]],
+["Good So Bad","제로베이스원 (ZEROBASEONE)","케이팝",["설렘","기쁨"],["신나는"]],
+["Feel the POP","제로베이스원 (ZEROBASEONE)","케이팝",["기쁨"],["신나는","힘이 나는"]],
+["SWEAT","제로베이스원 (ZEROBASEONE)","케이팝",["화남","기쁨"],["힘이 나는"]],
+["Doctor! Doctor!","제로베이스원 (ZEROBASEONE)","케이팝",["설렘","기쁨"],["신나는"]],
+["Melting Point","제로베이스원 (ZEROBASEONE)","케이팝",["설렘","외로움"],["몽환적인","감성적인"]]
+];
+const sel={mood:"",vibe:"",genre:""};
+const opts=document.getElementById("opts");
+for(const k in G){
+  const s=document.createElement("section");
+  s.innerHTML=`<h2>${L[k]}</h2><div class="chips"></div>`;
+  const box=s.querySelector(".chips");
+  ["상관없음",...G[k]].forEach((v,i)=>{
+    const b=document.createElement("button");
+    b.className="chip"+(i==0?" on":"");b.textContent=v;
+    b.onclick=()=>{sel[k]=i==0?"":v;box.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));b.classList.add("on")};
+    box.appendChild(b);
+  });
+  opts.appendChild(s);
+}
+const q=t=>encodeURIComponent(t);
+const nz=t=>t.toLowerCase().replace(/\s+/g,"");
+function recommend(){
+  const aq=nz(document.getElementById("artist").value.trim());
+  const aRaw=document.getElementById("artist").value.trim();
+  const hit=aq&&S.some(s=>nz(s[1]).includes(aq));
+  const r=S.map(s=>{
+    let p=0;
+    if(aq&&nz(s[1]).includes(aq))p+=6;
+    if(sel.mood&&s[3].includes(sel.mood))p+=3;
+    if(sel.vibe&&s[4].includes(sel.vibe))p+=2;
+    if(sel.genre&&s[2]==sel.genre)p+=2;
+    return{s,p:p+Math.random()};
+  }).sort((a,b)=>b.p-a.p).slice(0,3);
+  const out=document.getElementById("out");
+  const miss=aq&&!hit?`<div class="msg">'
+aRaw.replace(/</g,"&lt;")'의곡은아직목록에없어요.대신선택한조건에맞는노래를추천했어요.<atarget="blank"rel="noopener"href="https://www.youtube.com/results?searchquery={q(aRaw)}">유튜브에서 ${aRaw.replace(/</g,"&lt;")} 노래 찾기</a></div>`:"";
+  out.innerHTML=miss+r.map(({s})=>`<div class="song"><b>${s[0]}</b> · s[1]<divclass="tag">{s[2]} · ${s[3].join(", ")} · ${s[4].join(", ")}</div>
+  <a class="yt" target="_blank" rel="noopener" href="https://www.youtube.com/results?search_query=${q(s[1]+" "+s[0])}">▶ 노래 듣기</a>
+  <a target="_blank" rel="noopener" href="https://www.google.com/search?q=${q(s[0]+" "+s[1]+" 가사")}">가사 보기</a></div>`).join("");
+}
+document.getElementById("go").onclick=recommend;
+</script>
+</body>
+</html>

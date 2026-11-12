@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>수업시간 몰래 과자 먹기 (Sneaky Classroom Snack Game)</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Lucide Icons -->
+   <script src="https://unpkg.com/lucide@latest"></script>
+   <!-- Google Fonts (Jua, Gaegu for cute vibe) -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Jua&display=swap" rel="stylesheet">
+
+
+   <style>
+       body {
+           font-family: 'Jua', cursive, sans-serif;
+           user-select: none;
+           -webkit-user-select: none;
+       }
+       .font-gaegu {
+           font-family: 'Gaegu', cursive;
+       }
+      
+       /* Custom animations */
+       @keyframes pulse-fast {
+           0%, 100% { transform: scale(1); }
+           50% { transform: scale(1.15); }
+       }
+       .animate-pulse-fast {
+           animation: pulse-fast 0.6s infinite;
+       }
+
+
+       @keyframes shake {
+           0%, 100% { transform: translate(0, 0) rotate(0deg); }
+           20% { transform: translate(-4px, 2px) rotate(-2deg); }
+           40% { transform: translate(4px, -2px) rotate(2deg); }
+           60% { transform: translate(-2px, -2px) rotate(-1deg); }
+           80% { transform: translate(2px, 2px) rotate(1deg); }
+       }
+       .animate-shake {
+           animation: shake 0.3s ease-in-out infinite;
+       }
+
+
+       @keyframes float-up {
+           0% { opacity: 1; transform: translateY(0) scale(1); }
+           100% { opacity: 0; transform: translateY(-50px) scale(1.3); }
+       }
+       .floating-text {
+           position: absolute;
+           animation: float-up 0.8s ease-out forwards;
+           pointer-events: none;
+           font-weight: bold;
+           z-index: 50;
+       }
+
+
+       /* Chalkboard texture background */
+       .board-bg {
+           background-color: #1b4332;
+           box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+       }
+
+
+       /* Custom scrollbar */
+       ::-webkit-scrollbar {
+           width: 8px;
+       }
+       ::-webkit-scrollbar-track {
+           background: #f1f1f1;
+       }
+       ::-webkit-scrollbar-thumb {
+           background: #f59e0b;
+           border-radius: 4px;
+       }
+   </style>
+</head>
+<body class="bg-slate-900 text-slate-800 h-screen w-screen overflow-hidden flex flex-col items-center justify-center p-2 md:p-4">
+
+
+   <!-- Game Container -->
+   <div id="game-app" class="relative w-full max-w-4xl h-[95vh] max-h-[750px] bg-amber-50 rounded-2xl shadow-2xl overflow-hidden border-4 border-amber-800 flex flex-col">
+      
+       <!-- Header HUD -->
+       <header class="bg-amber-900 text-white p-3 px-4 flex flex-wrap justify-between items-center shadow-md z-20 border-b-2 border-amber-950">
+           <!-- Left: Time & Score -->
+           <div class="flex items-center gap-4">
+               <div class="flex items-center gap-1.5 bg-amber-950/60 px-3 py-1.5 rounded-xl border border-amber-700">
+                   <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
+                   <span class="text-xs text-amber-200">시간:</span>
+                   <span id="hud-timer" class="text-xl font-bold text-amber-300 w-12 text-right">120s</span>
+               </div>
+               <div class="flex items-center gap-1.5 bg-amber-950/60 px-3 py-1.5 rounded-xl border border-amber-700">
+                   <i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i>
+                   <span class="text-xs text-amber-200">점수:</span>
+                   <span id="hud-score" class="text-xl font-bold text-yellow-300 min-w-[50px] text-right">0</span>
+               </div>
+           </div>
+
+
+           <!-- Middle: Danger Level Gauge -->
+           <div class="flex items-center gap-2 flex-1 max-w-xs mx-2 my-1 sm:my-0">
+               <i data-lucide="eye" class="w-5 h-5 text-red-400 animate-pulse"></i>
+               <div class="flex-1">
+                   <div class="flex justify-between text-xs mb-1">
+                       <span class="text-amber-200">들킬 위험</span>
+                       <span id="hud-risk-percent" class="font-bold text-red-300">0%</span>
+                   </div>
+                   <div class="w-full bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-amber-700">
+                       <div id="hud-risk-bar" class="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 h-full rounded-full transition-all duration-200" style="width: 0%;"></div>
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- Right: Controls & Sound -->
+           <div class="flex items-center gap-2">
+               <button id="btn-sound" onclick="toggleSound()" class="p-2 bg-amber-800 hover:bg-amber-700 rounded-lg text-amber-200 hover:text-white transition" title="소리 토글">
+                   <i id="icon-sound" data-lucide="volume-2" class="w-5 h-5"></i>
+               </button>
+               <button id="btn-pause" onclick="togglePause()" class="p-2 bg-amber-800 hover:bg-amber-700 rounded-lg text-amber-200 hover:text-white transition" title="일시정지">
+                   <i data-lucide="pause" class="w-5 h-5"></i>
+               </button>
+           </div>
+       </header>
+
+
+       <!-- Classroom Visual Stage -->
+       <main id="classroom-stage" class="relative flex-1 bg-amber-100 flex flex-col justify-between overflow-hidden select-none">
+          
+           <!-- Top: Blackboard & Teacher Area -->
+           <div class="relative h-1/2 board-bg border-b-8 border-amber-900 flex justify-center items-end p-4">
+              
+               <!-- Chalkboard Content / Equations -->
+               <div class="absolute inset-0 p-4 text-emerald-100/40 text-sm font-gaegu flex flex-col justify-around pointer-events-none select-none">
+                   <div class="flex justify-between">
+                       <span>E = mc²</span>
+                       <span>수학 3단원: 방정식과 함수</span>
+                       <span>y = ax + b</span>
+                   </div>
+                   <div class="text-center text-lg">
+                       <span>"오늘 수업 진도: 시험에 꼭 나온다!"</span>
+                   </div>
+                   <div class="flex justify-around">
+                       <span>sin²θ + cos²θ = 1</span>
+                       <span>질문은 손들고 하기</span>
+                       <span>숙제: 익힘책 p.45</span>
+                   </div>
+               </div>
+
+
+               <!-- Teacher Patrol / Distance Indicator -->
+               <div id="patrol-indicator" class="absolute top-2 left-4 bg-slate-900/80 backdrop-blur text-xs px-3 py-1.5 rounded-full border border-slate-700 text-slate-200 flex items-center gap-2 z-10">
+                   <span id="patrol-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                   <span>선생님 위치: <strong id="patrol-distance-text" class="text-emerald-400">교탁 앞 (안전)</strong></span>
+               </div>
+
+
+               <!-- Noise Spike Alert Indicator -->
+               <div id="noise-alert-badge" class="hidden absolute top-2 right-4 bg-red-600/90 text-white px-3 py-1.5 rounded-full border border-red-400 flex items-center gap-1.5 animate-bounce z-10">
+                   <i data-lucide="volume-x" class="w-4 h-4 text-yellow-300"></i>
+                   <span class="text-xs font-bold text-yellow-200">주위 소음 발생! (먹기 위험 +15%)</span>
+               </div>
+
+
+               <!-- Teacher Character Zone -->
+               <div id="teacher-wrapper" class="relative z-10 flex flex-col items-center transition-all duration-300">
+                  
+                   <!-- Alert Bubble (! or ? or Warning) -->
+                   <div id="teacher-alert" class="hidden absolute -top-12 bg-red-500 text-white font-black text-xl px-3 py-1 rounded-full shadow-lg border-2 border-white animate-pulse-fast">
+                       !
+                   </div>
+
+
+                   <!-- Teacher Sprite Body -->
+                   <div id="teacher-character" class="relative w-28 h-36 flex flex-col items-center transition-transform duration-300">
+                       <!-- Head -->
+                       <div class="w-16 h-16 bg-amber-200 rounded-full border-2 border-slate-800 relative flex items-center justify-center shadow-md">
+                           <!-- Glasses -->
+                           <div class="absolute top-4 w-12 flex justify-between px-1">
+                               <div class="w-4 h-4 border-2 border-slate-800 rounded-full bg-cyan-100/50"></div>
+                               <div class="w-4 h-4 border-2 border-slate-800 rounded-full bg-cyan-100/50"></div>
+                           </div>
+                           <!-- Face Expression (Back view default: hair/back of head) -->
+                           <div id="teacher-face" class="w-full h-full rounded-full bg-amber-900 flex items-center justify-center text-white text-xs font-bold">
+                               <!-- Default: Turned Away (Back of Head) -->
+                               <div class="w-full h-full rounded-full bg-amber-900 border-2 border-slate-800 flex items-center justify-center text-amber-700 text-[10px]">
+                                   (판서 중)
+                               </div>
+                           </div>
+                       </div>
+
+
+                       <!-- Torso/Suit -->
+                       <div class="w-20 h-20 bg-slate-700 rounded-t-xl border-2 border-slate-900 mt-1 flex flex-col items-center shadow-md relative">
+                           <div class="w-4 h-full bg-slate-200 border-x border-slate-800"></div> <!-- Tie -->
+                           <div id="teacher-arm-chalk" class="absolute -left-3 top-2 w-4 h-12 bg-slate-700 border border-slate-900 rounded-full rotate-45 transform origin-top"></div>
+                       </div>
+                   </div>
+                  
+                   <span id="teacher-label" class="mt-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-md">선생님 (칠판 작성 중)</span>
+               </div>
+           </div>
+
+
+           <!-- Bottom: Classroom Desks & Player Area -->
+           <div class="relative h-1/2 bg-amber-200/60 p-4 flex justify-around items-end">
+              
+               <!-- Other Classmates Desks (Background element) -->
+               <div class="hidden sm:flex flex-col items-center opacity-60 scale-90">
+                   <div class="w-24 h-12 bg-amber-700 rounded-t-lg border-2 border-amber-900 shadow-md flex items-center justify-center text-amber-100 text-xs">
+                       공부 중...
+                   </div>
+                   <div class="w-16 h-10 bg-amber-800 rounded-b-md"></div>
+               </div>
+
+
+               <!-- Player Desk Zone (Center Interactive Area) -->
+               <div class="relative flex flex-col items-center z-10 my-2">
+                  
+                   <!-- Player Character (Upper body above desk) -->
+                   <div id="player-character" class="relative flex flex-col items-center mb-[-10px] transition-all duration-150">
+                       <!-- Chewing Effect Bubble -->
+                       <div id="chew-effect" class="hidden absolute -top-8 bg-yellow-300 text-xs font-bold px-2 py-0.5 rounded-full border border-amber-600 shadow animate-bounce">
+                           오물오물... 냠!
+                       </div>
+
+
+                       <!-- Face -->
+                       <div id="player-head" class="w-16 h-16 bg-amber-100 rounded-full border-2 border-amber-900 relative flex items-center justify-center shadow-md">
+                           <!-- Eyes -->
+                           <div class="absolute top-4 w-10 flex justify-between px-1">
+                               <div class="w-2.5 h-2.5 bg-slate-800 rounded-full"></div>
+                               <div class="w-2.5 h-2.5 bg-slate-800 rounded-full"></div>
+                           </div>
+                           <!-- Mouth -->
+                           <div id="player-mouth" class="absolute bottom-3 w-4 h-2 bg-pink-400 rounded-full"></div>
+                       </div>
+                       <!-- Arms / Sweater -->
+                       <div class="w-20 h-10 bg-emerald-600 rounded-t-2xl border-2 border-emerald-900"></div>
+                   </div>
+
+
+                   <!-- Desk Surface -->
+                   <div class="w-64 sm:w-80 h-24 bg-amber-600 rounded-xl border-4 border-amber-800 shadow-xl relative flex items-center justify-around p-2">
+                      
+                       <!-- Open Book / Pencil Case -->
+                       <div class="w-20 h-14 bg-slate-100 rounded border border-slate-300 p-1 flex flex-col justify-between text-[8px] text-slate-400 shadow-inner pointer-events-none">
+                           <div class="h-1 bg-slate-300 rounded w-3/4"></div>
+                           <div class="h-1 bg-slate-300 rounded w-1/2"></div>
+                           <div class="h-1 bg-slate-300 rounded w-full"></div>
+                           <div class="h-1 bg-slate-300 rounded w-2/3"></div>
+                       </div>
+
+
+                       <!-- CLICKABLE SNACK ITEM -->
+                       <div id="snack-click-area" onclick="handleSnackEat(event)" class="relative cursor-pointer group transform hover:scale-105 active:scale-95 transition-all duration-100 flex flex-col items-center">
+                           <!-- Snack Highlight Glow -->
+                           <div class="absolute inset-0 rounded-full bg-yellow-400/30 blur-md group-hover:bg-yellow-400/60 transition"></div>
+                          
+                           <!-- Snack Graphic Container -->
+                           <div id="snack-graphic" class="relative w-20 h-20 flex items-center justify-center filter drop-shadow-md">
+                               <!-- Snack icon inserted via JS -->
+                           </div>
+
+
+                           <span class="mt-1 bg-amber-900 text-yellow-300 text-xs px-2 py-0.5 rounded-full border border-amber-700 shadow font-bold">
+                               클릭하여 먹기! 🍪
+                           </span>
+                       </div>
+
+
+                   </div>
+               </div>
+
+
+               <!-- Another Classmate Desk -->
+               <div class="hidden sm:flex flex-col items-center opacity-60 scale-90">
+                   <div class="w-24 h-12 bg-amber-700 rounded-t-lg border-2 border-amber-900 shadow-md flex items-center justify-center text-amber-100 text-xs">
+                       졸고 있는 중...
+                   </div>
+                   <div class="w-16 h-10 bg-amber-800 rounded-b-md"></div>
+               </div>
+
+
+           </div>
+
+
+           <!-- Quiz Modal Overlay (Random Quiz Pop-Up) -->
+           <div id="quiz-modal" class="hidden absolute inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+               <div class="bg-white rounded-2xl border-4 border-amber-600 p-6 max-w-sm w-full shadow-2xl text-center transform animate-shake">
+                   <div class="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full inline-block mb-2 border border-amber-300">
+                       ⚡ 기습 시험 문제 팝업!
+                   </div>
+                   <h3 class="text-xl font-bold text-slate-800 mb-2">선생님이 질문을 던지셨다!</h3>
+                   <p class="text-xs text-slate-500 mb-4">맞히면 남은 시간 +5초 / 틀리면 시간 -5초!</p>
+                  
+                   <!-- Question Box -->
+                   <div id="quiz-question" class="text-2xl font-black text-indigo-600 bg-slate-100 p-3 rounded-xl border border-slate-300 mb-4">
+                       3 + 5 = ?
+                   </div>
+
+
+                   <!-- Quiz Options -->
+                   <div id="quiz-options" class="grid grid-cols-2 gap-2">
+                       <!-- Buttons populated by JS -->
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- Warning/Caught Overlay -->
+           <div id="caught-overlay" class="hidden absolute inset-0 bg-red-600/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4 text-white text-center">
+               <div class="text-6xl mb-2 animate-bounce">🚨</div>
+               <h2 class="text-3xl font-black mb-2 text-yellow-300">"너 거기서 뭐 먹니?!"</h2>
+               <p id="caught-desc" class="text-lg mb-6">선생님에게 과자 먹는 모습을 들켰습니다!</p>
+               <div class="bg-black/40 px-4 py-2 rounded-xl text-sm border border-red-400 mb-6">
+                   패널티: 들킬 위험도 상승 및 시간 5초 차감!
+               </div>
+               <button onclick="resumeAfterCaught()" class="bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold px-6 py-2.5 rounded-xl text-lg shadow-lg transition transform active:scale-95">
+                   반성하고 계속하기
+               </button>
+           </div>
+
+
+       </main>
+
+
+       <!-- START SCREEN MODAL -->
+       <div id="modal-start" class="absolute inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-white text-center">
+           <div class="max-w-md w-full bg-amber-950/80 border-2 border-amber-600 p-6 rounded-2xl shadow-2xl flex flex-col items-center">
+               <div class="text-5xl mb-2">🍪🏫</div>
+               <h1 class="text-3xl font-black text-amber-400 mb-1">수업시간 몰래 과자 먹기</h1>
+               <p class="text-xs text-amber-200 mb-6">선생님의 눈을 피해 몰래 과자를 먹어 최고 점수를 달성하세요!</p>
+
+
+               <!-- Select Snack Section -->
+               <div class="w-full mb-6">
+                   <label class="block text-sm font-bold text-amber-300 mb-2">1. 먹을 과자 종류를 선택하세요:</label>
+                   <div class="grid grid-cols-2 gap-2 text-slate-800 text-sm">
+                       <button onclick="selectSnack('chip')" id="snack-btn-chip" class="snack-select-btn p-2 bg-amber-100 border-2 border-amber-500 rounded-xl flex items-center gap-2 hover:bg-amber-200 transition font-bold">
+                           <span class="text-2xl">🥔</span>
+                           <div class="text-left">
+                               <p class="text-xs">바삭 감자칩</p>
+                               <span class="text-[10px] text-amber-800">기본 과자</span>
+                           </div>
+                       </button>
+                       <button onclick="selectSnack('cookie')" id="snack-btn-cookie" class="snack-select-btn p-2 bg-amber-50 border-2 border-transparent rounded-xl flex items-center gap-2 hover:bg-amber-200 transition font-bold">
+                           <span class="text-2xl">🍪</span>
+                           <div class="text-left">
+                               <p class="text-xs">초코 쿠키</p>
+                               <span class="text-[10px] text-amber-800">달콤함 두배</span>
+                           </div>
+                       </button>
+                       <button onclick="selectSnack('jelly')" id="snack-btn-jelly" class="snack-select-btn p-2 bg-amber-50 border-2 border-transparent rounded-xl flex items-center gap-2 hover:bg-amber-200 transition font-bold">
+                           <span class="text-2xl">곰</span>
+                           <div class="text-left">
+                               <p class="text-xs">알록달록 젤리</p>
+                               <span class="text-[10px] text-amber-800">쫄깃쫄깃</span>
+                           </div>
+                       </button>
+                       <button onclick="selectSnack('pepero')" id="snack-btn-pepero" class="snack-select-btn p-2 bg-amber-50 border-2 border-transparent rounded-xl flex items-center gap-2 hover:bg-amber-200 transition font-bold">
+                           <span class="text-2xl">🥢</span>
+                           <div class="text-left">
+                               <p class="text-xs">초코 스틱</p>
+                               <span class="text-[10px] text-amber-800">길쭉한 과자</span>
+                           </div>
+                       </button>
+                   </div>
+               </div>
+
+
+               <!-- Rules / Instructions summary -->
+               <div class="bg-amber-900/60 text-amber-200 text-xs p-3 rounded-xl border border-amber-700/50 w-full mb-6 text-left space-y-1">
+                   <p class="font-bold text-amber-300">💡 간단 규칙:</p>
+                   <p>• 클릭할 때마다 <strong>+10점</strong>, 시간 <strong>+0.5초</strong> 추가!</p>
+                   <p>• 선생님이 뒤돌아보거나 가까이 오면 절대 먹지 마세요.</p>
+                   <p>• 소음 알림이 발생하면 들킬 위험이 크게 증가합니다.</p>
+                   <p>• 기습 시험 퀴즈를 풀고 추가 시간을 획득하세요.</p>
+               </div>
+
+
+               <button onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-3 rounded-xl text-xl shadow-lg transition transform active:scale-95 border-2 border-yellow-200">
+                   게임 시작하기 (제한시간 2분)
+               </button>
+           </div>
+       </div>
+
+
+       <!-- PAUSE SCREEN MODAL -->
+       <div id="modal-pause" class="hidden absolute inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-white text-center">
+           <div class="bg-amber-950 border-2 border-amber-600 p-6 rounded-2xl max-w-xs w-full shadow-2xl">
+               <h2 class="text-2xl font-bold text-amber-300 mb-4">일시정지</h2>
+               <div class="space-y-3">
+                   <button onclick="togglePause()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-2 rounded-xl transition">
+                       이어서 하기
+                   </button>
+                   <button onclick="resetToHome()" class="w-full bg-slate-700 hover:bg-slate-600 text-amber-200 font-bold py-2 rounded-xl transition">
+                       처음 화면으로
+                   </button>
+               </div>
+           </div>
+       </div>
+
+
+       <!-- RESULT GAME OVER MODAL -->
+       <div id="modal-result" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex flex-col items-center justify-center p-6 text-white text-center">
+           <div class="max-w-md w-full bg-amber-950 border-4 border-amber-500 p-6 rounded-2xl shadow-2xl flex flex-col items-center relative overflow-hidden">
+              
+               <!-- Title & Badge -->
+               <div class="text-xs font-bold bg-amber-800 text-amber-200 px-3 py-1 rounded-full mb-2 border border-amber-600">
+                   ⏰ 수업시간 종료!
+               </div>
+               <h2 class="text-3xl font-black text-amber-300 mb-1">최종 결과 발표</h2>
+               <p class="text-xs text-amber-200/80 mb-4">과자 먹기 성공! 과연 나의 칭호는?</p>
+
+
+               <!-- Final Score Display -->
+               <div class="bg-amber-900/80 border border-amber-700 w-full p-4 rounded-xl mb-4 flex justify-around items-center">
+                   <div>
+                       <div class="text-xs text-amber-300">획득 점수</div>
+                       <div id="result-final-score" class="text-3xl font-black text-yellow-400">0점</div>
+                   </div>
+                   <div class="h-8 w-px bg-amber-700"></div>
+                   <div>
+                       <div class="text-xs text-amber-300">최종 획득 칭호</div>
+                       <div id="result-rank-title" class="text-2xl font-black text-emerald-400">초보</div>
+                   </div>
+               </div>
+
+
+               <!-- Rank Illustration & Message -->
+               <div id="result-animation-box" class="w-full bg-amber-900/40 border border-amber-800 p-4 rounded-xl mb-6 flex flex-col items-center min-h-[120px] justify-center">
+                   <div id="result-emoji" class="text-6xl mb-2 animate-bounce">🍩</div>
+                   <p id="result-message" class="text-sm font-bold text-amber-100">수업시간에 과자를 과연 얼마나 먹었을까요?</p>
+               </div>
+
+
+               <div class="flex gap-3 w-full">
+                   <button onclick="resetToHome()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-amber-200 font-bold py-3 rounded-xl transition border border-slate-600">
+                       과자 다시 선택
+                   </button>
+                   <button onclick="startGame()" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black py-3 rounded-xl transition shadow-lg">
+                       다시 도전하기!
+                   </button>
+               </div>
+           </div>
+       </div>
+
+
+   </div>
+
+
+   <script>
+       /* ==========================================
+          GAME STATE & VARIABLES
+          ========================================== */
+       const GAME_CONFIG = {
+           INITIAL_TIME: 120, // 2 minutes (120 sec)
+           EAT_SCORE: 10,
+           EAT_TIME_BONUS: 0.5,
+           EAT_RISK_BASE: 5,
+           EAT_RISK_BACK_TURNED: 35,
+           EAT_RISK_NOISE_SPIKE: 15,
+           IDLE_RISK_REDUCTION: 1.2
+       };
+
+
+       let gameState = {
+           isStarted: false,
+           isPaused: false,
+           isGameOver: false,
+           score: 0,
+           timeLeft: GAME_CONFIG.INITIAL_TIME,
+           riskPercent: 0,
+           selectedSnack: 'chip', // 'chip', 'cookie', 'jelly', 'pepero'
+          
+           // Teacher states
+           teacherTurnedAround: false, // false: looking board (safe), true: looking back (danger)
+           teacherPatrolDistance: 0,   // 0: desk/far (safe), 1: walking, 2: close (danger)
+          
+           // Noise event state
+           isNoiseSpikeActive: false,
+          
+           // Interval IDs
+           gameLoopTimer: null,
+           teacherBehaviorTimer: null,
+           patrolTimer: null,
+           noiseEventTimer: null,
+           quizTimer: null
+       };
+
+
+       let soundEnabled = true;
+
+
+       /* Snack Data Mapping */
+       const SNACK_DATA = {
+           chip: { name: '바삭 감자칩', emoji: '🥔', color: 'text-amber-500', svg: '<svg class="w-14 h-14" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="35" ry="25" fill="#f59e0b" stroke="#b45309" stroke-width="4"/><ellipse cx="45" cy="45" rx="25" ry="15" fill="#fbbf24"/></svg>' },
+           cookie: { name: '초코 쿠키', emoji: '🍪', color: 'text-amber-800', svg: '<svg class="w-14 h-14" viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" fill="#d97706" stroke="#78350f" stroke-width="4"/><circle cx="38" cy="38" r="5" fill="#451a03"/><circle cx="58" cy="42" r="6" fill="#451a03"/><circle cx="48" cy="62" r="5" fill="#451a03"/></svg>' },
+           jelly: { name: '알록달록 젤리', emoji: '🐻', color: 'text-pink-500', svg: '<svg class="w-14 h-14" viewBox="0 0 100 100"><path d="M30 40 Q30 20 50 20 Q70 20 70 40 L70 70 Q70 80 50 80 Q30 80 30 70 Z" fill="#ec4899" stroke="#be185d" stroke-width="4"/><circle cx="42" cy="38" r="3" fill="#fff"/><circle cx="58" cy="38" r="3" fill="#fff"/></svg>' },
+           pepero: { name: '초코 스틱', emoji: '🥢', color: 'text-amber-900', svg: '<svg class="w-14 h-14" viewBox="0 0 100 100"><rect x="42" y="15" width="16" height="70" rx="8" fill="#78350f" stroke="#451a03" stroke-width="3"/><rect x="44" y="50" width="12" height="32" rx="4" fill="#fde68a"/></svg>' }
+       };
+
+
+       /* Simple Web Audio API Sound Synthesizer */
+       const AudioCtx = window.AudioContext || window.webkitAudioContext;
+       let audioCtx = null;
+
+
+       function playSound(type) {
+           if (!soundEnabled) return;
+           try {
+               if (!audioCtx) audioCtx = new AudioCtx();
+               if (audioCtx.state === 'suspended') audioCtx.resume();
+
+
+               const osc = audioCtx.createOscillator();
+               const gain = audioCtx.createGain();
+               osc.connect(gain);
+               gain.connect(audioCtx.destination);
+
+
+               const now = audioCtx.currentTime;
+
+
+               if (type === 'eat') {
+                   // Crunch sound
+                   osc.type = 'triangle';
+                   osc.frequency.setValueAtTime(300, now);
+                   osc.frequency.exponentialRampToValueAtTime(100, now + 0.08);
+                   gain.gain.setValueAtTime(0.3, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                   osc.start(now);
+                   osc.stop(now + 0.08);
+               } else if (type === 'warning') {
+                   // High alert beep
+                   osc.type = 'sawtooth';
+                   osc.frequency.setValueAtTime(600, now);
+                   osc.frequency.setValueAtTime(800, now + 0.1);
+                   gain.gain.setValueAtTime(0.2, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                   osc.start(now);
+                   osc.stop(now + 0.25);
+               } else if (type === 'quiz') {
+                   // Bell / Chime
+                   osc.type = 'sine';
+                   osc.frequency.setValueAtTime(523.25, now); // C5
+                   osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                   gain.gain.setValueAtTime(0.25, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                   osc.start(now);
+                   osc.stop(now + 0.4);
+               } else if (type === 'correct') {
+                   // Success chime
+                   osc.type = 'sine';
+                   osc.frequency.setValueAtTime(523.25, now);
+                   osc.frequency.setValueAtTime(783.99, now + 0.1); // G5
+                   gain.gain.setValueAtTime(0.2, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                   osc.start(now);
+                   osc.stop(now + 0.3);
+               } else if (type === 'wrong') {
+                   // Buzz
+                   osc.type = 'square';
+                   osc.frequency.setValueAtTime(150, now);
+                   gain.gain.setValueAtTime(0.2, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                   osc.start(now);
+                   osc.stop(now + 0.25);
+               }
+           } catch (e) {
+               console.log("Audio not supported or restricted", e);
+           }
+       }
+
+
+       /* Initialize Lucide icons on load */
+       window.addEventListener('DOMContentLoaded', () => {
+           lucide.createIcons();
+           selectSnack('chip'); // default
+       });
+
+
+       /* Select Snack UI Function */
+       function selectSnack(snackKey) {
+           gameState.selectedSnack = snackKey;
+           document.querySelectorAll('.snack-select-btn').forEach(btn => {
+               btn.classList.remove('border-amber-500', 'bg-amber-100');
+               btn.classList.add('border-transparent', 'bg-amber-50');
+           });
+           const activeBtn = document.getElementById(`snack-btn-${snackKey}`);
+           if (activeBtn) {
+               activeBtn.classList.remove('border-transparent', 'bg-amber-50');
+               activeBtn.classList.add('border-amber-500', 'bg-amber-100');
+           }
+
+
+           // Update clickable snack graphic
+           document.getElementById('snack-graphic').innerHTML = SNACK_DATA[snackKey].svg;
+       }
+
+
+       /* Sound Toggle */
+       function toggleSound() {
+           soundEnabled = !soundEnabled;
+           const icon = document.getElementById('icon-sound');
+           if (soundEnabled) {
+               icon.setAttribute('data-lucide', 'volume-2');
+           } else {
+               icon.setAttribute('data-lucide', 'volume-x');
+           }
+           lucide.createIcons();
+       }
+
+
+       /* Pause / Resume Game */
+       function togglePause() {
+           if (!gameState.isStarted || gameState.isGameOver) return;
+           gameState.isPaused = !gameState.isPaused;
+           const pauseModal = document.getElementById('modal-pause');
+           if (gameState.isPaused) {
+               pauseModal.classList.remove('hidden');
+           } else {
+               pauseModal.classList.add('hidden');
+           }
+       }
+
+
+       /* Reset to Home Screen */
+       function resetToHome() {
+           clearIntervals();
+           gameState.isStarted = false;
+           gameState.isPaused = false;
+           gameState.isGameOver = false;
+
+
+           document.getElementById('modal-start').classList.remove('hidden');
+           document.getElementById('modal-pause').classList.add('hidden');
+           document.getElementById('modal-result').classList.add('hidden');
+           document.getElementById('quiz-modal').classList.add('hidden');
+           document.getElementById('caught-overlay').classList.add('hidden');
+       }
+
+
+       /* Start Game Main Loop */
+       function startGame() {
+           clearIntervals();
+
+
+           // Reset Game Variables
+           gameState.isStarted = true;
+           gameState.isPaused = false;
+           gameState.isGameOver = false;
+           gameState.score = 0;
+           gameState.timeLeft = GAME_CONFIG.INITIAL_TIME;
+           gameState.riskPercent = 0;
+           gameState.teacherTurnedAround = false;
+           gameState.teacherPatrolDistance = 0;
+           gameState.isNoiseSpikeActive = false;
+
+
+           // UI Reset
+           updateHUD();
+           setTeacherLookBack(false);
+           updatePatrolUI(0);
+           document.getElementById('noise-alert-badge').classList.add('hidden');
+
+
+           // Hide Modals
+           document.getElementById('modal-start').classList.add('hidden');
+           document.getElementById('modal-result').classList.add('hidden');
+           document.getElementById('modal-pause').classList.add('hidden');
+           document.getElementById('caught-overlay').classList.add('hidden');
+           document.getElementById('quiz-modal').classList.add('hidden');
+
+
+           // Start Timers
+           gameState.gameLoopTimer = setInterval(gameSecondTick, 1000);
+           scheduleTeacherTurn();
+           schedulePatrol();
+           scheduleNoiseSpike();
+           scheduleQuiz();
+       }
+
+
+       function clearIntervals() {
+           clearInterval(gameState.gameLoopTimer);
+           clearTimeout(gameState.teacherBehaviorTimer);
+           clearTimeout(gameState.patrolTimer);
+           clearTimeout(gameState.noiseEventTimer);
+           clearTimeout(gameState.quizTimer);
+       }
+
+
+       /* Every Second Game Update Tick */
+       function gameSecondTick() {
+           if (gameState.isPaused || gameState.isGameOver) return;
+
+
+           // Decrement time
+           gameState.timeLeft--;
+           if (gameState.timeLeft <= 0) {
+               gameState.timeLeft = 0;
+               updateHUD();
+               endGame();
+               return;
+           }
+
+
+           // Natural Risk Reduction when staying idle
+           if (gameState.riskPercent > 0) {
+               gameState.riskPercent = Math.max(0, gameState.riskPercent - GAME_CONFIG.IDLE_RISK_REDUCTION);
+           }
+
+
+           updateHUD();
+       }
+
+
+       /* Update Header HUD elements */
+       function updateHUD() {
+           document.getElementById('hud-timer').textContent = `${Math.ceil(gameState.timeLeft)}s`;
+           document.getElementById('hud-score').textContent = gameState.score;
+          
+           const riskVal = Math.min(100, Math.max(0, Math.round(gameState.riskPercent)));
+           document.getElementById('hud-risk-percent').textContent = `${riskVal}%`;
+           document.getElementById('hud-risk-bar').style.width = `${riskVal}%`;
+       }
+
+
+       /* Handle Clicking / Eating Snack */
+       function handleSnackEat(event) {
+           if (!gameState.isStarted || gameState.isPaused || gameState.isGameOver) return;
+
+
+           // Play Chew Sound & Animation
+           playSound('eat');
+           triggerChewAnimation();
+
+
+           // Calculate Risk Penalty for Eating right now
+           let addedRisk = GAME_CONFIG.EAT_RISK_BASE;
+
+
+           // Danger Factor 1: Teacher looking back
+           if (gameState.teacherTurnedAround) {
+               addedRisk += GAME_CONFIG.EAT_RISK_BACK_TURNED;
+           }
+
+
+           // Danger Factor 2: Noise Spike Event
+           if (gameState.isNoiseSpikeActive) {
+               addedRisk += GAME_CONFIG.EAT_RISK_NOISE_SPIKE;
+           }
+
+
+           // Danger Factor 3: Teacher Patrol Distance
+           if (gameState.teacherPatrolDistance === 2) { // Extremely Close
+               addedRisk += 50; // Immediate massive risk
+           } else if (gameState.teacherPatrolDistance === 1) { // Medium Distance
+               addedRisk += 15;
+           }
+
+
+           // Apply calculated risk
+           gameState.riskPercent += addedRisk;
+
+
+           // Floating score text animation at click position
+           showFloatingText(`+10점! (+${addedRisk}% 위험)`, event.clientX, event.clientY);
+
+
+           // Reward: Score + Time Bonus
+           gameState.score += GAME_CONFIG.EAT_SCORE;
+           gameState.timeLeft = Math.min(GAME_CONFIG.INITIAL_TIME + 60, gameState.timeLeft + GAME_CONFIG.EAT_TIME_BONUS);
+
+
+           updateHUD();
+
+
+           // Check if caught (Risk >= 100%)
+           if (gameState.riskPercent >= 100) {
+               triggerCaughtByTeacher();
+           }
+       }
+
+
+       /* Animation for player eating */
+       function triggerChewAnimation() {
+           const mouth = document.getElementById('player-mouth');
+           const chewEffect = document.getElementById('chew-effect');
+          
+           mouth.classList.add('h-4', 'w-4'); // open mouth wide
+           chewEffect.classList.remove('hidden');
+
+
+           setTimeout(() => {
+               mouth.classList.remove('h-4', 'w-4');
+               chewEffect.classList.add('hidden');
+           }, 300);
+       }
+
+
+       /* Show Floating Text on Click */
+       function showFloatingText(text, x, y) {
+           const el = document.createElement('div');
+           el.className = 'floating-text text-amber-900 text-sm bg-yellow-300 px-2 py-0.5 rounded-full border border-amber-600 shadow-md';
+           el.textContent = text;
+           el.style.left = `${x - 40}px`;
+           el.style.top = `${y - 30}px`;
+           document.body.appendChild(el);
+
+
+           setTimeout(() => {
+               el.remove();
+           }, 800);
+       }
+
+
+       /* Randomly schedule teacher looking back */
+       function scheduleTeacherTurn() {
+           if (!gameState.isStarted || gameState.isGameOver) return;
+
+
+           // Random delay between 3 to 7 seconds
+           const delay = Math.random() * 4000 + 3000;
+           gameState.teacherBehaviorTimer = setTimeout(() => {
+               if (gameState.isPaused || gameState.isGameOver) {
+                   scheduleTeacherTurn();
+                   return;
+               }
+
+
+               // Teacher Warning Indicator
+               const alertBubble = document.getElementById('teacher-alert');
+               alertBubble.classList.remove('hidden');
+               playSound('warning');
+
+
+               // Turn around after 0.8s warning
+               setTimeout(() => {
+                   alertBubble.classList.add('hidden');
+                   setTeacherLookBack(true);
+
+
+                   // Teacher looks back for 2 to 4 seconds
+                   const turnDuration = Math.random() * 2000 + 2000;
+                   setTimeout(() => {
+                       setTeacherLookBack(false);
+                       scheduleTeacherTurn(); // loop
+                   }, turnDuration);
+
+
+               }, 800);
+
+
+           }, delay);
+       }
+
+
+       /* Set Teacher Facing View */
+       function setTeacherLookBack(turned) {
+           gameState.teacherTurnedAround = turned;
+           const teacherFace = document.getElementById('teacher-face');
+           const teacherLabel = document.getElementById('teacher-label');
+           const teacherChar = document.getElementById('teacher-character');
+
+
+           if (turned) {
+               // Teacher turns to face class (DANGER)
+               teacherChar.classList.add('scale-110');
+               teacherFace.className = 'w-full h-full rounded-full bg-amber-200 border-2 border-slate-800 flex items-center justify-center font-bold text-red-600 text-xs animate-pulse';
+               teacherFace.innerHTML = '<span>👀 감시!</span>';
+               teacherLabel.textContent = '선생님 (뒤돌아보는 중! 🚨)';
+               teacherLabel.className = 'mt-1 bg-red-600 text-white text-xs px-2 py-0.5 rounded-md font-bold animate-pulse';
+           } else {
+               // Teacher facing blackboard (SAFE)
+               teacherChar.classList.remove('scale-110');
+               teacherFace.className = 'w-full h-full rounded-full bg-amber-900 border-2 border-slate-800 flex items-center justify-center text-amber-700 text-[10px]';
+               teacherFace.innerHTML = '<span>(판서 중)</span>';
+               teacherLabel.textContent = '선생님 (칠판 작성 중)';
+               teacherLabel.className = 'mt-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-md';
+           }
+       }
+
+
+       /* Schedule Teacher Patrol Walking */
+       function schedulePatrol() {
+           if (!gameState.isStarted || gameState.isGameOver) return;
+
+
+           const delay = Math.random() * 6000 + 5000;
+           gameState.patrolTimer = setTimeout(() => {
+               if (gameState.isPaused || gameState.isGameOver) {
+                   schedulePatrol();
+                   return;
+               }
+
+
+               // Patrol states: 0 (Board/Far), 1 (Walking Middle), 2 (Close to Desk)
+               gameState.teacherPatrolDistance = Math.floor(Math.random() * 3);
+               updatePatrolUI(gameState.teacherPatrolDistance);
+
+
+               // Stay in patrol position for 3s
+               setTimeout(() => {
+                   gameState.teacherPatrolDistance = 0; // Return to desk
+                   updatePatrolUI(0);
+                   schedulePatrol();
+               }, 3500);
+
+
+           }, delay);
+       }
+
+
+       function updatePatrolUI(distanceState) {
+           const dot = document.getElementById('patrol-status-dot');
+           const text = document.getElementById('patrol-distance-text');
+           const teacherWrapper = document.getElementById('teacher-wrapper');
+
+
+           if (distanceState === 0) {
+               dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+               text.className = 'text-emerald-400';
+               text.textContent = '교탁 앞 (안전)';
+               teacherWrapper.style.transform = 'translateY(0px) scale(1)';
+           } else if (distanceState === 1) {
+               dot.className = 'w-2.5 h-2.5 rounded-full bg-yellow-500 animate-ping';
+               text.className = 'text-yellow-400';
+               text.textContent = '복도 순찰 중 (주의)';
+               teacherWrapper.style.transform = 'translateY(30px) scale(1.1)';
+           } else if (distanceState === 2) {
+               dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 animate-ping';
+               text.className = 'text-red-400 font-bold';
+               text.textContent = '내 책상 바로 옆! (위험!)';
+               teacherWrapper.style.transform = 'translateY(60px) scale(1.25)';
+           }
+       }
+
+
+       /* Schedule Noise Spike Alert */
+       function scheduleNoiseSpike() {
+           if (!gameState.isStarted || gameState.isGameOver) return;
+
+
+           const delay = Math.random() * 8000 + 7000;
+           gameState.noiseEventTimer = setTimeout(() => {
+               if (gameState.isPaused || gameState.isGameOver) {
+                   scheduleNoiseSpike();
+                   return;
+               }
+
+
+               gameState.isNoiseSpikeActive = true;
+               document.getElementById('noise-alert-badge').classList.remove('hidden');
+               playSound('warning');
+
+
+               // Noise lasts for 3.5 seconds
+               setTimeout(() => {
+                   gameState.isNoiseSpikeActive = false;
+                   document.getElementById('noise-alert-badge').classList.add('hidden');
+                   scheduleNoiseSpike();
+               }, 3500);
+
+
+           }, delay);
+       }
+
+
+       /* Schedule Pop-up Math/Logic Quiz */
+       function scheduleQuiz() {
+           if (!gameState.isStarted || gameState.isGameOver) return;
+
+
+           const delay = Math.random() * 12000 + 10000; // Every 10~22 sec
+           gameState.quizTimer = setTimeout(() => {
+               if (gameState.isPaused || gameState.isGameOver) {
+                   scheduleQuiz();
+                   return;
+               }
+
+
+               triggerQuizModal();
+           }, delay);
+       }
+
+
+       function triggerQuizModal() {
+           playSound('quiz');
+
+
+           // Generate Random Math Problem
+           const num1 = Math.floor(Math.random() * 12) + 2;
+           const num2 = Math.floor(Math.random() * 12) + 2;
+           const isAdd = Math.random() > 0.5;
+           const correctAnswer = isAdd ? (num1 + num2) : (num1 * num2);
+           const symbol = isAdd ? '+' : '×';
+
+
+           document.getElementById('quiz-question').textContent = `${num1} ${symbol} ${num2} = ?`;
+
+
+           // Generate Options
+           const options = [correctAnswer];
+           while (options.length < 4) {
+               const wrong = correctAnswer + (Math.floor(Math.random() * 10) - 5);
+               if (wrong > 0 && !options.includes(wrong)) {
+                   options.push(wrong);
+               }
+           }
+           // Shuffle
+           options.sort(() => Math.random() - 0.5);
+
+
+           const optionsContainer = document.getElementById('quiz-options');
+           optionsContainer.innerHTML = '';
+
+
+           options.forEach(opt => {
+               const btn = document.createElement('button');
+               btn.className = 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-2 border-indigo-300 font-bold py-2 rounded-xl text-lg transition active:scale-95';
+               btn.textContent = opt;
+               btn.onclick = () => handleQuizAnswer(opt === correctAnswer);
+               optionsContainer.appendChild(btn);
+           });
+
+
+           document.getElementById('quiz-modal').classList.remove('hidden');
+       }
+
+
+       function handleQuizAnswer(isCorrect) {
+           document.getElementById('quiz-modal').classList.add('hidden');
+
+
+           if (isCorrect) {
+               playSound('correct');
+               gameState.timeLeft += 5; // +5 seconds
+               showFloatingText('정답! +5초 획득!', window.innerWidth / 2, window.innerHeight / 2);
+           } else {
+               playSound('wrong');
+               gameState.timeLeft = Math.max(0, gameState.timeLeft - 5); // -5 seconds
+               showFloatingText('오답! -5초 차감!', window.innerWidth / 2, window.innerHeight / 2);
+           }
+           updateHUD();
+
+
+           // Reschedule next quiz
+           scheduleQuiz();
+       }
+
+
+       /* Trigger Caught Overlay Penalty */
+       function triggerCaughtByTeacher() {
+           playSound('warning');
+           gameState.riskPercent = 50; // Reset risk partially
+           gameState.timeLeft = Math.max(0, gameState.timeLeft - 5); // Penalty -5s
+           updateHUD();
+
+
+           document.getElementById('caught-overlay').classList.remove('hidden');
+       }
+
+
+       function resumeAfterCaught() {
+           document.getElementById('caught-overlay').classList.add('hidden');
+       }
+
+
+       /* End Game and Calculate Results */
+       function endGame() {
+           clearIntervals();
+           gameState.isGameOver = true;
+
+
+           const finalScore = gameState.score;
+           document.getElementById('result-final-score').textContent = `${finalScore}점`;
+
+
+           // Determine Rank based on EXACT Prompt Algorithm Rules:
+           // 100점 이하 → 초보
+           // 101~300점 → 과자 고수
+           // 301~500점 → 몰래 먹기 달인
+           // 501점 이상 → 줴줴이야
+           let title = "초보";
+           let emoji = "🐣";
+           let message = "아직은 과자 먹기가 서투르군요! 조금 더 용기를 내보세요.";
+
+
+           if (finalScore >= 501) {
+               title = "줴줴이야";
+               emoji = "👑🍪✨";
+               message = "전설의 신 경지! 선생님 바로 눈앞에서도 꿀꺽 먹어치우는 대마왕!";
+           } else if (finalScore >= 301) {
+               title = "몰래 먹기 달인";
+               emoji = "🥷🍩";
+               message = "완벽한 스킬! 선생님의 시선을 완벽히 교란하고 폭풍 흡입하셨습니다.";
+           } else if (finalScore >= 101) {
+               title = "과자 고수";
+               emoji = "😋🍿";
+               message = "훌륭합니다! 수업시간의 묘미를 아는 진정한 스낵 마니아!";
+           }
+
+
+           document.getElementById('result-rank-title').textContent = title;
+           document.getElementById('result-emoji').textContent = emoji;
+           document.getElementById('result-message').textContent = message;
+
+
+           document.getElementById('modal-result').classList.remove('hidden');
+       }
+   </script>
+</body>
+</html>

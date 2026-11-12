@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 탱크 대전 게임</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 15, 25, 0.92);
+            backdrop-filter: blur(8px);
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            color: #4facfe;
+            text-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+            text-align: center;
+        }
+
+        .selection-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-title {
+            font-size: 1.2rem;
+            color: #00f2fe;
+            border-bottom: 2px solid #00f2fe;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border: 1px solid #4facfe;
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn:hover, .btn.selected {
+            background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+            box-shadow: 0 0 15px rgba(0, 198, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .tank-card {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tank-card:hover, .tank-card.selected {
+            border-color: #00f2fe;
+            background: rgba(0, 242, 254, 0.15);
+        }
+
+        .tank-name {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .tank-info {
+            font-size: 0.8rem;
+            color: #ccc;
+            line-height: 1.3;
+        }
+
+        .tank-stat {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+            color: #fff;
+            font-size: 1.3rem;
+            padding: 15px 40px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            align-self: center;
+            box-shadow: 0 4px 15px rgba(56, 239, 125, 0.4);
+            transition: transform 0.2s;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* HUD UI */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            pointer-events: none;
+            display: none;
+        }
+
+        .hud-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            pointer-events: auto;
+        }
+
+        #status-panel {
+            top: 15px;
+            left: 15px;
+            min-width: 220px;
+        }
+
+        #target-panel {
+            top: 15px;
+            right: 15px;
+            min-width: 180px;
+            text-align: right;
+        }
+
+        .bar-container {
+            width: 100%;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 5px 0 10px 0;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        #hp-bar { background: linear-gradient(90deg, #ff4e50, #f9d423); }
+        #reload-bar { background: linear-gradient(90deg, #00c6ff, #0072ff); }
+
+        .warning-text {
+            color: #ff3333;
+            font-weight: bold;
+            animation: blink 0.8s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.2; }
+        }
+
+        /* On-Screen Touch Controls */
+        .touch-controller {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: auto;
+        }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(3, 50px);
+            gap: 5px;
+        }
+
+        .dbtn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            user-select: none;
+            touch-action: manipulation;
+        }
+
+        .dbtn:active {
+            background: rgba(0, 242, 254, 0.6);
+        }
+
+        .fire-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            border: 2px solid #fff;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px rgba(255, 75, 43, 0.6);
+            cursor: pointer;
+            align-self: flex-end;
+        }
+
+        .fire-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-hint {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #aaa;
+            pointer-events: none;
+            text-align: center;
+        }
+
+        .lock-btn {
+            position: absolute;
+            top: 80px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #4facfe;
+            color: #00f2fe;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            pointer-events: auto;
+            font-weight: bold;
+        }
+
+        .lock-btn.active {
+            background: #00f2fe;
+            color: #000;
+        }
+
+        #result-screen {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <!-- Selection Screen -->
+    <div id="selection-screen" class="overlay">
+        <h1>3D TANK WARFARE</h1>
+        
+        <div class="selection-panel">
+            <div class="step-title">1. 난이도 선택 (Difficulty)</div>
+            <div class="grid-container" id="difficulty-options">
+                <div class="btn selected" data-diff="easy">이지 (Easy)</div>
+                <div class="btn" data-diff="normal">일반 (Normal)</div>
+                <div class="btn" data-diff="hard">하드 (Hard)</div>
+                <div class="btn" data-diff="insane">인세인 (Insane)</div>
+            </div>
+
+            <div class="step-title" style="margin-top: 10px;">2. 국가 선택 (Nation)</div>
+            <div class="grid-container" id="nation-options">
+                <div class="btn selected" data-nation="usa">🇺🇸 미국</div>
+                <div class="btn" data-nation="korea">🇰🇷 대한민국</div>
+                <div class="btn" data-nation="germany">🇩🇪 독일</div>
+                <div class="btn" data-nation="ussr">🇷🇺 러시아</div>
+            </div>
+
+            <div class="step-title" style="margin-top: 10px;">3. 전차 선택 (Select Tank)</div>
+            <div class="grid-container" id="tank-options"></div>
+
+            <button class="start-btn" id="btn-start">전장 출격</button>
+        </div>
+    </div>
+
+    <!-- HUD Overlay -->
+    <div id="hud">
+        <div id="status-panel" class="hud-panel">
+            <div style="font-weight: bold; margin-bottom: 5px;" id="player-tank-title">K2 흑표</div>
+            <div>내 체력 (HP)</div>
+            <div class="bar-container">
+                <div id="hp-bar" class="bar-fill"></div>
+            </div>
+            <div>장전 상태 (<span id="ammo-count">24</span>/<span id="max-ammo">24</span>발)</div>
+            <div class="bar-container">
+                <div id="reload-bar" class="bar-fill"></div>
+            </div>
+            <div id="hud-status" style="font-size: 0.85rem; color: #4facfe;">준비 완료</div>
+        </div>
+
+        <div id="target-panel" class="hud-panel">
+            <div style="font-size: 0.9rem; color: #aaa;">전황 정보</div>
+            <div style="font-size: 1.1rem; color: #ff4e50; font-weight: bold; margin-top:3px;">
+                적 잔여: <span id="enemy-count">0</span>
+            </div>
+            <div style="font-size: 0.9rem; color: #38ef7d; font-weight: bold; margin-top:3px;">
+                아군 잔여: <span id="ally-count">0</span>
+            </div>
+        </div>
+
+        <button id="btn-autolock" class="lock-btn">적 자동 조준: OFF</button>
+
+        <div class="control-hint">
+            <b>조작법:</b> [WASD] 전차 이동 | [방향키 ↑↓←→] 포탑 회전 및 조준 | [Space] 사격
+        </div>
+
+        <div class="touch-controller">
+            <div class="dpad">
+                <div></div>
+                <div class="dbtn" id="btn-w">W</div>
+                <div></div>
+                <div class="dbtn" id="btn-a">A</div>
+                <div class="dbtn" id="btn-s">S</div>
+                <div class="dbtn" id="btn-d">D</div>
+            </div>
+
+            <div class="fire-btn" id="btn-fire">FIRE</div>
+
+            <div class="dpad">
+                <div></div>
+                <div class="dbtn" id="btn-up">↑</div>
+                <div></div>
+                <div class="dbtn" id="btn-left">←</div>
+                <div class="dbtn" id="btn-down">↓</div>
+                <div class="dbtn" id="btn-right">→</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="overlay">
+        <h1 id="result-title">VICTORY!</h1>
+        <p id="result-desc" style="margin-bottom: 20px; font-size: 1.2rem; color: #ccc;">적 전차를 모두 처치했습니다.</p>
+        <button class="start-btn" id="btn-restart">메인 화면으로</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        const TANK_DATA = {
+            usa: [
+                { id: "hstv-l", name: "HSTV-L", type: "경전차", hp: 500, speed: 22, reloadTime: 1.5, clipSize: 6, totalAmmo: 26, amphibious: false, desc: "75mm 자동장전. 1.5초 연사 (클립 6발), 높은 기동성." },
+                { id: "m1a1_hc", name: "M1A1 HC", type: "주력전차", hp: 1100, speed: 17, reloadTime: 5.0, clipSize: 1, totalAmmo: 40, amphibious: false, desc: "120mm M256. 열화우라늄 장갑 추가로 뛰어난 방호력." },
+                { id: "m1a2_sep3", name: "M1A2 SEP V3", type: "주력전차", hp: 1250, speed: 16, reloadTime: 5.0, clipSize: 1, totalAmmo: 42, amphibious: false, desc: "120mm M256A1. M829A3 날탄 사용, 치명적인 화력." },
+                { id: "m3a3_bradley", name: "M3A3 브래들리", type: "보병전투차", hp: 650, speed: 18, reloadTime: 10.0, clipSize: 8, totalAmmo: 12, amphibious: false, desc: "25mm 기관포 + TOW-2B 대전차 미사일." }
+            ],
+            korea: [
+                { id: "k2", name: "K2 흑표", type: "주력전차", hp: 1200, speed: 18, reloadTime: 5.8, clipSize: 1, totalAmmo: 40, amphibious: true, desc: "120mm 55구경장 + 자동장전. 잠수도하 가능 (강 침수 면제)." },
+                { id: "k1a2", name: "K1A2", type: "주력전차", hp: 1000, speed: 16, reloadTime: 6.0, clipSize: 1, totalAmmo: 40, amphibious: false, desc: "120mm 활강포 개량형. 균형 잡힌 공수 기동 성능." },
+                { id: "k1e2", name: "K1E2", type: "주력전차", hp: 900, speed: 17, reloadTime: 5.0, clipSize: 1, totalAmmo: 44, amphibious: false, desc: "105mm 강선포 + 최신 열상 장치." },
+                { id: "k21", name: "K21 장갑차", type: "보병전투차", hp: 600, speed: 19, reloadTime: 15.0, clipSize: 24, totalAmmo: 200, amphibious: true, desc: "40mm 기관포. 24발 연사 후 15초 재장전. 수상 도하 가능." }
+            ],
+            germany: [
+                { id: "tam2c", name: "TAM 2C", type: "경전차", hp: 600, speed: 20, reloadTime: 6.7, clipSize: 1, totalAmmo: 50, amphibious: false, desc: "105mm FMK.4. 뛰어난 기동성과 DM63 강력한 탄." },
+                { id: "leo2a7v", name: "레오파르트 2A7V", type: "주력전차", hp: 1300, speed: 15, reloadTime: 5.0, clipSize: 1, totalAmmo: 42, amphibious: false, desc: "120mm L/55. 최고의 방호력과 강력한 화력." },
+                { id: "embt", name: "EMBT", type: "주력전차", hp: 1150, speed: 18, reloadTime: 5.0, clipSize: 1, totalAmmo: 40, amphibious: false, desc: "자동장전 120mm. 빠른 기동력과 고성능 사격 성능." },
+                { id: "swatrinf", name: "sWaTrInf", type: "장갑차", hp: 650, speed: 19, reloadTime: 10.0, clipSize: 4, totalAmmo: 16, amphibious: false, desc: "30mm 기관포 + 스파이크 탑어택 미사일." }
+            ],
+            ussr: [
+                { id: "2s25m", name: "2S25M 스프루트", type: "자행대전차포", hp: 550, speed: 21, reloadTime: 7.1, clipSize: 1, totalAmmo: 40, amphibious: true, desc: "125mm 2A75. 수륙양용 경장갑 막강한 화력." },
+                { id: "t90m", name: "T-90M", type: "주력전차", hp: 1150, speed: 16, reloadTime: 6.5, clipSize: 1, totalAmmo: 40, amphibious: false, desc: "125mm 활강포 + 포발사 미사일. 반응장갑 방어." },
+                { id: "bmpt", name: "BMPT 터미네이터", type: "화력지원차", hp: 1100, speed: 17, reloadTime: 24.0, clipSize: 4, totalAmmo: 20, amphibious: false, desc: "30mm 쌍열기관포 + 4연장 미사일 (폭압 범위 최대 4.5m)." }
+            ]
+        };
+
+        let selectedDiff = 'easy';
+        let selectedNation = 'usa';
+        let selectedTankData = TANK_DATA.usa[0];
+
+        const DIFF_SETTINGS = {
+            easy:   { enemyCount: 2, allyCount: 2, aiAccuracy: 0.2, aiSpeedMult: 0.7, hpMult: 0.8 },
+            normal: { enemyCount: 3, allyCount: 2, aiAccuracy: 0.4, aiSpeedMult: 0.85, hpMult: 1.0 },
+            hard:   { enemyCount: 4, allyCount: 1, aiAccuracy: 0.7, aiSpeedMult: 1.0, hpMult: 1.2 },
+            insane: { enemyCount: 5, allyCount: 1, aiAccuracy: 0.9, aiSpeedMult: 1.2, hpMult: 1.5 }
+        };
+
+        let scene, camera, renderer;
+        let gameState = "MENU";
+        let player, allies = [], enemies = [], projectiles = [], explosions = [];
+        let keys = {};
+        let autoTargetLock = false;
+
+        const inputState = {
+            forward: false, backward: false, left: false, right: false,
+            turretLeft: false, turretRight: false, turretUp: false, turretDown: false,
+            fire: false
+        };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initUI();
+            init3D();
+            animate();
+        });
+
+        function initUI() {
+            document.querySelectorAll('#difficulty-options .btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#difficulty-options .btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedDiff = btn.dataset.diff;
+                });
+            });
+
+            document.querySelectorAll('#nation-options .btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#nation-options .btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedNation = btn.dataset.nation;
+                    updateTankCards();
+                });
+            });
+
+            updateTankCards();
+
+            document.getElementById('btn-start').addEventListener('click', startGame);
+            document.getElementById('btn-restart').addEventListener('click', () => {
+                document.getElementById('result-screen').style.display = 'none';
+                document.getElementById('selection-screen').style.display = 'flex';
+                gameState = "MENU";
+            });
+
+            const lockBtn = document.getElementById('btn-autolock');
+            lockBtn.addEventListener('click', () => {
+                autoTargetLock = !autoTargetLock;
+                lockBtn.classList.toggle('active', autoTargetLock);
+                lockBtn.innerText = `적 자동 조준: ${autoTargetLock ? 'ON' : 'OFF'}`;
+            });
+
+            setupControls();
+        }
+
+        function updateTankCards() {
+            const container = document.getElementById('tank-options');
+            container.innerHTML = '';
+            const tanks = TANK_DATA[selectedNation];
+            selectedTankData = tanks[0];
+
+            tanks.forEach((tank, idx) => {
+                const card = document.createElement('div');
+                card.className = `tank-card ${idx === 0 ? 'selected' : ''}`;
+                const opRadius = Math.min(4.5, Math.max(1.5, 1.5 + (tank.reloadTime / 24.0) * 3.0)).toFixed(1);
+
+                card.innerHTML = `
+                    <div class="tank-name">
+tank.name<spanstyle="font-size:0.75rem;color:#00f2fe;">({tank.type})</span></div>
+                    <div class="tank-info">
+                        • 체력: <span class="tank-stat">${tank.hp}</span><br>
+                        • 속도: <span class="tank-stat">${tank.speed} km/h</span><br>
+                        • 재장전: <span class="tank-stat">${tank.reloadTime}초</span> (탄창: ${tank.clipSize}발)<br>
+                        • 폭압 범위: <span class="tank-stat">${opRadius}m</span><br>
+                        ${tank.amphibious ? '<span style="color:#38ef7d;">• 수륙양용 (강 침수 면제)</span><br>' : ''}
+                        <span style="color:#aaa; font-size:0.75rem;">${tank.desc}</span>
+                    </div>
+                `;
+
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.tank-card').forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    selectedTankData = tank;
+                });
+
+                container.appendChild(card);
+            });
+        }
+
+        function setupControls() {
+            window.addEventListener('keydown', (e) => {
+                keys[e.code] = true;
+                updateInputFromKeys();
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.code] = false;
+                updateInputFromKeys();
+            });
+
+            const bindTouchBtn = (id, keyName) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const start = (e) => { e.preventDefault(); inputState[keyName] = true; };
+                const end = (e) => { e.preventDefault(); inputState[keyName] = false; };
+                el.addEventListener('mousedown', start);
+                el.addEventListener('mouseup', end);
+                el.addEventListener('mouseleave', end);
+                el.addEventListener('touchstart', start);
+                el.addEventListener('touchend', end);
+            };
+
+            bindTouchBtn('btn-w', 'forward');
+            bindTouchBtn('btn-s', 'backward');
+            bindTouchBtn('btn-a', 'left');
+            bindTouchBtn('btn-d', 'right');
+
+            bindTouchBtn('btn-up', 'turretUp');
+            bindTouchBtn('btn-down', 'turretDown');
+            bindTouchBtn('btn-left', 'turretLeft');
+            bindTouchBtn('btn-right', 'turretRight');
+
+            bindTouchBtn('btn-fire', 'fire');
+        }
+
+        function updateInputFromKeys() {
+            inputState.forward = !!(keys['KeyW']);
+            inputState.backward = !!(keys['KeyS']);
+            inputState.left = !!(keys['KeyA']);
+            inputState.right = !!(keys['KeyD']);
+
+            inputState.turretUp = !!(keys['ArrowUp']);
+            inputState.turretDown = !!(keys['ArrowDown']);
+            inputState.turretLeft = !!(keys['ArrowLeft']);
+            inputState.turretRight = !!(keys['ArrowRight']);
+
+            inputState.fire = !!(keys['Space']);
+        }
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb);
+            scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 10, 20);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(30, 50, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            buildMap();
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function buildMap() {
+            const MAP_SIZE = 50;
+
+            const groundGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
+            const groundMat = new THREE.MeshStandardMaterial({ color: 0x557a2b, roughness: 0.9 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const riverGeo = new THREE.PlaneGeometry(10, MAP_SIZE);
+            const riverMat = new THREE.MeshStandardMaterial({ color: 0x1e88e5, roughness: 0.1, transparent: true, opacity: 0.8 });
+            const river = new THREE.Mesh(riverGeo, riverMat);
+            river.rotation.x = -Math.PI / 2;
+            river.position.y = 0.05;
+            river.receiveShadow = true;
+            scene.add(river);
+
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const wallGeoH = new THREE.BoxGeometry(MAP_SIZE, 3, 1);
+            const wallGeoV = new THREE.BoxGeometry(1, 3, MAP_SIZE);
+
+            const nWall = new THREE.Mesh(wallGeoH, wallMat); nWall.position.set(0, 1.5, -MAP_SIZE/2);
+            const sWall = new THREE.Mesh(wallGeoH, wallMat); sWall.position.set(0, 1.5, MAP_SIZE/2);
+            const eWall = new THREE.Mesh(wallGeoV, wallMat); eWall.position.set(MAP_SIZE/2, 1.5, 0);
+            const wWall = new THREE.Mesh(wallGeoV, wallMat); wWall.position.set(-MAP_SIZE/2, 1.5, 0);
+
+            scene.add(nWall, sWall, eWall, wWall);
+        }
+
+        function createTankMesh(colorHex, isPlayer = false) {
+            const group = new THREE.Group();
+
+            const hullGeo = new THREE.BoxGeometry(2.2, 0.9, 3.8);
+            const hullMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.6 });
+            const hull = new THREE.Mesh(hullGeo, hullMat);
+            hull.position.y = 0.6;
+            hull.castShadow = true;
+            hull.receiveShadow = true;
+            group.add(hull);
+
+            const trackGeo = new THREE.BoxGeometry(0.4, 0.7, 4.0);
+            const trackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+            const leftTrack = new THREE.Mesh(trackGeo, trackMat);
+            leftTrack.position.set(-1.2, 0.45, 0);
+            const rightTrack = new THREE.Mesh(trackGeo, trackMat);
+            rightTrack.position.set(1.2, 0.45, 0);
+            group.add(leftTrack, rightTrack);
+
+            const turretGroup = new THREE.Group();
+            turretGroup.position.set(0, 1.2, -0.2);
+
+            const turretGeo = new THREE.BoxGeometry(1.6, 0.7, 2.0);
+            const turretMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5 });
+            const turret = new THREE.Mesh(turretGeo, turretMat);
+            turret.position.y = 0.35;
+            turret.castShadow = true;
+            turretGroup.add(turret);
+
+            const barrelGroup = new THREE.Group();
+            barrelGroup.position.set(0, 0.35, 1.0);
+
+            const barrelGeo = new THREE.CylinderGeometry(0.12, 0.12, 2.5, 12);
+            const barrelMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 });
+            const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+            barrel.rotation.x = Math.PI / 2;
+            barrel.position.z = 1.25;
+            barrel.castShadow = true;
+            barrelGroup.add(barrel);
+
+            turretGroup.add(barrelGroup);
+            group.add(turretGroup);
+
+            if (isPlayer) {
+                const markerGeo = new THREE.ConeGeometry(0.4, 0.8, 4);
+                const markerMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+                const marker = new THREE.Mesh(markerGeo, markerMat);
+                marker.rotation.x = Math.PI;
+                marker.position.y = 3.5;
+                group.add(marker);
+            }
+
+            return { mesh: group, turret: turretGroup, barrel: barrelGroup };
+        }
+
+        class Tank {
+            constructor(data, x, z, isPlayer = false, isAlly = false) {
+                this.data = data;
+                this.isPlayer = isPlayer;
+                this.isAlly = isAlly;
+
+                const diff = DIFF_SETTINGS[selectedDiff];
+                const hpBonus = (!isPlayer && !isAlly) ? diff.hpMult : 1.0;
+
+                this.maxHp = Math.round(data.hp * hpBonus);
+                this.hp = this.maxHp;
+                this.speed = (data.speed / 3.6) * ((!isPlayer && !isAlly) ? diff.aiSpeedMult : 1.0);
+                this.reloadTime = data.reloadTime;
+                this.clipSize = data.clipSize;
+                this.remainingClip = data.clipSize;
+                this.totalAmmo = data.totalAmmo;
+                
+                this.opRadius = Math.min(4.5, Math.max(1.5, 1.5 + (data.reloadTime / 24.0) * 3.0));
+
+                this.reloadTimer = 0;
+                this.isReloading = false;
+                this.waterTimer = 0;
+
+                let color = 0x3b5323;
+                if (isPlayer) color = 0x0072ff;
+                else if (isAlly) color = 0x2e7d32;
+                else color = 0xc62828;
+
+                const parts = createTankMesh(color, isPlayer);
+                this.mesh = parts.mesh;
+                this.turret = parts.turret;
+                this.barrel = parts.barrel;
+
+                this.mesh.position.set(x, 0, z);
+                scene.add(this.mesh);
+
+                this.radius = 1.8;
+                this.destroyed = false;
+            }
+
+            update(dt) {
+                if (this.destroyed) return;
+
+                if (this.isReloading) {
+                    this.reloadTimer += dt;
+                    if (this.reloadTimer >= this.reloadTime) {
+                        this.isReloading = false;
+                        this.reloadTimer = 0;
+                        this.remainingClip = this.clipSize;
+                    }
+                }
+
+                const inRiver = Math.abs(this.mesh.position.x) < 5.0;
+                if (inRiver && !this.data.amphibious) {
+                    this.waterTimer += dt;
+                    if (this.waterTimer >= 5.0) {
+                        this.takeDamage(100 * dt, null, "침수");
+                    }
+                } else {
+                    this.waterTimer = Math.max(0, this.waterTimer - dt);
+                }
+
+                const BOUND = 23.5;
+                this.mesh.position.x = THREE.MathUtils.clamp(this.mesh.position.x, -BOUND, BOUND);
+                this.mesh.position.z = THREE.MathUtils.clamp(this.mesh.position.z, -BOUND, BOUND);
+            }
+
+            canFire() {
+                if (this.isReloading) return false;
+                if (this.remainingClip <= 0) return false;
+                return true;
+            }
+
+            fire() {
+                if (!this.canFire()) return false;
+
+                this.remainingClip--;
+                this.totalAmmo--;
+
+                const tipPos = new THREE.Vector3(0, 0, 2.5);
+                this.barrel.localToWorld(tipPos);
+
+                const dir = new THREE.Vector3(0, 0, 1);
+                dir.applyQuaternion(this.barrel.getWorldQuaternion(new THREE.Quaternion()));
+
+                const damage = Math.round(150 + this.reloadTime * 30);
+                projectiles.push(new Projectile(tipPos, dir, damage, this.opRadius, this));
+
+                if (this.remainingClip <= 0 || (this.reloadTime < 10.0 && this.clipSize === 1)) {
+                    this.isReloading = true;
+                    this.reloadTimer = 0;
+                }
+
+                return true;
+            }
+
+            takeDamage(amount, attacker, reason = "") {
+                if (this.destroyed) return;
+
+                this.hp -= amount;
+                createExplosion(this.mesh.position, 1.0, 0xffaa00);
+
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.destroy();
+                }
+            }
+
+            destroy() {
+                if (this.destroyed) return;
+                this.destroyed = true;
+                createExplosion(this.mesh.position, 3.0, 0xff2200);
+                scene.remove(this.mesh);
+            }
+        }
+
+        class Projectile {
+            constructor(pos, dir, damage, opRadius, owner) {
+                this.position = pos.clone();
+                this.direction = dir.clone().normalize();
+                this.speed = 50.0;
+                this.damage = damage;
+                this.opRadius = opRadius;
+                this.owner = owner;
+                this.life = 2.0;
+
+                const geo = new THREE.SphereGeometry(0.2, 8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.copy(this.position);
+                scene.add(this.mesh);
+
+                this.destroyed = false;
+            }
+
+            update(dt) {
+                if (this.destroyed) return;
+
+                this.life -= dt;
+                if (this.life <= 0) {
+                    this.explode();
+                    return;
+                }
+
+                const moveDist = this.speed * dt;
+                this.position.addScaledVector(this.direction, moveDist);
+                this.mesh.position.copy(this.position);
+
+                if (this.position.y <= 0.1 || Math.abs(this.position.x) > 24.5 || Math.abs(this.position.z) > 24.5) {
+                    this.explode();
+                    return;
+                }
+
+                const allTanks = [player, ...allies, ...enemies].filter(t => t && !t.destroyed);
+                for (let tank of allTanks) {
+                    if (tank === this.owner) continue;
+
+                    const dist = this.position.distanceTo(tank.mesh.position);
+                    if (dist < tank.radius) {
+                        tank.takeDamage(this.damage, this.owner);
+                        this.explode();
+                        return;
+                    }
+                }
+            }
+
+            explode() {
+                if (this.destroyed) return;
+                this.destroyed = true;
+                scene.remove(this.mesh);
+
+                createShockwave(this.position, this.opRadius);
+
+                const allTanks = [player, ...allies, ...enemies].filter(t => t && !t.destroyed);
+                allTanks.forEach(tank => {
+                    const dist = this.position.distanceTo(tank.mesh.position);
+                    if (dist <= this.opRadius) {
+                        const factor = 1.0 - (dist / this.opRadius);
+                        const splashDmg = Math.round(this.damage * 0.6 * factor);
+                        if (splashDmg > 0) {
+                            tank.takeDamage(splashDmg, this.owner, "폭압");
+                        }
+                    }
+                });
+            }
+        }
+
+        function createExplosion(pos, scale = 1.0, colorHex = 0xffaa00) {
+            const geo = new THREE.SphereGeometry(scale, 12, 12);
+            const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.9 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+
+            explosions.push({ mesh, life: 0.3, maxLife: 0.3, scale });
+        }
+
+        function createShockwave(pos, radius) {
+            const geo = new THREE.SphereGeometry(radius, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xff5500, wireframe: true, transparent: true, opacity: 0.7 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+
+            explosions.push({ mesh, life: 0.4, maxLife: 0.4, scale: radius });
+        }
+
+        function startGame() {
+            document.getElementById('selection-screen').style.display = 'none';
+            document.getElementById('hud').style.display = 'block';
+
+            if (player) scene.remove(player.mesh);
+            allies.forEach(a => scene.remove(a.mesh));
+            enemies.forEach(e => scene.remove(e.mesh));
+            projectiles.forEach(p => scene.remove(p.mesh));
+
+            allies = [];
+            enemies = [];
+            projectiles = [];
+
+            const settings = DIFF_SETTINGS[selectedDiff];
+
+            player = new Tank(selectedTankData, -15, 15, true, false);
+            document.getElementById('player-tank-title').innerText = selectedTankData.name;
+            document.getElementById('max-ammo').innerText = selectedTankData.clipSize;
+
+            for (let i = 0; i < settings.allyCount; i++) {
+                const randTank = TANK_DATA.korea[Math.floor(Math.random() * TANK_DATA.korea.length)];
+                allies.push(new Tank(randTank, -18 + i * 6, 20, false, true));
+            }
+
+            const enemyNations = ['usa', 'germany', 'ussr'];
+            for (let i = 0; i < settings.enemyCount; i++) {
+                const nat = enemyNations[Math.floor(Math.random() * enemyNations.length)];
+                const randTank = TANK_DATA[nat][Math.floor(Math.random() * TANK_DATA[nat].length)];
+                enemies.push(new Tank(randTank, 15 - i * 6, -20, false, false));
+            }
+
+            gameState = "PLAYING";
+        }
+
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const dt = Math.min((now - lastTime) / 1000, 0.1);
+            lastTime = now;
+
+            if (gameState === "PLAYING") {
+                updatePlayerControls(dt);
+                updateAI(dt);
+                updatePhysicsAndCollisions(dt);
+                updateProjectilesAndExplosions(dt);
+                updateCamera();
+                updateHUD();
+                checkGameCondition();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function updatePlayerControls(dt) {
+            if (!player || player.destroyed) return;
+
+            let moveDir = 0;
+            let turnDir = 0;
+
+            if (inputState.forward) moveDir += 1;
+            if (inputState.backward) moveDir -= 1;
+            if (inputState.left) turnDir += 1;
+            if (inputState.right) turnDir -= 1;
+
+            if (turnDir !== 0) {
+                player.mesh.rotation.y += turnDir * 1.8 * dt;
+            }
+
+            if (moveDir !== 0) {
+                const moveDist = moveDir * player.speed * dt;
+                player.mesh.translateZ(moveDist);
+            }
+
+            if (autoTargetLock) {
+                let nearestEnemy = null;
+                let minDist = Infinity;
+                enemies.filter(e => !e.destroyed).forEach(e => {
+                    const d = player.mesh.position.distanceTo(e.mesh.position);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestEnemy = e;
+                    }
+                });
+
+                if (nearestEnemy) {
+                    const targetPos = nearestEnemy.mesh.position.clone();
+                    const localTarget = player.mesh.worldToLocal(targetPos);
+                    const targetAngle = Math.atan2(localTarget.x, localTarget.z);
+                    player.turret.rotation.y = THREE.MathUtils.lerp(player.turret.rotation.y, targetAngle, 5 * dt);
+                }
+            } else {
+                if (inputState.turretLeft) player.turret.rotation.y += 2.0 * dt;
+                if (inputState.turretRight) player.turret.rotation.y -= 2.0 * dt;
+                if (inputState.turretUp) player.barrel.rotation.x = Math.max(-0.1, player.barrel.rotation.x - 1.0 * dt);
+                if (inputState.turretDown) player.barrel.rotation.x = Math.min(0.3, player.barrel.rotation.x + 1.0 * dt);
+            }
+
+            if (inputState.fire) {
+                player.fire();
+            }
+        }
+
+        function updateAI(dt) {
+            const diff = DIFF_SETTINGS[selectedDiff];
+            const allAI = [...allies, ...enemies].filter(a => a && !a.destroyed);
+
+            allAI.forEach(ai => {
+                ai.update(dt);
+
+                const targets = (ai.isAlly ? enemies : [player, ...allies]).filter(t => t && !t.destroyed);
+                if (targets.length === 0) return;
+
+                let closest = null;
+                let minDist = Infinity;
+                targets.forEach(t => {
+                    const d = ai.mesh.position.distanceTo(t.mesh.position);
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = t;
+                    }
+                });
+
+                if (!closest) return;
+
+                const targetPos = closest.mesh.position;
+                const dist = ai.mesh.position.distanceTo(targetPos);
+
+                if (dist > 12) {
+                    ai.mesh.lookAt(targetPos.x, ai.mesh.position.y, targetPos.z);
+                    ai.mesh.translateZ(ai.speed * 0.6 * dt);
+                } else if (dist < 6) {
+                    ai.mesh.lookAt(targetPos.x, ai.mesh.position.y, targetPos.z);
+                    ai.mesh.translateZ(-ai.speed * 0.4 * dt);
+                }
+
+                const localTarget = ai.mesh.worldToLocal(targetPos.clone());
+                const targetAngle = Math.atan2(localTarget.x, localTarget.z);
+                ai.turret.rotation.y = THREE.MathUtils.lerp(ai.turret.rotation.y, targetAngle, 3.0 * dt);
+
+                if (Math.abs(ai.turret.rotation.y - targetAngle) < 0.25) {
+                    if (Math.random() < diff.aiAccuracy * dt * 2.0) {
+                        ai.fire();
+                    }
+                }
+            });
+        }
+
+        function updatePhysicsAndCollisions(dt) {
+            const activeTanks = [player, ...allies, ...enemies].filter(t => t && !t.destroyed);
+
+            for (let i = 0; i < activeTanks.length; i++) {
+                for (let j = i + 1; j < activeTanks.length; j++) {
+                    const t1 = activeTanks[i];
+                    const t2 = activeTanks[j];
+
+                    const dist = t1.mesh.position.distanceTo(t2.mesh.position);
+                    const minDist = t1.radius + t2.radius;
+
+                    if (dist < minDist) {
+                        const overlap = minDist - dist;
+                        const pushDir = new THREE.Vector3()
+                            .subVectors(t1.mesh.position, t2.mesh.position)
+                            .normalize();
+
+                        t1.mesh.position.addScaledVector(pushDir, overlap * 0.5);
+                        t2.mesh.position.addScaledVector(pushDir, -overlap * 0.5);
+                    }
+                }
+            }
+
+            if (player && !player.destroyed) {
+                player.update(dt);
+            }
+        }
+
+        function updateProjectilesAndExplosions(dt) {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                p.update(dt);
+                if (p.destroyed) {
+                    projectiles.splice(i, 1);
+                }
+            }
+
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const e = explosions[i];
+                e.life -= dt;
+                const progress = 1 - (e.life / e.maxLife);
+                e.mesh.scale.setScalar(1 + progress * e.scale);
+                e.mesh.material.opacity = (e.life / e.maxLife);
+
+                if (e.life <= 0) {
+                    scene.remove(e.mesh);
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+
+        function updateCamera() {
+            if (!player || player.destroyed) return;
+
+            const relativeOffset = new THREE.Vector3(0, 7, -12);
+            const cameraOffset = relativeOffset.applyMatrix4(player.mesh.matrixWorld);
+
+            camera.position.lerp(cameraOffset, 0.1);
+            
+            const lookTarget = player.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0));
+            camera.lookAt(lookTarget);
+        }
+
+        function updateHUD() {
+            if (!player) return;
+
+            const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+            document.getElementById('hp-bar').style.width = `${hpPct}%`;
+
+            document.getElementById('ammo-count').innerText = player.remainingClip;
+
+            const reloadBar = document.getElementById('reload-bar');
+            const hudStatus = document.getElementById('hud-status');
+
+            if (player.isReloading) {
+                const reloadPct = (player.reloadTimer / player.reloadTime) * 100;
+                reloadBar.style.width = `${reloadPct}%`;
+                hudStatus.innerText = "재장전 중 (RELOADING...)";
+                hudStatus.className = "warning-text";
+            } else if (player.remainingClip <= 0) {
+                reloadBar.style.width = "0%";
+                hudStatus.innerText = "재장전 필요 (탄약 소진)";
+                hudStatus.className = "warning-text";
+            } else {
+                reloadBar.style.width = "100%";
+                hudStatus.innerText = player.waterTimer > 0 ? `⚠️ 강 침수 진행 중! (${(5 - player.waterTimer).toFixed(1)}초)` : "사격 준비 완료";
+                hudStatus.className = player.waterTimer > 0 ? "warning-text" : "";
+            }
+
+            const aliveEnemies = enemies.filter(e => !e.destroyed).length;
+            const aliveAllies = allies.filter(a => !a.destroyed).length;
+
+            document.getElementById('enemy-count').innerText = aliveEnemies;
+            document.getElementById('ally-count').innerText = aliveAllies + (player.destroyed ? 0 : 1);
+        }
+
+        function checkGameCondition() {
+            const aliveEnemies = enemies.filter(e => !e.destroyed).length;
+
+            if (player.destroyed) {
+                endGame(false, "전차가 파괴되었습니다.");
+            } else if (aliveEnemies === 0) {
+                endGame(true, "모든 적 전차를 격파했습니다!");
+            }
+        }
+
+        function endGame(isVictory, desc) {
+            gameState = "GAMEOVER";
+            document.getElementById('hud').style.display = 'none';
+            const resultScreen = document.getElementById('result-screen');
+            resultScreen.style.display = 'flex';
+
+            const title = document.getElementById('result-title');
+            title.innerText = isVictory ? "VICTORY!" : "DEFEAT";
+            title.style.color = isVictory ? "#38ef7d" : "#ff4e50";
+
+            document.getElementById('result-desc').innerText = desc;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>쥐잡기 게임</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f7f3e9;
+    text-align: center;
+  }
+
+  h1 {
+    margin-top: 10px;
+  }
+
+  #game {
+    width: 700px;
+    height: 450px;
+    border: 5px solid #333;
+    margin: 20px auto;
+    position: relative;
+    background: white;
+    overflow: hidden;
+  }
+
+  #cat, #mouse, #cheese, #tuna {
+    position: absolute;
+    font-size: 45px;
+  }
+
+  .wall {
+    position: absolute;
+    background: #666;
+    border-radius: 10px;
+  }
+
+  button {
+    font-size: 30px;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 15px;
+    cursor: pointer;
+  }
+
+  #info {
+    font-size: 22px;
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🐭 쥐잡기 게임 🐱</h1>
+
+<div id="game">
+  <div id="cat">🐱</div>
+  <div id="mouse">🐭</div>
+  <div id="cheese">🧀</div>
+  <div id="tuna">🥫</div>
+
+  <div class="wall" style="left:200px; top:100px; width:250px; height:20px;"></div>
+  <div class="wall" style="left:500px; top:250px; width:20px; height:150px;"></div>
+  <div class="wall" style="left:100px; top:320px; width:180px; height:20px;"></div>
+</div>
+
+<div>
+  <button onclick="moveCat('up')">⬆️</button><br>
+  <button onclick="moveCat('left')">⬅️</button>
+  <button onclick="moveCat('down')">⬇️</button>
+  <button onclick="moveCat('right')">➡️</button>
+</div>
+
+<div id="info">
+  점수: <span id="score">0</span> / 15<br>
+  남은 시간: <span id="time">30</span>초
+</div>
+
+<h2 id="message"></h2>
+
+<script>
+const cat = document.getElementById('cat');
+const mouse = document.getElementById('mouse');
+const cheese = document.getElementById('cheese');
+const tuna = document.getElementById('tuna');
+const scoreText = document.getElementById('score');
+const timeText = document.getElementById('time');
+const message = document.getElementById('message');
+
+let catX = 50;
+let catY = 50;
+let mouseX = 500;
+let mouseY = 300;
+let cheeseX = 300;
+let cheeseY = 200;
+let tunaX = 600;
+let tunaY = 100;
+
+let score = 0;
+let timeLeft = 30;
+let gameOver = false;
+
+let catSpeed = 35;
+let mouseSpeed = 3;
+
+function draw() {
+  cat.style.left = catX + 'px';
+  cat.style.top = catY + 'px';
+
+  mouse.style.left = mouseX + 'px';
+  mouse.style.top = mouseY + 'px';
+
+  cheese.style.left = cheeseX + 'px';
+  cheese.style.top = cheeseY + 'px';
+
+  tuna.style.left = tunaX + 'px';
+  tuna.style.top = tunaY + 'px';
+}
+
+function wall(x, y) {
+  return (
+    (x > 180 && x < 450 && y > 80 && y < 130) ||
+    (x > 480 && x < 530 && y > 230 && y < 400) ||
+    (x > 80 && x < 280 && y > 300 && y < 350)
+  );
+}
+
+function moveCat(direction) {
+  if (gameOver) return;
+
+  let nextX = catX;
+  let nextY = catY;
+
+  if (direction === 'up') nextY -= catSpeed;
+  if (direction === 'down') nextY += catSpeed;
+  if (direction === 'left') nextX -= catSpeed;
+  if (direction === 'right') nextX += catSpeed;
+
+  if (nextX < 0) nextX = 0;
+  if (nextY < 0) nextY = 0;
+  if (nextX > 640) nextX = 640;
+  if (nextY > 390) nextY = 390;
+
+  if (!wall(nextX, nextY)) {
+    catX = nextX;
+    catY = nextY;
+  }
+
+  checkCatch();
+  checkTuna();
+  draw();
+}
+
+function moveMouse() {
+  if (gameOver) return;
+
+  const catDistance = Math.hypot(catX - mouseX, catY - mouseY);
+
+  // 고양이가 가까우면 도망가고 아니면 가끔 치즈 먹으러 감
+  if (catDistance < 170) {
+    mouseX += (mouseX - catX) * 0.08;
+    mouseY += (mouseY - catY) * 0.08;
+  } else {
+    // 랜덤하게 돌아다님
+    mouseX += Math.random() * 8 - 4;
+    mouseY += Math.random() * 8 - 4;
+
+    // 가끔 치즈 먹으러 감
+    if (Math.random() < 0.03) {
+      mouseX += (cheeseX - mouseX) * 0.2;
+      mouseY += (cheeseY - mouseY) * 0.2;
+    }
+  }
+
+  if (wall(mouseX, mouseY)) {
+    mouseX += Math.random() * 80 - 40;
+    mouseY += Math.random() * 80 - 40;
+  }
+
+  if (mouseX < 0) mouseX = 0;
+  if (mouseY < 0) mouseY = 0;
+  if (mouseX > 640) mouseX = 640;
+  if (mouseY > 390) mouseY = 390;
+
+  checkCheese();
+  draw();
+}
+
+function checkCatch() {
+  const distance = Math.hypot(catX - mouseX, catY - mouseY);
+
+  if (distance < 45) {
+    score++;
+    scoreText.textContent = score;
+
+    mouseX = Math.random() * 600;
+    mouseY = Math.random() * 350;
+
+    if (score >= 15) {
+      gameOver = true;
+      message.textContent = '🎉 성공! 쥐를 모두 잡았어요!';
+    }
+  }
+}
+
+function checkCheese() {
+  const distance = Math.hypot(mouseX - cheeseX, mouseY - cheeseY);
+
+  if (distance < 40) {
+    mouseSpeed = 14;
+
+    cheeseX = Math.random() * 600;
+    cheeseY = Math.random() * 350;
+  }
+}
+
+function checkTuna() {
+  const distance = Math.hypot(catX - tunaX, catY - tunaY);
+
+  if (distance < 40) {
+    catSpeed = 40;
+
+    tunaX = Math.random() * 600;
+    tunaY = Math.random() * 350;
+  }
+}
+
+setInterval(moveMouse, 40);
+
+setInterval(() => {
+  if (gameOver) return;
+
+  timeLeft--;
+  timeText.textContent = timeLeft;
+
+  if (timeLeft <= 0) {
+    gameOver = true;
+
+    if (score < 15) {
+      message.textContent = '❌ 실패! 15마리를 못 잡았어요!';
+    }
+  }
+}, 1000);
+
+draw();
+</script>
+
+</body>
+</html>

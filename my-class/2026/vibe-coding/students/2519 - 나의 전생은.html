@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>나의 전생은?</title>
+
+<style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: "Noto Sans KR", Arial, sans-serif;
+}
+
+#game {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  color: white;
+}
+
+/* 화면 */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* 시작 화면 */
+#startScreen {
+  background: radial-gradient(circle at center, #252525 0%, #090909 55%, #000 100%);
+}
+
+.title {
+  font-size: clamp(36px, 8vw, 72px);
+  margin-bottom: 50px;
+  letter-spacing: 5px;
+  text-shadow: 0 0 20px rgba(255,255,255,.35);
+}
+
+.startButton {
+  border: 2px solid white;
+  background: rgba(255,255,255,.08);
+  color: white;
+  padding: 20px 55px;
+  border-radius: 8px;
+  font-size: clamp(20px, 4vw, 32px);
+  cursor: pointer;
+  transition: .2s;
+}
+
+.startButton:hover {
+  background: white;
+  color: black;
+  transform: scale(1.05);
+}
+
+.startHint {
+  margin-top: 16px;
+  color: #aaa;
+  font-size: 14px;
+}
+
+/* 검은 화면 */
+#blackScreen {
+  background: black;
+}
+
+.message {
+  max-width: 850px;
+  padding: 30px;
+  font-size: clamp(20px, 4vw, 36px);
+  line-height: 1.8;
+  text-shadow: 0 0 12px rgba(255,255,255,.25);
+}
+
+/* 숲 */
+.forest {
+  background:
+    linear-gradient(rgba(0,0,0,.2), rgba(0,0,0,.45)),
+    radial-gradient(
+      ellipse at center bottom,
+      #668b3d 0%,
+      #345728 35%,
+      #172716 70%,
+      #050b04 100%
+    );
+}
+
+/* 숲속 나무 느낌 */
+.forest::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .7;
+  background: linear-gradient(
+    75deg,
+    transparent 0 8%,
+    rgba(20,35,15,.8) 9% 13%,
+    transparent 14% 23%,
+    rgba(18,30,14,.7) 24% 28%,
+    transparent 29% 42%,
+    rgba(15,28,12,.75) 43% 47%,
+    transparent 48% 61%,
+    rgba(15,27,12,.8) 62% 67%,
+    transparent 68% 80%,
+    rgba(15,28,12,.7) 81% 86%,
+    transparent 87%
+  );
+  pointer-events: none;
+}
+
+.forest::after {
+  content: "🌲 🌳 🌲 🌿 🌳 🌲";
+  position: absolute;
+  bottom: 8%;
+  left: 0;
+  width: 100%;
+  font-size: clamp(40px, 8vw, 90px);
+  opacity: .35;
+  letter-spacing: 15px;
+  pointer-events: none;
+}
+
+/* 콘텐츠 */
+.sceneContent {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.sceneText {
+  max-width: 900px;
+  padding: 20px;
+  font-size: clamp(18px, 3.5vw, 30px);
+  line-height: 1.7;
+  text-shadow: 0 2px 8px black;
+  min-height: 90px;
+}
+
+/* 선택지 */
+.choices {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(15px, 5vw, 60px);
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.choice {
+  width: clamp(100px, 22vw, 200px);
+  height: clamp(120px, 25vw, 220px);
+  border: 2px solid rgba(255,255,255,.8);
+  background: rgba(0,0,0,.38);
+  border-radius: 15px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  cursor: pointer;
+  transition: .25s;
+  user-select: none;
+}
+
+.choice:hover,
+.choice:active {
+  background: rgba(255,255,255,.2);
+  transform: translateY(-8px) scale(1.04);
+  box-shadow: 0 0 30px rgba(255,255,255,.25);
+}
+
+.choiceIcon {
+  font-size: clamp(42px, 9vw, 80px);
+  margin-bottom: 12px;
+}
+
+.choiceText {
+  font-size: clamp(16px, 3vw, 25px);
+}
+
+/* 거울 */
+.mirrorScene {
+  background: radial-gradient(
+    ellipse at center,
+    #4c5d65 0%,
+    #29363b 35%,
+    #101718 75%,
+    #030505 100%
+  );
+}
+
+.mirror {
+  width: min(52vw, 430px);
+  height: min(62vh, 560px);
+  min-width: 220px;
+  min-height: 300px;
+  border: 18px solid #5a3823;
+  border-radius: 50% 50% 8% 8%;
+  background: radial-gradient(
+    circle at 45% 40%,
+    rgba(255,255,255,.25),
+    rgba(120,180,200,.08) 35%,
+    rgba(10,20,25,.7) 100%
+  );
+  box-shadow:
+    0 0 0 5px #24160e,
+    0 0 50px rgba(180,220,255,.25),
+    inset 0 0 50px rgba(0,0,0,.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.mirrorResult {
+  font-size: clamp(25px, 5vw, 55px);
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 10px #fff, 0 0 25px rgba(100,220,255,.7);
+  padding: 20px;
+}
+
+.mirrorInstruction {
+  margin-top: 25px;
+  font-size: clamp(16px, 3vw, 25px);
+  max-width: 850px;
+  padding: 15px;
+}
+
+/* 페이드 */
+.fade {
+  animation: fadeIn .7s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 검은 전환 */
+#transition {
+  position: absolute;
+  inset: 0;
+  background: black;
+  z-index: 100;
+  display: none;
+  opacity: 1;
+}
+
+/* 모바일 */
+@media (max-width: 600px) {
+  .title {
+    letter-spacing: 2px;
+    margin-bottom: 35px;
+  }
+
+  .choices {
+    gap: 10px;
+  }
+
+  .choice {
+    width: 28vw;
+    height: 28vw;
+    min-height: 110px;
+  }
+
+  .choiceIcon {
+    font-size: 40px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <!-- 시작 -->
+  <section id="startScreen" class="screen active">
+    <div class="title">나의 전생은?</div>
+    <button class="startButton" onclick="startGame()">
+      게임 시작하기
+    </button>
+    <div class="startHint"></div>
+  </section>
+
+  <!-- 검은 화면 -->
+  <section id="blackScreen" class="screen">
+    <div id="blackMessage" class="message"></div>
+  </section>
+
+  <!-- 숲 1 -->
+  <section id="forest1" class="screen forest">
+    <div class="sceneContent">
+      <div id="forest1Text" class="sceneText"></div>
+
+      <div id="shoeChoices" class="choices" style="display:none">
+        <div class="choice" onclick="chooseShoe('glass')">
+          <div class="choiceIcon">👠</div>
+          <div class="choiceText">유리 구두</div>
+        </div>
+        <div class="choice" onclick="chooseShoe('sneaker')">
+          <div class="choiceIcon">👟</div>
+          <div class="choiceText">운동화</div>
+        </div>
+        <div class="choice" onclick="chooseShoe('rubber')">
+          <div class="choiceIcon">🥾</div>
+          <div class="choiceText">고무신</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 숲 2 -->
+  <section id="forest2" class="screen forest">
+    <div class="sceneContent">
+      <div class="sceneText">
+        당신은 가던 발을 잠시 멈추고<br>
+        옷을 입기로 결정했습니다.
+      </div>
+
+      <div class="choices">
+        <div class="choice" onclick="chooseClothes('uniform')">
+          <div class="choiceIcon">🎓</div>
+          <div class="choiceText">교복</div>
+        </div>
+        <div class="choice" onclick="chooseClothes('training')">
+          <div class="choiceIcon">👕</div>
+          <div class="choiceText">체육복</div>
+        </div>
+        <div class="choice" onclick="chooseClothes('none')">
+          <div class="choiceIcon">❌</div>
+          <div class="choiceText">안 입는다</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 숲 + 거울 -->
+  <section id="mirrorApproach" class="screen mirrorScene">
+    <div class="sceneContent">
+      <div class="sceneText">
+        이제 당신의 전생을 볼 차례가 됐습니다.<br>
+        당신의 앞에 보이는 저 거울을 보기만 한다면,<br>
+        당신의 전생을 알 수 있습니다.<br>
+        거울까지...
+      </div>
+
+      <div class="choices">
+        <div class="choice" onclick="chooseMovement('run')">
+          <div class="choiceIcon">🏃</div>
+          <div class="choiceText">뛴다</div>
+        </div>
+        <div class="choice" onclick="chooseMovement('walk')">
+          <div class="choiceIcon">🚶</div>
+          <div class="choiceText">걷는다</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 최종 거울 -->
+  <section id="finalMirror" class="screen mirrorScene">
+    <div class="sceneContent">
+      <div class="mirror">
+        <div id="mirrorResult" class="mirrorResult"></div>
+      </div>
+
+      <div id="finalInstruction" class="mirrorInstruction">
+        당신의 전생은?<br>
+        (스페이스바를 누르면 전생을 볼 수 있습니다.)
+      </div>
+
+      <button id="restartButton" class="startButton" onclick="restartGame()" style="display:none;">
+        다시 플레이 하기
+      </button>
+    </div>
+  </section>
+
+  <div id="transition"></div>
+
+</div>
+
+<script>
+/* ================================
+   게임 데이터
+================================ */
+
+const pastLives = [
+  "황소개구리",
+  "동네 바보",
+  "김좀말벌씨",
+  "전생 없음",
+  "멧돼지",
+  "블롭피쉬",
+  "벌거숭이두더지쥐",
+  "코주부원숭이",
+  "바다코끼리",
+  "칠면조"
+];
+
+let currentScreen = "startScreen";
+let finalReady = false;
+let gameStarted = false;
+
+/* ================================
+   화면 전환
+================================ */
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(function (screen) {
+    screen.classList.remove("active");
+  });
+
+  const target = document.getElementById(id);
+  target.classList.add("active", "fade");
+
+  setTimeout(function () {
+    target.classList.remove("fade");
+  }, 800);
+
+  currentScreen = id;
+}
+
+/* ================================
+   검은 화면
+================================ */
+
+function blackTransition(callback, duration) {
+  if (duration === undefined) duration = 3000;
+
+  const transition = document.getElementById("transition");
+  transition.style.display = "block";
+  transition.style.opacity = "1";
+
+  setTimeout(function () {
+    callback();
+    transition.style.opacity = "0";
+
+    setTimeout(function () {
+      transition.style.display = "none";
+    }, 600);
+  }, duration);
+}
+
+/* ================================
+   게임 시작
+================================ */
+
+function startGame() {
+  if (gameStarted) return;
+  gameStarted = true;
+
+  showScreen("blackScreen");
+  document.getElementById("blackMessage").innerText =
+    "지금부터 나의 전생이 뭐였는지 알아보도록 하겠습니다";
+
+  setTimeout(function () {
+    showScreen("forest1");
+    document.getElementById("forest1Text").innerText = "";
+
+    setTimeout(function () {
+      document.getElementById("forest1Text").innerText =
+        "숲 속에 있는 당신은 지금부터 신발을 신고 이동합니다.";
+
+      setTimeout(function () {
+        document.getElementById("shoeChoices").style.display = "flex";
+      }, 2000);
+    }, 2000);
+  }, 5000);
+}
+
+/* ================================
+   신발 선택
+================================ */
+
+function chooseShoe(type) {
+  console.log("선택한 신발:", type);
+  document.getElementById("shoeChoices").style.display = "none";
+
+  blackTransition(function () {
+    showScreen("forest2");
+  }, 3000);
+}
+
+/* ================================
+   옷 선택
+================================ */
+
+function chooseClothes(type) {
+  console.log("선택한 옷:", type);
+
+  blackTransition(function () {
+    showScreen("mirrorApproach");
+  }, 3000);
+}
+
+/* ================================
+   거울까지 이동
+================================ */
+
+function chooseMovement(type) {
+  console.log("거울까지:", type);
+
+  blackTransition(function () {
+    showScreen("finalMirror");
+    finalReady = true;
+  }, 3000);
+}
+
+/* ================================
+   전생 공개
+================================ */
+
+function revealPastLife() {
+  if (!finalReady) return;
+  finalReady = false;
+
+  const result = pastLives[Math.floor(Math.random() * pastLives.length)];
+
+  setTimeout(function () {
+    document.getElementById("mirrorResult").innerText = result;
+    document.getElementById("finalInstruction").innerText = "형편없던 당신의 전생";
+    document.getElementById("restartButton").style.display = "block";
+  }, 3000);
+}
+
+/* ================================
+   다시 플레이
+================================ */
+
+function restartGame() {
+
+  /* 게임 상태 초기화 */
+  gameStarted = false;
+  finalReady = false;
+  currentScreen = "startScreen";
+
+  /* 이전 결과와 문구 초기화 */
+  document.getElementById("mirrorResult").innerText = "";
+  document.getElementById("finalInstruction").innerHTML =
+    "당신의 전생은?<br>(스페이스바를 누르면 전생을 볼 수 있습니다.)";
+  document.getElementById("restartButton").style.display = "none";
+
+  /* 숲 선택지 초기화 */
+  document.getElementById("shoeChoices").style.display = "none";
+  document.getElementById("forest1Text").innerText = "";
+
+  /* 시작 화면으로 이동 */
+  showScreen("startScreen");
+}
+
+/* ================================
+   스페이스바
+================================ */
+
+document.addEventListener("keydown", function (event) {
+  if (event.code !== "Space") return;
+
+  event.preventDefault();
+
+  /* 시작 화면 */
+  if (currentScreen === "startScreen") {
+    startGame();
+    return;
+  }
+
+  /* 최종 거울 */
+  if (currentScreen === "finalMirror") {
+    revealPastLife();
+    return;
+  }
+});
+
+/* ================================
+   터치/클릭 시작 보조
+================================ */
+
+document.getElementById("startScreen")
+  .addEventListener("touchend", function (event) {
+    if (event.target.closest(".startButton")) {
+      startGame();
+    }
+  });
+</script>
+
+</body>
+</html>

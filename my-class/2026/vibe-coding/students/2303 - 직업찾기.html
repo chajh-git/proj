@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>직업찾기 테스트</title>
+
+<style>
+    *{
+        margin:0;
+        padding:0;
+        box-sizing:border-box;
+        font-family:"Pretendard", sans-serif;
+    }
+
+    body{
+        background:linear-gradient(135deg,#4facfe,#00f2fe);
+        min-height:100vh;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        padding:20px;
+    }
+
+    .container{
+        width:100%;
+        max-width:700px;
+        background:white;
+        border-radius:25px;
+        padding:35px;
+        box-shadow:0 10px 30px rgba(0,0,0,0.2);
+        text-align:center;
+    }
+
+    h1{
+        color:#0077cc;
+        margin-bottom:15px;
+    }
+
+    .description{
+        color:#444;
+        margin-bottom:30px;
+        line-height:1.6;
+    }
+
+    .question-box{
+        margin-top:20px;
+    }
+
+    .question{
+        font-size:24px;
+        font-weight:bold;
+        margin-bottom:25px;
+        color:#222;
+    }
+
+    .answer-btn{
+        width:100%;
+        margin:10px 0;
+        padding:15px;
+        border:none;
+        border-radius:15px;
+        background:#0077ff;
+        color:white;
+        font-size:18px;
+        cursor:pointer;
+        transition:0.2s;
+    }
+
+    .answer-btn:hover{
+        background:#005ecc;
+        transform:scale(1.02);
+    }
+
+    .start-btn, .restart-btn, .ranking-btn{
+        padding:15px 30px;
+        border:none;
+        border-radius:15px;
+        background:#00b894;
+        color:white;
+        font-size:20px;
+        cursor:pointer;
+        margin:10px;
+        transition:0.2s;
+    }
+
+    .start-btn:hover,
+    .restart-btn:hover,
+    .ranking-btn:hover{
+        background:#009973;
+    }
+
+    .result{
+        font-size:30px;
+        color:#ff4757;
+        margin:25px 0;
+        font-weight:bold;
+    }
+
+    .hidden{
+        display:none;
+    }
+
+    .ranking-box{
+        margin-top:20px;
+        text-align:left;
+    }
+
+    .ranking-box h2{
+        margin-bottom:10px;
+        color:#0077cc;
+    }
+
+    .ranking-item{
+        background:#f1f1f1;
+        padding:10px;
+        margin:8px 0;
+        border-radius:10px;
+        font-size:18px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🔍 직업찾기 테스트</h1>
+
+    <div id="startScreen">
+        <p class="description">
+            아직 장래희망이 없나요?<br>
+            간단한 테스트를 통해 나와 어울리는 직업을 찾아보세요!
+        </p>
+
+        <button class="start-btn" onclick="startGame()">테스트 시작</button>
+    </div>
+
+    <div id="quizScreen" class="hidden">
+        <div class="question-box">
+            <div id="question" class="question"></div>
+            <div id="answers"></div>
+        </div>
+    </div>
+
+    <div id="resultScreen" class="hidden">
+        <div class="result" id="resultText"></div>
+
+        <button class="restart-btn" onclick="restartGame()">다시하기</button>
+        <button class="ranking-btn" onclick="showRanking()">랭킹 보기</button>
+
+        <div id="rankingBox" class="ranking-box hidden">
+            <h2>📊 직업 인기 랭킹</h2>
+            <div id="rankingList"></div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const questions = [
+    {
+        question: "친구들과 있을 때 나는?",
+        answers: [
+            { text: "사람들을 웃긴다", type: "개그맨" },
+            { text: "문제를 해결해준다", type: "프로그래머" },
+            { text: "그림이나 디자인을 좋아한다", type: "디자이너" }
+        ]
+    },
+
+    {
+        question: "가장 좋아하는 활동은?",
+        answers: [
+            { text: "게임 만들기", type: "프로그래머" },
+            { text: "그림 그리기", type: "디자이너" },
+            { text: "사람들 앞에서 말하기", type: "개그맨" }
+        ]
+    },
+
+    {
+        question: "학교에서 가장 좋아하는 과목은?",
+        answers: [
+            { text: "정보", type: "프로그래머" },
+            { text: "미술", type: "디자이너" },
+            { text: "체육", type: "운동선수" }
+        ]
+    },
+
+    {
+        question: "미래에 가장 하고 싶은 것은?",
+        answers: [
+            { text: "멋진 앱 만들기", type: "프로그래머" },
+            { text: "유명한 그림 작가 되기", type: "디자이너" },
+            { text: "세계 대회 우승하기", type: "운동선수" }
+        ]
+    }
+];
+
+let currentQuestion = 0;
+let scores = {};
+
+let ranking = JSON.parse(localStorage.getItem("jobRanking")) || {};
+
+function startGame(){
+    document.getElementById("startScreen").classList.add("hidden");
+    document.getElementById("quizScreen").classList.remove("hidden");
+
+    currentQuestion = 0;
+    scores = {};
+
+    showQuestion();
+}
+
+function showQuestion(){
+
+    const q = questions[currentQuestion];
+
+    document.getElementById("question").innerText = q.question;
+
+    const answersDiv = document.getElementById("answers");
+    answersDiv.innerHTML = "";
+
+    q.answers.forEach(answer => {
+
+        const btn = document.createElement("button");
+
+        btn.innerText = answer.text;
+        btn.classList.add("answer-btn");
+
+        btn.onclick = () => selectAnswer(answer.type);
+
+        answersDiv.appendChild(btn);
+    });
+}
+
+function selectAnswer(type){
+
+    if(!scores[type]){
+        scores[type] = 0;
+    }
+
+    scores[type]++;
+
+    currentQuestion++;
+
+    if(currentQuestion < questions.length){
+        showQuestion();
+    }else{
+        showResult();
+    }
+}
+
+function showResult(){
+
+    document.getElementById("quizScreen").classList.add("hidden");
+    document.getElementById("resultScreen").classList.remove("hidden");
+
+    let bestJob = "";
+    let max = 0;
+
+    for(let type in scores){
+        if(scores[type] > max){
+            max = scores[type];
+            bestJob = type;
+        }
+    }
+
+    document.getElementById("resultText").innerHTML =
+        `🎉 당신에게 어울리는 직업은 <br><br> [ ${bestJob} ] 입니다!`;
+
+    if(!ranking[bestJob]){
+        ranking[bestJob] = 0;
+    }
+
+    ranking[bestJob]++;
+
+    localStorage.setItem("jobRanking", JSON.stringify(ranking));
+}
+
+function restartGame(){
+
+    document.getElementById("resultScreen").classList.add("hidden");
+    document.getElementById("rankingBox").classList.add("hidden");
+    document.getElementById("startScreen").classList.remove("hidden");
+}
+
+function showRanking(){
+
+    const rankingBox = document.getElementById("rankingBox");
+    const rankingList = document.getElementById("rankingList");
+
+    rankingList.innerHTML = "";
+
+    const sorted = Object.entries(ranking).sort((a,b)=>b[1]-a[1]);
+
+    sorted.forEach((item,index)=>{
+
+        const div = document.createElement("div");
+
+        div.classList.add("ranking-item");
+
+        div.innerHTML =
+            `${index+1}위 : ${item[0]} (${item[1]}명)`;
+
+        rankingList.appendChild(div);
+    });
+
+    rankingBox.classList.remove("hidden");
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나는 몇 살에 결혼할까?</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:Arial,"Noto Sans KR",sans-serif;
+  background:linear-gradient(135deg,#fff0f5,#f3e8ff);
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:20px; color:#222;
+}
+.app{
+  width:min(620px,100%); background:#fff; border-radius:24px;
+  padding:32px; box-shadow:0 15px 50px rgba(0,0,0,.12);
+}
+.screen{text-align:center}
+.hidden{display:none!important}
+.emoji{font-size:64px;margin-bottom:12px}
+h1{font-size:30px;margin:8px 0 12px}
+h2{font-size:23px;line-height:1.5;margin:20px 0}
+p{line-height:1.7;color:#666}
+button{
+  font:inherit; cursor:pointer; border:0;
+}
+.primary{
+  width:100%; padding:15px; border-radius:14px;
+  background:#e85d9e; color:white; font-weight:700; font-size:17px;
+}
+.primary:disabled{opacity:.4;cursor:not-allowed}
+.meta{display:flex;justify-content:space-between;color:#777;font-size:14px}
+.bar{height:9px;background:#eee;border-radius:20px;overflow:hidden;margin:10px 0 28px}
+.progress{height:100%;background:#e85d9e;width:0;transition:.25s}
+.choices{display:grid;gap:10px}
+.choice{
+  text-align:left; padding:16px; border:2px solid #eee;
+  border-radius:14px; background:#fff; transition:.15s;
+}
+.choice:hover{border-color:#e9a4c5;transform:translateY(-1px)}
+.choice.selected{border-color:#e85d9e;background:#fff0f6}
+.result-age{font-size:56px;font-weight:800;color:#e85d9e;margin:10px 0}
+.result-type{font-size:22px;font-weight:700;margin:10px 0}
+.total{margin:22px 0;padding:12px;background:#f7f7f7;border-radius:12px;color:#666}
+.secondary{
+  padding:13px 22px;border:1px solid #ddd;background:white;
+  border-radius:12px;font-weight:700;
+}
+.note{font-size:12px;color:#999;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <section id="start" class="screen">
+    <div class="emoji">💍</div>
+    <h1>나는 몇 살에 결혼할까?</h1>
+    <p>7개의 질문에 솔직하게 답하면<br>당신의 예상 결혼 나이를 알려드립니다.</p>
+    <button class="primary" id="startBtn">테스트 시작</button>
+  </section>
+
+  <section id="quiz" class="hidden">
+    <div class="meta">
+      <span id="counter">1 / 7</span>
+      <span id="scoreText">현재 점수: 0</span>
+    </div>
+    <div class="bar"><div class="progress" id="progress"></div></div>
+
+    <h2 id="question"></h2>
+    <div class="choices" id="choices"></div>
+    <button class="primary" id="nextBtn" disabled style="margin-top:16px">다음</button>
+  </section>
+
+  <section id="result" class="screen hidden">
+    <div class="emoji">💐</div>
+    <p>당신의 예상 결혼 나이는</p>
+    <div class="result-age" id="age"></div>
+    <div class="result-type" id="type"></div>
+    <p id="explain"></p>
+    <div class="total" id="total"></div>
+    <button class="secondary" id="retryBtn">다시 하기</button>
+    <div class="note">※ 재미로 보는 간단한 테스트 결과입니다.</div>
+  </section>
+
+</div>
+
+<script>
+const questions = [
+  {
+    q:"현재 결혼에 대한 생각은?",
+    a:["빨리 하고 싶다","좋은 사람을 만나면 하고 싶다","아직 잘 모르겠다","당분간 생각 없다","결혼할 생각이 거의 없다"]
+  },
+  {
+    q:"연애를 한다면?",
+    a:["안정적인 관계를 오래 유지하는 편","적당히 오래 만나는 편","상황에 따라 다르다","자유로운 연애가 좋다","연애 자체에 관심이 적다"]
+  },
+  {
+    q:"경제적으로 결혼하려면?",
+    a:["지금도 충분히 가능하다","조금만 준비하면 가능하다","몇 년은 준비해야 한다","경제적 기반부터 확실히 만들고 싶다","결혼보다 다른 목표가 우선이다"]
+  },
+  {
+    q:"친구들이 결혼하기 시작한다면?",
+    a:["나도 빨리 하고 싶어진다","좋은 자극이 될 것 같다","별로 신경 쓰지 않는다","더 천천히 생각할 것 같다","결혼 자체에 관심이 없다"]
+  },
+  {
+    q:"이상적인 결혼 시기는?",
+    a:["20대 초중반","20대 후반","30~32세","33~35세","36세 이후"]
+  },
+  {
+    q:"배우자를 고를 때 가장 중요한 것은?",
+    a:["사랑과 설렘","성격과 가치관","경제력과 안정성","서로의 독립성","특별한 인연인지 여부"]
+  },
+  {
+    q:"결혼을 위해 포기할 수 있는 것은?",
+    a:["꽤 많이 포기할 수 있다","어느 정도 가능하다","최소한만 포기하고 싶다","거의 포기하고 싶지 않다","결혼 때문에 포기할 생각이 없다"]
+  }
+];
+
+let current = 0;
+let score = 0;
+let selected = 0;
+
+const $ = id => document.getElementById(id);
+
+function show(id){
+  ["start","quiz","result"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+}
+
+function renderQuestion(){
+  selected = 0;
+  
+("counter").textContent=`{current + 1} / ${questions.length}`;
+  $("scoreText").textContent = `현재 점수: ${score}`;
+  ("progress").style.width=`{((current + 1) / questions.length) * 100}%`;
+  $("question").textContent = questions[current].q;
+  $("choices").innerHTML = "";
+  $("nextBtn").disabled = true;
+
+  questions[current].a.forEach((text,index) => {
+    const button = document.createElement("button");
+    button.className = "choice";
+    button.textContent = `${index + 1}. ${text}`;
+
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".choice").forEach(b => b.classList.remove("selected"));
+      button.classList.add("selected");
+      selected = index + 1;
+      $("nextBtn").disabled = false;
+    });
+
+    $("choices").appendChild(button);
+  });
+}
+
+function showResult(){
+  let age, type, explain;
+
+  if(score <= 11){
+    age = "23~25세";
+    type = "💕 결혼에 매우 적극적인 타입";
+    explain = "좋은 인연을 만나면 비교적 빠르게 결혼을 결정할 가능성이 높은 편입니다.";
+  } else if(score <= 17){
+    age = "26~28세";
+    type = "💍 적당히 빠른 결혼을 원하는 타입";
+    explain = "좋은 사람을 만나고 조건이 맞는다면 20대 후반에 결혼할 가능성이 높습니다.";
+  } else if(score <= 23){
+    age = "29~31세";
+    type = "🌿 신중하지만 결혼 가능성이 높은 타입";
+    explain = "충분히 고민한 뒤 확신이 생기면 결혼을 선택하는 성향입니다.";
+  } else if(score <= 29){
+    age = "32~34세";
+    type = "✨ 자기 삶도 중요한 타입";
+    explain = "자신의 생활과 목표를 어느 정도 이룬 뒤 좋은 상대를 만나면 결혼할 가능성이 높습니다.";
+  } else {
+    age = "35세 이후";
+    type = "🔥 늦게 결혼해도 괜찮은 타입";
+    explain = "결혼을 서두르지는 않지만 특별한 인연을 만나면 생각보다 빠르게 결혼할 수도 있습니다.";
+  }
+
+  $("age").textContent = age;
+  $("type").textContent = type;
+  $("explain").textContent = explain;
+  $("total").textContent = `총점 ${score} / 35점`;
+  show("result");
+}
+
+$("startBtn").addEventListener("click", () => {
+  current = 0;
+  score = 0;
+  show("quiz");
+  renderQuestion();
+});
+
+$("nextBtn").addEventListener("click", () => {
+  if(!selected) return;
+  score += selected;
+  current++;
+
+  if(current < questions.length){
+    renderQuestion();
+  } else {
+    showResult();
+  }
+});
+
+$("retryBtn").addEventListener("click", () => {
+  current = 0;
+  score = 0;
+  selected = 0;
+  show("start");
+});
+</script>
+</body>
+</html>

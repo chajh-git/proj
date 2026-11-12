@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>코디왕 👑</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #f7f2ff, #eef7ff);
+  color: #292536;
+}
+
+.container {
+  max-width: 760px;
+  margin: auto;
+}
+
+header {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.logo {
+  font-size: 55px;
+}
+
+h1 {
+  font-size: 40px;
+  margin: 5px;
+}
+
+.subtitle {
+  color: #777;
+  line-height: 1.6;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  margin: 20px 0;
+  border-radius: 22px;
+  box-shadow: 0 8px 25px #30205012;
+}
+
+.step {
+  display: none;
+}
+
+.step.active {
+  display: block;
+}
+
+.step-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.help {
+  color: #777;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin: 16px 0 8px;
+}
+
+input {
+  width: 100%;
+  padding: 13px;
+  border: 2px solid #e7e2ef;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+button {
+  padding: 13px 18px;
+  margin: 12px 7px 0 0;
+  border: none;
+  border-radius: 12px;
+  background: #704cff;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.85;
+}
+
+button.secondary {
+  background: #eeeaf5;
+  color: #393348;
+}
+
+.result {
+  padding: 18px;
+  margin-top: 15px;
+  border-radius: 16px;
+  background: #f7f5ff;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.tag {
+  padding: 11px 15px;
+  background: #f3efff;
+  border: 2px solid transparent;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.tag.selected {
+  border-color: #704cff;
+  background: #e4dcff;
+}
+
+.color-dot {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+
+.final {
+  padding: 25px;
+  margin-top: 15px;
+  color: white;
+  background: #282333;
+  border-radius: 18px;
+  text-align: center;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.final-title {
+  color: #c9baff;
+  font-size: 14px;
+}
+
+.final-big {
+  font-size: 25px;
+  font-weight: bold;
+  margin: 12px 0;
+}
+
+.progress {
+  display: flex;
+  gap: 6px;
+}
+
+.bar {
+  height: 7px;
+  flex: 1;
+  background: #ddd8e8;
+  border-radius: 10px;
+}
+
+.bar.on {
+  background: #704cff;
+}
+
+@media (max-width: 500px) {
+  body {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="logo">👑</div>
+    <h1>코디왕</h1>
+    <div class="subtitle">
+      오늘은 내가 코디왕!<br>
+      내 옷으로 어울리는 색 조합을 찾아보자 👕
+    </div>
+  </header>
+
+  <div class="progress">
+    <div class="bar on" id="bar1"></div>
+    <div class="bar" id="bar2"></div>
+    <div class="bar" id="bar3"></div>
+    <div class="bar" id="bar4"></div>
+  </div>
+
+  <!-- 1단계: 옷 입력 -->
+  <section class="card step active" id="step1">
+    <div class="step-title">1️⃣ 가지고 있는 옷을 알려줘!</div>
+    <div class="help">
+      상의와 하의를 입력하면 어울리는 코디를 추천해 줄게.
+    </div>
+
+    <label for="top">상의</label>
+    <input id="top" placeholder="예: 흰색 반팔 티셔츠">
+
+    <label for="bottom">하의</label>
+    <input id="bottom" placeholder="예: 검은색 와이드 팬츠">
+
+    <label for="extra">추가로 가지고 있는 옷 (선택)</label>
+    <input id="extra" placeholder="예: 청바지, 베이지 셔츠">
+
+    <button onclick="makeRecommend()">코디 추천받기 👑</button>
+  </section>
+
+  <!-- 2단계: 코디 추천 -->
+  <section class="card step" id="step2">
+    <div class="step-title">2️⃣ 오늘의 코디 추천!</div>
+    <div class="help">
+      네가 입력한 옷에 어울리는 색 조합과 코디야.
+    </div>
+
+    <div class="result" id="recommend"></div>
+
+    <button onclick="goStep(3)">액세서리도 하고 싶어 ✨</button>
+    <button class="secondary" onclick="finishNoAccessory()">
+      액세서리는 괜찮아
+    </button>
+    <br>
+    <button class="secondary" onclick="goStep(1)">옷 정보 수정하기</button>
+  </section>
+
+  <!-- 3단계: 액세서리 선택 -->
+  <section class="card step" id="step3">
+    <div class="step-title">3️⃣ 어떤 액세서리를 할까?</div>
+    <div class="help">원하는 액세서리를 하나 골라 줘!</div>
+
+    <div class="tags">
+      <div class="tag" onclick="chooseAccessory(this,'목걸이')">📿 목걸이</div>
+      <div class="tag" onclick="chooseAccessory(this,'반지')">💍 반지</div>
+      <div class="tag" onclick="chooseAccessory(this,'귀걸이')">✨ 귀걸이</div>
+      <div class="tag" onclick="chooseAccessory(this,'피어싱')">💎 피어싱</div>
+      <div class="tag" onclick="chooseAccessory(this,'팔찌')">⌚ 팔찌</div>
+    </div>
+
+    <button onclick="makeAccessory()">다음으로 →</button>
+    <br>
+    <button class="secondary" onclick="goStep(2)">이전으로</button>
+  </section>
+
+  <!-- 4단계: 액세서리 색 -->
+  <section class="card step" id="step4">
+    <div class="step-title">4️⃣ 액세서리 색 추천!</div>
+    <div class="help">
+      오늘의 옷 색 조합에 어울리는 액세서리 색이야.
+    </div>
+
+    <div class="result" id="accessoryResult"></div>
+
+    <button onclick="finish()">OK! 최종 코디 보기 👑</button>
+    <br>
+    <button class="secondary" onclick="goStep(3)">액세서리 다시 고르기</button>
+  </section>
+
+  <!-- 최종 결과 -->
+  <section class="card step" id="finalStep">
+    <div class="step-title">🏆 오늘의 최종 코디</div>
+    <div id="finalResult"></div>
+    <button onclick="restart()">처음부터 다시 하기 🔄</button>
+  </section>
+
+</div>
+
+<script>
+const data = {
+  top: "",
+  bottom: "",
+  extra: "",
+  accessory: "",
+  metal: ""
+};
+
+function goStep(n) {
+  document.querySelectorAll(".step").forEach(function(el) {
+    el.classList.remove("active");
+  });
+
+  const target = n === 5 ? "finalStep" : "step" + n;
+  document.getElementById(target).classList.add("active");
+
+  document.querySelectorAll(".bar").forEach(function(el) {
+    el.classList.remove("on");
+  });
+
+  for (let i = 1; i <= Math.min(n, 4); i++) {
+    document.getElementById("bar" + i).classList.add("on");
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function getColor(text) {
+  text = text.toLowerCase();
+
+  if (text.includes("검정") || text.includes("블랙")) return "black";
+  if (text.includes("흰") || text.includes("화이트")) return "white";
+  if (text.includes("회색") || text.includes("그레이")) return "gray";
+  if (text.includes("베이지")) return "beige";
+  if (text.includes("갈색") || text.includes("브라운")) return "brown";
+  if (text.includes("네이비")) return "navy";
+  if (text.includes("파랑") || text.includes("블루") || text.includes("청")) return "blue";
+  if (text.includes("빨강") || text.includes("레드")) return "red";
+  if (text.includes("초록") || text.includes("그린")) return "green";
+  if (text.includes("노랑") || text.includes("옐로")) return "yellow";
+  if (text.includes("분홍") || text.includes("핑크")) return "pink";
+  if (text.includes("보라") || text.includes("퍼플")) return "purple";
+
+  return "unknown";
+}
+
+const names = {
+  black: "블랙",
+  white: "화이트",
+  gray: "그레이",
+  beige: "베이지",
+  brown: "브라운",
+  navy: "네이비",
+  blue: "블루",
+  red: "레드",
+  green: "그린",
+  yellow: "옐로",
+  pink: "핑크",
+  purple: "퍼플",
+  unknown: "색상 확인 필요"
+};
+
+const dots = {
+  black: "#111111",
+  white: "#ffffff",
+  gray: "#999999",
+  beige: "#d8c09b",
+  brown: "#795548",
+  navy: "#18244d",
+  blue: "#4687d7",
+  red: "#dd3333",
+  green: "#43895a",
+  yellow: "#e8c531",
+  pink: "#ef91ad",
+  purple: "#8a5ab5",
+  unknown: "#bbbbbb"
+};
+
+function colorText(color) {
+  return '<span class="color-dot" style="background:' +
+    dots[color] + '"></span> ' + names[color];
+}
+
+function escapeHTML(text) {
+  return text.replace(/[&<>"']/g, function(ch) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[ch];
+  });
+}
+
+function makeRecommend() {
+  data.top = document.getElementById("top").value.trim();
+  data.bottom = document.getElementById("bottom").value.trim();
+  data.extra = document.getElementById("extra").value.trim();
+
+  if (!data.top || !data.bottom) {
+    alert("상의와 하의는 꼭 입력해 줘!");
+    return;
+  }
+
+  const t = getColor(data.top);
+  const b = getColor(data.bottom);
+  let advice = "";
+
+  if (t === "unknown" || b === "unknown") {
+    advice = "옷 이름에 색상도 함께 적어 주면 더 정확히 추천할 수 있어! 신발이나 가방은 블랙·화이트 같은 기본색을 추천해.";
+  } else if (t === b) {
+    advice = "같은 색끼리는 톤온톤 코디가 좋아. 상의와 하의의 밝기를 다르게 하면 더 멋스러워!";
+  } else if (
+    (t === "white" || t === "gray") &&
+    ["black", "navy", "blue"].includes(b)
+  ) {
+    advice = "깔끔하고 세련된 조합이야! 밝은 상의와 어두운 하의가 잘 어울려.";
+  } else if (
+    ["beige", "brown"].includes(b) &&
+    ["white", "black", "navy"].includes(t)
+  ) {
+    advice = "따뜻하고 차분한 느낌의 조합이야. 베이지나 갈색 신발을 더하면 통일감이 생겨!";
+  } else {
+    advice = "신발이나 가방은 블랙·화이트·베이지 같은 기본색으로 맞추면 전체 코디가 조화로워 보여!";
+  }
+
+  const extraHTML = data.extra
+    ? "<li>추가 아이템: " + escapeHTML(data.extra) + "</li>"
+    : "";
+
+  document.getElementById("recommend").innerHTML =
+    "<h3>👕 추천 코디</h3>" +
+    '<div class="combo">' + escapeHTML(data.top) +
+    " + " + escapeHTML(data.bottom) + "</div>" +
+    "<p><b>색 조합:</b> " + colorText(t) + " + " + colorText(b) + "</p>" +
+    "<p><b>코디 설명:</b> " + advice + "</p>" +
+    "<ul>" +
+    "<li>신발: 화이트 스니커즈 또는 블랙 신발</li>" +
+    "<li>가방: 블랙·브라운 계열</li>" +
+    extraHTML +
+    "<li>포인트 아이템은 1~2개 정도만 추가해 봐!</li>" +
+    "</ul>";
+
+  goStep(2);
+}
+
+function chooseAccessory(element, name) {
+  document.querySelectorAll(".tag").forEach(function(tag) {
+    tag.classList.remove("selected");
+  });
+
+  element.classList.add("selected");
+  data.accessory = name;
+}
+
+function makeAccessory() {
+  if (!data.accessory) {
+    alert("액세서리를 하나 골라 줘!");
+    return;
+  }
+
+  const t = getColor(data.top);
+  const b = getColor(data.bottom);
+
+  if ([t, b].some(function(c) {
+    return ["black", "gray", "navy", "blue"].includes(c);
+  })) {
+    data.metal = "실버";
+  } else if ([t, b].some(function(c) {
+    return ["beige", "brown", "yellow", "red"].includes(c);
+  })) {
+    data.metal = "골드";
+  } else {
+    data.metal = "실버 또는 골드";
+  }
+
+  document.getElementById("accessoryResult").innerHTML =
+    "<h3>✨ " + data.accessory + " 추천</h3>" +
+    "<p>오늘의 옷 색 조합에는 <b>" + data.metal +
+    "</b> 계열을 추천해!</p>" +
+    "<p>심플한 디자인을 선택하면 옷과 자연스럽게 어울려.</p>";
+
+  goStep(4);
+}
+
+function showFinal(accessoryText) {
+  document.getElementById("finalResult").innerHTML =
+    '<div class="final">' +
+    '<div class="final-title">TODAY’S LOOK</div>' +
+    '<div class="final-big">' + escapeHTML(data.top) +
+    " + " + escapeHTML(data.bottom) + "</div>" +
+    "<p>🎨 색 조합: " + names[getColor(data.top)] +
+    " + " + names[getColor(data.bottom)] + "</p>" +
+    "<p>✨ 액세서리: " + accessoryText + "</p>" +
+    "<p>👑 오늘의 코디를 완성했어!</p>" +
+    "<p>오늘의 코디왕은 바로 너! 🏆</p>" +
+    "</div>";
+
+  goStep(5);
+}
+
+function finish() {
+  showFinal(data.accessory + " / " + data.metal);
+}
+
+function finishNoAccessory() {
+  showFinal("없음");
+}
+
+function restart() {
+  data.top = "";
+  data.bottom = "";
+  data.extra = "";
+  data.accessory = "";
+  data.metal = "";
+
+  document.getElementById("top").value = "";
+  document.getElementById("bottom").value = "";
+  document.getElementById("extra").value = "";
+
+  document.querySelectorAll(".tag").forEach(function(tag) {
+    tag.classList.remove("selected");
+  });
+
+  goStep(1);
+}
+</script>
+
+</body>
+</html>

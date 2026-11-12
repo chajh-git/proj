@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메모리 카드 게임</title>
+
+<style>
+  body{
+    margin:0;
+    padding:0;
+    background:#1e1e1e;
+    color:white;
+    font-family:Arial, sans-serif;
+    text-align:center;
+  }
+
+  h1{
+    margin-top:20px;
+    font-size:40px;
+  }
+
+  .menu{
+    margin:20px;
+  }
+
+  select, button{
+    padding:12px 18px;
+    margin:5px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+  }
+
+  select{
+    background:white;
+  }
+
+  button{
+    background:orange;
+    color:white;
+    cursor:pointer;
+  }
+
+  button:hover{
+    background:darkorange;
+  }
+
+  #timer{
+    font-size:28px;
+    margin-top:10px;
+    color:#00e5ff;
+    font-weight:bold;
+  }
+
+  #message{
+    font-size:32px;
+    margin-top:20px;
+    font-weight:bold;
+  }
+
+  .game-board{
+    display:grid;
+    gap:10px;
+    justify-content:center;
+    margin:20px auto;
+  }
+
+  .card{
+    width:80px;
+    height:80px;
+    background:#444;
+    border-radius:12px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-size:35px;
+    cursor:pointer;
+    user-select:none;
+    transition:0.3s;
+  }
+
+  .card:hover{
+    transform:scale(1.05);
+  }
+
+  .flipped{
+    background:white;
+    color:black;
+  }
+
+  .matched{
+    background:#4caf50;
+    color:white;
+    cursor:default;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>🧠 메모리 카드 게임</h1>
+
+<div class="menu">
+
+  <select id="difficulty">
+    <option value="easy">쉬움 (4쌍 / 20초)</option>
+    <option value="medium">보통 (6쌍 / 15초)</option>
+    <option value="hard">어려움 (8쌍 / 20초)</option>
+    <option value="extreme">지옥 난이도 (12쌍 / 35초)</option>
+  </select>
+
+  <button onclick="startGame()">게임 시작</button>
+
+</div>
+
+<div id="timer">⏰ 남은 시간: 0초</div>
+
+<div class="game-board" id="board"></div>
+
+<div id="message"></div>
+
+<script>
+
+const emojis = [
+  "🍎","🍌","🍇","🍒",
+  "🍉","🍋","🥝","🍍",
+  "🍓","🥥","🍑","🍈",
+  "🍕","🍔","🍟","🌭",
+  "🍩","🍪","🍿","🥨"
+];
+
+const board = document.getElementById("board");
+const timerText = document.getElementById("timer");
+const message = document.getElementById("message");
+
+let cards = [];
+let flippedCards = [];
+let lockBoard = false;
+let timeLeft = 0;
+let timer;
+let gameOver = false;
+
+function shuffle(array){
+  return array.sort(() => Math.random() - 0.5);
+}
+
+function startGame(){
+
+  clearInterval(timer);
+
+  board.innerHTML = "";
+  message.innerHTML = "";
+
+  flippedCards = [];
+  lockBoard = false;
+  gameOver = false;
+
+  const difficulty = document.getElementById("difficulty").value;
+
+  let pairCount = 4;
+
+  if(difficulty === "easy"){
+    pairCount = 4;
+    timeLeft = 20;
+    board.style.gridTemplateColumns = "repeat(4, 80px)";
+  }
+
+  if(difficulty === "medium"){
+    pairCount = 6;
+    timeLeft = 15;
+    board.style.gridTemplateColumns = "repeat(4, 80px)";
+  }
+
+  if(difficulty === "hard"){
+    pairCount = 8;
+    timeLeft = 20;
+    board.style.gridTemplateColumns = "repeat(4, 80px)";
+  }
+
+  if(difficulty === "extreme"){
+    pairCount = 12;
+    timeLeft = 35;
+    board.style.gridTemplateColumns = "repeat(6, 80px)";
+  }
+
+  timerText.innerHTML = `⏰ 남은 시간: ${timeLeft}초`;
+
+  let selected = emojis.slice(0, pairCount);
+
+  cards = [...selected, ...selected];
+
+  shuffle(cards);
+
+  cards.forEach((emoji) => {
+
+    const card = document.createElement("div");
+
+    card.classList.add("card");
+
+    card.dataset.emoji = emoji;
+
+    card.innerHTML = "?";
+
+    card.addEventListener("click", () => flipCard(card));
+
+    board.appendChild(card);
+
+  });
+
+  timer = setInterval(() => {
+
+    timeLeft--;
+
+    timerText.innerHTML = `⏰ 남은 시간: ${timeLeft}초`;
+
+    if(timeLeft <= 0){
+
+      clearInterval(timer);
+
+      endGame(false);
+
+    }
+
+  },1000);
+
+}
+
+function flipCard(card){
+
+  if(
+    lockBoard ||
+    gameOver ||
+    card.classList.contains("flipped") ||
+    card.classList.contains("matched")
+  ){
+    return;
+  }
+
+  card.classList.add("flipped");
+
+  card.innerHTML = card.dataset.emoji;
+
+  flippedCards.push(card);
+
+  if(flippedCards.length === 2){
+
+    checkMatch();
+
+  }
+
+}
+
+function checkMatch(){
+
+  const [card1, card2] = flippedCards;
+
+  if(card1.dataset.emoji === card2.dataset.emoji){
+
+    card1.classList.add("matched");
+    card2.classList.add("matched");
+
+    flippedCards = [];
+
+    checkWin();
+
+  }else{
+
+    lockBoard = true;
+
+    setTimeout(() => {
+
+      card1.classList.remove("flipped");
+      card2.classList.remove("flipped");
+
+      card1.innerHTML = "?";
+      card2.innerHTML = "?";
+
+      flippedCards = [];
+
+      lockBoard = false;
+
+    },500);
+
+  }
+
+}
+
+function checkWin(){
+
+  const matchedCards = document.querySelectorAll(".matched");
+
+  if(matchedCards.length === cards.length){
+
+    clearInterval(timer);
+
+    endGame(true);
+
+  }
+
+}
+
+function endGame(success){
+
+  gameOver = true;
+
+  if(success){
+
+    message.innerHTML = `🎉 성공! 남은 시간 ${timeLeft}초`;
+    message.style.color = "#00ff88";
+
+  }else{
+
+    message.innerHTML = "💀 실패! 시간이 종료되었습니다!";
+    message.style.color = "#ff4444";
+
+  }
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>공장 타이쿤 RPG</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#1b1511;--tx:#f1e4d0;--mut:#a8977f;--ac:#e0852e;--bd:#5a4636;--ok:#5fae6b;--bad:#d9534f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#1b1511 radial-gradient(circle at 50% -10%,#3d2b1c,#1b1511 65%) fixed;color:var(--tx);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;font-size:15px}
+.w{max-width:720px;margin:0 auto;padding:12px}
+.logo{text-align:center;font-size:22px;font-weight:800;letter-spacing:1px;color:var(--ac);text-shadow:0 0 12px #e0852e66;margin:4px 0 10px}
+.top{display:flex;flex-wrap:wrap;gap:8px;justify-content:space-between;background:linear-gradient(#3a2d22,#2a2019);border:2px solid var(--bd);border-radius:10px;padding:10px 14px;font-weight:700}
+nav{display:flex;gap:8px;margin:12px 0}
+.tab{flex:1;background:#2a2019;color:var(--mut);border:2px solid var(--bd);margin:0;padding:11px;font-weight:700}
+.tab.on{background:var(--ac);color:#1b1511;border-color:#ffb86b;box-shadow:0 0 14px #e0852e66}
+.c{background:linear-gradient(#2e231b,#241b15);border:2px solid var(--bd);border-radius:12px;padding:14px;box-shadow:0 4px 0 #0006}
+h3{margin:14px 0 6px;font-size:14px;color:var(--ac)}
+button{font:inherit;background:linear-gradient(#f0a04b,#d2761f);color:#1b1511;font-weight:700;border:0;border-bottom:3px solid #8a4a10;border-radius:8px;padding:9px 12px;cursor:pointer;margin:3px 3px 3px 0}
+button:active{transform:translateY(2px);border-bottom-width:1px}
+button:disabled{opacity:.4;cursor:not-allowed}
+.bg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.bg button{margin:0}
+.bar{height:12px;background:#0006;border-radius:6px;overflow:hidden;margin:4px 0 8px}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .15s}
+.bar.e i{background:var(--bad)}
+.m{color:var(--mut);font-size:13px}
+#scene{position:relative;height:150px;border-radius:10px;background:linear-gradient(#4a5a78,#c98a55 85%,#3a2c20 85%);overflow:hidden;text-align:center;margin-bottom:10px;border:2px solid var(--bd)}
+#fe{font-size:84px;line-height:150px;filter:drop-shadow(0 6px 0 #0006)}
+#smoke{position:absolute;left:56%;top:24px;font-size:26px;animation:rise 3s ease-in infinite;display:none}
+#gears{position:absolute;bottom:4px;left:0;right:0;font-size:18px}
+.gear{display:inline-block;animation:spin 3s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rise{0%{transform:translateY(20px);opacity:0}30%{opacity:.9}100%{transform:translateY(-20px);opacity:0}}
+#arena svg{filter:drop-shadow(0 4px 0 #0008)}
+#arena{display:flex;justify-content:space-around;align-items:center;height:130px;border-radius:10px;background:linear-gradient(#2b2438,#4a3040 80%,#2a1f1a 80%);border:2px solid var(--bd);font-size:64px;margin-bottom:10px}
+.hit{animation:hit .3s}
+@keyframes hit{25%{transform:translateX(-10px);filter:brightness(2)}75%{transform:translateX(10px)}}
+#log{height:110px;overflow-y:auto;font-size:13px;background:#0005;border-radius:8px;padding:8px;margin-top:10px}
+#hint{margin-top:12px;background:var(--ac);color:#1b1511;border-radius:10px;padding:10px 14px;font-weight:700;display:none}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}
+#ov .b{background:#2a2019;border:2px solid var(--ac);border-radius:14px;padding:24px;max-width:420px;width:100%;text-align:center;line-height:1.6}
+.big{font-size:44px}
+</style></head><body>
+<div class="w">
+<div class="logo">⚙️ 공장 타이쿤 <small>RPG</small> ⚙️</div>
+<div class="top"><span>⏱ <b id="tm">00:00</b></span><span>🏭 <b id="fn"></b></span><span>🗺 <b id="st">1</b>/100</span><span>⛏ <b id="ore">0</b></span><span>💎 <b id="cry">0</b></span></div>
+<div id="hint"></div>
+<nav><button class="tab on" id="tf">🏭 공장</button><button class="tab" id="ta">⚔️ 모험</button></nav>
+<div class="c" id="pf">
+<div id="scene"><span id="smoke">💨</span><div id="fe">🏚️</div><div id="gears"></div></div>
+<div class="m" id="fi"></div>
+<button id="gather" style="width:100%;font-size:17px;margin:8px 0 0">⛏ 자원 채굴</button>
+<h3>🔧 자동화 설비</h3><div class="bg"><button id="bm"></button><button id="bc"></button></div>
+<h3>🏗 공장 증축</h3><button id="bf" style="width:100%;margin:0"></button>
+</div>
+<div class="c" id="pa" style="display:none">
+<div id="arena"><span id="pl"></span><span id="foe">💤</span></div>
+<div class="m" id="ps"></div><div class="bar"><i id="phb"></i></div>
+<div id="eb" style="display:none"><b id="en"></b> <span class="m" id="eh"></span><div class="bar e"><i id="ehb"></i></div></div>
+<button id="bs">모험 시작</button>
+<span id="ac" style="display:none"><button id="a1">⚔ 공격</button><button id="a2">🛡 방어</button><button id="a3">🧪 포션(⛏20)</button></span>
+<label class="m"><input type="checkbox" id="au"> 자동 전투</label>
+<h3>🛡 장비 강화</h3><div class="bg"><button id="bw"></button><button id="ba"></button></div>
+<div id="log"></div>
+</div></div>
+<div id="ov"><div class="b" id="ob"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const FN=["폐허","판자 작업장","소규모 공장","기계화 공장","자동화 공장","거대 복합단지","전설의 공장"],MAX=6;
+const FO=[100,500,2500,10000,40000,150000],FC=[5,15,40,90,180,350];
+let S,last=Date.now(),tk=0;
+function init(){S={ore:0,cry:0,fl:0,miner:0,click:0,wpn:0,arm:0,stage:1,hp:50,en:null,def:false,el:0,ph:'start',tut:0,clk:0}}
+init();
+const f=n=>n>=1e6?(n/1e6).toFixed(1)+'M':n>=1e4?(n/1e3).toFixed(1)+'K':Math.floor(n);
+const tf=s=>{s=Math.floor(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+const mult=()=>1+S.fl, aps=()=>S.miner*mult(), cp=()=>(1+S.click)*mult();
+const maxhp=()=>50+S.arm*20, atk=()=>6+S.wpn*4;
+const cost={m:()=>Math.ceil(40*1.2**S.miner),c:()=>Math.ceil(25*1.3**S.click),w:()=>Math.ceil(30*1.15**S.wpn),a:()=>Math.ceil(30*1.15**S.arm)};
+function lg(t){const l=$('log');l.innerHTML+=t+'<br>';l.scrollTop=l.scrollHeight}
+function show(h){
+('ob').innerHTML=h;('ov').style.display='flex'}
+function hide(){$('ov').style.display='none'}
+function load(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+
+function startScreen(){S.ph='start';show('<div class="big">🏭</div><h2>공장 타이쿤 RPG</h2><p>폐허가 된 공장을 되살리고,<br>모험으로 얻은 💎로 최대 단계까지 키우세요!</p><button id="go">시작</button>');$('go').onclick=()=>{hide();S.ph='tut';lg('폐허급 공장을 획득했습니다.')}}
+function endTut(){S.en=null;S.tut=0;S.ph='game';S.ore=60;S.hp=maxhp();
+ show('<div class="big">🎉</div><h2>튜토리얼 클리어!</h2><p>⛏로 자원을 모으고 자동화하세요.<br>⚔ 모험에서 이기면 💎(고급 재화)와 다음 스테이지!<br>💎+⛏로 공장을 강화해 <b>전설의 공장</b>까지!<br>패배하면 게임 오버입니다.</p><button id="go">본 게임 시작</button>');
+ S.ph='intro';$('go').onclick=()=>{hide();go('f');S.ph='game';S.el=0;$('log').innerHTML=''}}
+const IC=['🪲','🦀','🐙','🦖','👾','🤖','🛸','🐲','🧌','🦑'],FE=['🏚️','🛖','🏠','🏭','🏗️','🌆','🏰'];
+const PL=['정비공 용사',['#3b6fb6','#e8b98a','#222','#ffd23f'],'..4444|.44444|444444|.22222|.23222|.22222|..2222|.11111|211111|.11111|.11...|.33...'];
+const BOSS=['공장 파괴자',['#8a8f99','#c0392b','#25252b','#ffe14a'],'2.....|22.111|.11111|.14411|.11111|.13333|222111|211111|2.1221|..1111|.1111.|33333.'];
+const EL=[
+['철갑 거미',['#6b4a8a','#a77fd0','#1f1530','#ff4d4d'],'......|....11|..1111|.11441|.11111|3.2222|.3.222|3.1111|.3.11.|3...1.|......|......'],
+['폭주 골렘',['#b5651d','#e0a84b','#3a2210','#ff7a1a'],'..1111|.11111|.14411|.11111|.13333|221111|221221|221221|.11111|.11...|.33...|......'],
+['불꽃 정령',['#e4572e','#ffb347','#3d0f0a','#fff2a8'],'.....1|....11|...111|..1121|.11221|.12221|.12331|.12221|.11221|..1111|...111|......']];
+const NM=[
+['슬러지 슬라임',['#6fbf4a','#b6ee86','#1d3a12','#ffffff'],'......|......|......|...111|..2111|.11111|.14311|.11111|111111|111111|111111|.33333'],
+['고철 쥐',['#8c8c94','#e6a1a1','#2b2b30','#ff5a5a'],'22...1|221111|.11111|.14111|.11111|....22|.11111|111111|.11111|.1..1.|.3..3.|......'],
+['증기 박쥐',['#4a3f6b','#8f7fc9','#17122b','#ffe14a'],'1....1|11..11|111111|111141|121111|.21111|..2111|...211|....21|....1.|......|......'],
+['나사 게',['#d0453a','#f08a7a','#3a0f0c','#ffffff'],'11....|1.1...|1.1111|.11111|.14311|.11111|..2222|.11111|3.3.3.|3.3.3.|......|......'],
+['용접 벌레',['#e8c13a','#ffe98a','#2f2508','#ff4d4d'],'3.....|.3....|..1111|.11111|.14111|.11111|111111|.22222|111111|.1.1..|3.3...|......'],
+['깡통 로봇',['#9aa7b5','#d6dee6','#252a30','#4de0ff'],'....3.|.11111|.14444|.11111|..1111|211111|211221|2.1221|..1111|.11...|.33...|......'],
+['기름 유령',['#3a3a52','#6a6a8e','#0d0d18','#ffffff'],'..1111|.11111|111111|114311|111111|111222|111111|111111|111111|111111|1.11.1|......'],
+['연기 버섯',['#8d6e63','#d7ccc8','#2a1f1b','#ffffff'],'..1111|.11111|114111|111111|111141|111111|333333|..2222|..2322|..2222|..2222|.33333'],
+['배관 문어',['#2e86ab','#7cc8e8','#0b2a38','#ffffff'],'..1111|.11111|111111|114311|111111|.11111|1.1.1.|1.1.1.|1.1.1.|2.2.2.|......|......'],
+['폭탄 상자',['#c05a2b','#e8a46a','#2a1408','#ffe14a'],'....4.|....3.|111111|122222|123222|122222|122333|122222|111111|.33...|......|......'],
+['정찰 드론',['#5b8c5a','#a8d5a2','#1a2b1a','#ff5a5a'],'222...|.3....|..1111|.11111|.14441|.11111|..1111|...211|....3.|......|......|......'],
+['못 고슴도치',['#7a6a58','#d9c5a8','#241d16','#ffffff'],'3.3.3.|.3.3.3|111111|111111|112222|122322|122222|112233|111111|.1.1..|.3.3..|......'],
+['녹슨 기사',['#9b6b4b','#c8a07f','#2a1a10','#ffe14a'],'...222|..1111|.11111|.14444|.11111|..1111|211111|211221|2.1221|..1111|.11...|.33...'],
+['전구 괴물',['#f2d94e','#fff6b0','#4a3f0a','#ffffff'],'..1111|.11111|112111|114311|111111|.11111|..1111|..2222|..3333|..2222|...333|......'],
+['나사 해골',['#e8e2d0','#b8b09a','#2b2620','#ff5a5a'],'..1111|.11111|111111|113411|111111|..1111|..3131|..2222|..2121|..2222|.1..1.|.1..1.']];
+function spr(d,z){let o='<svg viewBox="0 0 12 12" width="'+z+'" height="'+z+'" shape-rendering="crispEdges">';
+ d[2].split('|').forEach((r,y)=>{[...(r+[...r].reverse().join(''))].forEach((c,x)=>{if(c!=='.')o+='<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+d[1][c-1]+'"/>'})});return o+'</svg>'}
+const R=a=>a[Math.floor(Math.random()*a.length)];
+function mk(){const e=mk0();if(S.ph==='tut')e.sp=null;else{const b=S.stage==100,l=S.stage%10==0,d=b?BOSS:l?R(EL):R(NM);e.sp=d;e.n=(b?'👹 ':l?'⚠ ':'')+d[0]+(b?' (보스)':'')}return e}
+function mk0(){
+ if(S.ph==='tut')return{n:'허수아비',hp:15,max:15,atk:1};
+ const s=S.stage;let hp=20+s*12,a=3+s*1.1,n='스테이지 '+s+' 몬스터';
+ if(s%10==0){hp*=2;a*=1.2;n='⚠ 정예 몬스터'}
+ if(s==100){hp=1220*3;a=113*0.8;n='👹 공장 파괴자 (보스)'}
+ return{n,hp:Math.floor(hp),max:Math.floor(hp),atk:Math.floor(a)}}
+function begin(){if(S.en||(S.ph!=='game'&&S.ph!=='tut'))return;S.en=mk();S.def=false;lg('— '+S.en.n+' 등장! —')}
+function act(t){
+ const e=S.en;if(!e)return;
+ if(t==='h'){if(S.ore<20)return;S.ore-=20;S.hp=Math.min(maxhp(),S.hp+Math.floor(maxhp()*.35));lg('🧪 체력 회복')}
+ else if(t==='d'){S.def=true;lg('🛡 방어 자세')}
+ else{const d=Math.max(1,Math.round(atk()*(0.85+Math.random()*.3)));e.hp-=d;lg('⚔ '+d+' 피해!');const x=$('foe');x.classList.remove('hit');void x.offsetWidth;x.classList.add('hit')}
+ if(e.hp<=0){win();return}
+ const d=Math.max(1,Math.round(e.atk*(S.def?.3:1)*(0.85+Math.random()*.3)));S.def=false;S.hp-=d;lg('💥 '+e.n+'의 공격: '+d);
+ if(S.hp<=0){S.hp=0;lose()}}
+function win(){
+ S.en=null;
+ if(S.ph==='tut'){lg('🎓 연습 승리!');S.tut=3;return}
+ const cr=S.stage==100?30:1+Math.floor(S.stage/10),or=Math.floor(10+S.stage*5*mult());
+ S.cry+=cr;S.ore+=or;lg('✅ 승리! ⛏+'+f(or)+' 💎+'+cr);
+ if(S.stage==100)lg('🔁 보스 격파! 스테이지 반복 보상 획득');else S.stage++;
+ S.hp=maxhp()}
+function lose(){
+ S.ph='over';S.en=null;const b=load('ft_best');
+ show('<div class="big">💀</div><h2>게임 오버</h2><p>스테이지 '+S.stage+' · 공장: '+FN[S.fl]+'<br>플레이 시간 '+tf(S.el)+(b?'<br>최고 클리어 기록 '+tf(b):'')+'</p><button id="re">다시하기</button>');
+ $('re').onclick=restart}
+function restart(){hide();go('f');init();('log').innerHTML='';('au').checked=false;startScreen()}
+function clearGame(){
+ S.ph='over';const prev=load('ft_last'),best=load('ft_best'),t=Math.floor(S.el);
+ save('ft_last',t);const nb=!best||t<best;if(nb)save('ft_best',t);
+ let cmp='첫 클리어 기록입니다!';
+ if(prev!=null){const d=t-prev;cmp='이전 기록 '+tf(prev)+' → 현재 '+tf(t)+' ('+(d<0?tf(-d)+' 단축 🔥':d>0?tf(d)+' 느려짐':'동일')+')'}
+ show('<div class="big">🏆</div><h2>공장 완성! 게임 클리어</h2><p>'+FN[MAX]+' 달성<br>클리어 시간 <b>'+tf(t)+'</b><br>'+cmp+(nb?'<br>🎖 최고 기록 갱신!':'<br>최고 기록 '+tf(best))+'</p><button id="re">다시하기</button>');
+ $('re').onclick=restart}
+function buy(k){
+ const c=cost[k]();if(S.ore<c)return;S.ore-=c;
+ if(k=='m')S.miner++;else if(k=='c')S.click++;else if(k=='w')S.wpn++;else{S.arm++;S.hp+=20}}
+function upF(){
+ if(S.fl>=MAX||S.ph!=='game')return;const o=FO[S.fl],c=FC[S.fl];if(S.ore<o||S.cry<c)return;
+ S.ore-=o;S.cry-=c;S.fl++;lg('🏭 공장 강화: '+FN[S.fl]);if(S.fl>=MAX)clearGame()}
+$('gather').onclick=()=>{if(S.ph==='tut'||S.ph==='game'){S.ore+=cp();S.clk++}};
+('bm').onclick=()=>buy('m');('bc').onclick=()=>buy('c');('bw').onclick=()=>buy('w');('ba').onclick=()=>buy('a');
+('bf').onclick=upF;('bs').onclick=begin;
+('a1').onclick=()=>act('a');('a2').onclick=()=>act('d');$('a3').onclick=()=>act('h');
+
+let cur='f';
+function go(p){cur=p;('pf').style.display=p==='f'?'block':'none';('pa').style.display=p==='a'?'block':'none';('tf').classList.toggle('on',p==='f');('ta').classList.toggle('on',p==='a')}
+('tf').onclick=()=>go('f');('ta').onclick=()=>go('a');
+function hint(){
+ const h=$('hint');if(S.ph!=='tut'){h.style.display='none';return}
+ h.style.display='block';
+ if(S.tut===0){h.textContent='📘 튜토리얼 1/3: ⛏ 자원 채굴 버튼을 5번 누르세요 ('+Math.min(S.clk,5)+'/5)';if(S.clk>=5){S.tut=1;S.ore=Math.max(S.ore,cost.m())}}
+ else if(S.tut===1){h.textContent='📘 튜토리얼 2/3: 자동 채굴기를 구매해 자동화하세요';if(S.miner>=1){S.tut=2;go('a')}}
+ else if(S.tut===2){h.textContent='📘 튜토리얼 3/3: 모험 탭에서 모험 시작 후 허수아비를 공격해 쓰러뜨리세요';if(S.hp<=0)S.hp=maxhp()}
+ else endTut()}
+function ui(){
+ ('tm').textContent=tf(S.el);('fn').textContent=FN[S.fl];('st').textContent=S.stage;('ore').textContent=f(S.ore);$('cry').textContent=f(S.cry);
+ $('fi').innerHTML='단계 '+(S.fl+1)+'/'+(MAX+1)+' · 배율 ×'+mult()+'<br>자동 생산 '+f(aps())+'/초 · 클릭당 '+f(cp());
+ ('bm').textContent='자동채굴기Lv'+S.miner+'(⛏'+f(cost.m())+')';('bm').disabled=S.ore<cost.m();
+ ('bc').textContent='채굴효율Lv'+S.click+'(⛏'+f(cost.c())+')';('bc').disabled=S.ore<cost.c();
+ ('bw').textContent='무기Lv'+S.wpn+'(⛏'+f(cost.w())+')';('bw').disabled=S.ore<cost.w();
+ ('ba').textContent='방어구Lv'+S.arm+'(⛏'+f(cost.a())+')';('ba').disabled=S.ore<cost.a();
+ if(S.fl<MAX){('bf').textContent='공장강화→'+FN[S.fl+1]+'(⛏'+f(FO[S.fl])+'💎'+FC[S.fl]+')';('bf').disabled=S.ph!=='game'||S.ore<FO[S.fl]||S.cry<FC[S.fl]}
+ else{('bf').textContent='최대단계';('bf').disabled=true}
+ const mh=maxhp();('ps').textContent='HP'+Math.max(0,S.hp)+'/'+mh+'·공격력'+atk();('phb').style.width=Math.max(0,S.hp/mh*100)+'%';
+ const e=S.en;$('eb').style.display=e?'block':'none';
+ if(e){('en').textContent=e.n;('eh').textContent='HP '+Math.max(0,e.hp)+'/'+e.max+' · 공격 '+e.atk;$('ehb').style.width=Math.max(0,e.hp/e.max*100)+'%'}
+ ('bs').style.display=e?'none':'inline-block';('ac').style.display=e?'inline':'none';
+ $('bs').disabled=!(S.ph==='game'||(S.ph==='tut'&&S.tut===2));
+ $('bs').textContent=S.ph==='game'&&S.stage==100?'보스전 도전 / 반복':'모험 시작';
+ $('a3').disabled=S.ore<20;
+ ('fe').textContent=FE[S.fl];('smoke').style.display=S.fl>0?'block':'none';
+ const g=Math.min(S.miner,8);if($('gears').dataset.n!=g){$('gears').dataset.n=g;$('gears').innerHTML='<span class="gear">⚙️</span>'.repeat(g)}
+ const fk=S.en?(S.en.sp?S.en.sp[0]:'T'):'z';if($('foe').dataset.k!==fk){$('foe').dataset.k=fk;$('foe').innerHTML=S.en?(S.en.sp?spr(S.en.sp,88):'🎯'):'💤'};
+ $('ta').textContent='⚔️ 모험'+(S.en&&cur!=='a'?' 🔴':'')}
+setInterval(()=>{
+ const n=Date.now(),dt=Math.min((n-last)/1000,2);last=n;
+ if(S.ph==='tut'||S.ph==='game'){S.ore+=aps()*dt;if(S.ph==='game')S.el+=dt}
+ tk++;
+ if(S.ph==='game'&&$('au').checked&&tk%2===0){
+  if(!S.en)begin();
+  else if(S.hp<maxhp()*.4&&S.ore>=20)act('h');else act('a')}
+ hint();ui()},250);
+$('pl').innerHTML=spr(PL,88);
+startScreen();
+</script></body></html>

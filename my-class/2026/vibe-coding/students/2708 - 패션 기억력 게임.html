@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오디션 코디 맞추기</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f7f3ff;
+  color: #333;
+}
+
+.game {
+  width: 90%;
+  max-width: 700px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 25px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.screen {
+  display: none;
+  text-align: center;
+}
+
+.screen.active {
+  display: block;
+}
+
+h1 {
+  font-size: 32px;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 13px 22px;
+  margin: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  background: #e8dcff;
+}
+
+button:hover {
+  background: #d5c1ff;
+}
+
+.primary {
+  background: #9b70ff;
+  color: white;
+}
+
+input {
+  width: 90%;
+  max-width: 500px;
+  padding: 14px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  font-size: 16px;
+  margin: 15px 0;
+}
+
+.outfit {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 25px 0;
+}
+
+.item {
+  font-size: 50px;
+}
+
+.item-name {
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.timer {
+  font-size: 26px;
+  font-weight: bold;
+  margin: 15px;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 15px 0 25px;
+}
+
+.choice {
+  min-height: 55px;
+}
+
+.choice.selected {
+  outline: 4px solid #9b70ff;
+  background: #eee3ff;
+}
+
+.result {
+  font-size: 30px;
+  font-weight: bold;
+  margin: 20px;
+}
+
+.emoji {
+  font-size: 70px;
+}
+
+@media (max-width: 500px) {
+  .game {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+
+  .choices {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+  <!-- 시작 화면 -->
+  <section id="start" class="screen active">
+    <div class="emoji">🎤👗</div>
+    <h1>오디션 코디 맞추기</h1>
+    <p>
+      심사위원이 보여준 코디를 기억하고<br>
+      제한시간 안에 똑같이 완성하세요!
+    </p>
+
+    <button class="primary" onclick="goTo('company')">
+      시작하기
+    </button>
+  </section>
+
+
+  <!-- 회사 화면 -->
+  <section id="company" class="screen">
+    <div class="emoji">🏢</div>
+    <h2>회사에 도착했습니다!</h2>
+    <p>오디션장으로 들어가세요.</p>
+
+    <button class="primary" onclick="goTo('intro')">
+      회사 들어가기
+    </button>
+  </section>
+
+
+  <!-- 자기소개 -->
+  <section id="intro" class="screen">
+    <h2>📝 자기소개</h2>
+
+    <p>간단한 자기소개를 적어주세요.</p>
+
+    <input
+      id="introText"
+      type="text"
+      maxlength="80"
+      placeholder="예: 안녕하세요! 저는 서연입니다."
+    >
+
+    <br>
+
+    <button class="primary" onclick="goTo('difficulty')">
+      다음
+    </button>
+  </section>
+
+
+  <!-- 난이도 -->
+  <section id="difficulty" class="screen">
+    <h2>⭐ 난이도 선택</h2>
+
+    <p>원하는 난이도를 선택하세요.</p>
+
+    <button onclick="startGame(1)">⭐ 1단계</button>
+    <button onclick="startGame(2)">⭐⭐ 2단계</button>
+    <button onclick="startGame(3)">⭐⭐⭐ 3단계</button>
+    <button onclick="startGame(4)">⭐⭐⭐⭐ 4단계</button>
+    <button onclick="startGame(5)">⭐⭐⭐⭐⭐ 5단계</button>
+  </section>
+
+
+  <!-- 코디 기억 -->
+  <section id="memory" class="screen">
+    <h2>👩‍⚖️ 심사위원의 코디</h2>
+
+    <p>이 코디를 잘 기억하세요!</p>
+
+    <div id="targetOutfit" class="outfit"></div>
+
+    <div id="memoryTimer" class="timer">
+      5
+    </div>
+  </section>
+
+
+  <!-- 옷 선택 -->
+  <section id="selection" class="screen">
+
+    <h2>👗 코디를 완성하세요!</h2>
+
+    <div id="gameTimer" class="timer">
+      남은 시간: 15초
+    </div>
+
+    <div id="options"></div>
+
+    <button
+      class="primary"
+      onclick="completeGame()"
+    >
+      완성
+    </button>
+
+  </section>
+
+
+  <!-- 결과 -->
+  <section id="result" class="screen">
+
+    <div id="resultEmoji" class="emoji"></div>
+
+    <div id="resultTitle" class="result"></div>
+
+    <p id="resultText"></p>
+
+    <button
+      class="primary"
+      onclick="restartGame()"
+    >
+      다시 시작하기
+    </button>
+
+  </section>
+
+</div>
+
+
+<script>
+
+let level = 1;
+let target = {};
+let selected = {};
+
+let memoryTimer;
+let gameTimer;
+
+
+/* 옷 데이터 */
+
+const clothes = {
+
+  shirt: [
+    ["👕", "흰색", "기본"],
+    ["👕", "검정", "기본"],
+    ["👕", "분홍", "기본"],
+    ["👕", "파랑", "기본"]
+  ],
+
+  pants: [
+    ["👖", "검정", "기본"],
+    ["👖", "흰색", "기본"],
+    ["👖", "청색", "기본"],
+    ["👖", "베이지", "기본"]
+  ],
+
+  shoes: [
+    ["👟", "흰색", "스니커즈"],
+    ["👟", "검정", "스니커즈"],
+    ["👠", "분홍", "구두"],
+    ["🥾", "갈색", "부츠"]
+  ],
+
+  pin: [
+    ["🎀", "분홍", "리본"],
+    ["📌", "노랑", "별"],
+    ["🎀", "파랑", "리본"],
+    ["🌸", "흰색", "꽃"]
+  ]
+
+};
+
+
+const names = {
+  shirt: "티셔츠",
+  pants: "바지",
+  shoes: "신발",
+  pin: "머리핀"
+};
+
+
+/* 화면 이동 */
+
+function goTo(screen) {
+
+  document.querySelectorAll(".screen")
+    .forEach(el => el.classList.remove("active"));
+
+  document.getElementById(screen)
+    .classList.add("active");
+}
+
+
+/* 랜덤 선택 */
+
+function randomItem(array) {
+
+  return array[
+    Math.floor(Math.random() * array.length)
+  ];
+
+}
+
+
+/* 게임 시작 */
+
+function startGame(selectedLevel) {
+
+  level = selectedLevel;
+
+  createTarget();
+
+  showTarget();
+
+}
+
+
+/* 정답 코디 만들기 */
+
+function createTarget() {
+
+  target = {};
+
+  target.shirt =
+    randomItem(clothes.shirt);
+
+  target.pants =
+    randomItem(clothes.pants);
+
+
+  if (level >= 2) {
+
+    target.shoes =
+      randomItem(clothes.shoes);
+
+  }
+
+
+  if (level >= 4) {
+
+    target.pin =
+      randomItem(clothes.pin);
+
+  }
+
+}
+
+
+/* 코디 보여주기 */
+
+function showTarget() {
+
+  goTo("memory");
+
+  const targetArea =
+    document.getElementById("targetOutfit");
+
+  targetArea.innerHTML = "";
+
+
+  Object.entries(target).forEach(
+    ([type, item]) => {
+
+      targetArea.innerHTML += `
+
+        <div class="item">
+
+          ${item[0]}
+
+          <div class="item-name">
+            ${names[type]}<br>
+            ${item[1]}
+            ${
+              level >= 3
+              ? "<br>" + item[2]
+              : ""
+            }
+          </div>
+
+        </div>
+
+      `;
+
+    }
+  );
+
+
+  let time = 5;
+
+  document.getElementById("memoryTimer")
+    .textContent = time;
+
+
+  clearInterval(memoryTimer);
+
+
+  memoryTimer = setInterval(() => {
+
+    time--;
+
+    document.getElementById("memoryTimer")
+      .textContent = time;
+
+
+    if (time <= 0) {
+
+      clearInterval(memoryTimer);
+
+      startSelection();
+
+    }
+
+  }, 1000);
+
+}
+
+
+/* 옷 선택 화면 */
+
+function startSelection() {
+
+  selected = {};
+
+  goTo("selection");
+
+  createOptions();
+
+
+  let time = 15;
+
+  document.getElementById("gameTimer")
+    .textContent =
+    "남은 시간: " + time + "초";
+
+
+  clearInterval(gameTimer);
+
+
+  gameTimer = setInterval(() => {
+
+    time--;
+
+    document.getElementById("gameTimer")
+      .textContent =
+      "남은 시간: " + time + "초";
+
+
+    if (time <= 0) {
+
+      clearInterval(gameTimer);
+
+      finishGame(
+        false,
+        "시간이 초과되었습니다!"
+      );
+
+    }
+
+  }, 1000);
+
+}
+
+
+/* 선택지 만들기 */
+
+function createOptions() {
+
+  const area =
+    document.getElementById("options");
+
+  area.innerHTML = "";
+
+
+  Object.keys(target).forEach(type => {
+
+    const title =
+      document.createElement("h3");
+
+    title.textContent =
+      names[type];
+
+    area.appendChild(title);
+
+
+    const choices =
+      document.createElement("div");
+
+    choices.className = "choices";
+
+
+    const shuffled =
+      [...clothes[type]]
+      .sort(() => Math.random() - 0.5);
+
+
+    shuffled.forEach(item => {
+
+      const button =
+        document.createElement("button");
+
+      button.className =
+        "choice";
+
+      button.textContent =
+        item[0] +
+        " " +
+        item[1] +
+        (level >= 3
+          ? " · " + item[2]
+          : "");
+
+
+      button.onclick = function() {
+
+        choices
+          .querySelectorAll("button")
+          .forEach(btn =>
+            btn.classList.remove("selected")
+          );
+
+
+        button.classList.add("selected");
+
+        selected[type] = item;
+
+      };
+
+
+      choices.appendChild(button);
+
+    });
+
+
+    area.appendChild(choices);
+
+  });
+
+}
+
+
+/* 정답 비교 */
+
+function isSame(a, b) {
+
+  if (!a || !b) {
+
+    return false;
+
+  }
+
+
+  if (a[1] !== b[1]) {
+
+    return false;
+
+  }
+
+
+  if (level >= 3 &&
+      a[2] !== b[2]) {
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+/* 완성 버튼 */
+
+function completeGame() {
+
+  for (const type of Object.keys(target)) {
+
+    if (!isSame(
+      selected[type],
+      target[type]
+    )) {
+
+      finishGame(
+        false,
+        "기억한 코디와 다르게 선택했습니다!"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  finishGame(
+    true,
+    "코디를 정확하게 맞췄습니다! 🎉"
+  );
+
+}
+
+
+/* 결과 */
+
+function finishGame(success, message) {
+
+  clearInterval(gameTimer);
+
+  goTo("result");
+
+
+  document.getElementById("resultEmoji")
+    .textContent =
+    success ? "🎉" : "❌";
+
+
+  document.getElementById("resultTitle")
+    .textContent =
+    success
+      ? "오디션 합격!"
+      : "오디션 실패";
+
+
+  document.getElementById("resultText")
+    .textContent = message;
+
+}
+
+
+/* 다시 시작 */
+
+function restartGame() {
+
+  clearInterval(memoryTimer);
+  clearInterval(gameTimer);
+
+  level = 1;
+
+  target = {};
+
+  selected = {};
+
+  document.getElementById("introText")
+    .value = "";
+
+  goTo("start");
+
+}
+
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>오디션 코디 맞추기</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f7f3ff;
+  color: #333;
+}
+
+.game {
+  width: 90%;
+  max-width: 700px;
+  margin: 40px auto;
+  background: white;
+  border-radius: 25px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.screen {
+  display: none;
+  text-align: center;
+}
+
+.screen.active {
+  display: block;
+}
+
+h1 {
+  font-size: 32px;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  padding: 13px 22px;
+  margin: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  background: #e8dcff;
+}
+
+button:hover {
+  background: #d5c1ff;
+}
+
+.primary {
+  background: #9b70ff;
+  color: white;
+}
+
+input {
+  width: 90%;
+  max-width: 500px;
+  padding: 14px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  font-size: 16px;
+  margin: 15px 0;
+}
+
+.outfit {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin: 25px 0;
+}
+
+.item {
+  font-size: 50px;
+}
+
+.item-name {
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.timer {
+  font-size: 26px;
+  font-weight: bold;
+  margin: 15px;
+}
+
+.choices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 15px 0 25px;
+}
+
+.choice {
+  min-height: 55px;
+}
+
+.choice.selected {
+  outline: 4px solid #9b70ff;
+  background: #eee3ff;
+}
+
+.result {
+  font-size: 30px;
+  font-weight: bold;
+  margin: 20px;
+}
+
+.emoji {
+  font-size: 70px;
+}
+
+@media (max-width: 500px) {
+  .game {
+    padding: 20px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+
+  .choices {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+
+  <!-- 시작 화면 -->
+  <section id="start" class="screen active">
+    <div class="emoji">🎤👗</div>
+    <h1>오디션 코디 맞추기</h1>
+    <p>
+      심사위원이 보여준 코디를 기억하고<br>
+      제한시간 안에 똑같이 완성하세요!
+    </p>
+
+    <button class="primary" onclick="goTo('company')">
+      시작하기
+    </button>
+  </section>
+
+
+  <!-- 회사 화면 -->
+  <section id="company" class="screen">
+    <div class="emoji">🏢</div>
+    <h2>회사에 도착했습니다!</h2>
+    <p>오디션장으로 들어가세요.</p>
+
+    <button class="primary" onclick="goTo('intro')">
+      회사 들어가기
+    </button>
+  </section>
+
+
+  <!-- 자기소개 -->
+  <section id="intro" class="screen">
+    <h2>📝 자기소개</h2>
+
+    <p>간단한 자기소개를 적어주세요.</p>
+
+    <input
+      id="introText"
+      type="text"
+      maxlength="80"
+      placeholder="예: 안녕하세요! 저는 서연입니다."
+    >
+
+    <br>
+
+    <button class="primary" onclick="goTo('difficulty')">
+      다음
+    </button>
+  </section>
+
+
+  <!-- 난이도 -->
+  <section id="difficulty" class="screen">
+    <h2>⭐ 난이도 선택</h2>
+
+    <p>원하는 난이도를 선택하세요.</p>
+
+    <button onclick="startGame(1)">⭐ 1단계</button>
+    <button onclick="startGame(2)">⭐⭐ 2단계</button>
+    <button onclick="startGame(3)">⭐⭐⭐ 3단계</button>
+    <button onclick="startGame(4)">⭐⭐⭐⭐ 4단계</button>
+    <button onclick="startGame(5)">⭐⭐⭐⭐⭐ 5단계</button>
+  </section>
+
+
+  <!-- 코디 기억 -->
+  <section id="memory" class="screen">
+    <h2>👩‍⚖️ 심사위원의 코디</h2>
+
+    <p>이 코디를 잘 기억하세요!</p>
+
+    <div id="targetOutfit" class="outfit"></div>
+
+    <div id="memoryTimer" class="timer">
+      5
+    </div>
+  </section>
+
+
+  <!-- 옷 선택 -->
+  <section id="selection" class="screen">
+
+    <h2>👗 코디를 완성하세요!</h2>
+
+    <div id="gameTimer" class="timer">
+      남은 시간: 15초
+    </div>
+
+    <div id="options"></div>
+
+    <button
+      class="primary"
+      onclick="completeGame()"
+    >
+      완성
+    </button>
+
+  </section>
+
+
+  <!-- 결과 -->
+  <section id="result" class="screen">
+
+    <div id="resultEmoji" class="emoji"></div>
+
+    <div id="resultTitle" class="result"></div>
+
+    <p id="resultText"></p>
+
+    <button
+      class="primary"
+      onclick="restartGame()"
+    >
+      다시 시작하기
+    </button>
+
+  </section>
+
+</div>
+
+
+<script>
+
+let level = 1;
+let target = {};
+let selected = {};
+
+let memoryTimer;
+let gameTimer;
+
+
+/* 옷 데이터 */
+
+const clothes = {
+
+  shirt: [
+    ["👕", "흰색", "기본"],
+    ["👕", "검정", "기본"],
+    ["👕", "분홍", "기본"],
+    ["👕", "파랑", "기본"]
+  ],
+
+  pants: [
+    ["👖", "검정", "기본"],
+    ["👖", "흰색", "기본"],
+    ["👖", "청색", "기본"],
+    ["👖", "베이지", "기본"]
+  ],
+
+  shoes: [
+    ["👟", "흰색", "스니커즈"],
+    ["👟", "검정", "스니커즈"],
+    ["👠", "분홍", "구두"],
+    ["🥾", "갈색", "부츠"]
+  ],
+
+  pin: [
+    ["🎀", "분홍", "리본"],
+    ["📌", "노랑", "별"],
+    ["🎀", "파랑", "리본"],
+    ["🌸", "흰색", "꽃"]
+  ]
+
+};
+
+
+const names = {
+  shirt: "티셔츠",
+  pants: "바지",
+  shoes: "신발",
+  pin: "머리핀"
+};
+
+
+/* 화면 이동 */
+
+function goTo(screen) {
+
+  document.querySelectorAll(".screen")
+    .forEach(el => el.classList.remove("active"));
+
+  document.getElementById(screen)
+    .classList.add("active");
+}
+
+
+/* 랜덤 선택 */
+
+function randomItem(array) {
+
+  return array[
+    Math.floor(Math.random() * array.length)
+  ];
+
+}
+
+
+/* 게임 시작 */
+
+function startGame(selectedLevel) {
+
+  level = selectedLevel;
+
+  createTarget();
+
+  showTarget();
+
+}
+
+
+/* 정답 코디 만들기 */
+
+function createTarget() {
+
+  target = {};
+
+  target.shirt =
+    randomItem(clothes.shirt);
+
+  target.pants =
+    randomItem(clothes.pants);
+
+
+  if (level >= 2) {
+
+    target.shoes =
+      randomItem(clothes.shoes);
+
+  }
+
+
+  if (level >= 4) {
+
+    target.pin =
+      randomItem(clothes.pin);
+
+  }
+
+}
+
+
+/* 코디 보여주기 */
+
+function showTarget() {
+
+  goTo("memory");
+
+  const targetArea =
+    document.getElementById("targetOutfit");
+
+  targetArea.innerHTML = "";
+
+
+  Object.entries(target).forEach(
+    ([type, item]) => {
+
+      targetArea.innerHTML += `
+
+        <div class="item">
+
+          ${item[0]}
+
+          <div class="item-name">
+            ${names[type]}<br>
+            ${item[1]}
+            ${
+              level >= 3
+              ? "<br>" + item[2]
+              : ""
+            }
+          </div>
+
+        </div>
+
+      `;
+
+    }
+  );
+
+
+  let time = 5;
+
+  document.getElementById("memoryTimer")
+    .textContent = time;
+
+
+  clearInterval(memoryTimer);
+
+
+  memoryTimer = setInterval(() => {
+
+    time--;
+
+    document.getElementById("memoryTimer")
+      .textContent = time;
+
+
+    if (time <= 0) {
+
+      clearInterval(memoryTimer);
+
+      startSelection();
+
+    }
+
+  }, 1000);
+
+}
+
+
+/* 옷 선택 화면 */
+
+function startSelection() {
+
+  selected = {};
+
+  goTo("selection");
+
+  createOptions();
+
+
+  let time = 15;
+
+  document.getElementById("gameTimer")
+    .textContent =
+    "남은 시간: " + time + "초";
+
+
+  clearInterval(gameTimer);
+
+
+  gameTimer = setInterval(() => {
+
+    time--;
+
+    document.getElementById("gameTimer")
+      .textContent =
+      "남은 시간: " + time + "초";
+
+
+    if (time <= 0) {
+
+      clearInterval(gameTimer);
+
+      finishGame(
+        false,
+        "시간이 초과되었습니다!"
+      );
+
+    }
+
+  }, 1000);
+
+}
+
+
+/* 선택지 만들기 */
+
+function createOptions() {
+
+  const area =
+    document.getElementById("options");
+
+  area.innerHTML = "";
+
+
+  Object.keys(target).forEach(type => {
+
+    const title =
+      document.createElement("h3");
+
+    title.textContent =
+      names[type];
+
+    area.appendChild(title);
+
+
+    const choices =
+      document.createElement("div");
+
+    choices.className = "choices";
+
+
+    const shuffled =
+      [...clothes[type]]
+      .sort(() => Math.random() - 0.5);
+
+
+    shuffled.forEach(item => {
+
+      const button =
+        document.createElement("button");
+
+      button.className =
+        "choice";
+
+      button.textContent =
+        item[0] +
+        " " +
+        item[1] +
+        (level >= 3
+          ? " · " + item[2]
+          : "");
+
+
+      button.onclick = function() {
+
+        choices
+          .querySelectorAll("button")
+          .forEach(btn =>
+            btn.classList.remove("selected")
+          );
+
+
+        button.classList.add("selected");
+
+        selected[type] = item;
+
+      };
+
+
+      choices.appendChild(button);
+
+    });
+
+
+    area.appendChild(choices);
+
+  });
+
+}
+
+
+/* 정답 비교 */
+
+function isSame(a, b) {
+
+  if (!a || !b) {
+
+    return false;
+
+  }
+
+
+  if (a[1] !== b[1]) {
+
+    return false;
+
+  }
+
+
+  if (level >= 3 &&
+      a[2] !== b[2]) {
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+/* 완성 버튼 */
+
+function completeGame() {`
+
+  for (const type of Object.keys(target)) {
+
+    if (!isSame(
+      selected[type],
+      target[type]
+    )) {
+
+      finishGame(
+        false,
+        "기억한 코디와 다르게 선택했습니다!"
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  finishGame(
+    true,
+    "코디를 정확하게 맞췄습니다! 🎉"
+  );
+
+}
+
+
+/* 결과 */
+
+function finishGame(success, message) {
+
+  clearInterval(gameTimer);
+
+  goTo("result");
+
+
+  document.getElementById("resultEmoji")
+    .textContent =
+    success ? "🎉" : "❌";
+
+
+  document.getElementById("resultTitle")
+    .textContent =
+    success
+      ? "오디션 합격!"
+      : "오디션 실패";
+
+
+  document.getElementById("resultText")
+    .textContent = message;
+
+}
+
+
+/* 다시 시작 */
+
+function restartGame() {
+
+  clearInterval(memoryTimer);
+  clearInterval(gameTimer);
+
+  level = 1;
+
+  target = {};
+
+  selected = {};
+
+  document.getElementById("introText")
+    .value = "";
+
+  goTo("start");
+
+}
+
+</script>
+
+</body>
+</html>

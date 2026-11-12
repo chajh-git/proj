@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>레전드출석부</title>
+<style>
+/* ★ 수정: display:flex 등이 hidden 속성을 덮어쓰지 않도록 강제 */
+[hidden] { display: none !important; }
+
+:root {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  --bg: #f6f4ef; --fg: #222222; --card: #ffffff; --line: #d9d4c7;
+  --acc: #c0392b; --ok: #2e7d32; --mut: #777777;
+  --board-bg: #1e3d2f; --chalk-white: #f5f5f0; --chalk-yellow: #f1c40f;
+}
+@media(prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c1b19; --fg: #eeeeee; --card: #2a2926; --line: #44413b;
+    --acc: #ef7b6e; --ok: #7bd17f; --mut: #aaaaaa;
+  }
+}
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; padding: 14px; }
+main { max-width: 720px; margin: 0 auto; }
+
+#main-screen {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  min-height: 85vh; background: var(--board-bg); border: 12px solid #5c3a21; border-radius: 12px;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.3);
+  color: var(--chalk-white); text-align: center; padding: 20px; cursor: pointer; user-select: none;
+  transition: transform 0.1s ease;
+}
+#main-screen:hover { transform: scale(1.005); }
+.chalk-title {
+  font-size: 72pt; font-weight: 900; color: var(--chalk-white);
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.4), 0 0 10px rgba(255,255,255,0.3);
+  letter-spacing: -2px; margin: 0 0 20px 0;
+  font-family: "Gamja Flower", "Gungsuh", "Chalkduster", cursive, sans-serif; line-height: 1.1;
+}
+.chalk-subtitle { font-size: 20pt; color: var(--chalk-yellow); font-weight: bold;
+  animation: blink 1.5s infinite; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+
+/* 시작 전 설정 화면: 칠판 배경, 제목은 맨 위 중앙, 설정/규칙은 정중앙 */
+#intro {
+  --card:rgba(255,255,255,.08); --fg:#f5f5f0; --line:rgba(245,245,240,.55); --mut:#d6ddd3; --acc:#f1c40f;
+  display:flex; flex-direction:column; align-items:center;
+  min-height:85vh; background:#1e3d2f; color:var(--fg);
+  border:12px solid #5c3a21; border-radius:12px;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.6), 0 8px 20px rgba(0,0,0,0.3);
+  padding:28px 20px; text-align:center;
+}
+#intro h1 { text-shadow:2px 2px 0 rgba(0,0,0,.4), 0 0 10px rgba(255,255,255,.3);
+  font-family:"Gamja Flower","Gungsuh","Chalkduster",cursive,sans-serif; }
+#intro input, #intro select { background:rgba(255,255,255,.08); color:#f5f5f0; border:1px dashed rgba(245,245,240,.7); }
+#intro select option { background:#1e3d2f; color:#f5f5f0; }
+#intro button { background:#f1c40f; color:#1e3d2f; font-weight:800; }
+#intro button.alt { background:transparent; color:#f5f5f0; border:1px dashed rgba(245,245,240,.7); font-weight:400; }
+#intro summary { cursor:pointer; color:#f1c40f; font-weight:700; }
+#intro small.d { color:#e6ece3; }
+#intro h1 { font-size:48px; font-weight:900; margin:8px 0 0; letter-spacing:-1px; }
+#intro #setup {
+  flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;
+  width:100%; max-width:520px; background:transparent; border:0; margin:0; padding:0;
+}
+#intro #setup .row { justify-content:center; }
+#intro #setup details { text-align:left; width:100%; }
+
+h1 { font-size: 22px; margin: 4px 0 10px; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+button, input, select { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+button { cursor: pointer; background: var(--acc); color: #fff; border: 0; }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.alt { background: var(--card); color: var(--fg); border: 1px solid var(--line); }
+#table { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.card { border: 2px solid var(--line); border-radius: 10px; padding: 8px; text-align: center; background: var(--card);
+  display: flex; flex-direction: column; gap: 2px; cursor: default; }
+.card small { color: var(--mut); }
+.card.t { border-color: var(--ok); }
+.card.pt { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 15%, var(--card)); }
+.card.sel { outline: 3px solid var(--acc); }
+.card.out { opacity: .4; text-decoration: line-through; }
+.pick { cursor: pointer; }
+#msg { font-weight: 600; margin: 6px 0; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+#bar { height: 10px; background: var(--acc); border-radius: 5px; width: 100%; }
+#log { max-height: 200px; overflow: auto; font-size: 14px; line-height: 1.6; }
+#log .h { font-weight: 700; }
+#log .bad { color: var(--acc); }
+.shopi { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+small.d { color: var(--mut); }
+
+/* ===== 게임 화면 레이아웃: 칠판 35% / 선생님 / 플레이어 55% / 입력칸 / 설명 / 제목 ===== */
+#game { display:flex; flex-direction:column; align-items:stretch; }
+#stage { position:relative; height:35vh; min-height:210px; }
+#board { position:absolute; inset:0; background:#1e3d2f; color:#f5f5f0; border:10px solid #5c3a21; border-bottom-width:14px;
+  border-radius:8px; box-shadow:inset 0 0 40px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.35); padding:10px 14px; overflow:hidden; }
+#board #log { height:100%; max-height:none; overflow:auto; font-size:15px; }
+#board #log, #board #log div { color:#f5f5f0; }
+#board #log .bad { color:#ff9b8f; }
+#teacher { position:absolute; left:50%; transform:translateX(-50%); bottom:-3vh; height:31vh; min-height:170px; z-index:2; pointer-events:none; }
+.bubble { position:absolute; top:11vh; z-index:3; background:#fff; color:#222; border:3px solid #333; border-radius:18px;
+  padding:8px 18px; font-size:26px; font-weight:900; animation:pop .25s ease-out; max-width:30%; word-break:keep-all; text-align:center; }
+.bubble.L { right:calc(50% + 14vh); }
+.bubble.R { left:calc(50% + 14vh); }
+.bubble::after { content:""; position:absolute; top:50%; width:14px; height:14px; background:#fff; border:3px solid #333; transform:translateY(-50%) rotate(45deg); }
+.bubble.L::after { right:-9px; border-left:0; border-bottom:0; }
+.bubble.R::after { left:-9px; border-right:0; border-top:0; }
+@media (max-width:600px) {
+  #teacher { height:26vh; }
+  .bubble { font-size:20px; padding:6px 12px; }
+  .bubble.L { right:calc(50% + 12vh); } .bubble.R { left:calc(50% + 12vh); }
+  #board #log { font-size:13px; }
+}
+@keyframes pop { from { transform:scale(.3); opacity:0; } to { transform:scale(1); opacity:1; } }
+#table { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; align-content:flex-start; padding-top:1vh; margin-bottom:8px; }
+#table .card { flex:1 1 150px; max-width:200px; min-height:16vh; justify-content:center; padding:10px 8px; font-size:20px; }
+#tForm, #sForm .row, #meta { justify-content:center; }
+#tBar { height:10px; background:var(--acc); border-radius:5px; width:100%; flex-basis:100%; }
+#msg { text-align:center; min-height:1.5em; }
+#footer { text-align:center; font-weight:900; font-size:28px; margin:24px 0 8px; letter-spacing:-1px;
+  font-family:"Gamja Flower","Gungsuh","Chalkduster",cursive,sans-serif; }
+</style>
+</head>
+<body>
+<main>
+  <!-- 1단계: 칠판 대문 (클릭하면 인원 선택 화면으로) -->
+  <div id="main-screen">
+    <div class="chalk-title">레전드출석부</div>
+    <div class="chalk-subtitle">클릭해서 시작</div>
+  </div>
+
+  <div id="app-container" hidden>
+    <div id="intro">
+    <h1>🏫 레전드출석부</h1>
+
+    <!-- 2단계: 이름·인원 선택 + 시작 버튼 -->
+    <div id="setup" class="box">
+      <div class="row">
+        <label>내 이름 <input id="myName" value="나" maxlength="6" size="6"></label>
+        <label>인원 <select id="cnt"></select></label>
+        <button id="startBtn">시작</button>
+      </div>
+      <div class="row"><small id="saveInfo" class="d"></small><button id="resetSave" class="alt" hidden>기록 초기화</button></div>
+      <details style="margin-top:8px">
+        <summary>규칙</summary>
+        <small class="d">
+          선생님이 한 명의 이름을 입력하면서 다른 한 명을 클릭해 지목합니다(지목당한 사람의 이름은 말하면 안 됨). 지목당한 학생은 2초 안에 정확히 '네!'를 입력하면 선생님이 되고, 실패하면 추방됩니다. 2명이 남으면 게임 종료 → 각 2점, 상점에서 아이템 구매. 잠시만요(2점): 시간 2초→4초 · 조용히해(4점): 지목당한 사람은 이름 입력 없이 지목만 가능 · 집가고싶다(2점): 도중 퇴장하며 3점 획득, 사용 후 2판 쓸 수 없음. 잠시만요·조용히해는 한 판 5번까지.
+        </small>
+      </details>
+    </div>
+    </div>
+
+    <!-- 3단계: 게임 -->
+    <div id="game" hidden>
+      <div id="stage">
+        <div id="board"><div id="log"></div></div>
+        <img id="teacher" alt="선생님">
+        <div id="bubble" class="bubble L" hidden></div>
+      </div>
+      <div id="table"></div>
+      <div id="tForm" class="row" hidden>
+        <div id="tBar"></div>
+        <input id="tName" placeholder="지목하지 않은 사람의 이름" size="16" autocomplete="off">
+        <button id="tQuiet" class="alt"></button>
+        <button id="tGo">지목!</button>
+      </div>
+      <div id="sForm" hidden>
+        <div id="bar"></div>
+        <div class="row">
+          <input id="sIn" placeholder="네!" size="8" autocomplete="off">
+          <button id="sWait" class="alt">잠시만요!</button>
+        </div>
+      </div>
+      <div id="msg"></div>
+      <div id="meta" class="row"><div id="info"></div><button id="home" class="alt"></button><button id="specExit" class="alt" hidden>관전 나가기</button></div>
+      <div id="shop" class="box" hidden>
+        <b>🛒 상점</b>
+        <div id="shopList"></div>
+        <div class="row">
+          <button id="next">다음 판</button>
+          <button id="exit" class="alt">나가기</button>
+        </div>
+      </div>
+      <div id="footer">레전드출석부</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// 칠판 클릭 → 인원 선택 화면
+$('main-screen').onclick = () => {
+  $('main-screen').hidden = true;
+  $('app-container').hidden = false;
+};
+
+const NAMES = ['민준', '서연', '지호', '하윤', '도현', '유나', '준서'];
+const COST = { wait: 2, quiet: 4, home: 2 };
+const LBL = { wait: '잠시만요', quiet: '조용히해', home: '집가고싶다' };
+const DESC = { wait: '네! 입력 시간 2초→4초', quiet: '지목당한 사람은 지목만 가능', home: '퇴장하며 3점 획득 (2판 쿨타임)' };
+
+let P = [], me, G = 0, T = null, PT = null, phase = 'setup';
+let silenced = false, sel = null, quietOn = false, ext = false;
+let tm = null, iv = null, dl = 0, t0 = 0;
+let called = null, side = 'L';
+
+// ===== 저장 (localStorage): 내 포인트와 보유 아이템 =====
+const SAVE_KEY = 'legendAttendance.save.v1';
+function loadSave() {
+  try { const v = JSON.parse(localStorage.getItem(SAVE_KEY)); if (v && v.items) return v; } catch (e) {}
+  return null;
+}
+function saveNow() {
+  if (!me) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ name: me.name, pts: me.pts, items: me.items })); } catch (e) {}
+}
+function showSave() {
+  const v = loadSave();
+  $('saveInfo').textContent = v ? ('💾 저장된 기록: ' + (v.pts) + '점 · 잠시만요 ' + (v.items.wait) + ' / 조용히해 ' + (v.items.quiet) + ' / 집가고싶다 ' + (v.items.home)) : '저장된 기록 없음';
+  $('resetSave').hidden = !v;
+}
+$('resetSave').onclick = () => {
+  if (!confirm('저장된 포인트와 아이템을 모두 지울까요?')) return;
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  showSave();
+};
+{ const sv = loadSave(); if (sv && sv.name) $('myName').value = sv.name; }
+showSave();
+
+for (let i = 3; i <= 8; i++) $('cnt').add(new Option(i + '명', i));
+
+const rnd = a => a[Math.floor(Math.random() * a.length)];
+const alive = () => P.filter(p => p.alive);
+const log = (s, c) => { const d = document.createElement('div'); d.textContent = s; if (c) d.className = c; $('log').prepend(d); };
+const canHome = p => p.alive && p.items.home > 0 && (G - p.lastHome >= 3);
+const clearAll = () => { clearTimeout(tm); clearInterval(iv); };
+
+$('startBtn').onclick = () => {
+  const n = +$('cnt').value;
+  const nm = $('myName').value.trim() || '나';
+  P = [{ id: 0, name: nm, human: 1 }];
+  const pool = NAMES.filter(x => x !== nm).sort(() => Math.random() - .5);
+  for (let i = 1; i < n; i++) P.push({ id: i, name: pool[i - 1], human: 0 });
+  P.forEach(p => { p.pts = 0; p.items = { wait: 0, quiet: 0, home: 0 }; p.lastHome = -9; });
+  const sv = loadSave();
+  if (sv) {
+    P[0].pts = sv.pts | 0;
+    P[0].items = { wait: sv.items.wait | 0, quiet: sv.items.quiet | 0, home: sv.items.home | 0 };
+  }
+  me = P[0]; G = 0;
+  $('intro').hidden = true;
+  $('game').hidden = false;
+  newGame();
+};
+
+function newGame() {
+  G++;
+  $('shop').hidden = true;
+  P.forEach(p => { p.alive = true; p.left = false; p.used = { wait: 0, quiet: 0 }; });
+  T = rnd(P); PT = null; silenced = false;
+  log(('── ' + (G) + '번째 판 시작 ──'), 'h');
+  log(('랜덤으로 ' + (T.name) + '이(가) 선생님!'));
+  teach();
+}
+
+const TEACH_MS = 6000;
+function teach() {
+  clearAll();
+  phase = 'teach'; PT = null; sel = null; quietOn = false; ext = false;
+  for (const p of alive()) {
+    if (!p.human && p !== T && alive().length > 3 && canHome(p) && Math.random() < .04) {
+      if (leave(p)) return;
+    }
+  }
+  render();
+  if (T.human) {
+    t0 = Date.now(); dl = t0 + TEACH_MS;
+    tm = setTimeout(teachTimeout, TEACH_MS);
+    iv = setInterval(tbar, 40); tbar();
+  } else tm = setTimeout(botTeach, 1500 + Math.random() * 3000);
+}
+
+function leave(p) {
+  p.items.home--; p.lastHome = G; p.pts += 3; p.alive = false; p.left = true;
+  log(('' + (p.name) + ': 집가고싶다! (+3점) 퇴장'), 'h');
+  if (checkEnd()) return true;
+  if (p === T) T = rnd(alive().filter(x => x !== PT));
+  return false;
+}
+
+function checkEnd() { if (alive().length <= 2) { endGame(); return true; } return false; }
+
+function botTeach() {
+  if (phase !== 'teach' || T.human) return;
+  const o = alive().filter(p => p !== T).sort(() => Math.random() - .5);
+  const q = T.items.quiet > 0 && T.used.quiet < 5 && Math.random() < .3;
+  point(T, o[0], silenced ? null : o[1].name, q);
+}
+
+function point(t, pt, named, q) {
+  clearAll();
+  if (q) { t.items.quiet--; t.used.quiet++; }
+  log(silenced ? ('' + (t.name) + ': (이름 없이) ' + (pt.name) + ' 지목!') : ('' + (t.name) + ': "' + (named) + '" 입력 + ' + (pt.name) + ' 지목!'));
+  if (q) log(('' + (t.name) + '이(가) \'조용히해\' 사용! ' + (pt.name) + '은(는) 지목만 할 수 있어요'), 'h');
+  called = named; side = Math.random() < .5 ? 'L' : 'R';
+  silenced = q; PT = pt; phase = 'respond'; ext = false; t0 = Date.now(); dl = t0 + 2000;
+  render();
+  if (pt.human) {
+    tm = setTimeout(() => fail(pt, '시간 초과'), 2000);
+    iv = setInterval(bar, 40);
+    $('sIn').value = ''; $('sIn').focus();
+  } else botResp(pt);
+}
+
+function botResp(pt) {
+  let lim = 2000;
+  const slow = Math.random() < .2;
+  if (slow && pt.items.wait > 0 && pt.used.wait < 5) {
+    pt.items.wait--; pt.used.wait++; lim = 4000;
+    log(('' + (pt.name) + ': 잠시만요! (4초)'), 'h');
+  }
+  const d = slow ? 2300 + Math.random() * 500 : 500 + Math.random() * 1000;
+  if (Math.random() < .07) tm = setTimeout(() => fail(pt, rnd(['내!', '네', '넹'])), d);
+  else if (d > lim) tm = setTimeout(() => fail(pt, '시간 초과'), lim);
+  else tm = setTimeout(() => ok(pt), d);
+}
+
+function ok(pt) { clearAll(); log(('' + (pt.name) + ': "네!" → 새 선생님')); T = pt; teach(); }
+
+function fail(pt, txt) {
+  clearAll(); log(('' + (pt.name) + ': "' + (txt) + '" → 실패! 추방'), 'bad'); pt.alive = false;
+  if (checkEnd()) return;
+  if (!T.alive) T = rnd(alive());
+  silenced = false; teach();
+}
+
+function tbar() { $('tBar').style.width = Math.max(0, (dl - Date.now()) / TEACH_MS * 100) + '%'; }
+function teachTimeout() {
+  if (phase !== 'teach' || T !== me) return;
+  clearAll(); log(('' + (me.name) + ': 6초 안에 지목하지 못함 → 추방'), 'bad'); me.alive = false;
+  if (checkEnd()) return;
+  T = rnd(alive()); silenced = false; teach();
+}
+function bar() { $('bar').style.width = Math.max(0, (dl - Date.now()) / (dl - t0) * 100) + '%'; }
+
+function humanPoint() {
+  if (phase !== 'teach' || T !== me) return;
+  if (!sel) return $('msg').textContent = '먼저 지목할 사람을 클릭하세요';
+  let named = null;
+  if (!silenced) {
+    named = $('tName').value.trim();
+    const n = alive().find(p => p.name === named);
+    if (!n || n === me) return $('msg').textContent = '살아있는 다른 사람의 이름을 입력하세요';
+    if (n === sel) return $('msg').textContent = '지목당한 사람의 이름은 말하면 안 돼요!';
+  }
+  $('tName').value = '';
+  point(me, sel, named, quietOn);
+}
+
+function humanResp() {
+  if (phase !== 'respond' || PT !== me) return;
+  const v = $('sIn').value;
+  if (Date.now() > dl) fail(me, '시간 초과');
+  else if (v === '네!') ok(me);
+  else fail(me, v);
+}
+
+$('tGo').onclick = humanPoint;
+$('tName').onkeydown = e => { if (e.key === 'Enter') humanPoint(); };
+$('sIn').onkeydown = e => { if (e.key === 'Enter') humanResp(); };
+$('tQuiet').onclick = () => { quietOn = !quietOn; render(); };
+$('sWait').onclick = () => {
+  if (phase !== 'respond' || PT !== me || ext || me.items.wait < 1 || me.used.wait >= 5) return;
+  me.items.wait--; me.used.wait++; ext = true; dl = t0 + 4000;
+  clearTimeout(tm);
+  tm = setTimeout(() => fail(me, '시간 초과'), dl - Date.now());
+  log(('' + (me.name) + ': 잠시만요! (4초)'), 'h');
+  render();
+  $('sIn').focus();
+};
+
+$('home').onclick = () => {
+  if (!canHome(me) || phase === 'shop' || (phase === 'respond' && PT === me)) return;
+  const wasT = me === T;
+  if (leave(me)) return;
+  if (phase === 'teach' && wasT) { clearTimeout(tm); teach(); }
+  else render();
+};
+
+$('table').onclick = e => {
+  const c = e.target.closest('.card');
+  if (!c) return;
+  const p = P[+c.dataset.i];
+  if (phase === 'teach' && T === me && me.alive && p.alive && p !== me) { sel = p; render(); }
+};
+
+function render() {
+  $('table').innerHTML = P.map(p => {
+    const st = !p.alive ? (p.left ? '퇴장' : '추방') : p === T ? '선생님' : p === PT ? '지목됨' : '학생';
+    const pick = phase === 'teach' && T === me && p.alive && p !== me ? ' pick' : '';
+    return ('<div class="card' + (p.alive ? '' : ' out') + (p === T ? ' t' : '') + (p === PT ? ' pt' : '') + (sel === p ? ' sel' : '') + (pick) + '" data-i="' + (p.id) + '"><b>' + (p.name) + (p.human ? ' (나)' : '') + '</b><small>' + (st) + '</small><small>' + (p.pts) + '점</small></div>');
+  }).join('');
+
+  const m = me.items;
+  $('info').innerHTML = ('<small class="d">' + (G) + '번째 판 · 남은 ' + (alive().length) + '명 · 내 아이템: 잠시만요 ' + (m.wait) + ' / 조용히해 ' + (m.quiet) + ' / 집가고싶다 ' + (m.home) + ' (사용 ' + (me.used.wait) + '·' + (me.used.quiet) + '/5)</small>');
+
+  let s = '';
+  if (phase === 'shop') s = '게임 종료!';
+  else if (!me.alive) s = '👀 관전 중';
+  else if (phase === 'teach') s = T === me ? (silenced ? '조용히해! 6초 안에 지목할 사람만 클릭하고 [지목!]' : '6초 안에 지목할 사람을 클릭하고, 다른 사람의 이름을 입력한 뒤 Enter') : ('' + (T.name) + '이(가) 지목하는 중...');
+  else s = PT === me ? '지목당했다! 2초 안에 "네!"를 입력하세요' : ('' + (T.name) + ' → ' + (PT.name) + ' 지목, 대기 중...');
+
+  $('msg').textContent = s;
+  const bb = $('bubble');
+  if (phase === 'respond') { bb.hidden = false; bb.className = 'bubble ' + side; bb.textContent = called || '🤫'; }
+  else bb.hidden = true;
+  $('tForm').hidden = !(phase === 'teach' && T === me && me.alive);
+  $('tName').disabled = silenced;
+  $('tName').placeholder = silenced ? '(조용히해: 이름 입력 불가)' : '지목하지 않은 사람의 이름';
+  $('tQuiet').hidden = m.quiet < 1 || me.used.quiet >= 5;
+  $('tQuiet').textContent = quietOn ? '조용히해 ON ✓' : ('조용히해 사용 (' + (m.quiet) + '개)');
+  $('sForm').hidden = !(phase === 'respond' && PT === me);
+  $('sWait').disabled = ext || m.wait < 1 || me.used.wait >= 5;
+  $('specExit').hidden = !(me.alive === false && phase !== 'shop');
+  $('home').hidden = m.home < 1 || phase === 'shop' || !me.alive;
+  $('home').textContent = canHome(me) ? ('집가고싶다 (+3점 받고 퇴장)') : '집가고싶다 (쿨타임 중)';
+  $('home').disabled = !canHome(me) || (phase === 'respond' && PT === me);
+  saveNow();
+}
+
+function endGame() {
+  clearAll(); phase = 'shop';
+  const f = alive(); f.forEach(p => p.pts += 2);
+  log(('🏁 게임 종료! 최후의 2명: ' + (f.map(p => p.name).join(', ')) + ' (각 +2점)'), 'h');
+  P.filter(p => !p.human).forEach(p => {
+    for (let i = 0; i < 3; i++) {
+      const k = rnd(['wait', 'home', 'quiet']);
+      if (p.pts >= COST[k] && Math.random() < .6) { p.pts -= COST[k]; p.items[k]++; }
+    }
+  });
+  render(); shop();
+}
+
+function shop() {
+  saveNow();
+  $('shop').hidden = false;
+  $('shopList').innerHTML = ('<div class="shopi"><span>내 포인트: <b>' + (me.pts) + '점</b></span></div>') + Object.keys(COST).map(k => ('<div class="shopi"><span>' + (LBL[k]) + ' (' + (COST[k]) + '점) <small class="d">' + (DESC[k]) + ' · 보유 ' + (me.items[k]) + '</small></span><button data-k="' + (k) + '" ' + (me.pts < COST[k] ? 'disabled' : '') + '>구매</button></div>')).join('');
+}
+
+$('shopList').onclick = e => {
+  const k = e.target.dataset.k;
+  if (!k || me.pts < COST[k]) return;
+  me.pts -= COST[k]; me.items[k]++;
+  shop(); render();
+};
+
+$('next').onclick = newGame;
+function toMain() {
+  saveNow();
+  clearAll(); phase = 'setup'; P = []; me = null; T = null; PT = null; G = 0;
+  $('log').innerHTML = '';
+  $('shop').hidden = true;
+  $('game').hidden = true;
+  $('intro').hidden = false;
+  $('app-container').hidden = true;
+  $('main-screen').hidden = false;
+  showSave();
+}
+$('exit').onclick = () => { if (phase === 'shop') toMain(); };
+$('specExit').onclick = () => { if (me && !me.alive) toMain(); };
+</script>
+<script>
+// 선생님 그림 (PNG를 글자로 바꾼 데이터입니다. 지우면 선생님이 보이지 않아요)
+const TEACHER_B64 = [
+"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"
+].join('');
+document.getElementById('teacher').src = 'data:image/png;base64,' + TEACHER_B64;
+</script>
+</body>
+</html>

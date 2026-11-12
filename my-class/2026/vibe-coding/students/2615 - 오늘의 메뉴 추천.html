@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의 메뉴 추천</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        
+        .slot-container {
+            perspective: 1000px;
+        }
+        
+        .slot-roll {
+            transition: transform 0.1s ease-out;
+        }
+
+        /* Pulse glow animation for recommended item */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); }
+        }
+
+        .glow-effect {
+            animation: pulse-glow 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-rose-500 selection:text-white">
+
+    <header class="w-full py-6 px-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-utensils text-rose-500 text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-rose-400 to-orange-400 bg-clip-text text-transparent">오늘 뭐 먹지?</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openCodeModal()" class="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-full transition-all font-medium flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-code text-xs"></i> 코드 복사
+                </button>
+                <span class="text-xs bg-slate-800 text-slate-400 px-2.5 py-1.5 rounded-full border border-slate-700">v1.1</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto w-full px-4 py-6 flex-grow flex flex-col gap-6">
+
+        <!-- Slot Machine Wheel Area -->
+        <div class="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 text-center relative overflow-hidden shadow-2xl flex flex-col items-center justify-center min-h-[220px]">
+            <div class="text-xs text-rose-400 font-semibold tracking-wider uppercase mb-2" id="statusLabel">버튼을 눌러 추천을 받아보세요</div>
+            
+            <div class="w-full h-24 overflow-hidden relative border-y-2 border-slate-700/80 flex items-center justify-center bg-slate-950/50 rounded-xl my-2">
+                <div id="slotDisplay" class="text-3xl md:text-4xl font-extrabold text-white flex items-center justify-center h-full tracking-tight transition-all duration-300">
+                    🍱 고민 끝!
+                </div>
+            </div>
+
+            <div id="resultSubtext" class="text-sm text-slate-400 mt-2 h-6 font-medium">
+                음식점 선택장애 해결 완료!
+            </div>
+        </div>
+
+        <div class="space-y-3">
+            <label class="text-sm font-semibold text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-filter text-xs"></i> 카테고리 선택
+            </label>
+            <div class="grid grid-cols-3 gap-2" id="categoryButtons">
+                <button onclick="selectCategory('전체')" class="cat-btn active bg-rose-500 text-white border-rose-500 py-2.5 px-3 rounded-xl font-medium text-sm transition-all shadow-lg shadow-rose-500/20">
+                    ✨ 전체
+                </button>
+                <button onclick="selectCategory('한식')" class="cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all">
+                    🍚 한식
+                </button>
+                <button onclick="selectCategory('중식')" class="cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all">
+                    🥟 중식
+                </button>
+                <button onclick="selectCategory('일식')" class="cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all">
+                    🍣 일식
+                </button>
+                <button onclick="selectCategory('양식')" class="cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all">
+                    🍕 양식
+                </button>
+                <button onclick="selectCategory('분식/디저트')" class="cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all">
+                    떡볶이/디저트
+                </button>
+            </div>
+        </div>
+
+        <button id="spinBtn" onclick="spinSlot()" class="w-full bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-rose-500/25 active:scale-[0.98] transition-all flex items-center justify-center text-lg gap-2">
+            <i class="fa-solid fa-dice text-xl"></i>
+            <span id="spinBtnText">메뉴 추천받기</span>
+        </button>
+
+        <div class="bg-slate-800/50 border border-slate-800 rounded-2xl p-4 space-y-4">
+            <div class="flex items-center justify-between">
+                <span class="text-sm font-semibold text-slate-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check text-xs"></i> 현재 카테고리 메뉴 (<span id="currentCatName">전체</span>: <span id="menuCount">0</span>개)
+                </span>
+                <button onclick="toggleAddForm()" class="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i> 메뉴 추가
+                </button>
+            </div>
+
+            <!-- Menu Add Form (Hidden by default) -->
+            <div id="addForm" class="hidden flex gap-2 pt-1">
+                <input type="text" id="newMenuInput" placeholder="새 메뉴 이름 입력" class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-rose-500 text-slate-200">
+                <button onclick="addMenu()" class="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all">추가</button>
+            </div>
+
+            <!-- Menu Chips List -->
+            <div id="menuChips" class="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1 text-xs">
+                <!-- Dynamic Chips insertion -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Code Export Modal -->
+    <div id="codeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl relative">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-slate-100 text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-code text-rose-500"></i> 소스 코드 복사하기
+                </h3>
+                <button onclick="closeCodeModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-400">원하시는 형식의 코드를 선택하여 복사 후 사용해 보세요!</p>
+
+            <div class="space-y-3">
+                <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3.5 flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-200">🐍 파이썬 (Python) 코드</div>
+                        <div class="text-xs text-slate-400 mt-0.5">터미널/IDLE 등에서 즉시 실행 가능</div>
+                    </div>
+                    <button onclick="copyPythonCode()" class="bg-rose-500 hover:bg-rose-600 active:scale-95 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-md shadow-rose-500/20">
+                        <i class="fa-regular fa-copy"></i> 복사
+                    </button>
+                </div>
+
+                <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-3.5 flex items-center justify-between">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-200">🌐 웹페이지 (HTML/JS) 코드</div>
+                        <div class="text-xs text-slate-400 mt-0.5">현재 화면과 동일한 웹 앱 전체 코드</div>
+                    </div>
+                    <button onclick="copyHtmlCode()" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 border border-slate-600">
+                        <i class="fa-regular fa-copy"></i> 복사
+                    </button>
+                </div>
+            </div>
+
+            <div class="pt-2 text-right">
+                <button onclick="closeCodeModal()" class="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-lg border border-slate-800 hover:border-slate-700">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-rose-500 text-white font-medium text-xs px-4 py-2.5 rounded-full shadow-lg shadow-rose-500/30 flex items-center gap-2 transition-all duration-300 opacity-0 pointer-events-none translate-y-4">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toastMsg">코드가 클립보드에 복사되었습니다!</span>
+    </div>
+
+    <footer class="w-full py-4 text-center text-xs text-slate-500 border-t border-slate-800">
+        오늘의 메뉴 추천 프로그램 © 2026
+    </footer>
+
+    <script>
+        // Initial Menu Data Structure
+        const defaultMenuData = {
+            "한식": ["김치찌개", "된장찌개", "제육볶음", "비빔밥", "불고기", "순대국밥", "떡볶이", "삼겹살", "갈비탕", "청국장"],
+            "중식": ["짜장면", "짬뽕", "볶음밥", "탕수육", "마라탕", "딤섬", "양꼬치", "마파두부"],
+            "일식": ["돈까스", "초밥", "라멘", "우동", "규동", "소바", "사케동", "타코야끼"],
+            "양식": ["파스타", "피자", "햄버거", "스테이크", "리조또", "샐러드", "감바스"],
+            "분식/디저트": ["떡볶이", "튀김", "순대", "김밥", "라볶이", "와플", "빙수", "크로플"]
+        };
+
+        // Deep copy data for active session
+        let menuData = JSON.parse(JSON.stringify(defaultMenuData));
+        let selectedCategory = "전체";
+        let isSpinning = false;
+
+        // Get elements
+        const slotDisplay = document.getElementById('slotDisplay');
+        const statusLabel = document.getElementById('statusLabel');
+        const resultSubtext = document.getElementById('resultSubtext');
+        const spinBtn = document.getElementById('spinBtn');
+        const spinBtnText = document.getElementById('spinBtnText');
+        const currentCatName = document.getElementById('currentCatName');
+        const menuCount = document.getElementById('menuCount');
+        const menuChips = document.getElementById('menuChips');
+        const addForm = document.getElementById('addForm');
+
+        function selectCategory(cat) {
+            if (isSpinning) return;
+            selectedCategory = cat;
+
+            // Update Active UI Button Style
+            const buttons = document.querySelectorAll('.cat-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText.includes(cat)) {
+                    btn.className = "cat-btn active bg-rose-500 text-white border-rose-500 py-2.5 px-3 rounded-xl font-medium text-sm transition-all shadow-lg shadow-rose-500/20";
+                } else {
+                    btn.className = "cat-btn bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 py-2.5 px-3 rounded-xl font-medium text-sm transition-all";
+                }
+            });
+
+            currentCatName.innerText = cat;
+            renderMenuList();
+        }
+
+        function getActiveMenuList() {
+            if (selectedCategory === "전체") {
+                let all = [];
+                Object.values(menuData).forEach(arr => {
+                    all = all.concat(arr);
+                });
+                return [...new Set(all)]; // unique values
+            }
+            return menuData[selectedCategory] || [];
+        }
+
+        function renderMenuList() {
+            const list = getActiveMenuList();
+            menuCount.innerText = list.length;
+            menuChips.innerHTML = '';
+
+            if (list.length === 0) {
+                menuChips.innerHTML = `<span class="text-slate-500">등록된 메뉴가 없습니다. 메뉴를 추가해보세요!</span>`;
+                return;
+            }
+
+            list.forEach(item => {
+                const chip = document.createElement('div');
+                chip.className = "bg-slate-900 border border-slate-700/80 hover:border-slate-600 text-slate-300 px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all";
+                chip.innerHTML = `
+                    <span>${item}</span>
+                    <button onclick="deleteMenu('${item}')" class="text-slate-500 hover:text-rose-400 focus:outline-none">
+                        <i class="fa-solid fa-xmark text-xs"></i>
+                    </button>
+                `;
+                menuChips.appendChild(chip);
+            });
+        }
+
+        function spinSlot() {
+            const currentList = getActiveMenuList();
+
+            if (currentList.length === 0) {
+                alert('추천할 메뉴가 없습니다! 메뉴를 먼저 추가해 주세요.');
+                return;
+            }
+
+            if (isSpinning) return;
+            isSpinning = true;
+
+            // UI Adjustments for spinning
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-70', 'cursor-not-allowed');
+            spinBtnText.innerText = '추천하는 중...';
+            statusLabel.innerText = '오늘의 메뉴 찾는 중...';
+            statusLabel.className = 'text-xs text-orange-400 font-semibold tracking-wider uppercase mb-2 animate-pulse';
+            resultSubtext.innerText = '두구두구두구...';
+
+            let duration = 2000; // 2 seconds total animation
+            let intervalTime = 50;
+            let elapsed = 0;
+
+            const spinInterval = setInterval(() => {
+                const randomTemp = currentList[Math.floor(Math.random() * currentList.length)];
+                slotDisplay.innerText = randomTemp;
+                elapsed += intervalTime;
+
+                // Gradually slow down near the end
+                if (elapsed > duration - 600) {
+                    intervalTime += 15;
+                }
+
+                if (elapsed >= duration) {
+                    clearInterval(spinInterval);
+                    finalizeSelection(currentList);
+                }
+            }, intervalTime);
+        }
+
+        function finalizeSelection(list) {
+            const finalPick = list[Math.floor(Math.random() * list.length)];
+            
+            slotDisplay.innerText = finalPick;
+            slotDisplay.classList.add('text-rose-400', 'scale-110');
+
+            setTimeout(() => {
+                slotDisplay.classList.remove('scale-110');
+            }, 300);
+
+            statusLabel.innerText = '✨ 오늘의 추천 메뉴!';
+            statusLabel.className = 'text-xs text-rose-400 font-bold tracking-wider uppercase mb-2';
+            resultSubtext.innerText = `오늘 점심/저녁은 [${finalPick}] 어떠신가요?`;
+
+            // Reset Button
+            spinBtn.disabled = false;
+            spinBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+            spinBtnText.innerText = '다시 추천받기';
+            isSpinning = false;
+        }
+
+        function toggleAddForm() {
+            addForm.classList.toggle('hidden');
+            if (!addForm.classList.contains('hidden')) {
+                document.getElementById('newMenuInput').focus();
+            }
+        }
+
+        function addMenu() {
+            const input = document.getElementById('newMenuInput');
+            const menuName = input.value.trim();
+
+            if (!menuName) {
+                alert('메뉴 이름을 입력해주세요.');
+                return;
+            }
+
+            let targetCategory = selectedCategory === "전체" ? "한식" : selectedCategory;
+
+            if (!menuData[targetCategory]) {
+                menuData[targetCategory] = [];
+            }
+
+            if (menuData[targetCategory].includes(menuName)) {
+                alert('이미 존재하는 메뉴입니다.');
+                return;
+            }
+
+            menuData[targetCategory].push(menuName);
+            input.value = '';
+            renderMenuList();
+        }
+
+        function deleteMenu(menuName) {
+            if (selectedCategory === "전체") {
+                Object.keys(menuData).forEach(cat => {
+                    menuData[cat] = menuData[cat].filter(item => item !== menuName);
+                });
+            } else {
+                menuData[selectedCategory] = menuData[selectedCategory].filter(item => item !== menuName);
+            }
+            renderMenuList();
+        }
+
+        // Code Modal & Copy Logic
+        function openCodeModal() {
+            document.getElementById('codeModal').classList.remove('hidden');
+        }
+
+        function closeCodeModal() {
+            document.getElementById('codeModal').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            toastMsg.innerText = msg;
+
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 2500);
+        }
+
+        function copyToClipboard(text, successMessage) {
+            // execCommand fallback for strict browser iframe compatibility
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            
+            try {
+                document.execCommand('copy');
+                showToast(successMessage);
+                closeCodeModal();
+            } catch (err) {
+                alert('복사 중 오류가 발생했습니다.');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+        }
+
+        function copyPythonCode() {
+            const pythonCode = `import random
+
+menu_db = {
+    "한식": ["김치찌개", "된장찌개", "제육볶음", "비빔밥", "불고기", "순대국밥", "떡볶이"],
+    "중식": ["짜장면", "짬뽕", "볶음밥", "탕수육", "마라탕", "딤섬"],
+    "일식": ["돈까스", "초밥", "라멘", "우동", "규동", "메밀소바"],
+    "양식": ["파스타", "피자", "햄버거", "스테이크", "리조또", "샐러드"]
+}
+
+def recommend_menu():
+    print("=" * 40)
+    print("      🍴 오늘의 메뉴 추천 프로그램 🍴      ")
+    print("=" * 40)
+    print("1. 전체 메뉴 중 랜덤 추천")
+    print("2. 카테고리별 추천 (한식/중식/일식/양식)")
+    print("3. 프로그램 종료")
+    print("-" * 40)
+
+    while True:
+        choice = input("원하는 기능의 번호를 입력하세요 (1-3): ").strip()
+
+        if choice == "1":
+            all_menus = [menu for sublist in menu_db.values() for menu in sublist]
+            selected = random.choice(all_menus)
+            print(f"\\n✨ 오늘의 추천 메뉴는 바로 **[{selected}]** 입니다! 맛있게 드세요!\\n")
+            break
+
+        elif choice == "2":
+            category = input("카테고리 입력 (한식/중식/일식/양식): ").strip()
+            if category in menu_db:
+                selected = random.choice(menu_db[category])
+                print(f"\\n✨ [{category}] 추천 메뉴는 바로 **[{selected}]** 입니다!\\n")
+                break
+            else:
+                print("❌ 올바른 카테고리를 입력해주세요.\\n")
+
+        elif choice == "3":
+            print("\\n프로그램을 종료합니다.")
+            break
+
+if __name__ == "__main__":
+    recommend_menu()`;
+
+            copyToClipboard(pythonCode, 'Python 코드가 복사되었습니다!');
+        }
+
+        function copyHtmlCode() {
+            const htmlCode = document.documentElement.outerHTML;
+            copyToClipboard(htmlCode, 'HTML/JS 웹 코드가 복사되었습니다!');
+        }
+
+        // Initial render
+        renderMenuList();
+    </script>
+</body>
+</html>

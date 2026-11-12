@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>밸런스 게임</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#efe6d6;--card:#f8f2e7;--ink:#3d3226;--sub:#8a7a66;--line:#d9ccb5;--a:#c9a97a;--b:#a8b59a;--accent:#8b6b45}
+:root[data-theme="dark"]{--bg:#3a3227;--card:#463c30;--ink:#f1e8d8;--sub:#bfae95;--line:#5a4d3d;--a:#8f7550;--b:#6f7d63;--accent:#d8b98a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#3a3227;--card:#463c30;--ink:#f1e8d8;--sub:#bfae95;--line:#5a4d3d;--a:#8f7550;--b:#6f7d63;--accent:#d8b98a}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;min-height:100vh;display:flex;justify-content:center}
+main{width:100%;max-width:480px;padding:28px 20px 40px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:15px;font-weight:600;letter-spacing:.08em;color:var(--sub);text-align:center;margin:0}
+.mascot{display:flex;flex-direction:column;align-items:center;gap:10px}
+.mascot svg{width:110px;height:110px;animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-6px)}}
+.bubble{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 18px;font-size:16px;line-height:1.55;text-align:center;position:relative;max-width:100%}
+.bubble:before{content:"";position:absolute;top:-7px;left:50%;width:12px;height:12px;background:var(--card);border-left:1px solid var(--line);border-top:1px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.row{display:flex;gap:8px}
+input{flex:1;min-width:0;padding:13px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-family:inherit;outline:none}
+input:focus{border-color:var(--accent)}
+button{font-family:inherit;cursor:pointer;border:0;color:var(--ink)}
+.go{background:var(--accent);color:#fff;padding:0 20px;border-radius:14px;font-size:15px;font-weight:600}
+:root[data-theme="dark"] .go{color:#2b241b}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{background:transparent;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;color:var(--sub)}
+.chip:hover{border-color:var(--accent);color:var(--ink)}
+.q{display:flex;flex-direction:column;gap:12px}
+.opt{border-radius:20px;padding:30px 20px;font-size:19px;font-weight:600;line-height:1.45;text-align:center;transition:transform .15s,opacity .3s}
+.opt:active{transform:scale(.98)}
+.opt.a{background:var(--a)}.opt.b{background:var(--b)}
+.opt.dim{opacity:.35}.opt.pick{outline:3px solid var(--accent)}
+.vs{text-align:center;font-size:12px;letter-spacing:.2em;color:var(--sub)}
+.foot{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ghost{background:transparent;border:1px solid var(--line);border-radius:14px;padding:11px 18px;font-size:14px;color:var(--sub)}
+.next{background:var(--accent);color:#fff;border-radius:14px;padding:12px 26px;font-size:15px;font-weight:600}
+:root[data-theme="dark"] .next{color:#2b241b}
+.count{text-align:center;font-size:12px;color:var(--sub)}
+.prof{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:24px 20px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.prof .emo{font-size:44px}.prof h2{margin:0;font-size:22px}
+.prof p{margin:0;line-height:1.65;font-size:15px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tag{background:var(--a);border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600}
+.tip{font-size:14px;color:var(--sub);border-top:1px dashed var(--line);padding-top:12px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <h1>BALANCE GAME</h1>
+  <div class="mascot">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <ellipse cx="60" cy="113" rx="26" ry="3.5" fill="#000" opacity=".08"/>
+      <g fill="#fffaf0" stroke="#2b241b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M32 40 Q60 28 88 40 C92 68 93 88 82 99 C72 108 48 108 38 99 C27 88 28 68 32 40Z"/>
+        <path d="M36 36 C20 31 7 40 9 54 C11 65 26 65 32 56"/>
+        <path d="M84 36 C100 31 113 40 111 54 C109 65 94 65 88 56"/>
+      </g>
+      <circle cx="46" cy="60" r="3.6" fill="#2b241b"/><circle cx="74" cy="60" r="3.6" fill="#2b241b"/>
+      <ellipse cx="60" cy="82" rx="2.6" ry="1.6" fill="#2b241b"/>
+      <path d="M53 89 Q56.5 93 60 89 Q63.5 93 67 89" stroke="#2b241b" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="bubble" id="say">안녕! 나는 가나디야 🐾<br>어떤 컨셉으로 질문을 만들어줄까?</div>
+  </div>
+
+  <section id="start" style="display:flex;flex-direction:column;gap:14px">
+    <div class="row"><input id="topic" placeholder="예: 연애, 음식, 회사생활, 초능력…" maxlength="40"><button class="go" id="goBtn">시작</button></div>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section id="game" class="hide">
+    <div class="q">
+      <div class="count" id="count"></div>
+      <button class="opt a" id="oa"></button>
+      <div class="vs">VS</div>
+      <button class="opt b" id="ob"></button>
+      <div class="foot">
+        <button class="next hide" id="next">다음 질문</button>
+        <button class="ghost hide" id="me">🔮 내 성향 보기</button>
+        <button class="ghost" id="skip">건너뛰기</button>
+        <button class="ghost" id="change">컨셉 바꾸기</button>
+      </div>
+    </div>
+  </section>
+  <section id="profile" class="hide">
+    <div class="prof">
+      <div class="emo" id="pEmo"></div><h2 id="pTitle"></h2>
+      <p id="pSum"></p><div class="tags" id="pTags"></div><div class="tip" id="pTip"></div>
+      <div class="foot"><button class="next" id="back">계속 고르기</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+const CONCEPTS=["음식","연애","회사생활","초능력","여행","학교생활","돈과 인생","엉뚱한 상상"];
+const FALLBACK=[["평생 라면만 먹기","평생 치킨만 먹기"],["투명인간 되기","하늘 날기"],["1억 받고 1년 무인도 생활","지금처럼 평범하게 살기"],["과거로 가기","미래로 가기"],["매일 늦잠 자도 되는 대신 월급 반토막","칼퇴 보장 대신 매일 5시 기상"]];
+const BANK={
+"음식":[["평생 치킨 못 먹기","평생 피자 못 먹기"],["매일 라면 한 끼","매일 김밥 한 끼"],["민트초코 평생 먹기","파인애플 피자 평생 먹기"],["떡볶이 없는 세상","햄버거 없는 세상"],["탕수육 부먹","탕수육 찍먹"],["평생 단 음식 금지","평생 매운 음식 금지"]],
+"연애":[["연락 잘 되는 무뚝뚝한 연인","연락 느린 다정한 연인"],["연인과 매일 만나기","연인과 일주일에 한 번만 만나기"],["첫사랑과 재회","새로운 사랑 시작"],["내가 더 좋아하는 연애","상대가 더 좋아하는 연애"],["기념일 챙기는 연인","평소에 자주 표현하는 연인"],["연인이 내 폰 보기","내가 연인 폰 보기"]],
+"회사생활":[["월급 2배, 야근 매일","월급 반토막, 칼퇴 매일"],["재택근무 평생","사무실 근무, 맛집 점심 평생"],["천사 상사, 최악 동료","최악 상사, 천사 동료"],["주 4일제, 월급 20% 삭감","주 5일제, 월급 그대로"],["연봉 높은 지루한 일","연봉 낮은 좋아하는 일"],["회식 없는 회사","복지 좋은 회식 많은 회사"]],
+"초능력":[["하늘 날기","투명인간 되기"],["시간 멈추기","시간 되돌리기"],["남의 생각 읽기","미래 보기"],["순간이동","동물과 대화"],["평생 안 아픈 몸","평생 안 졸린 몸"],["모든 언어 구사","모든 악기 연주"]],
+"여행":[["바다 휴양지","도시 맛집 투어"],["계획 빡빡한 여행","계획 없는 즉흥 여행"],["혼자 떠나는 한 달 여행","친구들과 가는 일주일 여행"],["평생 해외여행 금지","평생 국내여행 금지"],["비행기 14시간","기차 3일"],["캠핑","호캉스"]],
+"학교생활":[["시험 없는 학교","숙제 없는 학교"],["급식 맛집 학교","시설 좋은 학교"],["짝꿍 마음대로 고르기","담임 마음대로 고르기"],["아침 8시 등교","저녁 8시 하교"],["방학 두 배, 수업 두 배 힘들기","지금처럼"],["체육 매일","점심시간 두 배"]],
+"돈과 인생":[["지금 1억 받기","10년 뒤 5억 받기"],["평생 일 안 해도 되는 연봉 3천","평생 일해야 하는 연봉 3억"],["복권 1등 당첨","평생 건강"],["유명하지만 가난","평범하지만 부자"],["하루 24시간 자유, 돈 없음","돈 많지만 시간 없음"],["돈 쓸 때마다 행복","돈 모을 때마다 행복"]],
+"엉뚱한 상상":[["하루가 48시간","평생 안 늙는 몸"],["말하는 고양이와 살기","말하는 강아지와 살기"],["손가락 열 개 모두 엄지","발가락 열 개 모두 새끼발가락"],["1년 동안 같은 옷만 입기","1년 동안 같은 음식만 먹기"],["꿈이 현실로 이어지기","현실이 꿈처럼 가끔 바뀌기"],["좀비 세상에서 생존","외계인 침공에서 생존"]]
+};
+const REACT=["오, 그쪽이구나! 🤔","나도 고민했어…","의외인데? 👀","역시 그럴 줄 알았어!","어렵다 어려워 😵","솔직한 선택 좋아 ✨","이건 친구들한테도 물어봐야 해!"];
+const norm=x=>String(x).replace(/[\s.,!?~'"“”‘’()·…\-_]/g,"").toLowerCase();
+const keyOf=(a,b)=>[norm(a),norm(b)].sort().join("|");
+let asked=[];try{asked=JSON.parse(localStorage.getItem("bg_asked")||"[]")}catch(e){asked=[]}
+const seen=new Set(asked.map(q=>keyOf(q[0],q[1])));
+const saveAsked=()=>{try{localStorage.setItem("bg_asked",JSON.stringify(asked.slice(-500)))}catch(e){}};
+const fresh=q=>q&&q.a&&q.b&&!seen.has(keyOf(q.a,q.b));
+let choices=[],topic="",queue=[],n=0,busy=false,cur=null,sampler=undefined;
+const say=t=>{$("say").innerHTML=t};
+
+CONCEPTS.forEach(c=>{const b=document.createElement("button");b.className="chip";b.textContent=c;b.onclick=()=>begin(c);$("chips").appendChild(b)});
+("goBtn").onclick=()=>begin(("topic").value.trim()||"아무거나 재밌는 것");
+$("topic").addEventListener("keydown",e=>{if(e.key==="Enter")$("goBtn").click()});
+
+async function getSampler(){
+  if(sampler)return sampler;
+  try{sampler=await claude.use("sample")}catch(e){sampler=null}
+  return sampler;
+}
+
+async function refill(){
+  const s=await getSampler();
+  if(s){
+    for(let tries=0;tries<3&&queue.length===0;tries++){
+      const recent=asked.slice(-60).map(q=>q[0]+" vs "+q[1]).join(" / ");
+      const prompt=`너는 한국어 밸런스 게임 출제자야. 컨셉: "${topic}".\n반드시 이 컨셉과 직접 관련된 A vs B 밸런스 게임 질문 6개를 만들어줘. 컨셉에서 벗어난 질문은 안 돼. 두 선택지는 둘 다 고르기 어렵게 팽팽해야 하고, 각 선택지는 40자 이내의 짧은 구어체 문장이야. 유해하거나 선정적인 내용은 제외.\n아래는 이미 나온 질문들이야. 이것과 같거나 비슷한 질문은 절대 만들지 마: ${recent||"없음"}\n출력은 JSON 배열만: [{"a":"...","b":"..."}]`;
+      try{
+        const r=await s.json(prompt,{cache:false});
+        const arr=(Array.isArray(r)?r:r.questions||[]).filter(fresh);
+        const local=new Set();
+        arr.forEach(q=>{const k=keyOf(q.a,q.b);if(!local.has(k)){local.add(k);queue.push(q)}});
+      }catch(e){
+        if(e&&(e.code==="not_granted"||e.code==="rate_limited"))break;
+      }
+    }
+  }
+  if(queue.length===0){
+    const base=BANK[topic]||FALLBACK;
+    queue.push(...base.map(q=>({a:q[0],b:q[1],local:true})).filter(fresh));
+  }
+}
+
+async function begin(t){
+  topic=t;queue=[];n=0;
+  ("start").classList.add("hide");("game").classList.remove("hide");
+  await nextQ();
+}
+
+async function nextQ(){
+  if(busy)return;busy=true;
+  $("next").classList.add("hide");
+  ("oa").classList.remove("dim","pick");("ob").classList.remove("dim","pick");
+  if(queue.length===0){
+    say("잠깐만, 새 질문 만드는 중… ✍️");
+    ("oa").textContent="…";("ob").textContent="…";
+    await refill();
+  }
+  cur=queue.shift();
+  if(!cur){say("앗, 질문이 안 나왔어. 다시 시도해볼까?");busy=false;$("next").classList.remove("hide");return}
+  asked.push([cur.a,cur.b]);seen.add(keyOf(cur.a,cur.b));saveAsked();n++;
+  ("count").textContent=`「{topic}」 · ${n}번째 질문`;
+  ("oa").textContent=cur.a;("ob").textContent=cur.b;
+  say(cur.local?(BANK[topic]?"지금은 Claude 연결이 안 돼서 미리 준비한 질문으로 보여줄게 🐶":"앗, 지금은 Claude가 연결이 안 돼서 입력한 컨셉 질문은 못 만들어. 기본 질문으로 보여줄게 🐶"):n===1?`좋아, <b>${topic.replace(/</g,"")}</b> 컨셉으로 가보자!<br>둘 중 하나만 골라봐 🐶`:"자, 다음 질문이야!");
+  busy=false;
+}
+
+function pick(w){
+  if($("next").classList.contains("hide")===false)return;
+  ("oa").classList.toggle("pick",w==="a");("ob").classList.toggle("pick",w==="b");
+  $(w==="a"?"ob":"oa").classList.add("dim");
+  choices.push({c:topic,chosen:w==="a"?cur.a:cur.b,other:w==="a"?cur.b:cur.a});
+  if(choices.length>=5)$("me").classList.remove("hide");
+  say(REACT[Math.floor(Math.random()*REACT.length)]);
+  $("next").classList.remove("hide");
+}
+("oa").onclick=()=>pick("a");("ob").onclick=()=>pick("b");
+$("next").onclick=nextQ;
+$("me").onclick=async()=>{
+  if(busy)return;busy=true;
+  ("game").classList.add("hide");("profile").classList.add("hide");
+  say("네 선택들을 분석하는 중이야… 🔮");
+  const s=await getSampler();
+  let r=null;
+  if(s){
+    const list=choices.slice(-40).map((x,i)=>`i+1.[{x.c}] 선택: ${x.chosen} (버린 쪽: ${x.other})`).join("\n");
+    const prompt=`너는 밸런스 게임 도우미 강아지 '가나디'야. 아래는 사용자가 고른 선택 기록이야.\n${list}\n\n이 선택들의 패턴(모험/안정, 현실/이상, 돈/자유, 감정/이성 등)을 바탕으로 재미있는 성향 분석을 반말로 작성해줘. 진단이 아니라 가벼운 재미용 분석이야. 실제 선택 내용을 근거로 1~2가지 구체적으로 언급해.\n출력은 JSON만: {"emoji":"이모지 1개","title":"성향 이름(12자 이내)","summary":"3~4문장 분석","traits":["키워드 3~4개"],"tip":"가나디의 한마디 1문장"}`;
+    try{r=await s.json(prompt,{cache:false})}catch(e){if(e&&e.code==="not_granted")sampler=null}
+  }
+  busy=false;
+  if(!r||!r.title){
+    $("game").classList.remove("hide");
+    say("앗, 분석이 잘 안 됐어. 조금 더 고르고 다시 눌러줘!");return;
+  }
+  ("pEmo").textContent=r.emoji||"🐾";("pTitle").textContent=r.title;$("pSum").textContent=r.summary||"";
+  $("pTip").textContent="🐾 "+(r.tip||"");
+  $("pTags").innerHTML="";
+  (r.traits||[]).forEach(t=>{const e=document.createElement("span");e.className="tag";e.textContent="#"+t;$("pTags").appendChild(e)});
+  $("profile").classList.remove("hide");
+  say(`지금까지 <b>${choices.length}개</b> 골랐어. 네 성향은 이래!`);
+};
+$("back").onclick=()=>{$("profile").classList.add("hide");$("game").classList.remove("hide");say("좋아, 더 골라보자! 고를수록 분석이 정확해져 🐶")};
+$("skip").onclick=nextQ;
+$("change").onclick=()=>{
+  ("game").classList.add("hide");("start").classList.remove("hide");$("topic").value="";
+  say("새 컨셉이 필요하구나!<br>어떤 컨셉으로 질문을 만들어줄까?");
+};
+</script>
+</body>
+</html>

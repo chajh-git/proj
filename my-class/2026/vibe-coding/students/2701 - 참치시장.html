@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>참치 도시 & 공장 타이쿤</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 왼쪽 패널: 상태 및 컨트롤 */
+        #sidebar {
+            width: 360px;
+            background-color: #1e293b;
+            border-right: 2px solid #334155;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 15px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 12px;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            color: #38bdf8;
+            margin-bottom: 4px;
+        }
+
+        .dashboard {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border: 1px solid #334155;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #facc15;
+        }
+
+        .stat-value.tuna { color: #38bdf8; }
+        .stat-value.prod { color: #4ade80; }
+
+        .btn-action {
+            background: linear-gradient(135deg, #0284c7, #0369a1);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+            transition: all 0.1s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.6);
+        }
+
+        .btn-action:active {
+            transform: translateY(1px);
+        }
+
+        .btn-sell-direct {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            padding: 10px;
+            font-size: 0.9rem;
+            border-radius: 8px;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* 건설 제어판 */
+        .build-menu {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .build-card {
+            background: #334155;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .build-card:hover {
+            border-color: #38bdf8;
+            background: #475569;
+        }
+
+        .build-card.selected {
+            border-color: #facc15;
+            background: #1e293b;
+        }
+
+        .build-icon {
+            font-size: 2rem;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
+            border-radius: 8px;
+        }
+
+        .build-info {
+            flex: 1;
+        }
+
+        .build-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: #f8fafc;
+        }
+
+        .build-desc {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .build-cost {
+            font-size: 0.85rem;
+            color: #facc15;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        /* 오른쪽: 격자 맵 영역 */
+        #main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+            position: relative;
+        }
+
+        .map-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 16px;
+            border-radius: 16px;
+            border: 2px solid #334155;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .tile {
+            width: 80px;
+            height: 80px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .tile:hover {
+            border-color: #38bdf8;
+            transform: scale(1.05);
+            z-index: 2;
+        }
+
+        .tile .icon {
+            font-size: 2rem;
+        }
+
+        .tile .label {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* Floating Text Effect */
+        .float-text {
+            position: absolute;
+            font-weight: bold;
+            color: #38bdf8;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            font-size: 1.1rem;
+            z-index: 100;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-40px); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 왼쪽 대시보드 및 메뉴 -->
+    <div id="sidebar">
+        <div class="header">
+            <h1>🐟 참치 도시 타이쿤</h1>
+            <p style="font-size:0.8rem; color:#94a3b8;">참치를 구매해 가공하고 도시를 건설하세요!</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="stat-row">
+                <span>보유 자금</span>
+                <span id="gold" class="stat-value">1,000 Gold</span>
+            </div>
+            <div class="stat-row">
+                <span>참치 원육 (재고)</span>
+                <span id="tuna" class="stat-value tuna">0 마리</span>
+            </div>
+            <div class="stat-row">
+                <span>초당 자동 수익</span>
+                <span id="cps" class="stat-value prod">+0 Gold/초</span>
+            </div>
+            <div class="stat-row">
+                <span>도시 인구</span>
+                <span id="population" class="stat-value" style="color:#e2e8f0;">0 명</span>
+            </div>
+        </div>
+
+        <!-- 참치 구매 버튼 -->
+        <button id="buy-tuna-btn" class="btn-action">
+            <span>🛒 참치 원육 매입 (클릭)</span>
+            <span style="font-size: 0.75rem; font-weight: normal; opacity: 0.8;">비용: 10 Gold ➔ 참치 +1</span>
+        </button>
+
+        <button id="sell-tuna-btn" class="btn-sell-direct">
+            ⚡ 원육 즉시 처분 (개당 8 Gold)
+        </button>
+
+        <h3 style="font-size: 0.95rem; color:#38bdf8; margin-top: 5px;">🏗️ 건설할 건물 선택</h3>
+        
+        <div class="build-menu" id="build-menu">
+            <!-- 건물 목록 JS로 로드 -->
+        </div>
+    </div>
+
+    <!-- 오른쪽 지도 영역 -->
+    <div id="main-area">
+        <div class="map-container" id="map">
+            <!-- 6x6 격자 타일 생성 -->
+        </div>
+    </div>
+
+    <script>
+        // 게임 상태
+        let gold = 1000;
+        let tuna = 0;
+        let selectedBuilding = null;
+        let population = 0;
+
+        // 건물 데이터 정의
+        const buildings = [
+            {
+                id: 'factory_can',
+                name: '통조림 공장',
+                icon: '🏭',
+                cost: 500,
+                desc: '참치 원육 1개를 가공하여 20 Gold 수익 생성',
+                tunaConsume: 1,
+                income: 20
+            },
+            {
+                id: 'factory_sashimi',
+                name: '고급 해체 공장',
+                icon: '🔪',
+                cost: 2000,
+                desc: '참치 원육 3개를 가공하여 90 Gold 수익 생성',
+                tunaConsume: 3,
+                income: 90
+            },
+            {
+                id: 'apartment',
+                name: '근로자 아파트',
+                icon: '🏢',
+                cost: 300,
+                desc: '도시 인구 +10명 증가 (소비 촉진)',
+                pop: 10,
+                income: 5
+            },
+            {
+                id: 'market',
+                name: '참치 거리 (상가)',
+                icon: '🏪',
+                cost: 1200,
+                desc: '자동으로 초당 30 Gold 매출 창출',
+                income: 30
+            }
+        ];
+
+        // Map 데이터 (6x6)
+        const gridMap = Array(36).fill(null);
+
+        // UI 요소
+        const goldEl = document.getElementById('gold');
+        const tunaEl = document.getElementById('tuna');
+        const cpsEl = document.getElementById('cps');
+        const popEl = document.getElementById('population');
+        const buildMenuEl = document.getElementById('build-menu');
+        const mapEl = document.getElementById('map');
+
+        // 건설 메뉴 초기화
+        function initBuildMenu() {
+            buildings.forEach(b => {
+                const card = document.createElement('div');
+                card.className = 'build-card';
+                card.dataset.id = b.id;
+                card.innerHTML = `
+                    <div class="build-icon">${b.icon}</div>
+                    <div class="build-info">
+                        <div class="build-title">${b.name}</div>
+                        <div class="build-desc">${b.desc}</div>
+                        <div class="build-cost">비용: ${b.cost.toLocaleString()} Gold</div>
+                    </div>
+                `;
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.build-card').forEach(c => c.classList.remove('selected'));
+                    if (selectedBuilding === b.id) {
+                        selectedBuilding = null;
+                    } else {
+                        selectedBuilding = b.id;
+                        card.classList.add('selected');
+                    }
+                });
+                buildMenuEl.appendChild(card);
+            });
+        }
+
+        // 맵 타일 생성
+        function initMap() {
+            mapEl.innerHTML = '';
+            gridMap.forEach((buildingId, idx) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                
+                if (buildingId) {
+                    const b = buildings.find(item => item.id === buildingId);
+                    tile.innerHTML = `<div class="icon">
+b.icon</div><divclass="label">{b.name}</div>`;
+                } else {
+                    tile.innerHTML = `<div class="label" style="opacity:0.3;">빈 땅</div>`;
+                }
+
+                tile.addEventListener('click', (e) => handleTileClick(idx, e));
+                mapEl.appendChild(tile);
+            });
+        }
+
+        // 타일 클릭 처리 (건설)
+        function handleTileClick(idx, e) {
+            if (!selectedBuilding) return;
+
+            const b = buildings.find(item => item.id === selectedBuilding);
+            if (gridMap[idx] !== null) {
+                alert('이미 건물이 들어서 있습니다!');
+                return;
+            }
+
+            if (gold < b.cost) {
+                alert('건설 자금이 부족합니다!');
+                return;
+            }
+
+            // 건설 승인
+            gold -= b.cost;
+            gridMap[idx] = b.id;
+            if (b.pop) population += b.pop;
+
+            showFloatingText(e.clientX, e.clientY, `-${b.cost}G`, '#f87171');
+            updateUI();
+            initMap();
+        }
+
+        // 클릭으로 참치 매입
+        document.getElementById('buy-tuna-btn').addEventListener('click', (e) => {
+            const cost = 10;
+            if (gold >= cost) {
+                gold -= cost;
+                tuna += 1;
+                showFloatingText(e.clientX, e.clientY, '+1 참치', '#38bdf8');
+                updateUI();
+            } else {
+                showFloatingText(e.clientX, e.clientY, '골드 부족!', '#f87171');
+            }
+        });
+
+        // 수동 참치 처분
+        document.getElementById('sell-tuna-btn').addEventListener('click', (e) => {
+            if (tuna > 0) {
+                const earn = tuna * 8;
+                gold += earn;
+                showFloatingText(e.clientX, e.clientY, `+${earn} Gold`, '#4ade80');
+                tuna = 0;
+                updateUI();
+            }
+        });
+
+        // 초당 루프 (공장가동 & 자동 수익)
+        setInterval(() => {
+            let currentCps = 0;
+
+            gridMap.forEach(bId => {
+                if (!bId) return;
+                const b = buildings.find(item => item.id === bId);
+
+                // 참치를 소모하는 공장인 경우
+                if (b.tunaConsume) {
+                    if (tuna >= b.tunaConsume) {
+                        tuna -= b.tunaConsume;
+                        gold += b.income;
+                        currentCps += b.income;
+                    }
+                } else if (b.income) {
+                    // 순수 자동수익 건물
+                    gold += b.income;
+                    currentCps += b.income;
+                }
+            });
+
+            cpsEl.innerText = `+${currentCps.toLocaleString()} Gold/초`;
+            updateUI();
+        }, 1000);
+
+        // UI 갱신
+        function updateUI() {
+            goldEl.innerText = `${gold.toLocaleString()} Gold`;
+            tunaEl.innerText = `${tuna.toLocaleString()} 마리`;
+            popEl.innerText = `${population.toLocaleString()} 명`;
+        }
+
+        // Floating Text 애니메이션
+        function showFloatingText(x, y, text, color) {
+            const el = document.createElement('div');
+            el.className = 'float-text';
+            el.innerText = text;
+            el.style.left = `${x}px`;
+            el.style.top = `${y - 20}px`;
+            el.style.color = color;
+            document.body.appendChild(el);
+
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        // 초기화
+        initBuildMenu();
+        initMap();
+        updateUI();
+    </script>
+</body>
+</html>
+

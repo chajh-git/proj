@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="ko"><head><script data-bard-client-injected="true">(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6IjExNjRiNzdiNDMzZDdhMDAyMWI4NjE4YjhjYTU3ZTMyZGI5MWUxMTMiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIxMTY2MDEzMzUxMDAxODI5Mzc0NiIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGFpbXMiOnsiYXBwSWQiOiJjXzU1N2Q1YjM1ZTQ4ODZlYzFfaW5kZXguaHRtbC00MjQifSwiZXhwIjoxNzkyNTY2MjcwLCJpYXQiOjE3OTI1NjI2NzAsImFsZyI6IlJTMjU2In0.oYPasIBLOSwJVxZWWzkS6CTo2Z1FDvUgbzJm0XBcsT-AC3d8EmfLxSlXGBTzl2L6BQcG6YUQMkwEJlqwW44wMOX2rTTuZcgttmLKyK3CAhJXGayAMyEeqOmfX4MK2KGLSPzpRiWFz7fT8TgflBV29xec5_d4B3PQdkm2TNnIuLwxQI7zXBA33oWwPEUkWDwzXfG6HKrmbwL7kKYv2hXTXCHcs6wBh-SCbx3f60nqQeH7sKCjqfNcUSiYizs5Y5Rxs8C9xnWcVwdu_mEUOaGUp91MXXP6csGSdX1jSEUEt94vuElDDm1MDoeWWhIpqBqVNQpMBPpPmcnjSdYPTDIkxA","c_557d5b35e4886ec1_index.html-424")</script><script data-bard-client-injected="true">
+  document.addEventListener('input', (event) => {
+    if (event.target && (event.target.isContentEditable || event.target.hasAttribute('contenteditable'))) {
+      const clonedDoc = document.cloneNode(true);
+      const injectedScripts = clonedDoc.querySelectorAll('[data-bard-client-injected="true"]');
+      injectedScripts.forEach(el => el.remove());
+      window.parent.postMessage({
+        type: 'inlineEdit',
+        html: '<!DOCTYPE html>\n' + clonedDoc.documentElement.outerHTML
+      }, '*');
+    }
+  });
+</script><script data-bard-client-injected="true">(function(){'use strict';window.addEventListener("message",a=>{a.data&&a.data.type==="SUPPLEMENTAL_DATA_UPDATE"&&window.dispatchEvent(new CustomEvent("supplementaldataupdate",{detail:a.data.data}))});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const SCROLL_KEYS = new Set([
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    ' ', 'Spacebar', 'PageUp', 'PageDown', 'Home', 'End',
+  ]);
+  const HORIZONTAL_KEYS = new Set(['ArrowLeft', 'ArrowRight']);
+
+  function isTextEntryTarget(target) {
+    if (!target) return false;
+    const tagName = target.tagName;
+    return tagName === 'INPUT' || tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' || target.isContentEditable === true;
+  }
+
+  // An element absorbs the key only if it both overflows on the axis being
+  // scrolled and is configured to scroll on that axis. The cheap dimension
+  // test runs first because getComputedStyle forces a style recalc, and this
+  // runs on every keypress. Each axis is read from its own longhand: the
+  // 'overflow' shorthand serializes as two values when the axes differ, which
+  // is the common 'overflow-x: hidden; overflow-y: auto' pane.
+  function canScroll(node, horizontal) {
+    const overflows = horizontal ? node.scrollWidth > node.clientWidth
+                                 : node.scrollHeight > node.clientHeight;
+    if (!overflows) return false;
+    const style = window.getComputedStyle(node);
+    const overflow = horizontal ? style.overflowX : style.overflowY;
+    return overflow === 'auto' || overflow === 'scroll';
+  }
+
+  // Walks up from the event target so nested scrollers keep their behavior.
+  // <body> is included because pages that pin the root height make it the
+  // scroll container.
+  function hasScrollableAncestor(target, horizontal) {
+    let node = target;
+    while (node && node !== document.documentElement) {
+      if (canScroll(node, horizontal)) return true;
+      node = node.parentElement;
+    }
+    return false;
+  }
+
+  function rootCanScroll(horizontal) {
+    const scroller = document.scrollingElement || document.documentElement;
+    if (!scroller) return false;
+    // Tolerate a pixel of rounding so subpixel layouts do not look scrollable.
+    return horizontal ? scroller.scrollWidth > window.innerWidth + 1
+                      : scroller.scrollHeight > window.innerHeight + 1;
+  }
+
+  window.addEventListener('keydown', function(event) {
+    if (!SCROLL_KEYS.has(event.key)) return;
+    if (event.defaultPrevented) return;
+    // Alt and Meta turn arrows into browser history navigation, and Ctrl is
+    // reserved for shortcuts, so none of them are scroll intent.
+    if (event.altKey || event.metaKey || event.ctrlKey) return;
+
+    const target = event.target;
+    if (isTextEntryTarget(target)) return;
+
+    // Anything that can still absorb the scroll gets to keep it.
+    const horizontal = HORIZONTAL_KEYS.has(event.key);
+    if (rootCanScroll(horizontal)) return;
+    if (hasScrollableAncestor(target, horizontal)) return;
+
+    event.preventDefault();
+  }, {capture: true, passive: false});
+})();</script><script data-bard-client-injected="true">(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script data-bard-client-injected="true">
+let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function requestMediaPermissions(constraints) {
+    const mediaPromiseId = nextMediaPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingMediaResolvers[mediaPromiseId] = (granted) => {
+        delete pendingMediaResolvers[mediaPromiseId];
+        resolve(granted);
+      };
+    });
+
+    window.parent.postMessage({
+      type: 'requestMediaPermission',
+      constraints: constraints,
+      promiseId: mediaPromiseId,
+    }, '*');
+
+    return promise;
+  }
+
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          return requestMediaPermissions(constraints).then((granted) => {
+            if (granted) {
+              if (originalGetUserMedia) {
+                return originalGetUserMedia(constraints);
+              } else {
+                throw new Error("Original getUserMedia not available.");
+              }
+            } else {
+              throw new DOMException('Permission denied', 'NotAllowedError');
+            }
+          });
+        },
+        writable: false,
+        configurable: false
+      });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  function interceptSpeechRecognition() {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      return;
+    }
+
+    const OriginalSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const SpeechRecognitionWrapper = function(...args) {
+      const recognizer = new OriginalSpeechRecognition(...args);
+      const originalStart = recognizer.start.bind(recognizer);
+
+      recognizer.start = function() {
+        requestMediaPermissions({ audio: true }).then(granted => {
+          if (granted) {
+            originalStart();
+          } else {
+            const errorEvent = new SpeechRecognitionErrorEvent('error');
+            errorEvent.error = 'not-allowed'; // This is the standard error for permission denial.
+            recognizer.dispatchEvent(errorEvent);
+          }
+        });
+      };
+
+      return recognizer;
+    };
+
+    SpeechRecognitionWrapper.prototype = OriginalSpeechRecognition.prototype;
+    SpeechRecognitionWrapper.prototype.constructor = SpeechRecognitionWrapper;
+
+    if (window.SpeechRecognition) {
+      window.SpeechRecognition = SpeechRecognitionWrapper;
+    }
+    if (window.webkitSpeechRecognition) {
+      window.webkitSpeechRecognition = SpeechRecognitionWrapper;
+    }
+  }
+
+  interceptSpeechRecognition();
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script ws-interception-config="{&quot;parentOrigin&quot;:&quot;https://gemini.google.com&quot;,&quot;proxiedDomains&quot;:[]}" data-bard-client-injected="true">(function(){'use strict';var u=typeof Object.defineProperties=="function"?Object.defineProperty:function(b,d,e){if(b==Array.prototype||b==Object.prototype)return b;b[d]=e.value;return b};function v(b){b=["object"==typeof globalThis&&globalThis,b,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var d=0;d<b.length;++d){var e=b[d];if(e&&e.Math==Math)return e}throw Error("Cannot find global object");}var w=v(this);
+function y(b,d){if(d)a:{var e=w;b=b.split(".");for(var h=0;h<b.length-1;h++){var k=b[h];if(!(k in e))break a;e=e[k]}b=b[b.length-1];h=e[b];d=d(h);d!=h&&d!=null&&u(e,b,{configurable:!0,writable:!0,value:d})}}function z(b){function d(h){return b.next(h)}function e(h){return b.throw(h)}return new Promise(function(h,k){function m(n){n.done?h(n.value):Promise.resolve(n.value).then(d,e).then(m,k)}m(b.next())})}y("globalThis",function(b){return b||w});/*
+
+ Copyright The Closure Library Authors.
+ SPDX-License-Identifier: Apache-2.0
+*/
+function A(b,d){function e(){}e.prototype=d.prototype;b.j=d.prototype;b.prototype=new e;b.prototype.constructor=b;b.h=function(h,k,m){for(var n=Array(arguments.length-2),p=2;p<arguments.length;p++)n[p-2]=arguments[p];return d.prototype[k].apply(h,n)}};function B(b,d,e="*"){function h(a){if(typeof a==="string")return F.encode(a).buffer;if(a instanceof ArrayBuffer)return a.slice(0);if(ArrayBuffer.isView(a))return a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength);throw Error("Invalid data type");}function k(a){a=h(a);var f={type:"send",data:new Uint8Array(a)},g;(g=r)==null||g.postMessage(f,[a])}function m(){if(!r)throw Error("Data port not captured yet.");r.onmessage=a=>{if(a.data.type==="message"){a=new MessageEvent("message",{data:G.decode(a.data.data)});
+let f;(f=c.onmessage)==null||f.call(c,a);c.dispatchEvent(a)}}}function n(){if(!t)throw Error("Control port not captured yet.");t.onmessage=a=>{switch(a.data.type){case "open":l=1;var f=new Event("open"),g;(g=c.onopen)==null||g.call(c,f);c.dispatchEvent(f);q.forEach(H=>{k(H)});q=[];break;case "close":g=a.data;l=3;g=new CloseEvent("close",{code:g.code,reason:g.reason,wasClean:g.wasClean});(f=c.onclose)==null||f.call(c,g);c.dispatchEvent(g);break;case "error":l=3;f=new Event("error");let x;(x=c.onerror)==
+null||x.call(c,f);c.dispatchEvent(f)}}}function p(a){return z(function*(){var f=new MessageChannel;t=f.port1;var g=new MessageChannel;r=g.port1;n();m();window.parent.postMessage({type:"websocket_open",portOrdering:["control","data"],url:b,protocols:a||[],connectionId:I},e,[f.port2,g.port2])}())}var c=Reflect.construct(EventTarget,[],new.target);c.CONNECTING=0;c.OPEN=1;c.CLOSING=2;c.CLOSED=3;c.url=b;c.binaryType="arraybuffer";c.protocol="";c.i="";var l=0,t=null,r=null,q=[],F=new TextEncoder,G=new TextDecoder;
+c.onopen=null;c.onmessage=null;c.onclose=null;c.onerror=null;Object.defineProperty(c,"readyState",{get:()=>l,enumerable:!0,configurable:!0});Object.defineProperty(c,"bufferedAmount",{get:()=>{var a=0;q.forEach(f=>{a+=typeof f==="string"?f.length:f.byteLength});return a},enumerable:!0,configurable:!0});var I=function(){var a;return((a=globalThis.crypto)==null?0:a.randomUUID)?globalThis.crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,f=>{var g=Math.random()*16|0;return(f===
+"x"?g:g&3|8).toString(16)})}();c.send=a=>{if(l===1)a instanceof Blob?a.arrayBuffer().then(f=>{k(f)}):k(a);else if(l===0)if(typeof a==="string")q.push(a);else if(a instanceof ArrayBuffer||ArrayBuffer.isView(a))q.push(h(a));else throw Error("Sending Blob is not supported before the connection is open.");else console.debug("WebSocket send called in CLOSING or CLOSED state; ignored.")};c.close=(a=1E3,f="")=>{if(l!==2&&l!==3){l=2;a={type:"close",code:a,reason:f,wasClean:a===1E3};var g;(g=t)==null||g.postMessage(a)}};
+Promise.resolve().then(()=>p(d));return c}A(B,EventTarget);var C=document.currentScript,D=C==null?void 0:C.getAttribute("ws-interception-config");if(!D)throw Error("WebSocket Interceptor: Missing ws-interception-config attribute in the script tag.");var E=JSON.parse(D);if(!E.parentOrigin||typeof E.parentOrigin!=="string")throw Error("WebSocket Interceptor: Invalid parentOrigin in ws-interception-config");
+(function(b){var d=Object.getOwnPropertyDescriptor(window,"WebSocket");if(!d||d.writable||d.configurable)d=Object.assign(function(e,h){try{let k=(new URL(e)).hostname;if(b.proxiedDomains.some(m=>k===m||k.endsWith(`.${m}`)))return new B(e,h,b.parentOrigin)}catch(k){throw window.parent.postMessage({type:"websocket_blocked",url:e,reason:"blocked_invalid_url"},b.parentOrigin),new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");}window.parent.postMessage({type:"websocket_blocked",
+url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");},{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3}),Object.defineProperty(window,"WebSocket",{value:d,writable:!1,configurable:!1})})({proxiedDomains:E.proxiedDomains||[],parentOrigin:E.parentOrigin});}).call(this);
+</script><script data-bard-client-injected="true">(function(){'use strict';function a(){window.parent.postMessage({type:"interaction"},"*")}window.addEventListener("click",a,{capture:!0,passive:!0});window.addEventListener("touchstart",a,{capture:!0,passive:!0});window.addEventListener("keydown",a,{capture:!0,passive:!0});}).call(this);
+</script><script data-bard-client-injected="true">(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: 
+message{stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>힘세지기 게임 (Power Up Boxing)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&amp;family=Noto+Sans+KR:wght@400;700;900&amp;display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            overflow-x: hidden;
+        }
+        .font-title {
+            font-family: 'Black Han Sans', sans-serif;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        @keyframes punchPush {
+            0% { transform: scale(1); }
+            40% { transform: scale(0.97) translateY(-4px); }
+            100% { transform: scale(1); }
+        }
+        .screen-shake {
+            animation: punchPush 0.12s ease-in-out;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.sticky{position:sticky}.inset-0{inset:0px}.-left-10{left:-2.5rem}.-top-10{top:-2.5rem}.bottom-3{bottom:0.75rem}.left-0{left:0px}.left-1\/2{left:50%}.left-3{left:0.75rem}.right-0{right:0px}.right-3{right:0.75rem}.top-0{top:0px}.top-3{top:0.75rem}.z-20{z-index:20}.z-30{z-index:30}.z-50{z-index:50}.float-right{float:right}.mx-auto{margin-left:auto;margin-right:auto}.mb-0\.5{margin-bottom:0.125rem}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.ml-auto{margin-left:auto}.mr-1{margin-right:0.25rem}.mt-auto{margin-top:auto}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-2{height:0.5rem}.h-3{height:0.75rem}.h-4{height:1rem}.h-40{height:10rem}.h-
+360px
+{height:360px}.h-
+380px
+{height:380px}.h-
+400px
+{height:400px}.h-
+85vh
+{height:85vh}.h-full{height:100%}.min-h-screen{min-height:100vh}.w-10{width:2.5rem}.w-40{width:10rem}.w-48{width:12rem}.w-5\/12{width:41.666667%}.w-full{width:100%}.max-w-2xl{max-width:42rem}.max-w-3xl{max-width:48rem}.max-w-5xl{max-width:64rem}.max-w-md{max-width:28rem}.max-w-sm{max-width:24rem}.flex-1{flex:1 1 0%}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.-scale-x-100{--tw-scale-x:-1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.transform{transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.cursor-pointer{cursor:pointer}.resize-none{resize:none}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.justify-start{justify-content:flex-start}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.overflow-auto{overflow:auto}.overflow-hidden{overflow:hidden}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-amber-300{--tw-border-opacity:1;border-color:rgb(252 211 77 / var(--tw-border-opacity, 1))}.border-amber-400{--tw-border-opacity:1;border-color:rgb(251 191 36 / var(--tw-border-opacity, 1))}.border-amber-500\/30{border-color:rgb(245 158 11 / 0.3)}.border-blue-500\/30{border-color:rgb(59 130 246 / 0.3)}.border-cyan-400{--tw-border-opacity:1;border-color:rgb(34 211 238 / var(--tw-border-opacity, 1))}.border-green-700{--tw-border-opacity:1;border-color:rgb(21 128 61 / var(--tw-border-opacity, 1))}.border-orange-400{--tw-border-opacity:1;border-color:rgb(251 146 60 / var(--tw-border-opacity, 1))}.border-purple-500\/30{border-color:rgb(168 85 247 / 0.3)}.border-red-400{--tw-border-opacity:1;border-color:rgb(248 113 113 / var(--tw-border-opacity, 1))}.border-red-500\/30{border-color:rgb(239 68 68 / 0.3)}.border-slate-600{--tw-border-opacity:1;border-color:rgb(71 85 105 / var(--tw-border-opacity, 1))}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-700\/50{border-color:rgb(51 65 85 / 0.5)}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59 / var(--tw-border-opacity, 1))}.border-red-700{--tw-border-opacity:1;border-color:rgb(185 28 28 / var(--tw-border-opacity, 1))}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23 / var(--tw-bg-opacity, 1))}.bg-amber-400{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-amber-500\/10{background-color:rgb(245 158 11 / 0.1)}.bg-amber-500\/20{background-color:rgb(245 158 11 / 0.2)}.bg-blue-500\/20{background-color:rgb(59 130 246 / 0.2)}.bg-green-900\/90{background-color:rgb(20 83 45 / 0.9)}.bg-orange-600\/90{background-color:rgb(234 88 12 / 0.9)}.bg-purple-500\/20{background-color:rgb(168 85 247 / 0.2)}.bg-red-500\/20{background-color:rgb(239 68 68 / 0.2)}.bg-red-600\/90{background-color:rgb(220 38 38 / 0.9)}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-800\/60{background-color:rgb(30 41 59 / 0.6)}.bg-slate-800\/80{background-color:rgb(30 41 59 / 0.8)}.bg-slate-800\/90{background-color:rgb(30 41 59 / 0.9)}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/90{background-color:rgb(15 23 42 / 0.9)}.bg-slate-950\/80{background-color:rgb(2 6 23 / 0.8)}.bg-slate-950\/90{background-color:rgb(2 6 23 / 0.9)}.bg-red-950\/80{background-color:rgb(69 10 10 / 0.8)}.bg-gradient-to-br{background-image:linear-gradient(to bottom right, var(--tw-gradient-stops))}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.from-amber-400{--tw-gradient-from:#fbbf24 var(--tw-gradient-from-position);--tw-gradient-to:rgb(251 191 36 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-amber-500{--tw-gradient-from:#f59e0b var(--tw-gradient-from-position);--tw-gradient-to:rgb(245 158 11 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-blue-600{--tw-gradient-from:#2563eb var(--tw-gradient-from-position);--tw-gradient-to:rgb(37 99 235 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-cyan-500{--tw-gradient-from:#06b6d4 var(--tw-gradient-from-position);--tw-gradient-to:rgb(6 182 212 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-orange-500{--tw-gradient-from:#f97316 var(--tw-gradient-from-position);--tw-gradient-to:rgb(249 115 22 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-red-500{--tw-gradient-from:#ef4444 var(--tw-gradient-from-position);--tw-gradient-to:rgb(239 68 68 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-red-600{--tw-gradient-from:#dc2626 var(--tw-gradient-from-position);--tw-gradient-to:rgb(220 38 38 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.via-orange-400{--tw-gradient-to:rgb(251 146 60 / 0)  var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), #fb923c var(--tw-gradient-via-position), var(--tw-gradient-to)}.to-amber-400{--tw-gradient-to:#fbbf24 var(--tw-gradient-to-position)}.to-blue-600{--tw-gradient-to:#2563eb var(--tw-gradient-to-position)}.to-cyan-400{--tw-gradient-to:#22d3ee var(--tw-gradient-to-position)}.to-cyan-600{--tw-gradient-to:#0891b2 var(--tw-gradient-to-position)}.to-orange-400{--tw-gradient-to:#fb923c var(--tw-gradient-to-position)}.to-orange-500{--tw-gradient-to:#f97316 var(--tw-gradient-to-position)}.to-orange-600{--tw-gradient-to:#ea580c var(--tw-gradient-to-position)}.to-red-500{--tw-gradient-to:#ef4444 var(--tw-gradient-to-position)}.to-red-600{--tw-gradient-to:#dc2626 var(--tw-gradient-to-position)}.bg-clip-text{-webkit-background-clip:text;background-clip:text}.p-0\.5{padding:0.125rem}.p-1{padding:0.25rem}.p-1\.5{padding:0.375rem}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.px-1{padding-left:0.25rem;padding-right:0.25rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.px-8{padding-left:2rem;padding-right:2rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.font-mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-
+10px
+{font-size:10px}.text-
+11px
+{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.italic{font-style:italic}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77 / var(--tw-text-opacity, 1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-blue-300{--tw-text-opacity:1;color:rgb(147 197 253 / var(--tw-text-opacity, 1))}.text-blue-400{--tw-text-opacity:1;color:rgb(96 165 250 / var(--tw-text-opacity, 1))}.text-cyan-400{--tw-text-opacity:1;color:rgb(34 211 238 / var(--tw-text-opacity, 1))}.text-green-200{--tw-text-opacity:1;color:rgb(187 247 208 / var(--tw-text-opacity, 1))}.text-purple-400{--tw-text-opacity:1;color:rgb(192 132 252 / var(--tw-text-opacity, 1))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-transparent{color:transparent}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.text-yellow-400{--tw-text-opacity:1;color:rgb(250 204 21 / var(--tw-text-opacity, 1))}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgb(0 0 0 / 0.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color), 0 2px 4px -2px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.blur-3xl{--tw-blur:blur(64px);filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-md{--tw-drop-shadow:drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06));filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.backdrop-blur-sm{--tw-backdrop-blur:blur(4px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.duration-300{transition-duration:300ms}.hover\:bg-amber-400:hover{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.hover\:bg-orange-600:hover{--tw-bg-opacity:1;background-color:rgb(234 88 12 / var(--tw-bg-opacity, 1))}.hover\:bg-red-600:hover{--tw-bg-opacity:1;background-color:rgb(220 38 38 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-600:hover{--tw-bg-opacity:1;background-color:rgb(71 85 105 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700\/80:hover{background-color:rgb(51 65 85 / 0.8)}.hover\:from-amber-400:hover{--tw-gradient-from:#fbbf24 var(--tw-gradient-from-position);--tw-gradient-to:rgb(251 191 36 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:from-blue-500:hover{--tw-gradient-from:#3b82f6 var(--tw-gradient-from-position);--tw-gradient-to:rgb(59 130 246 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:from-cyan-400:hover{--tw-gradient-from:#22d3ee var(--tw-gradient-from-position);--tw-gradient-to:rgb(34 211 238 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:from-red-500:hover{--tw-gradient-from:#ef4444 var(--tw-gradient-from-position);--tw-gradient-to:rgb(239 68 68 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.hover\:to-blue-500:hover{--tw-gradient-to:#3b82f6 var(--tw-gradient-to-position)}.hover\:to-cyan-500:hover{--tw-gradient-to:#06b6d4 var(--tw-gradient-to-position)}.hover\:to-orange-500:hover{--tw-gradient-to:#f97316 var(--tw-gradient-to-position)}.hover\:to-red-500:hover{--tw-gradient-to:#ef4444 var(--tw-gradient-to-position)}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.active\:scale-95:active{--tw-scale-x:.95;--tw-scale-y:.95;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.active\:bg-orange-500:active{--tw-bg-opacity:1;background-color:rgb(249 115 22 / var(--tw-bg-opacity, 1))}.active\:bg-red-500:active{--tw-bg-opacity:1;background-color:rgb(239 68 68 / var(--tw-bg-opacity, 1))}.active\:bg-slate-600:active{--tw-bg-opacity:1;background-color:rgb(71 85 105 / var(--tw-bg-opacity, 1))}@media (min-width: 640px){.sm\:block{display:block}.sm\:h-
+420px
+{height:420px}.sm\:h-
+440px
+{height:440px}.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:gap-3{gap:0.75rem}.sm\:p-4{padding:1rem}.sm\:text-2xl{font-size:1.5rem;line-height:2rem}.sm\:text-3xl{font-size:1.875rem;line-height:2.25rem}.sm\:text-4xl{font-size:2.25rem;line-height:2.5rem}.sm\:text-sm{font-size:0.875rem;line-height:1.25rem}}</style></head>
+<body class="bg-slate-950 text-slate-100 flex flex-col min-h-screen">
+
+    <!-- Top Header / Bar -->
+    <header class="bg-slate-900 border-b border-slate-800 p-3 sm:p-4 sticky top-0 z-30 shadow-xl">
+        <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-red-600 to-orange-500 p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-mitten text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-title text-xl sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-400 to-red-500">
+                        힘세지기 게임
+                    </h1>
+                    <p class="text-xs text-slate-400">1인칭 샌드백 &amp; 20단계 관문 스파링</p>
+                </div>
+            </div>
+
+            <!-- Global Stats Bar & Code Copy Button -->
+            <div class="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm font-bold ml-auto flex-wrap">
+                <div class="bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-trophy text-amber-400"></i>
+                    <span>LV.<span id="stat-level" class="text-amber-400 text-base">1</span></span>
+                </div>
+                <div class="bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-dumbbell text-red-400"></i>
+                    <span>힘: <span id="stat-strength" class="text-red-400 text-base">10</span></span>
+                </div>
+                <div class="bg-slate-800/90 px-3 py-1.5 rounded-lg border border-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-coins text-yellow-400"></i>
+                    <span><span id="stat-gold" class="text-yellow-400 text-base">0</span> G</span>
+                </div>
+
+                <!-- COPY CODE BUTTON -->
+                <button onclick="openCodeModal()" class="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white px-3 py-1.5 rounded-lg shadow-md border border-cyan-400 flex items-center gap-1.5 font-bold transition active:scale-95">
+                    <i class="fa-solid fa-code"></i>
+                    <span>전체 코드 복사</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="bg-slate-900/90 border-b border-slate-800 py-2 px-4">
+        <div class="max-w-md mx-auto flex justify-center gap-2">
+            <button id="tab-btn-bag" onclick="switchMode('bag')" class="flex-1 py-2 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md">
+                <i class="fa-solid fa-bullseye"></i> 1인칭 샌드백
+            </button>
+            <button id="tab-btn-mirror" onclick="switchMode('mirror')" class="flex-1 py-2 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700">
+                <i class="fa-solid fa-user-ninja"></i> 거울보기
+            </button>
+            <button id="tab-btn-sparring" onclick="switchMode('sparring')" class="flex-1 py-2 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700">
+                <i class="fa-solid fa-hand-fist"></i> 스파링 (관문)
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main id="app-container" class="flex-1 max-w-5xl w-full mx-auto p-2 sm:p-4 flex flex-col items-center justify-start gap-4">
+
+        <!-- ==================== MODE 1: PUNCHING BAG (1ST PERSON) ==================== -->
+        <section id="mode-bag" class="w-full flex flex-col items-center gap-4">
+            <!-- Canvas Container -->
+            <div class="relative w-full max-w-2xl h-[380px] sm:h-[440px] bg-slate-900 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center">
+                
+                <!-- Heavy Bag Canvas -->
+                <canvas id="bagCanvas" class="w-full h-full cursor-pointer" width="672" height="440"></canvas>
+
+                <!-- Cooldown Indicator Bar -->
+                <div class="absolute top-3 left-1/2 transform -translate-x-1/2 w-48 bg-slate-950/80 p-1.5 rounded-full border border-slate-700 backdrop-blur-sm pointer-events-none flex flex-col items-center">
+                    <div class="text-[10px] text-slate-300 font-bold mb-0.5">펀치 쿨타임 (0.5초)</div>
+                    <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div id="cooldown-bar" class="bg-amber-400 h-full transition-all" style="width: 100%;"></div>
+                    </div>
+                </div>
+
+                <!-- On-Screen Punch Controls for Mobile / Touch -->
+                <div class="absolute bottom-3 left-0 right-0 px-4 flex justify-between pointer-events-none">
+                    <button id="btn-punch-left" class="pointer-events-auto bg-red-600/90 active:bg-red-500 hover:bg-red-600 text-white font-title px-5 py-3 rounded-2xl shadow-lg border-2 border-red-400 transform active:scale-95 transition flex items-center gap-2">
+                        <i class="fa-solid fa-hand-fist text-xl"></i> 왼손 (0.5초)
+                    </button>
+                    <button id="btn-punch-right" class="pointer-events-auto bg-orange-600/90 active:bg-orange-500 hover:bg-orange-600 text-white font-title px-5 py-3 rounded-2xl shadow-lg border-2 border-orange-400 transform active:scale-95 transition flex items-center gap-2">
+                        오른손 (0.5초) <i class="fa-solid fa-hand-fist text-xl transform -scale-x-100"></i>
+                    </button>
+                </div>
+
+                <!-- Instructions -->
+                <div class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800 text-xs text-slate-300 pointer-events-none hidden sm:block">
+                    <i class="fa-solid fa-keyboard text-amber-400 mr-1"></i> <kbd class="bg-slate-800 px-1 rounded text-amber-300">스페이스바</kbd> / <kbd class="bg-slate-800 px-1 rounded text-amber-300">화살표키</kbd>
+                </div>
+
+                <!-- Combo Counter -->
+                <div id="combo-container" class="absolute top-3 right-3 text-right pointer-events-none hidden">
+                    <div class="font-title text-2xl sm:text-3xl text-amber-400 italic drop-shadow-md">
+                        <span id="combo-count">0</span> COMBO!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upgrades Panel -->
+            <div class="w-full max-w-2xl bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
+                <h3 class="font-title text-lg text-amber-400 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-dumbbell"></i> 트레이닝 &amp; 장비 업그레이드
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="buyUpgrade('power')" class="group bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-3 rounded-xl text-left flex items-center justify-between transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center font-bold text-lg border border-red-500/30">
+                                <i class="fa-solid fa-hand-fist"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm text-slate-100">완력 단련 (타당 힘)</div>
+                                <div class="text-xs text-slate-400">타당 힘 +<span id="upg-power-bonus">1</span></div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">Lv.<span id="upg-power-lvl">1</span></div>
+                            <div class="font-bold text-amber-400 text-xs sm:text-sm"><span id="upg-power-cost">20</span> G</div>
+                        </div>
+                    </button>
+
+                    <button onclick="buyUpgrade('auto')" class="group bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-3 rounded-xl text-left flex items-center justify-between transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center font-bold text-lg border border-blue-500/30">
+                                <i class="fa-solid fa-robot"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm text-slate-100">자동 훈련 파트너</div>
+                                <div class="text-xs text-slate-400">초당자동치기 +<span id="upg-auto-bonus">0</span>회</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">Lv.<span id="upg-auto-lvl">0</span></div>
+                            <div class="font-bold text-amber-400 text-xs sm:text-sm"><span id="upg-auto-cost">50</span> G</div>
+                        </div>
+                    </button>
+
+                    <button onclick="buyUpgrade('glove')" class="group bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-3 rounded-xl text-left flex items-center justify-between transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-lg flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                                <i class="fa-solid fa-hand-sparkles"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm text-slate-100">핸드랩 강화 (골드 배율)</div>
+                                <div class="text-xs text-slate-400">골드 획득 +<span id="upg-glove-bonus">0</span>%</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">Lv.<span id="upg-glove-lvl">1</span></div>
+                            <div class="font-bold text-amber-400 text-xs sm:text-sm"><span id="upg-glove-cost">100</span> G</div>
+                        </div>
+                    </button>
+
+                    <button onclick="buyUpgrade('crit')" class="group bg-slate-800 hover:bg-slate-700/80 border border-slate-700 p-3 rounded-xl text-left flex items-center justify-between transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-500/20 text-purple-400 rounded-lg flex items-center justify-center font-bold text-lg border border-purple-500/30">
+                                <i class="fa-solid fa-bolt"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-sm text-slate-100">급소 단련 (크리티컬)</div>
+                                <div class="text-xs text-slate-400">확률 <span id="upg-crit-rate">5</span>% (x2 데미지)</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-slate-400">Lv.<span id="upg-crit-lvl">1</span></div>
+                            <div class="font-bold text-amber-400 text-xs sm:text-sm"><span id="upg-crit-cost">150</span> G</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== MODE 2: MIRROR VIEW (거울보기) ==================== -->
+        <section id="mode-mirror" class="w-full max-w-2xl flex flex-col items-center gap-4 hidden">
+            <div class="w-full bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col items-center text-center relative overflow-hidden">
+                <div class="absolute -top-10 -left-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <h2 class="font-title text-2xl text-amber-400 mb-1 flex items-center gap-2">
+                    <i class="fa-solid fa-user-ninja"></i> 진짜 나의 신체 성장 거울
+                </h2>
+                <p class="text-xs text-slate-400 mb-4">팔이 허리까지 내려오는 자연스러운 전신 모습과 성장한 근육을 확인하세요!</p>
+
+                <!-- Mirror Display Canvas -->
+                <div class="relative w-full h-[400px] bg-slate-950 rounded-2xl border-2 border-slate-800 flex items-center justify-center p-2 mb-4 shadow-inner">
+                    <canvas id="mirrorCanvas" class="w-full h-full" width="0" height="0"></canvas>
+                </div>
+
+                <div class="flex gap-2 mb-4 w-full max-w-sm">
+                    <button onclick="toggleMirrorPose()" class="flex-1 bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-title py-2.5 px-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-dumbbell"></i> 보디빌딩 포즈 취하기!
+                    </button>
+                </div>
+
+                <!-- Stats Summary -->
+                <div class="w-full grid grid-cols-3 gap-2 bg-slate-800/60 p-3 rounded-xl border border-slate-700/50 mb-3 text-sm">
+                    <div>
+                        <div class="text-xs text-slate-400">체형 등급</div>
+                        <div id="mirror-body-rank" class="font-bold text-amber-400 text-base">약골 지망생</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">현재 레벨</div>
+                        <div id="mirror-level" class="font-bold text-slate-100 text-base">LV.1</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">누적 힘</div>
+                        <div id="mirror-strength" class="font-bold text-red-400 text-base">10</div>
+                    </div>
+                </div>
+
+                <!-- Body Progress Bar -->
+                <div class="w-full bg-slate-800 rounded-full h-4 p-0.5 border border-slate-700 relative mb-2">
+                    <div id="mirror-progress-bar" class="bg-gradient-to-r from-orange-500 to-amber-400 h-full rounded-full transition-all duration-300" style="width: 5%;"></div>
+                </div>
+                <div class="text-xs text-slate-400 w-full flex justify-between px-1">
+                    <span>약골 지망생</span>
+                    <span id="mirror-next-rank-text">다음 스파링 관문 LV.2 필요</span>
+                    <span>전설의 헤라클레스</span>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ==================== MODE 3: SPARRING GATE (스파링 관문 1~20) ==================== -->
+        <section id="mode-sparring" class="w-full max-w-2xl flex flex-col items-center gap-4 hidden">
+            <!-- Stage Selector & Header -->
+            <div class="w-full bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl flex flex-col gap-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="font-title text-xl text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-trophy"></i> 스파링 관문 (레벨 1 ~ 20)
+                        </h2>
+                        <p class="text-xs text-slate-400">상대의 공격을 회피하고 펀치를 날려 승리하세요!</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-slate-400">관문 선택:</span>
+                        <select id="stage-select" onchange="onStageSelectChange()" class="bg-slate-800 border border-slate-700 text-amber-300 font-bold px-3 py-1.5 rounded-lg text-sm"><option value="1">관문 1: 동네 운동초보 '철수' (필요힘: 50) </option><option value="2" disabled="">관문 2: 체육관 루키 '동현' (필요힘: 150) 🔒</option><option value="3" disabled="">관문 3: 골목길 대장 '성철' (필요힘: 400) 🔒</option><option value="4" disabled="">관문 4: 아마추어 선수 '지훈' (필요힘: 1,000) 🔒</option><option value="5" disabled="">관문 5: 길거리 복서 '타이슨킴' (필요힘: 2,500) 🔒</option><option value="6" disabled="">관문 6: 격투기 수련생 '현우' (필요힘: 6,000) 🔒</option><option value="7" disabled="">관문 7: 전국체전 동메달 '민재' (필요힘: 15,000) 🔒</option><option value="8" disabled="">관문 8: 스파링 마스터 '최강두' (필요힘: 35,000) 🔒</option><option value="9" disabled="">관문 9: 헤비급 신인 '마동석남' (필요힘: 80,000) 🔒</option><option value="10" disabled="">관문 10: 프로 랭커 '쉐도우 펀치' (필요힘: 180,000) 🔒</option><option value="11" disabled="">관문 11: 동양 챔피언 '황금주먹' (필요힘: 400,000) 🔒</option><option value="12" disabled="">관문 12: 지하 격투왕 '블랙베어' (필요힘: 900,000) 🔒</option><option value="13" disabled="">관문 13: 불패의 스파링 챔프 (필요힘: 2,000,000) 🔒</option><option value="14" disabled="">관문 14: 세계 챔피언 도전권 보유자 (필요힘: 4,500,000) 🔒</option><option value="15" disabled="">관문 15: WBC 헤비급 3위 '아이언맨' (필요힘: 10,000,000) 🔒</option><option value="16" disabled="">관문 16: 세계 복싱 챔피언 '볼트' (필요힘: 22,000,000) 🔒</option><option value="17" disabled="">관문 17: 전설의 헤비급 '파괴신' (필요힘: 50,000,000) 🔒</option><option value="18" disabled="">관문 18: 사이보그 펀처 '레드불' (필요힘: 120,000,000) 🔒</option><option value="19" disabled="">관문 19: 신인류 격투 생명체 (필요힘: 300,000,000) 🔒</option><option value="20" disabled="">관문 20: 전설의 신 '헤라클레스 복서' (필요힘: 800,000,000) 🔒</option></select>
+                    </div>
+                </div>
+
+                <!-- Strength Required Progress Card -->
+                <div id="req-strength-card" class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 flex flex-col gap-1.5 text-xs">
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-slate-200">
+                            <i class="fa-solid fa-lock text-red-400 mr-1" id="req-lock-icon"></i> 
+                            관문 <span id="req-stage-num">1</span> 도전을 위한 필요 힘
+                        </span>
+                        <span class="font-bold text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-700" id="req-status-badge">힘 부족 🔒</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-700">
+                        <div id="req-strength-bar" class="bg-gradient-to-r from-red-500 to-amber-400 h-full transition-all duration-300" style="width: 20%;"></div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400">
+                        <span>현재 힘: <strong id="req-curr-str" class="text-slate-200">10</strong></span>
+                        <span>필요 힘: <strong id="req-target-str" class="text-amber-400">50</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sparring Fight Canvas -->
+            <div class="relative w-full h-[360px] sm:h-[420px] bg-slate-900 rounded-2xl border-2 border-slate-800 overflow-hidden shadow-2xl flex flex-col items-center justify-center">
+                <canvas id="sparringCanvas" class="w-full h-full" width="0" height="0"></canvas>
+
+                <!-- Fight HUD Overlays -->
+                <div class="absolute top-3 left-3 right-3 flex justify-between gap-2 pointer-events-none">
+                    <!-- Player HP -->
+                    <div class="w-5/12 bg-slate-950/80 p-2 rounded-xl border border-slate-800 backdrop-blur-sm">
+                        <div class="text-xs font-bold text-blue-400 mb-1 flex justify-between">
+                            <span>나 (내 복서)</span>
+                            <span id="player-hp-text">100 / 100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                            <div id="player-hp-bar" class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full transition-all duration-200" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Rival HP -->
+                    <div class="w-5/12 bg-slate-950/80 p-2 rounded-xl border border-slate-800 backdrop-blur-sm text-right">
+                        <div class="text-xs font-bold text-red-400 mb-1 flex justify-between">
+                            <span id="rival-hp-text">100 / 100</span>
+                            <span id="rival-name-text">관문 1 라이벌</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                            <div id="rival-hp-bar" class="bg-gradient-to-r from-red-600 to-orange-400 h-full transition-all duration-200 float-right" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sparring Controls overlay -->
+                <div id="sparring-controls" class="absolute bottom-3 left-0 right-0 px-4 flex justify-between items-center gap-2 pointer-events-none">
+                    <button id="btn-dodge" onclick="triggerPlayerDodge()" class="pointer-events-auto bg-slate-800 hover:bg-slate-700 active:bg-slate-600 border border-slate-600 text-blue-300 font-title px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-1">
+                        <i class="fa-solid fa-person-running"></i> 회피 (Dodge)
+                    </button>
+                    <button id="btn-sparring-attack" onclick="triggerPlayerSparringPunch()" class="pointer-events-auto bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 active:scale-95 text-white font-title text-lg px-6 py-3 rounded-2xl shadow-xl border-2 border-amber-400 transition flex items-center gap-2">
+                        <i class="fa-solid fa-hand-fist"></i> 공격! (0.5초)
+                    </button>
+                </div>
+
+                <!-- Fight Start / Result Banner Overlay -->
+                <div id="fight-modal" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20">
+                    <h3 id="fight-modal-title" class="font-title text-3xl sm:text-4xl text-amber-400 mb-2">
+                        스파링 관문 1
+                    </h3>
+                    <p id="fight-modal-desc" class="text-sm text-slate-300 mb-6 max-w-md">
+                        목표: 상대의 체력을 0으로 만들어 승리하고 레벨업을 달성하세요!
+                    </p>
+                    <button id="btn-start-fight" onclick="startSparringMatch()" class="bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-slate-950 font-title text-xl px-8 py-3.5 rounded-2xl shadow-2xl border-2 border-amber-300 transform active:scale-95 transition">
+                        도전 시작! 🔔
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== CODE COPY MODAL ==================== -->
+    <div id="code-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 z-50 hidden">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
+            <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-code text-cyan-400 text-lg"></i>
+                    <h3 class="font-title text-lg text-slate-100">전체 소스 코드 (HTML Single File)</h3>
+                </div>
+                <button onclick="closeCodeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <div class="p-4 flex gap-3 bg-slate-800/80 border-b border-slate-700">
+                <button onclick="copySourceCode()" class="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-title py-2.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-copy"></i> 클립보드에 전체 코드 복사하기
+                </button>
+                <button onclick="downloadSourceCode()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-2.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm">
+                    <i class="fa-solid fa-download"></i> index.html 다운로드
+                </button>
+            </div>
+
+            <div id="copy-alert" class="hidden bg-green-900/90 text-green-200 text-xs py-2 px-4 text-center font-bold border-b border-green-700">
+                ✓ 소스 코드가 클립보드에 성공적으로 복사되었습니다!
+            </div>
+
+            <div class="flex-1 p-3 bg-slate-950 overflow-auto">
+                <textarea id="code-textarea" readonly="" class="w-full h-full bg-slate-950 text-slate-300 font-mono text-xs p-3 focus:outline-none resize-none rounded-lg border border-slate-800"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 p-3 text-center text-xs text-slate-500 mt-auto">
+        힘세지기 게임 © 2026 - 샌드백을 치고 20단계 관문을 통과하여 힘이 가장 센 전설이 되세요!
+    </footer>
+
+    <!-- Game Logic Script -->
+    <script>
+        /* ==================== GLOBAL GAME STATE ==================== */
+        const gameState = {
+            level: 1,
+            strength: 10,
+            gold: 0,
+            combo: 0,
+            comboTimer: null,
+            // Cooldown State (0.5s = 500ms)
+            lastPunchTime: 0,
+            punchCooldownMs: 500,
+            // Upgrades
+            upgrades: {
+                power: { level: 1, cost: 20, bonus: 1 },
+                auto: { level: 0, cost: 50, bonus: 0 },
+                glove: { level: 1, cost: 100, bonus: 0 },
+                crit: { level: 1, cost: 150, rate: 5 }
+            },
+            // Mirror
+            isPosingInMirror: false,
+            // Sparring
+            selectedStage: 1,
+            maxUnlockedStage: 1,
+            inSparring: false
+        };
+
+        /* ==================== RIVALS DATA (LEVELS 1-20 & PROGRESSIVE DIFFICULTY) ==================== */
+        const RIVALS_DATA = [
+            { level: 1, name: "동네 운동초보 '철수'", reqStrength: 50, hp: 120, power: 6, speed: 1700, blockRate: 5 },
+            { level: 2, name: "체육관 루키 '동현'", reqStrength: 150, hp: 280, power: 12, speed: 1550, blockRate: 10 },
+            { level: 3, name: "골목길 대장 '성철'", reqStrength: 400, hp: 600, power: 22, speed: 1400, blockRate: 12 },
+            { level: 4, name: "아마추어 선수 '지훈'", reqStrength: 1000, hp: 1200, power: 40, speed: 1300, blockRate: 15 },
+            { level: 5, name: "길거리 복서 '타이슨킴'", reqStrength: 2500, hp: 2500, power: 75, speed: 1200, blockRate: 18 },
+            { level: 6, name: "격투기 수련생 '현우'", reqStrength: 6000, hp: 5000, power: 130, speed: 1100, blockRate: 20 },
+            { level: 7, name: "전국체전 동메달 '민재'", reqStrength: 15000, hp: 9500, power: 220, speed: 1000, blockRate: 22 },
+            { level: 8, name: "스파링 마스터 '최강두'", reqStrength: 35000, hp: 18000, power: 380, speed: 920, blockRate: 25 },
+            { level: 9, name: "헤비급 신인 '마동석남'", reqStrength: 80000, hp: 32000, power: 650, speed: 850, blockRate: 28 },
+            { level: 10, name: "프로 랭커 '쉐도우 펀치'", reqStrength: 180000, hp: 60000, power: 1100, speed: 780, blockRate: 30 },
+            { level: 11, name: "동양 챔피언 '황금주먹'", reqStrength: 400000, hp: 110000, power: 1800, speed: 720, blockRate: 32 },
+            { level: 12, name: "지하 격투왕 '블랙베어'", reqStrength: 900000, hp: 200000, power: 3000, speed: 660, blockRate: 35 },
+            { level: 13, name: "불패의 스파링 챔프", reqStrength: 2000000, hp: 380000, power: 5000, speed: 600, blockRate: 38 },
+            { level: 14, name: "세계 챔피언 도전권 보유자", reqStrength: 4500000, hp: 700000, power: 8500, speed: 550, blockRate: 40 },
+            { level: 15, name: "WBC 헤비급 3위 '아이언맨'", reqStrength: 10000000, hp: 1300000, power: 14000, speed: 500, blockRate: 42 },
+            { level: 16, name: "세계 복싱 챔피언 '볼트'", reqStrength: 22000000, hp: 2500000, power: 24000, speed: 450, blockRate: 45 },
+            { level: 17, name: "전설의 헤비급 '파괴신'", reqStrength: 50000000, hp: 4800000, power: 40000, speed: 400, blockRate: 48 },
+            { level: 18, name: "사이보그 펀처 '레드불'", reqStrength: 120000000, hp: 9000000, power: 70000, speed: 360, blockRate: 50 },
+            { level: 19, name: "신인류 격투 생명체", reqStrength: 300000000, hp: 18000000, power: 120000, speed: 320, blockRate: 52 },
+            { level: 20, name: "전설의 신 '헤라클레스 복서'", reqStrength: 800000000, hp: 35000000, power: 220000, speed: 280, blockRate: 55 }
+        ];
+
+        /* ==================== AUDIO SYNTHESIZER ==================== */
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playHeavyThudPunch() {
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                const osc = this.ctx.createOscillator();
+                const oscGain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, now);
+                osc.frequency.exponentialRampToValueAtTime(25, now + 0.15);
+                oscGain.gain.setValueAtTime(1.0, now);
+                oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.connect(oscGain);
+                oscGain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.15);
+
+                const bufferSize = this.ctx.sampleRate * 0.1;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(450, now);
+                filter.frequency.exponentialRampToValueAtTime(80, now + 0.1);
+
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(0.8, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+                noise.connect(filter);
+                filter.connect(noiseGain);
+                noiseGain.connect(this.ctx.destination);
+                noise.start(now);
+            }
+
+            playCritHit() {
+                this.playHeavyThudPunch();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(60, now + 0.22);
+                gain.gain.setValueAtTime(0.6, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.22);
+            }
+
+            playRingBell() {
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+
+                const strikeBell = (timeOffset) => {
+                    const osc1 = this.ctx.createOscillator();
+                    const osc2 = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc1.type = 'sine';
+                    osc2.type = 'sine';
+
+                    osc1.frequency.setValueAtTime(980, timeOffset);
+                    osc2.frequency.setValueAtTime(1420, timeOffset);
+
+                    gain.gain.setValueAtTime(0.7, timeOffset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, timeOffset + 0.8);
+
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc1.start(timeOffset);
+                    osc2.start(timeOffset);
+                    osc1.stop(timeOffset + 0.8);
+                    osc2.stop(timeOffset + 0.8);
+                };
+
+                strikeBell(now);
+                strikeBell(now + 0.25);
+                strikeBell(now + 0.50);
+            }
+
+            playLevelUp() {
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                    gain.gain.setValueAtTime(0.3, now + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.08);
+                    osc.stop(now + idx * 0.08 + 0.2);
+                });
+            }
+
+            playDodge() {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playFlex() {
+                this.init();
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+        }
+        const sfx = new SoundFX();
+
+
+        /* ==================== CANVAS 1: PUNCHING BAG (1ST PERSON) ==================== */
+        const bagCanvas = document.getElementById('bagCanvas');
+        const bagCtx = bagCanvas.getContext('2d');
+
+        let bagDepthOffset = 0;
+        let bagDepthVel = 0;
+        let floatingTexts = [];
+        let activeFist = null;
+
+        function resizeBagCanvas() {
+            const rect = bagCanvas.parentElement.getBoundingClientRect();
+            bagCanvas.width = rect.width;
+            bagCanvas.height = rect.height;
+        }
+
+        function triggerBagPunch(side = 'left') {
+            const now = Date.now();
+            if (now - gameState.lastPunchTime < gameState.punchCooldownMs) {
+                return;
+            }
+            gameState.lastPunchTime = now;
+
+            const isCrit = Math.random() * 100 < gameState.upgrades.crit.rate;
+            if (isCrit) {
+                sfx.playCritHit();
+            } else {
+                sfx.playHeavyThudPunch();
+            }
+
+            let dmg = gameState.strength;
+            if (isCrit) dmg *= 2;
+
+            const goldEarned = Math.ceil(dmg * (1 + gameState.upgrades.glove.bonus / 100));
+            gameState.strength += Math.ceil(gameState.upgrades.power.bonus * (isCrit ? 1.5 : 1.0));
+            gameState.gold += goldEarned;
+
+            bagDepthVel += (isCrit ? 28 : 18);
+
+            gameState.combo++;
+            clearTimeout(gameState.comboTimer);
+            gameState.comboTimer = setTimeout(() => {
+                gameState.combo = 0;
+                updateComboDisplay();
+            }, 2000);
+            updateComboDisplay();
+
+            activeFist = { side, progress: 1.0 };
+
+            floatingTexts.push({
+                x: bagCanvas.width / 2 + (side === 'left' ? -60 : 60),
+                y: bagCanvas.height / 2 - 30,
+                text: `+dmg.toLocaleString()힘({goldEarned.toLocaleString()}G)`,
+                crit: isCrit,
+                alpha: 1.0,
+                dy: -2.5
+            });
+
+            const container = bagCanvas.parentElement;
+            container.classList.remove('screen-shake');
+            void container.offsetWidth;
+            container.classList.add('screen-shake');
+
+            updateUI();
+        }
+
+        function updateComboDisplay() {
+            const comboEl = document.getElementById('combo-container');
+            const countEl = document.getElementById('combo-count');
+            if (gameState.combo > 1) {
+                comboEl.classList.remove('hidden');
+                countEl.innerText = gameState.combo;
+            } else {
+                comboEl.classList.add('hidden');
+            }
+        }
+
+        function updateCooldownBar() {
+            const now = Date.now();
+            const elapsed = now - gameState.lastPunchTime;
+            const pct = Math.min(100, (elapsed / gameState.punchCooldownMs) * 100);
+            const bar = document.getElementById('cooldown-bar');
+            if (bar) {
+                bar.style.width = `${pct}%`;
+                bar.className = pct >= 100 ? "bg-amber-400 h-full transition-all" : "bg-red-500 h-full transition-all";
+            }
+        }
+
+        function renderBagScene() {
+            const w = bagCanvas.width;
+            const h = bagCanvas.height;
+
+            bagCtx.fillStyle = '#0a0e17';
+            bagCtx.fillRect(0, 0, w, h);
+
+            bagCtx.strokeStyle = '#1e293b';
+            bagCtx.lineWidth = 2;
+            const vanishingX = w / 2;
+            const vanishingY = h * 0.35;
+
+            for (let x = -w; x <= w * 2; x += 80) {
+                bagCtx.beginPath();
+                bagCtx.moveTo(vanishingX, vanishingY);
+                bagCtx.lineTo(x, h);
+                bagCtx.stroke();
+            }
+
+            const spotGrad = bagCtx.createRadialGradient(w / 2, vanishingY, 10, w / 2, vanishingY, w * 0.6);
+            spotGrad.addColorStop(0, 'rgba(245, 158, 11, 0.2)');
+            spotGrad.addColorStop(1, 'rgba(10, 14, 23, 0)');
+            bagCtx.fillStyle = spotGrad;
+            bagCtx.fillRect(0, 0, w, h);
+
+            bagDepthOffset += bagDepthVel;
+            bagDepthVel += (0 - bagDepthOffset) * 0.25;
+            bagDepthVel *= 0.72;
+
+            const depthFactor = Math.max(0, bagDepthOffset);
+            const scale = 1 / (1 + depthFactor * 0.008);
+            const bagX = w / 2;
+            const bagBaseY = h * 0.15 + depthFactor * 0.3;
+
+            bagCtx.fillStyle = 'rgba(0,0,0,0.5)';
+            bagCtx.beginPath();
+            const shadowY = h * 0.75 - depthFactor * 0.1;
+            bagCtx.ellipse(bagX, shadowY, 55 * scale, 16 * scale, 0, 0, Math.PI * 2);
+            bagCtx.fill();
+
+            bagCtx.strokeStyle = '#64748b';
+            bagCtx.lineWidth = 4 * scale;
+            bagCtx.beginPath();
+            bagCtx.moveTo(w / 2, 0);
+            bagCtx.lineTo(bagX, bagBaseY);
+            bagCtx.stroke();
+
+            bagCtx.save();
+            bagCtx.translate(bagX, bagBaseY);
+            bagCtx.scale(scale, scale);
+
+            const bagGrad = bagCtx.createLinearGradient(-50, 0, 50, 0);
+            bagGrad.addColorStop(0, '#991b1b');
+            bagGrad.addColorStop(0.4, '#ef4444');
+            bagGrad.addColorStop(0.8, '#b91c1c');
+            bagGrad.addColorStop(1, '#7f1d1d');
+            bagCtx.fillStyle = bagGrad;
+
+            bagCtx.beginPath();
+            bagCtx.roundRect(-50, 0, 100, 220, 24);
+            bagCtx.fill();
+
+            bagCtx.fillStyle = '#1e293b';
+            bagCtx.fillRect(-50, 25, 100, 14);
+            bagCtx.fillRect(-50, 180, 100, 14);
+
+            bagCtx.fillStyle = '#ffffff';
+            bagCtx.font = 'bold 18px "Black Han Sans"';
+            bagCtx.textAlign = 'center';
+            bagCtx.fillText('파워 샌드백', 0, 115);
+
+            bagCtx.restore();
+
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.y += ft.dy;
+                ft.alpha -= 0.02;
+
+                bagCtx.save();
+                bagCtx.globalAlpha = Math.max(0, ft.alpha);
+                bagCtx.font = ft.crit ? 'bold 22px "Black Han Sans"' : 'bold 16px "Noto Sans KR"';
+                bagCtx.fillStyle = ft.crit ? '#f59e0b' : '#38bdf8';
+                bagCtx.textAlign = 'center';
+                bagCtx.fillText(ft.text, ft.x, ft.y);
+                bagCtx.restore();
+
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+
+            updateCooldownBar();
+            render1stPersonFists(w, h);
+
+            requestAnimationFrame(renderBagScene);
+        }
+
+        function render1stPersonFists(w, h) {
+            const lvl = gameState.level;
+            const muscleTier = Math.min(2.5, 0.85 + lvl * 0.085);
+
+            const leftRestX = w * 0.22;
+            const leftRestY = h + 20;
+            const rightRestX = w * 0.78;
+            const rightRestY = h + 20;
+
+            let leftX = leftRestX, leftY = leftRestY;
+            let rightX = rightRestX, rightY = rightRestY;
+
+            if (activeFist) {
+                activeFist.progress -= 0.12;
+                if (activeFist.progress <= 0) {
+                    activeFist = null;
+                } else {
+                    const p = activeFist.progress;
+                    const reach = Math.sin(p * Math.PI);
+
+                    if (activeFist.side === 'left') {
+                        leftX = leftRestX + reach * (w * 0.24);
+                        leftY = leftRestY - reach * (h * 0.42);
+                    } else {
+                        rightX = rightRestX - reach * (w * 0.24);
+                        rightY = rightRestY - reach * (h * 0.42);
+                    }
+                }
+            }
+
+            drawHumanFist(leftX, leftY, 'left', muscleTier, lvl);
+            drawHumanFist(rightX, rightY, 'right', muscleTier, lvl);
+        }
+
+        function drawHumanFist(x, y, side, muscleTier, lvl) {
+            bagCtx.save();
+            const isLeft = side === 'left';
+            const angle = isLeft ? -0.28 : 0.28;
+
+            bagCtx.translate(x, y);
+            bagCtx.rotate(angle);
+
+            if (lvl >= 10) {
+                bagCtx.shadowColor = lvl >= 18 ? '#f59e0b' : '#3b82f6';
+                bagCtx.shadowBlur = 25;
+            }
+
+            const forearmW = 38 * muscleTier;
+
+            const skinGrad = bagCtx.createLinearGradient(-forearmW, -140, forearmW, 0);
+            skinGrad.addColorStop(0, '#fca5a5');
+            skinGrad.addColorStop(0.5, '#f87171');
+            skinGrad.addColorStop(1, '#dc2626');
+            bagCtx.fillStyle = skinGrad;
+
+            bagCtx.beginPath();
+            bagCtx.moveTo(-forearmW * 0.55, 0);
+            bagCtx.lineTo(-forearmW * 0.65, -130);
+            bagCtx.lineTo(forearmW * 0.65, -130);
+            bagCtx.lineTo(forearmW * 0.55, 0);
+            bagCtx.closePath();
+            bagCtx.fill();
+
+            if (lvl >= 3) {
+                bagCtx.strokeStyle = '#991b1b';
+                bagCtx.lineWidth = 2 + lvl * 0.25;
+                bagCtx.beginPath();
+                bagCtx.moveTo(-forearmW * 0.1, -20);
+                bagCtx.lineTo(-forearmW * 0.15, -100);
+                if (lvl >= 7) {
+                    bagCtx.moveTo(forearmW * 0.2, -40);
+                    bagCtx.lineTo(-forearmW * 0.1, -80);
+                }
+                bagCtx.stroke();
+            }
+
+            bagCtx.shadowBlur = 0;
+            bagCtx.fillStyle = '#f8fafc';
+            bagCtx.fillRect(-forearmW * 0.6, -140, forearmW * 1.2, 22);
+
+            bagCtx.save();
+            bagCtx.translate(0, -140);
+            if (!isLeft) bagCtx.scale(-1, 1);
+
+            const fistGrad = bagCtx.createLinearGradient(-25, -50, 25, 0);
+            fistGrad.addColorStop(0, '#fca5a5');
+            fistGrad.addColorStop(0.6, '#f87171');
+            fistGrad.addColorStop(1, '#ef4444');
+            bagCtx.fillStyle = fistGrad;
+
+            bagCtx.beginPath();
+            bagCtx.roundRect(-24, -45, 48, 42, [12, 12, 8, 8]);
+            bagCtx.fill();
+
+            bagCtx.fillStyle = '#f87171';
+            bagCtx.strokeStyle = '#991b1b';
+            bagCtx.lineWidth = 2;
+
+            for (let i = 0; i < 4; i++) {
+                const fingerX = -18 + i * 11;
+                const fingerY = -48;
+                bagCtx.beginPath();
+                bagCtx.roundRect(fingerX, fingerY, 9, 16, 4);
+                bagCtx.fill();
+                bagCtx.stroke();
+            }
+
+            bagCtx.fillStyle = '#fca5a5';
+            bagCtx.beginPath();
+            bagCtx.roundRect(-22, -28, 28, 14, 6);
+            bagCtx.fill();
+            bagCtx.stroke();
+
+            bagCtx.restore();
+            bagCtx.restore();
+        }
+
+
+        /* ==================== CANVAS 2: REALISTIC MIRROR VIEW (거울보기) ==================== */
+        const mirrorCanvas = document.getElementById('mirrorCanvas');
+        const mirrorCtx = mirrorCanvas.getContext('2d');
+
+        function resizeMirrorCanvas() {
+            const rect = mirrorCanvas.parentElement.getBoundingClientRect();
+            mirrorCanvas.width = rect.width;
+            mirrorCanvas.height = rect.height;
+        }
+
+        function toggleMirrorPose() {
+            gameState.isPosingInMirror = !gameState.isPosingInMirror;
+            sfx.playFlex();
+        }
+
+        function renderMirrorScene() {
+            const w = mirrorCanvas.width;
+            const h = mirrorCanvas.height;
+
+            // Clear & Mirror Frame
+            mirrorCtx.fillStyle = '#0f172a';
+            mirrorCtx.fillRect(0, 0, w, h);
+
+            // Glass Reflection Surface
+            const glassGrad = mirrorCtx.createLinearGradient(0, 0, w, h);
+            glassGrad.addColorStop(0, '#1e293b');
+            glassGrad.addColorStop(0.5, '#0f172a');
+            glassGrad.addColorStop(1, '#1e293b');
+            mirrorCtx.fillStyle = glassGrad;
+            mirrorCtx.fillRect(12, 12, w - 24, h - 24);
+
+            mirrorCtx.strokeStyle = '#475569';
+            mirrorCtx.lineWidth = 6;
+            mirrorCtx.strokeRect(12, 12, w - 24, h - 24);
+
+            // Reflection Diagonal Glass Shine
+            mirrorCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            mirrorCtx.lineWidth = 32;
+            mirrorCtx.beginPath();
+            mirrorCtx.moveTo(0, h * 0.15);
+            mirrorCtx.lineTo(w, h * 0.85);
+            mirrorCtx.stroke();
+
+            // REALISTIC CHARACTER REFLECTION IN MIRROR
+            const lvl = gameState.level;
+            const centerX = w / 2;
+            const headY = h * 0.18;
+
+            // Dynamic Muscle Growth Factor
+            const m = Math.min(2.5, 0.82 + (lvl - 1) * 0.08);
+            const isPosing = gameState.isPosingInMirror;
+
+            // High Level Aura Glow
+            if (lvl >= 10) {
+                const auraR = 120 * (m * 0.7);
+                const aura = mirrorCtx.createRadialGradient(centerX, headY + 80, 10, centerX, headY + 80, auraR);
+                aura.addColorStop(0, lvl >= 18 ? 'rgba(245, 158, 11, 0.4)' : 'rgba(59, 130, 246, 0.3)');
+                aura.addColorStop(1, 'transparent');
+                mirrorCtx.fillStyle = aura;
+                mirrorCtx.beginPath();
+                mirrorCtx.arc(centerX, headY + 80, auraR, 0, Math.PI * 2);
+                mirrorCtx.fill();
+            }
+
+            // Head
+            const headR = 20;
+            mirrorCtx.fillStyle = '#fca5a5';
+            mirrorCtx.beginPath();
+            mirrorCtx.arc(centerX, headY, headR, 0, Math.PI * 2);
+            mirrorCtx.fill();
+
+            // Headband
+            mirrorCtx.fillStyle = '#dc2626';
+            mirrorCtx.fillRect(centerX - headR, headY - 12, headR * 2, 8);
+
+            // Trapezius / Neck
+            const neckW = 14 + (m * 10);
+            const neckY = headY + headR - 2;
+            mirrorCtx.fillStyle = '#f87171';
+            mirrorCtx.fillRect(centerX - neckW / 2, neckY, neckW, 16);
+
+            // Shoulders & Torso Dimensions
+            const shoulderW = 44 * m;
+            const chestY = neckY + 16;
+            const waistW = 28 * m;
+            const waistY = chestY + (70 * m);
+
+            // Torso Contour
+            const torsoGrad = mirrorCtx.createLinearGradient(centerX - shoulderW / 2, chestY, centerX + shoulderW / 2, waistY);
+            torsoGrad.addColorStop(0, '#f87171');
+            torsoGrad.addColorStop(0.5, '#ef4444');
+            torsoGrad.addColorStop(1, '#dc2626');
+            mirrorCtx.fillStyle = torsoGrad;
+
+            mirrorCtx.beginPath();
+            mirrorCtx.moveTo(centerX - shoulderW / 2, chestY);
+            mirrorCtx.lineTo(centerX + shoulderW / 2, chestY);
+            mirrorCtx.lineTo(centerX + waistW / 2, waistY);
+            mirrorCtx.lineTo(centerX - waistW / 2, waistY);
+            mirrorCtx.closePath();
+            mirrorCtx.fill();
+
+            // Chest Pectorals & Abs Definition
+            if (lvl >= 2) {
+                mirrorCtx.strokeStyle = '#991b1b';
+                mirrorCtx.lineWidth = 1.8 + (lvl * 0.15);
+                mirrorCtx.beginPath();
+                // Chest Line
+                mirrorCtx.moveTo(centerX - shoulderW * 0.35, chestY + 18);
+                mirrorCtx.lineTo(centerX + shoulderW * 0.35, chestY + 18);
+                // Center Line
+                mirrorCtx.moveTo(centerX, chestY + 18);
+                mirrorCtx.lineTo(centerX, waistY - 5);
+                // Abs Cuts
+                mirrorCtx.moveTo(centerX - waistW * 0.35, chestY + 38);
+                mirrorCtx.lineTo(centerX + waistW * 0.35, chestY + 38);
+                mirrorCtx.moveTo(centerX - waistW * 0.3, chestY + 54);
+                mirrorCtx.lineTo(centerX + waistW * 0.3, chestY + 54);
+                mirrorCtx.stroke();
+            }
+
+            // Shorts / Waistline
+            const hipY = waistY;
+            const shortsH = 40 * m;
+            mirrorCtx.fillStyle = '#1e293b';
+            mirrorCtx.fillRect(centerX - (waistW / 2) - 4, hipY, waistW + 8, shortsH);
+            mirrorCtx.fillStyle = '#38bdf8';
+            mirrorCtx.fillRect(centerX - (waistW / 2) - 4, hipY, waistW + 8, 6);
+
+            // Legs extending downwards
+            const legW = 12 * m;
+            const legY = hipY + shortsH;
+            mirrorCtx.fillStyle = '#f87171';
+            // Left Leg
+            mirrorCtx.fillRect(centerX - (waistW * 0.3) - legW / 2, legY, legW, 45);
+            // Right Leg
+            mirrorCtx.fillRect(centerX + (waistW * 0.3) - legW / 2, legY, legW, 45);
+
+            // ARMS EXTENDING STRAIGHT DOWN TO WAIST (팔이 일자로 허리까지 오도록 위치 설정)
+            const bicepW = 12 * m;
+            const forearmLen = 45 * m;
+
+            mirrorCtx.fillStyle = '#ef4444';
+
+            if (isPosing) {
+                // Double Bicep Pose
+                mirrorCtx.beginPath();
+                mirrorCtx.ellipse(centerX - shoulderW / 2 - 15, chestY + 10, bicepW, bicepW * 1.3, -0.4, 0, Math.PI * 2);
+                mirrorCtx.fill();
+
+                mirrorCtx.beginPath();
+                mirrorCtx.ellipse(centerX + shoulderW / 2 + 15, chestY + 10, bicepW, bicepW * 1.3, 0.4, 0, Math.PI * 2);
+                mirrorCtx.fill();
+
+                mirrorCtx.fillStyle = '#f59e0b';
+                mirrorCtx.beginPath();
+                mirrorCtx.arc(centerX - shoulderW / 2 - 25, chestY - 20, 14 * m, 0, Math.PI * 2);
+                mirrorCtx.arc(centerX + shoulderW / 2 + 25, chestY - 20, 14 * m, 0, Math.PI * 2);
+                mirrorCtx.fill();
+            } else {
+                // Natural Standing Pose: Arms Hanging Straight Down to Waist
+                // Left Arm
+                mirrorCtx.beginPath();
+                mirrorCtx.roundRect(centerX - shoulderW / 2 - bicepW + 2, chestY, bicepW, forearmLen, bicepW / 2);
+                mirrorCtx.fill();
+
+                // Right Arm
+                mirrorCtx.beginPath();
+                mirrorCtx.roundRect(centerX + shoulderW / 2 - 2, chestY, bicepW, forearmLen, bicepW / 2);
+                mirrorCtx.fill();
+
+                // Boxing Gloves down at Waist / Hip level
+                mirrorCtx.fillStyle = '#f59e0b';
+                mirrorCtx.beginPath();
+                mirrorCtx.arc(centerX - shoulderW / 2 - bicepW / 2 + 2, chestY + forearmLen + 4, 11 * m, 0, Math.PI * 2);
+                mirrorCtx.arc(centerX + shoulderW / 2 + bicepW / 2 - 2, chestY + forearmLen + 4, 11 * m, 0, Math.PI * 2);
+                mirrorCtx.fill();
+            }
+
+            // Title
+            mirrorCtx.fillStyle = '#f59e0b';
+            mirrorCtx.font = 'bold 15px "Black Han Sans"';
+            mirrorCtx.textAlign = 'center';
+            mirrorCtx.fillText(`[ LV.${lvl} ${getBodyRankTitle(lvl)} ]`, centerX, 36);
+
+            requestAnimationFrame(renderMirrorScene);
+        }
+
+        function getBodyRankTitle(lvl) {
+            if (lvl < 3) return "약골 지망생";
+            if (lvl < 6) return "탄탄한 체격";
+            if (lvl < 10) return "근육질 복서";
+            if (lvl < 15) return "보디빌더급 완력가";
+            if (lvl < 20) return "세계 최강 헤비급";
+            return "전설의 신 헤라클레스";
+        }
+
+
+        /* ==================== CANVAS 3: SPARRING ARENA (HARD DIFFICULTY & STRENGTH REQUIREMENT) ==================== */
+        const sparringCanvas = document.getElementById('sparringCanvas');
+        const sparringCtx = sparringCanvas.getContext('2d');
+
+        let playerHp = 100;
+        let playerMaxHp = 100;
+        let rivalHp = 100;
+        let rivalMaxHp = 100;
+        let rivalAttackTimer = null;
+
+        let playerAnimOffset = 0;
+        let rivalAnimOffset = 0;
+        let rivalIsAttacking = false;
+        let playerIsDodging = false;
+        let rivalIsBlocking = false;
+
+        function resizeSparringCanvas() {
+            const rect = sparringCanvas.parentElement.getBoundingClientRect();
+            sparringCanvas.width = rect.width;
+            sparringCanvas.height = rect.height;
+        }
+
+        function setupSparringStage(stageLvl) {
+            const data = RIVALS_DATA[stageLvl - 1];
+            playerMaxHp = 100 + gameState.level * 50;
+            playerHp = playerMaxHp;
+
+            rivalMaxHp = data.hp;
+            rivalHp = rivalMaxHp;
+
+            document.getElementById('rival-name-text').innerText = data.name;
+            document.getElementById('fight-modal-title').innerText = `스파링 관문 ${stageLvl}`;
+
+            // Check Strength Requirement
+            const hasEnoughStrength = gameState.strength >= data.reqStrength;
+
+            if (!hasEnoughStrength) {
+                document.getElementById('fight-modal-desc').innerHTML = `
+                    <span class="text-red-400 font-bold">⚠️ 도전에 필요한 힘이 부족합니다!</span><br>
+                    관문 stageLvl필요힘:<strongclass="text-amber-400">{data.reqStrength.toLocaleString()}</strong><br>
+                    (현재 힘: ${gameState.strength.toLocaleString()})
+                `;
+                document.getElementById('btn-start-fight').disabled = true;
+                document.getElementById('btn-start-fight').className = "bg-slate-700 text-slate-400 font-title text-xl px-8 py-3.5 rounded-2xl cursor-not-allowed opacity-60";
+                document.getElementById('btn-start-fight').innerText = "힘 부족 (샌드백을 치세요)";
+            } else {
+                document.getElementById('fight-modal-desc').innerText = `상대: ${data.name} (체력: ${data.hp.toLocaleString()}, 공격력: ${data.power.toLocaleString()})`;
+                document.getElementById('btn-start-fight').disabled = false;
+                document.getElementById('btn-start-fight').className = "bg-gradient-to-r from-amber-500 to-red-600 hover:from-amber-400 hover:to-red-500 text-slate-950 font-title text-xl px-8 py-3.5 rounded-2xl shadow-2xl border-2 border-amber-300 transform active:scale-95 transition cursor-pointer";
+                document.getElementById('btn-start-fight').innerText = "도전 시작! 🔔";
+            }
+
+            document.getElementById('fight-modal').classList.remove('hidden');
+            updateSparringBars();
+            updateStrengthReqCard();
+        }
+
+        function updateStrengthReqCard() {
+            const stageLvl = gameState.selectedStage;
+            const data = RIVALS_DATA[stageLvl - 1];
+
+            document.getElementById('req-stage-num').innerText = stageLvl;
+            document.getElementById('req-curr-str').innerText = gameState.strength.toLocaleString();
+            document.getElementById('req-target-str').innerText = data.reqStrength.toLocaleString();
+
+            const pct = Math.min(100, (gameState.strength / data.reqStrength) * 100);
+            document.getElementById('req-strength-bar').style.width = `${pct}%`;
+
+            const badge = document.getElementById('req-status-badge');
+            const icon = document.getElementById('req-lock-icon');
+
+            if (gameState.strength >= data.reqStrength) {
+                badge.className = "font-bold text-green-400 bg-green-950/80 px-2.5 py-0.5 rounded-full border border-green-700";
+                badge.innerText = "도전 가능 ✓";
+                icon.className = "fa-solid fa-lock-open text-green-400 mr-1";
+            } else {
+                badge.className = "font-bold text-red-400 bg-red-950/80 px-2.5 py-0.5 rounded-full border border-red-700";
+                badge.innerText = "힘 부족 🔒";
+                icon.className = "fa-solid fa-lock text-red-400 mr-1";
+            }
+        }
+
+        function startSparringMatch() {
+            const data = RIVALS_DATA[gameState.selectedStage - 1];
+            if (gameState.strength < data.reqStrength) return;
+
+            document.getElementById('fight-modal').classList.add('hidden');
+            gameState.inSparring = true;
+
+            sfx.playRingBell();
+
+            clearInterval(rivalAttackTimer);
+
+            // PROGRESSIVE DIFFICULTY SPARRING ATTACK LOOP
+            rivalAttackTimer = setInterval(() => {
+                if (!gameState.inSparring) return;
+
+                // Opponent attack windup
+                rivalIsAttacking = true;
+                rivalAnimOffset = -18;
+
+                setTimeout(() => {
+                    if (!gameState.inSparring) return;
+
+                    if (playerIsDodging) {
+                        sfx.playDodge();
+                    } else {
+                        sfx.playHeavyThudPunch();
+                        playerHp -= data.power;
+                        playerAnimOffset = -25;
+                        if (playerHp <= 0) {
+                            playerHp = 0;
+                            endSparringMatch(false);
+                        }
+                    }
+                    rivalIsAttacking = false;
+                    updateSparringBars();
+                }, Math.max(120, data.speed * 0.25));
+
+            }, data.speed);
+        }
+
+        function triggerPlayerSparringPunch() {
+            if (!gameState.inSparring) return;
+
+            const now = Date.now();
+            if (now - gameState.lastPunchTime < gameState.punchCooldownMs) return;
+            gameState.lastPunchTime = now;
+
+            const data = RIVALS_DATA[gameState.selectedStage - 1];
+
+            // Opponent defensive block chance based on difficulty level
+            const isBlocked = Math.random() * 100 < data.blockRate;
+
+            if (isBlocked) {
+                rivalIsBlocking = true;
+                sfx.playDodge();
+                setTimeout(() => { rivalIsBlocking = false; }, 300);
+            } else {
+                sfx.playHeavyThudPunch();
+                const dmg = gameState.strength;
+                rivalHp -= dmg;
+                rivalAnimOffset = 25;
+
+                if (rivalHp <= 0) {
+                    rivalHp = 0;
+                    endSparringMatch(true);
+                }
+            }
+            updateSparringBars();
+        }
+
+        function triggerPlayerDodge() {
+            if (!gameState.inSparring || playerIsDodging) return;
+            playerIsDodging = true;
+            sfx.playDodge();
+            setTimeout(() => { playerIsDodging = false; }, 550);
+        }
+
+        function endSparringMatch(won) {
+            gameState.inSparring = false;
+            clearInterval(rivalAttackTimer);
+
+            const modal = document.getElementById('fight-modal');
+            const title = document.getElementById('fight-modal-title');
+            const desc = document.getElementById('fight-modal-desc');
+
+            modal.classList.remove('hidden');
+
+            if (won) {
+                sfx.playLevelUp();
+                title.innerText = "🎉 관문 통과 승리!";
+                const goldReward = gameState.selectedStage * 250;
+                gameState.gold += goldReward;
+
+                if (gameState.selectedStage === gameState.level && gameState.level < 20) {
+                    gameState.level++;
+                    if (gameState.level > gameState.maxUnlockedStage) {
+                        gameState.maxUnlockedStage = gameState.level;
+                    }
+                    desc.innerText = `축하합니다! 레벨업 달성 (LV.${gameState.level})! 보상: ${goldReward.toLocaleString()} G`;
+                } else {
+                    desc.innerText = `스파링 승리! 보상: ${goldReward.toLocaleString()} G`;
+                }
+                populateStageSelect();
+            } else {
+                title.innerText = "❌ 패배...";
+                desc.innerText = "상대의 강력한 펀치 공격에 패배했습니다. 샌드백 단련을 더 쌓아 다시 도전해보세요!";
+            }
+            updateUI();
+        }
+
+        function updateSparringBars() {
+            const pPct = Math.max(0, (playerHp / playerMaxHp) * 100);
+            const rPct = Math.max(0, (rivalHp / rivalMaxHp) * 100);
+
+            document.getElementById('player-hp-bar').style.width = `${pPct}%`;
+            document.getElementById('player-hp-text').innerText = `${Math.ceil(playerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`;
+
+            document.getElementById('rival-hp-bar').style.width = `${rPct}%`;
+            document.getElementById('rival-hp-text').innerText = `${Math.ceil(rivalHp).toLocaleString()} / ${rivalMaxHp.toLocaleString()}`;
+        }
+
+        function renderSparringScene() {
+            const w = sparringCanvas.width;
+            const h = sparringCanvas.height;
+
+            sparringCtx.fillStyle = '#0f172a';
+            sparringCtx.fillRect(0, 0, w, h);
+
+            sparringCtx.strokeStyle = '#ef4444';
+            sparringCtx.lineWidth = 4;
+            sparringCtx.beginPath();
+            sparringCtx.moveTo(0, h * 0.4);
+            sparringCtx.lineTo(w, h * 0.4);
+            sparringCtx.moveTo(0, h * 0.5);
+            sparringCtx.lineTo(w, h * 0.5);
+            sparringCtx.stroke();
+
+            sparringCtx.fillStyle = '#1e293b';
+            sparringCtx.fillRect(0, h * 0.55, w, h * 0.45);
+
+            playerAnimOffset *= 0.8;
+            rivalAnimOffset *= 0.8;
+
+            const playerX = w * 0.3 + (playerIsDodging ? -45 : 0) + playerAnimOffset;
+            const playerY = h * 0.7;
+
+            // Player Avatar
+            sparringCtx.save();
+            sparringCtx.translate(playerX, playerY);
+
+            sparringCtx.fillStyle = '#3b82f6';
+            sparringCtx.beginPath();
+            sparringCtx.arc(0, -60, 22, 0, Math.PI * 2);
+            sparringCtx.fill();
+
+            sparringCtx.fillRect(-20, -35, 40, 50);
+
+            sparringCtx.fillStyle = '#f59e0b';
+            sparringCtx.beginPath();
+            sparringCtx.arc(22, -25, 14, 0, Math.PI * 2);
+            sparringCtx.fill();
+
+            sparringCtx.restore();
+
+            // Rival Avatar
+            const rivalX = w * 0.7 + rivalAnimOffset + (rivalIsAttacking ? -30 : 0);
+            const rivalY = h * 0.7;
+
+            sparringCtx.save();
+            sparringCtx.translate(rivalX, rivalY);
+
+            sparringCtx.fillStyle = '#ef4444';
+            sparringCtx.beginPath();
+            sparringCtx.arc(0, -60, 24, 0, Math.PI * 2);
+            sparringCtx.fill();
+
+            sparringCtx.fillRect(-22, -35, 44, 50);
+
+            if (rivalIsBlocking) {
+                // Guard Shield
+                sparringCtx.fillStyle = '#38bdf8';
+                sparringCtx.fillRect(-35, -50, 10, 40);
+            }
+
+            sparringCtx.fillStyle = '#dc2626';
+            sparringCtx.beginPath();
+            sparringCtx.arc(rivalIsAttacking ? -40 : -24, -25, 16, 0, Math.PI * 2);
+            sparringCtx.fill();
+
+            sparringCtx.restore();
+
+            requestAnimationFrame(renderSparringScene);
+        }
+
+
+        /* ==================== UPGRADES & UI MANAGEMENT ==================== */
+        function buyUpgrade(type) {
+            const upg = gameState.upgrades[type];
+            if (gameState.gold >= upg.cost) {
+                gameState.gold -= upg.cost;
+                upg.level++;
+
+                if (type === 'power') {
+                    upg.bonus += 2;
+                    upg.cost = Math.floor(upg.cost * 1.5);
+                } else if (type === 'auto') {
+                    upg.bonus += 1;
+                    upg.cost = Math.floor(upg.cost * 1.6);
+                } else if (type === 'glove') {
+                    upg.bonus += 15;
+                    upg.cost = Math.floor(upg.cost * 1.7);
+                } else if (type === 'crit') {
+                    upg.rate = Math.min(50, upg.rate + 3);
+                    upg.cost = Math.floor(upg.cost * 1.8);
+                }
+
+                updateUI();
+            }
+        }
+
+        function populateStageSelect() {
+            const select = document.getElementById('stage-select');
+            select.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                const isUnlocked = i <= gameState.maxUnlockedStage;
+                const reqStr = RIVALS_DATA[i-1].reqStrength;
+                opt.text = `관문 ${i}: ${RIVALS_DATA[i-1].name} (필요힘: ${reqStr.toLocaleString()}) ${isUnlocked ? '' : '🔒'}`;
+                opt.disabled = !isUnlocked;
+                if (i === gameState.selectedStage) opt.selected = true;
+                select.appendChild(opt);
+            }
+        }
+
+        function onStageSelectChange() {
+            const val = parseInt(document.getElementById('stage-select').value);
+            gameState.selectedStage = val;
+            setupSparringStage(val);
+        }
+
+        function switchMode(mode) {
+            document.getElementById('mode-bag').classList.add('hidden');
+            document.getElementById('mode-mirror').classList.add('hidden');
+            document.getElementById('mode-sparring').classList.add('hidden');
+
+            ['bag', 'mirror', 'sparring'].forEach(m => {
+                const btn = document.getElementById(`tab-btn-${m}`);
+                btn.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-slate-800 text-slate-300 hover:bg-slate-700';
+            });
+
+            document.getElementById(`mode-${mode}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${mode}`);
+            activeBtn.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 text-white shadow-md';
+
+            if (mode === 'bag') resizeBagCanvas();
+            if (mode === 'mirror') resizeMirrorCanvas();
+            if (mode === 'sparring') {
+                resizeSparringCanvas();
+                setupSparringStage(gameState.selectedStage);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('stat-level').innerText = gameState.level;
+            document.getElementById('stat-strength').innerText = gameState.strength.toLocaleString();
+            document.getElementById('stat-gold').innerText = gameState.gold.toLocaleString();
+
+            document.getElementById('upg-power-lvl').innerText = gameState.upgrades.power.level;
+            document.getElementById('upg-power-bonus').innerText = gameState.upgrades.power.bonus;
+            document.getElementById('upg-power-cost').innerText = gameState.upgrades.power.cost.toLocaleString();
+
+            document.getElementById('upg-auto-lvl').innerText = gameState.upgrades.auto.level;
+            document.getElementById('upg-auto-bonus').innerText = gameState.upgrades.auto.bonus;
+            document.getElementById('upg-auto-cost').innerText = gameState.upgrades.auto.cost.toLocaleString();
+
+            document.getElementById('upg-glove-lvl').innerText = gameState.upgrades.glove.level;
+            document.getElementById('upg-glove-bonus').innerText = gameState.upgrades.glove.bonus;
+            document.getElementById('upg-glove-cost').innerText = gameState.upgrades.glove.cost.toLocaleString();
+
+            document.getElementById('upg-crit-lvl').innerText = gameState.upgrades.crit.level;
+            document.getElementById('upg-crit-rate').innerText = gameState.upgrades.crit.rate;
+            document.getElementById('upg-crit-cost').innerText = gameState.upgrades.crit.cost.toLocaleString();
+
+            document.getElementById('mirror-body-rank').innerText = getBodyRankTitle(gameState.level);
+            document.getElementById('mirror-level').innerText = `LV.${gameState.level}`;
+            document.getElementById('mirror-strength').innerText = gameState.strength.toLocaleString();
+            document.getElementById('mirror-progress-bar').style.width = `${Math.min(100, (gameState.level / 20) * 100)}%`;
+            document.getElementById('mirror-next-rank-text').innerText = gameState.level < 20 ? `다음 스파링 관문 LV.${gameState.level + 1} 필요` : '최고 레벨 달성!';
+
+            updateStrengthReqCard();
+        }
+
+
+        /* ==================== FULL SOURCE CODE COPY & DOWNLOAD ==================== */
+        function openCodeModal() {
+            const htmlSource = document.documentElement.outerHTML;
+            const textarea = document.getElementById('code-textarea');
+            textarea.value = "<!DOCTYPE html>\n" + htmlSource;
+            document.getElementById('code-modal').classList.remove('hidden');
+        }
+
+        function closeCodeModal() {
+            document.getElementById('code-modal').classList.add('hidden');
+            document.getElementById('copy-alert').classList.add('hidden');
+        }
+
+        function copySourceCode() {
+            const textarea = document.getElementById('code-textarea');
+            textarea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    const alertEl = document.getElementById('copy-alert');
+                    alertEl.classList.remove('hidden');
+                    setTimeout(() => { alertEl.classList.add('hidden'); }, 3000);
+                }
+            } catch (err) {
+                console.error("복사 실패:", err);
+            }
+        }
+
+        function downloadSourceCode() {
+            const codeText = document.getElementById('code-textarea').value;
+            const blob = new Blob([codeText], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'PowerUpBoxing_FullGame.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+
+        /* ==================== INITIALIZATION ==================== */
+        window.addEventListener('load', () => {
+            resizeBagCanvas();
+            resizeMirrorCanvas();
+            resizeSparringCanvas();
+
+            populateStageSelect();
+            updateUI();
+
+            requestAnimationFrame(renderBagScene);
+            requestAnimationFrame(renderMirrorScene);
+            requestAnimationFrame(renderSparringScene);
+
+            // Auto-puncher loop
+            setInterval(() => {
+                if (gameState.upgrades.auto.bonus > 0) {
+                    for (let i = 0; i < gameState.upgrades.auto.bonus; i++) {
+                        triggerBagPunch(i % 2 === 0 ? 'left' : 'right');
+                    }
+                }
+            }, 1000);
+        });
+
+        window.addEventListener('resize', () => {
+            resizeBagCanvas();
+            resizeMirrorCanvas();
+            resizeSparringCanvas();
+        });
+
+        bagCanvas.addEventListener('pointerdown', (e) => {
+            const rect = bagCanvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            triggerBagPunch(clickX < rect.width / 2 ? 'left' : 'right');
+        });
+
+        document.getElementById('btn-punch-left').addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerBagPunch('left');
+        });
+        document.getElementById('btn-punch-right').addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerBagPunch('right');
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowLeft') {
+                triggerBagPunch('left');
+            } else if (e.code === 'ArrowRight') {
+                triggerBagPunch('right');
+            }
+        });
+    </script>
+
+</body></html>

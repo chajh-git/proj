@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON ARENA FPS</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#05060d;color:white;font-family:Arial,sans-serif}
+canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}
+#stats{position:absolute;top:15px;left:15px;font-size:19px;line-height:1.8;text-shadow:0 0 8px cyan}
+#health{width:200px;height:15px;border:2px solid cyan}
+#bar{height:100%;width:100%;background:#00ffaa}
+#ammo{position:absolute;bottom:20px;right:20px;font-size:28px}
+#cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:cyan;font-size:25px}
+#menu{position:fixed;inset:0;background:#05060dee;display:flex;align-items:center;justify-content:center;text-align:center;z-index:5}
+.panel{padding:30px;max-width:650px}
+h1{font-size:clamp(38px,8vw,76px);color:cyan;text-shadow:0 0 25px cyan}
+button{background:#00ddeb;color:#001018;border:0;border-radius:8px;padding:14px 25px;font-weight:bold;font-size:18px;cursor:pointer}
+p{line-height:1.9;color:#d6e9ff}
+#message{color:#ffdf58}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="stats">
+    <div>NEON ARENA</div>
+    <div id="score">점수: 0</div>
+    <div id="wave">웨이브: 1</div>
+    <div id="health"><div id="bar"></div></div>
+    <div id="hptext">체력: 100</div>
+  </div>
+  <div id="cross">+</div>
+  <div id="ammo">탄약: 30 / 90</div>
+</div>
+
+<div id="menu">
+  <div class="panel">
+    <h1>NEON ARENA</h1>
+    <p>
+      3D 생존 FPS<br>
+      WASD: 이동 · 마우스: 시점 조절<br>
+      클릭 또는 Enter: 발사 · R: 재장전<br>
+      Shift: 대시 · Space: 점프<br>
+      적을 처치하고 최대한 오래 생존하세요!
+    </p>
+    <button id="start">게임 시작</button>
+    <p id="message"></p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+
+const $ = id => document.getElementById(id);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05060d);
+scene.fog = new THREE.Fog(0x05060d, 18, 65);
+
+const camera = new THREE.PerspectiveCamera(
+  80, innerWidth / innerHeight, 0.1, 100
+);
+camera.rotation.order = 'YXZ';
+scene.add(camera);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0x66aaff, 0x220033, 1.5));
+
+const light = new THREE.PointLight(0x00ffff, 2, 50);
+light.position.set(0, 10, 0);
+scene.add(light);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(60,60),
+  new THREE.MeshStandardMaterial({color:0x101426})
+);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+scene.add(new THREE.GridHelper(60,30,0x00ffff,0x19284b));
+
+const obstacles = [];
+function makeBox(x,z,w,h,d,color) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({
+      color, emissive:color, emissiveIntensity:.18
+    })
+  );
+  mesh.position.set(x,h/2,z);
+  scene.add(mesh);
+  obstacles.push({x,z,w,d,mesh});
+}
+[
+  [8,8,4,4],[ -9,6,3,5],[10,-10,5,3],
+  [-8,-12,4,4],[0,-4,3,3],[17,0,4,5],
+  [-18,3,4,4],[0,18,5,3]
+].forEach(([x,z,w,d],i)=>
+  makeBox(x,z,w,3,d,i%2?0xff2288:0x22ccff)
+);
+
+const player = {
+  x:0,z:12,y:1.7,vy:0,hp:100,
+  yaw:0,pitch:0
+};
+
+let playing=false,dead=false;
+let score=0,wave=1,ammo=30,reserve=90;
+let reloading=false,reloadTime=0,fireCooldown=0;
+let spawnLeft=5,spawnTimer=0,damageTimer=0,dashCooldown=0;
+const keys={};
+const enemies=[];
+const projectiles=[];
+const raycaster=new THREE.Raycaster();
+const center=new THREE.Vector2(0,0);
+
+function movePlayer(dx,dz) {
+  let x=player.x+dx,z=player.z+dz;
+  x=Math.max(-28,Math.min(28,x));
+  z=Math.max(-28,Math.min(28,z));
+
+  for(const o of obstacles) {
+    if(Math.abs(x-o.x)<o.w/2+.5 &&
+       Math.abs(z-o.z)<o.d/2+.5) return;
+  }
+  player.x=x;
+  player.z=z;
+}
+
+function spawnEnemy() {
+  const angle=Math.random()*Math.PI*2;
+  const distance=18+Math.random()*8;
+  const types=[
+    {hp:40,speed:2.5,color:0xff3344,damage:10},
+    {hp:70,speed:1.7,color:0xff8800,damage:18},
+    {hp:25,speed:3.2,color:0xaa44ff,damage:7}
+  ];
+  const t=types[Math.random()<.2?1:Math.random()<.5?2:0];
+  const mesh=new THREE.Mesh(
+    new THREE.BoxGeometry(.9,1.5,.9),
+    new THREE.MeshStandardMaterial({
+      color:t.color,emissive:t.color,emissiveIntensity:.35
+    })
+  );
+  const x=player.x+Math.cos(angle)*distance;
+  const z=player.z+Math.sin(angle)*distance;
+  mesh.position.set(x,.75,z);
+  scene.add(mesh);
+  enemies.push({...t,mesh,x,z,hp:t.hp,maxHp:t.hp});
+}
+
+function removeEnemy(e) {
+  scene.remove(e.mesh);
+  const i=enemies.indexOf(e);
+  if(i>=0) enemies.splice(i,1);
+  score+=100;
+  $('score').textContent='점수: '+score;
+}
+
+function shoot() {
+  if(!playing || dead || fireCooldown>0 || reloading) return;
+  if(ammo<=0) { reload(); return; }
+
+  ammo--;
+  fireCooldown=.15;
+  $('ammo').textContent=`탄약: ${ammo} / ${reserve}`;
+
+  raycaster.setFromCamera(center,camera);
+  const targets=enemies.map(e=>e.mesh);
+  const hits=raycaster.intersectObjects(targets,false);
+
+  if(hits.length) {
+    const enemy=enemies.find(e=>e.mesh===hits[0].object);
+    if(enemy) {
+      enemy.hp-=25;
+      enemy.mesh.material.emissiveIntensity=1.5;
+      setTimeout(()=>{
+        if(enemy.mesh.parent)
+          enemy.mesh.material.emissiveIntensity=.35;
+      },80);
+      if(enemy.hp<=0) removeEnemy(enemy);
+    }
+  }
+  if(ammo===0) reload();
+}
+
+function reload() {
+  if(reloading || ammo===30 || reserve<=0) return;
+  reloading=true;
+  reloadTime=1.2;
+  $('ammo').textContent='재장전 중...';
+}
+
+function hurt(amount) {
+  player.hp=Math.max(0,player.hp-amount);
+  $('bar').style.width=player.hp+'%';
+  $('hptext').textContent='체력: '+player.hp;
+
+  if(player.hp<=0) endGame();
+}
+
+function endGame() {
+  dead=true;
+  playing=false;
+  $('menu').style.display='flex';
+  $('start').textContent='다시 시작';
+  $('message').textContent=`게임 종료! 점수: ${score}`;
+  if(document.pointerLockElement) document.exitPointerLock();
+}
+
+function resetGame() {
+  enemies.forEach(e=>scene.remove(e.mesh));
+  enemies.length=0;
+  projectiles.forEach(p=>scene.remove(p.mesh));
+  projectiles.length=0;
+
+  Object.assign(player,{
+    x:0,z:12,y:1.7,vy:0,hp:100,yaw:0,pitch:0
+  });
+  score=0;wave=1;ammo=30;reserve=90;
+  reloading=false;reloadTime=0;
+  fireCooldown=0;spawnLeft=5;spawnTimer=0;
+  damageTimer=0;dashCooldown=0;dead=false;
+
+  $('score').textContent='점수: 0';
+  $('wave').textContent='웨이브: 1';
+  $('bar').style.width='100%';
+  $('hptext').textContent='체력: 100';
+  $('ammo').textContent='탄약: 30 / 90';
+}
+
+function startGame() {
+  if(typeof THREE==='undefined') {
+    $('message').textContent='3D 엔진을 불러오지 못했습니다. 인터넷 연결을 확인하세요.';
+    return;
+  }
+  if(dead || !playing) resetGame();
+  playing=true;
+  $('menu').style.display='none';
+
+  // Pointer Lock은 HTTPS 웹사이트나 localhost에서 사용하는 것이 좋습니다.
+  if(renderer.domElement.requestPointerLock) {
+    try { renderer.domElement.requestPointerLock(); } catch(e) {}
+  }
+}
+
+$('start').addEventListener('click',startGame);
+
+document.addEventListener('pointerlockchange',()=>{
+  if(!document.pointerLockElement && playing && !dead) {
+    playing=false;
+    $('menu').style.display='flex';
+    $('start').textContent='계속하기';
+    $('message').textContent='일시정지 — 버튼을 눌러 계속하세요.';
+  }
+});
+
+document.addEventListener('pointerlockerror',()=>{
+  $('message').textContent='마우스 잠금이 제한되었습니다. 버튼을 눌러 계속할 수 있습니다.';
+});
+
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Enter') shoot();
+  if(e.code==='KeyR') reload();
+
+  if(e.code==='Space') {
+    e.preventDefault();
+    if(player.y<=1.71 && playing) player.vy=7;
+  }
+  if(e.code==='ShiftLeft' && playing && dashCooldown<=0) {
+    const forwardX=-Math.sin(player.yaw);
+    const forwardZ=-Math.cos(player.yaw);
+    movePlayer(forwardX*3,forwardZ*3);
+    dashCooldown=1.6;
+  }
+});
+document.addEventListener('keyup',e=>keys[e.code]=false);
+
+document.addEventListener('mousemove',e=>{
+  if(!playing || !document.pointerLockElement) return;
+  player.yaw-=e.movementX*.002;
+  player.pitch-=e.movementY*.002;
+  player.pitch=Math.max(-1.45,Math.min(1.45,player.pitch));
+});
+
+renderer.domElement.addEventListener('click',()=>{
+  if(playing && !document.pointerLockElement) {
+    try { renderer.domElement.requestPointerLock(); } catch(e) {}
+  } else if(playing) shoot();
+});
+
+function update(dt) {
+  if(!playing || dead) return;
+
+  fireCooldown=Math.max(0,fireCooldown-dt);
+  dashCooldown=Math.max(0,dashCooldown-dt);
+
+  if(keys.Enter) shoot();
+
+  if(reloading) {
+    reloadTime-=dt;
+    if(reloadTime<=0) {
+      const amount=Math.min(30-ammo,reserve);
+      ammo+=amount;
+      reserve-=amount;
+      reloading=false;
+      $('ammo').textContent=`탄약: ${ammo} / ${reserve}`;
+    }
+  }
+
+  let forward=(keys.KeyW?1:0)-(keys.KeyS?1:0);
+  let side=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+  const length=Math.hypot(forward,side)||1;
+  forward/=length;side/=length;
+
+  const dx=(-Math.sin(player.yaw)*forward+
+             Math.cos(player.yaw)*side)*7*dt;
+  const dz=(-Math.cos(player.yaw)*forward-
+             Math.sin(player.yaw)*side)*7*dt;
+  movePlayer(dx,dz);
+
+  player.vy-=20*dt;
+  player.y+=player.vy*dt;
+  if(player.y<1.7) {
+    player.y=1.7;
+    player.vy=0;
+  }
+
+  camera.position.set(player.x,player.y,player.z);
+  camera.rotation.set(player.pitch,player.yaw,0);
+
+  spawnTimer-=dt;
+  if(spawnLeft>0 && spawnTimer<=0) {
+    spawnEnemy();
+    spawnLeft--;
+    spawnTimer=.8;
+  }
+
+  if(spawnLeft===0 && enemies.length===0) {
+    wave++;
+    spawnLeft=4+wave*2;
+    player.hp=Math.min(100,player.hp+15);
+    $('bar').style.width=player.hp+'%';
+    $('hptext').textContent='체력: '+player.hp;
+    $('wave').textContent='웨이브: '+wave;
+  }
+
+  for(const e of [...enemies]) {
+    const dx=player.x-e.x,dz=player.z-e.z;
+    const d=Math.hypot(dx,dz)||1;
+    if(d>1.25) {
+      e.x+=dx/d*e.speed*dt;
+      e.z+=dz/d*e.speed*dt;
+      e.mesh.position.set(e.x,.75,e.z);
+      e.mesh.rotation.y=Math.atan2(dx,dz);
+    } else {
+      damageTimer-=dt;
+      if(damageTimer<=0) {
+        hurt(e.damage);
+        damageTimer=.7;
+      }
+    }
+  }
+}
+
+const clock=new THREE.Clock();
+function loop() {
+  requestAnimationFrame(loop);
+  const dt=Math.min(clock.getDelta(),.05);
+  update(dt);
+  renderer.render(scene,camera);
+}
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+loop();
+})();
+</script>
+</body>
+</html>

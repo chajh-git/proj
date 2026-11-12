@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>길 건너 친구들</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #101827;
+  color: white;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+h1 {
+  font-size: 25px;
+  margin: 12px 5px;
+}
+
+#game {
+  width: 100%;
+  height: 58vh;
+  min-height: 330px;
+  display: block;
+}
+
+.hud {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+}
+
+.info {
+  background: #253550;
+  padding: 9px 13px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.settings {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+}
+
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #1d2a40;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+select, input, button {
+  padding: 9px;
+  border: 0;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+button {
+  cursor: pointer;
+  font-weight: bold;
+  background: #64e6b0;
+  color: #10251e;
+  margin: 4px;
+}
+
+.control {
+  background: #293c5a;
+  color: white;
+  min-width: 65px;
+  font-size: 18px;
+}
+
+#jump {
+  background: #ffce54;
+  color: #332400;
+  min-width: 100px;
+}
+
+#message {
+  min-height: 24px;
+  color: #ffdf75;
+  font-weight: bold;
+}
+
+.help {
+  color: #c5d0e1;
+  font-size: 13px;
+  padding: 0 8px 12px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🧱 블록 인간의 3D 도로 모험</h1>
+
+<div class="hud">
+  <div class="info">점수: <span id="score">0</span></div>
+  <div class="info">최고기록: <span id="best">0</span></div>
+  <div class="info">속도: <span id="speed">1.0</span>x</div>
+</div>
+
+<div class="settings">
+  <label>
+    자동차
+    <select id="carType">
+      <option value="mixed">모든 종류</option>
+      <option value="sedan">승용차</option>
+      <option value="sport">스포츠카</option>
+      <option value="truck">트럭</option>
+      <option value="bus">버스</option>
+      <option value="van">밴</option>
+    </select>
+  </label>
+
+  <label>
+    캐릭터 색
+    <input type="color" id="skin" value="#3f9cff">
+  </label>
+
+  <label>
+    옷 색
+    <input type="color" id="shirt" value="#ffcf52">
+  </label>
+
+  <label>
+    모자
+    <select id="hat">
+      <option value="none">없음</option>
+      <option value="cap">야구 모자</option>
+      <option value="helmet">안전모</option>
+      <option value="crown">왕관</option>
+    </select>
+  </label>
+</div>
+
+<div id="game"></div>
+
+<div>
+  <button id="start">게임 시작</button>
+  <button id="sound">🔊 소리 켜짐</button>
+</div>
+
+<div>
+  <button class="control" onclick="move(-1,0)">⬅️</button>
+  <button class="control" onclick="move(0,-1)">⬆️</button>
+  <button class="control" onclick="move(0,1)">⬇️</button>
+  <button class="control" onclick="move(1,0)">➡️</button>
+  <button id="jump" onclick="jump()">🦘 점프</button>
+</div>
+
+<p id="message">게임 시작을 누르고 도로를 달려 보세요!</p>
+<p class="help">
+  방향키 또는 WASD로 이동 · 스페이스바로 점프<br>
+  자동차에 닿으면 게임 종료! 점수가 높아질수록 자동차가 빨라져요.
+</p>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
+<script>
+(() => {
+  const container = document.getElementById("game");
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x91d3ff);
+  scene.fog = new THREE.Fog(0x91d3ff, 35, 110);
+
+  const camera = new THREE.PerspectiveCamera(
+    60, 1, 0.1, 200
+  );
+
+  camera.position.set(0, 8, 14);
+  camera.lookAt(0, 1, -8);
+
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true
+  });
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  container.appendChild(renderer.domElement);
+
+  function resize() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  window.addEventListener("resize", resize);
+  resize();
+
+  // 조명
+  scene.add(
+    new THREE.HemisphereLight(0xffffff, 0x526044, 2)
+  );
+
+  const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+  sun.position.set(-8, 16, 8);
+  sun.castShadow = true;
+  scene.add(sun);
+
+  const material = color =>
+    new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.75
+    });
+
+  // 상자 형태의 3D 물체
+  function block(parent, w, h, d, color, x, y, z) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      material(color)
+    );
+
+    mesh.position.set(x, y, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+
+    return mesh;
+  }
+
+  // 잔디
+  const grass = new THREE.Mesh(
+    new THREE.PlaneGeometry(180, 240),
+    material(0x59a65c)
+  );
+
+  grass.rotation.x = -Math.PI / 2;
+  grass.position.set(0, -0.15, -40);
+  scene.add(grass);
+
+  // 도로
+  const road = new THREE.Mesh(
+    new THREE.BoxGeometry(9, 0.2, 180),
+    material(0x343943)
+  );
+
+  road.position.set(0, -0.04, -45);
+  road.receiveShadow = true;
+  scene.add(road);
+
+  // 도로 가장자리
+  for (const x of [-4.6, 4.6]) {
+    const curb = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.22, 180),
+      material(0xe0e2e5)
+    );
+
+    curb.position.set(x, 0, -45);
+    scene.add(curb);
+  }
+
+  // 움직이는 도로 중앙선
+  const roadLines = [];
+
+  for (const x of [-1.25, 1.25]) {
+    for (let z = -110; z < 20; z += 5) {
+      const line = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.03, 2.2),
+        material(0xfff0b0)
+      );
+
+      line.position.set(x, 0.09, z);
+      line.userData.isRoadLine = true;
+
+      scene.add(line);
+      roadLines.push(line);
+    }
+  }
+
+  // 나무
+  const scenery = [];
+
+  for (let z = -110; z < 20; z += 8) {
+    for (const side of [-1, 1]) {
+      const x = side * (6 + Math.random() * 3);
+
+      const tree = new THREE.Group();
+
+      block(
+        tree, 0.35, 1.3, 0.35,
+        0x795136, 0, 0.65, 0
+      );
+
+      const leaves = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(0.9, 1),
+        material([0x2f8849, 0x379d4f, 0x4c9b3d][
+          Math.floor(Math.random() * 3)
+        ])
+      );
+
+      leaves.position.y = 1.7;
+      tree.add(leaves);
+
+      tree.position.set(x, 0, z);
+      scene.add(tree);
+      scenery.push(tree);
+    }
+  }
+
+  // 캐릭터
+  let player;
+  let lane = 1;
+  const lanes = [-2.5, 0, 2.5];
+  const playerZ = 4;
+
+  let jumpHeight = 0;
+  let jumpVelocity = 0;
+  let isJumping = false;
+
+  function createPlayer() {
+    if (player) scene.remove(player);
+
+    player = new THREE.Group();
+
+    const skin = document.getElementById("skin").value;
+    const shirt = document.getElementById("shirt").value;
+    const hat = document.getElementById("hat").value;
+
+    // 머리
+    block(player, 0.52, 0.52, 0.46,
+      skin, 0, 1.95, 0);
+
+    // 눈
+    block(player, 0.1, 0.1, 0.06,
+      0x17202d, -0.13, 2.0, -0.24);
+
+    block(player, 0.1, 0.1, 0.06,
+      0x17202d, 0.13, 2.0, -0.24);
+
+    // 몸통
+    block(player, 0.8, 0.82, 0.45,
+      shirt, 0, 0.88, 0);
+
+    // 팔
+    block(player, 0.23, 0.65, 0.3,
+      skin, -0.53, 0.88, 0);
+
+    block(player, 0.23, 0.65, 0.3,
+      skin, 0.53, 0.88, 0);
+
+    // 다리
+    block(player, 0.28, 0.65, 0.32,
+      0x293b56, -0.2, 0.25, 0);
+
+    block(player, 0.28, 0.65, 0.32,
+      0x293b56, 0.2, 0.25, 0);
+
+    // 모자
+    if (hat === "cap") {
+      block(player, 0.62, 0.12, 0.5,
+        0x173f79, 0, 2.25, 0);
+
+      block(player, 0.5, 0.06, 0.35,
+        0x173f79, 0, 2.19, -0.22);
+    }
+
+    if (hat === "helmet") {
+      block(player, 0.65, 0.18, 0.55,
+        0xffce36, 0, 2.25, 0);
+
+      block(player, 0.72, 0.06, 0.6,
+        0xffce36, 0, 2.15, 0);
+    }
+
+    if (hat === "crown") {
+      block(player, 0.55, 0.12, 0.4,
+        0xffd52a, 0, 2.23, 0);
+
+      for (const x of [-0.2, 0, 0.2]) {
+        block(player, 0.1, 0.18, 0.1,
+          0xffd52a, x, 2.37, 0);
+      }
+    }
+
+    player.position.set(lanes[lane], 0, playerZ);
+    scene.add(player);
+  }
+
+  // 소리
+  let soundOn = true;
+  let audioContext;
+
+  function sound(freq = 440, duration = 0.12, type = "sine") {
+    if (!soundOn) return;
+
+    try {
+      audioContext ||= new (
+        window.AudioContext ||
+        window.webkitAudioContext
+      )();
+
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = type;
+      oscillator.frequency.setValueAtTime(
+        freq, audioContext.currentTime
+      );
+
+      gain.gain.setValueAtTime(
+        0.06, audioContext.currentTime
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.001, audioContext.currentTime + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + duration);
+    } catch (e) {}
+  }
+
+  // 자동차
+  let cars = [];
+
+  function makeCar() {
+    const selected = document.getElementById("carType").value;
+
+    const type = selected === "mixed"
+      ? ["sedan", "sport", "truck", "bus", "van"][
+          Math.floor(Math.random() * 5)
+        ]
+      : selected;
+
+    const colors = [
+      0xe84a4a, 0x2878e8, 0xffc928,
+      0x43b86c, 0x9a67d8, 0xf0f0f0,
+      0x252b36, 0xff7b36, 0xff76b5
+    ];
+
+    const color = colors[
+      Math.floor(Math.random() * colors.length)
+    ];
+
+    const car = new THREE.Group();
+
+    let width = 1.4;
+    let length = 2.8;
+    let height = 0.9;
+
+    if (type === "sport") {
+      width = 1.4;
+      length = 2.6;
+      height = 0.65;
+    }
+
+    if (type === "truck") {
+      width = 1.7;
+      length = 3.7;
+      height = 1.2;
+    }
+
+    if (type === "bus") {
+      width = 1.8;
+      length = 4.0;
+      height = 1.5;
+    }
+
+    if (type === "van") {
+      width = 1.5;
+      length = 3.0;
+      height = 1.2;
+    }
+
+    // 차체
+    block(car, width, height, length,
+      color, 0, height / 2 + 0.12, 0);
+
+    // 창문
+    block(car, width * 0.76, height * 0.45,
+      length * 0.38, 0x9adcf5,
+      0, height + 0.12, -0.1);
+
+    // 트럭 적재함
+    if (type === "truck") {
+      block(car, width, 0.85, 1.5,
+        0xc3cbd4, 0, height + 0.5, -0.65);
+    }
+
+    // 버스 창문
+    if (type === "bus") {
+      for (let z = -1.2; z <= 1.2; z += 0.6) {
+        block(car, width + 0.02, 0.35, 0.35,
+          0x9adcf5, 0, height + 0.18, z);
+      }
+    }
+
+    // 앞 범퍼
+    block(car, width * 0.9, 0.12, 0.12,
+      0x252b34, 0, 0.2, length / 2);
+
+    // 바퀴
+    for (const x of [-width * 0.42, width * 0.42]) {
+      for (const z of [-length * 0.32, length * 0.32]) {
+        const wheel = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.22, 0.22, 0.16, 12),
+          material(0x17191e)
+        );
+
+        wheel.rotation.z = Math.PI / 2;
+        wheel.position.set(x, 0.25, z);
+        car.add(wheel);
+      }
+    }
+
+    const carLane = Math.floor(Math.random() * 3);
+
+    car.userData = {
+      lane: carLane,
+      type: type,
+      passed: false
+    };
+
+    car.position.set(
+      lanes[carLane],
+      0,
+      -45 - Math.random() * 30
+    );
+
+    scene.add(car);
+    cars.push(car);
+  }
+
+  // 게임 상태
+  let running = false;
+  let score = 0;
+  let best = Number(
+    localStorage.getItem("block3dBest") || 0
+  );
+
+  let spawnTimer = 0;
+  let lastTime = 0;
+  let elapsed = 0;
+  let currentSpeed = 9;
+
+  document.getElementById("best").textContent = best;
+
+  // 이동
+  window.move = function(dx, dz) {
+    if (!running) return;
+
+    if (dx !== 0) {
+      lane = Math.max(0, Math.min(2, lane + dx));
+      player.position.x = lanes[lane];
+      sound(330, 0.06, "square");
+    }
+
+    if (dz !== 0) {
+      player.position.z = Math.max(
+        0, Math.min(7, player.position.z + dz)
+      );
+      sound(380, 0.06);
+    }
+  };
+
+  // 점프
+  window.jump = function() {
+    if (!running || isJumping) return;
+
+    isJumping = true;
+    jumpVelocity = 8;
+    sound(600, 0.16, "triangle");
+  };
+
+  function startGame() {
+    cars.forEach(car => scene.remove(car));
+    cars = [];
+
+    score = 0;
+    lane = 1;
+    elapsed = 0;
+    spawnTimer = 0;
+    currentSpeed = 9;
+
+    jumpHeight = 0;
+    jumpVelocity = 0;
+    isJumping = false;
+
+    createPlayer();
+
+    running = true;
+
+    document.getElementById("score").textContent = 0;
+    document.getElementById("speed").textContent = "1.0";
+    document.getElementById("message").textContent =
+      "자동차를 피하면서 최고기록에 도전하세요!";
+
+    sound(600, 0.12, "triangle");
+  }
+
+  function endGame() {
+    running = false;
+
+    sound(150, 0.4, "sawtooth");
+
+    if (score > best) {
+      best = score;
+      localStorage.setItem("block3dBest", String(best));
+
+      document.getElementById("best").textContent = best;
+    }
+
+    document.getElementById("message").textContent =
+      `게임 종료! 점수 ${score}점 · 최고기록 ${best}점`;
+
+    document.getElementById("start").textContent = "다시 도전";
+  }
+
+  document.getElementById("start").onclick = startGame;
+
+  document.getElementById("sound").onclick = function() {
+    soundOn = !soundOn;
+
+    this.textContent = soundOn
+      ? "🔊 소리 켜짐"
+      : "🔇 소리 꺼짐";
+
+    if (soundOn) sound(500, 0.1);
+  };
+
+  // 캐릭터 꾸미기
+  ["skin", "shirt", "hat"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      createPlayer();
+    });
+  });
+
+  // 키보드 조작
+  document.addEventListener("keydown", event => {
+    const key = event.key.toLowerCase();
+
+    if (
+      ["arrowleft", "arrowright", "arrowup",
+       "arrowdown", " "].includes(key)
+    ) {
+      event.preventDefault();
+    }
+
+    if (key === "arrowleft" || key === "a") move(-1, 0);
+    if (key === "arrowright" || key === "d") move(1, 0);
+    if (key === "arrowup" || key === "w") move(0, -1);
+    if (key === "arrowdown" || key === "s") move(0, 1);
+    if (key === " ") jump();
+  });
+
+  // 게임 반복
+  function animate(time) {
+    requestAnimationFrame(animate);
+
+    const dt = Math.min((time - lastTime) / 1000 || 0, 0.05);
+    lastTime = time;
+
+    if (running) {
+      elapsed += dt;
+
+      // 시간이 지날수록 자동차가 빨라짐
+      currentSpeed = 9 + elapsed * 0.16 + score * 0.08;
+      currentSpeed = Math.min(currentSpeed, 28);
+
+      document.getElementById("speed").textContent =
+        (currentSpeed / 9).toFixed(1);
+
+      // 자동차 등장 간격도 조금씩 짧아짐
+      spawnTimer -= dt;
+
+      if (spawnTimer <= 0) {
+        makeCar();
+
+        spawnTimer = Math.max(
+          0.42,
+          1.45 - elapsed * 0.008
+        ) * (0.65 + Math.random() * 0.7);
+      }
+
+      // 점프 물리
+      if (isJumping) {
+        jumpHeight += jumpVelocity * dt;
+        jumpVelocity -= 20 * dt;
+
+        if (jumpHeight <= 0) {
+          jumpHeight = 0;
+          jumpVelocity = 0;
+          isJumping = false;
+        }
+
+        player.position.y = jumpHeight;
+      }
+
+      // 자동차 이동 및 충돌
+      for (const car of [...cars]) {
+        car.position.z += currentSpeed * dt;
+
+        const distance = Math.abs(
+          car.position.z - player.position.z
+        );
+
+        const sameLane = car.userData.lane === lane;
+
+        if (
+          sameLane &&
+          distance < 1.35 &&
+          jumpHeight < 0.9
+        ) {
+          endGame();
+          break;
+        }
+
+        // 자동차를 지나가면 점수 증가
+        if (
+          !car.userData.passed &&
+          car.position.z > player.position.z + 2
+        ) {
+          car.userData.passed = true;
+          score++;
+
+          document.getElementById("score").textContent = score;
+
+          sound(750, 0.07, "sine");
+        }
+
+        // 화면 밖 자동차 삭제
+        if (car.position.z > 16) {
+          scene.remove(car);
+          cars = cars.filter(item => item !== car);
+        }
+      }
+
+      // 중앙선이 움직여 도로가 계속 이어지는 것처럼 표현
+      for (const line of roadLines) {
+        line.position.z += currentSpeed * dt;
+
+        if (line.position.z > 15) {
+          line.position.z -= 130;
+        }
+      }
+
+      // 주변 나무 이동
+      for (const tree of scenery) {
+        tree.position.z += currentSpeed * dt;
+
+        if (tree.position.z > 18) {
+          tree.position.z -= 130;
+        }
+      }
+    }
+
+    if (player) {
+      camera.position.x +=
+        (player.position.x * 0.2 - camera.position.x) * 0.06;
+
+      camera.lookAt(player.position.x * 0.18, 1, -7);
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  createPlayer();
+  animate(0);
+
+})();
+</script>
+
+</body>
+</html>

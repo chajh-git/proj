@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+   <title>먼작귀 런 (Chiikawa Run)</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Three.js -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   <!-- FontAwesome Icons -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <!-- Google Fonts -->
+   <link href="https://fonts.googleapis.com/css2?family=Jua&family=Fredoka+One&display=swap" rel="stylesheet">
+   <style>
+       * {
+           user-select: none;
+           -webkit-user-select: none;
+           touch-action: manipulation;
+       }
+       body {
+           font-family: 'Jua', 'Fredoka One', sans-serif;
+           overflow: hidden;
+           background-color: #fce7f3;
+           touch-action: none;
+       }
+       .hud-shadow {
+           text-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+       }
+       .btn-kawaii {
+           transition: all 0.15s ease-in-out;
+           box-shadow: 0 6px 0 #db2777;
+       }
+       .btn-kawaii:active {
+           transform: translateY(4px);
+           box-shadow: 0 2px 0 #db2777;
+       }
+       .glass-panel {
+           background: rgba(255, 255, 255, 0.92);
+           backdrop-filter: blur(10px);
+           border: 4px solid #f472b6;
+       }
+       @keyframes float-bounce {
+           0%, 100% { transform: translateY(0px) scale(1); }
+           50% { transform: translateY(-8px) scale(1.03); }
+       }
+       .animate-float {
+           animation: float-bounce 2.5s infinite ease-in-out;
+       }
+       .shop-scroll::-webkit-scrollbar {
+           width: 8px;
+       }
+       .shop-scroll::-webkit-scrollbar-track {
+           background: #fdf2f8;
+           border-radius: 10px;
+       }
+       .shop-scroll::-webkit-scrollbar-thumb {
+           background: #f472b6;
+           border-radius: 10px;
+       }
+   </style>
+</head>
+<body class="w-screen h-screen relative flex items-center justify-center">
+
+
+   <!-- 3D Canvas Container -->
+   <div id="canvas-container" class="absolute inset-0 w-full h-full"></div>
+
+
+   <!-- UI Overlay Header / HUD -->
+   <div id="hud" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none z-10 hidden">
+       <!-- Score, Sweets & Level -->
+       <div class="flex flex-col gap-2">
+           <div class="flex items-center gap-2">
+               <!-- Level Badge & Progress Bar -->
+               <div class="flex flex-col gap-1">
+                   <div class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 border-2 border-white text-white rounded-full px-3.5 py-1 flex items-center gap-1.5 shadow-md">
+                       <i class="fa-solid fa-bolt text-yellow-300 text-sm animate-pulse"></i>
+                       <span class="font-extrabold text-xs tracking-wider">LV.<span id="level-text" class="text-base font-black">1</span></span>
+                       <span id="level-multiplier" class="text-[10px] bg-yellow-400 text-pink-900 font-black px-1.5 py-0.5 rounded-full ml-1">x1.0</span>
+                   </div>
+                   <!-- Level Progress Bar -->
+                   <div class="w-full bg-white/60 border border-pink-300 rounded-full h-2 overflow-hidden shadow-inner p-0.5">
+                       <div id="level-progress-bar" class="bg-gradient-to-r from-yellow-300 to-pink-500 h-full rounded-full transition-all duration-200" style="width: 0%"></div>
+                   </div>
+               </div>
+               <!-- Score Badge -->
+               <div class="bg-white/90 border-2 border-pink-400 rounded-full px-4 py-1 flex items-center gap-2 shadow-md">
+                   <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                   <span id="score-text" class="text-pink-600 font-bold text-lg tracking-wider">0</span>
+               </div>
+           </div>
+           <div class="bg-white/90 border-2 border-amber-400 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-md w-fit">
+               <i class="fa-solid fa-cookie text-amber-500 text-lg"></i>
+               <span id="sweets-text" class="text-amber-600 font-bold text-lg tracking-wider">0</span>
+           </div>
+       </div>
+
+
+       <!-- Active Power-ups Bar -->
+       <div id="powerup-bar" class="flex flex-col gap-2 items-end"></div>
+      
+       <!-- Home / Pause Button -->
+       <button onclick="goHome()" class="absolute top-4 right-4 bg-white/90 border-2 border-pink-400 rounded-full w-12 h-12 flex items-center justify-center text-pink-500 shadow-md hover:bg-pink-100 transition btn-kawaii z-50 pointer-events-auto">
+           <i class="fa-solid fa-house text-xl"></i>
+       </button>
+   </div>
+
+
+   <!-- LEVEL UP NOTIFICATION TOAST -->
+   <div id="level-up-banner" class="absolute top-1/3 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none transition-all duration-300 scale-0 opacity-0 flex flex-col items-center">
+       <div class="bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-500 border-4 border-white rounded-3xl px-8 py-3 shadow-2xl flex flex-col items-center animate-bounce">
+           <span class="text-white text-xs font-bold tracking-widest uppercase mb-1">✨ STAGE UP! ✨</span>
+           <span id="level-up-title" class="text-white font-black text-3xl md:text-4xl hud-shadow">LEVEL 2!</span>
+           <span id="level-up-sub" class="text-yellow-100 font-bold text-sm mt-1">속도가 빨라집니다! ⚡</span>
+       </div>
+   </div>
+
+
+   <!-- START / MAIN MENU SCREEN -->
+   <div id="start-screen" class="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-pink-100/90 backdrop-blur-sm">
+       <div class="glass-panel rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center animate-float">
+           <h1 class="text-4xl md:text-5xl font-extrabold text-pink-500 mb-2 hud-shadow tracking-wide">
+               ✨ 먼작귀 런 ✨
+           </h1>
+           <p class="text-pink-700 font-medium text-lg mb-6">달려라! 달콤한 푸딩을 모으자! 🍮</p>
+
+
+           <div class="w-full flex justify-between gap-2 mb-6">
+               <!-- Highscore -->
+               <div class="bg-pink-50 border border-pink-300 rounded-xl px-4 py-2 flex-1 flex flex-col items-center text-pink-700">
+                   <span class="font-bold text-xs"><i class="fa-solid fa-trophy text-amber-400 mr-1"></i>최고 기록</span>
+                   <span id="high-score-display" class="font-extrabold text-xl text-pink-600">0</span>
+               </div>
+               <!-- Total Sweets -->
+               <div class="bg-pink-50 border border-pink-300 rounded-xl px-4 py-2 flex-1 flex flex-col items-center text-amber-700">
+                   <span class="font-bold text-xs">🍮 내 푸딩</span>
+                   <span id="total-sweets-display" class="font-extrabold text-xl text-amber-600">0</span>
+               </div>
+           </div>
+
+
+           <!-- Main Buttons -->
+           <button onclick="startGame()" class="btn-kawaii bg-pink-500 hover:bg-pink-600 text-white font-extrabold text-2xl py-3 px-10 rounded-full w-full uppercase tracking-wider mb-4">
+               게임 시작!
+           </button>
+           <button onclick="openShop()" class="btn-kawaii bg-amber-400 hover:bg-amber-500 text-white font-extrabold text-xl py-3 px-10 rounded-full w-full uppercase tracking-wider">
+               <i class="fa-solid fa-store mr-2"></i> 푸딩 상점
+           </button>
+       </div>
+   </div>
+
+
+   <!-- SHOP SCREEN -->
+   <div id="shop-screen" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-amber-100/95 backdrop-blur-md hidden">
+       <div class="glass-panel border-amber-400 rounded-3xl p-4 md:p-6 max-w-2xl w-full h-[82vh] shadow-2xl flex flex-col relative">
+           <button onclick="closeShop()" class="absolute -top-4 -right-4 bg-white border-4 border-amber-400 rounded-full w-12 h-12 flex items-center justify-center text-amber-500 shadow-lg hover:scale-110 transition z-50">
+               <i class="fa-solid fa-xmark text-2xl"></i>
+           </button>
+          
+           <div class="text-center mb-4">
+               <h2 class="text-3xl font-extrabold text-amber-600 mb-1">🍮 푸딩 캐릭터 상점</h2>
+               <div class="inline-flex bg-white/90 border-2 border-amber-400 rounded-full px-4 py-1 items-center gap-2 shadow-sm">
+                   <span class="text-amber-700 font-bold">보유 푸딩: <span id="shop-sweets" class="text-amber-600 text-2xl font-black">0</span> 개</span>
+               </div>
+           </div>
+
+
+           <!-- Character Grid -->
+           <div id="shop-items" class="shop-scroll grid grid-cols-2 md:grid-cols-3 gap-3 overflow-y-auto flex-1 p-2"></div>
+       </div>
+   </div>
+
+
+   <!-- GAME OVER SCREEN -->
+   <div id="gameover-screen" class="absolute inset-0 z-30 flex flex-col items-center justify-center p-4 bg-black/60 backdrop-blur-md hidden">
+       <div class="glass-panel rounded-3xl p-6 md:p-8 max-w-md w-full text-center shadow-2xl flex flex-col items-center">
+           <div class="text-5xl mb-2">😭</div>
+           <h2 class="text-3xl font-extrabold text-pink-600 mb-2">와아앙! 부딪혔어!</h2>
+           <p class="text-gray-600 mb-6">다음엔 더 멀리 갈 수 있을 거야!</p>
+
+
+           <div class="bg-white/80 rounded-2xl p-4 w-full mb-6 flex flex-col gap-3 border border-pink-200">
+               <div class="flex justify-between items-center border-b pb-2">
+                   <span class="text-gray-600 font-bold">최종 점수</span>
+                   <span id="final-score" class="text-2xl font-black text-pink-500">0</span>
+               </div>
+               <div class="flex justify-between items-center">
+                   <span class="text-gray-600 font-bold">획득한 푸딩</span>
+                   <span id="final-sweets" class="text-2xl font-black text-amber-500">0</span>
+               </div>
+           </div>
+
+
+           <button onclick="restartGame()" class="btn-kawaii bg-pink-500 hover:bg-pink-600 text-white font-extrabold text-xl py-3 px-8 rounded-full w-full uppercase tracking-wider mb-3">
+               다시 도전하기
+           </button>
+           <button onclick="goHome()" class="btn-kawaii bg-white border-2 border-pink-400 hover:bg-pink-50 text-pink-500 font-bold text-lg py-2 px-8 rounded-full w-full uppercase tracking-wider">
+               홈으로 돌아가기
+           </button>
+       </div>
+   </div>
+
+
+   <!-- Controls Hint -->
+   <div id="mobile-controls-hint" class="absolute bottom-3 left-0 w-full text-center text-pink-600 font-bold text-xs pointer-events-none opacity-80 z-10">
+       ⌨️ 이동: 방향키 / WASD (↓ 숙이기) | 📱 스와이프로 이동 및 점프/숙이기
+   </div>
+
+
+   <!-- Game Logic Code -->
+   <script>
+       // --- Web Audio API Synthesizer ---
+       class SoundFX {
+           constructor() {
+               this.ctx = null;
+               this.comboPitch = 0;
+           }
+
+
+           init() {
+               if (!this.ctx) {
+                   this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+               }
+               if (this.ctx.state === 'suspended') {
+                   this.ctx.resume();
+               }
+           }
+
+
+           playJump() {
+               if (!this.ctx) return;
+               const osc = this.ctx.createOscillator();
+               const gain = this.ctx.createGain();
+               osc.type = 'sine';
+               osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+               osc.frequency.exponentialRampToValueAtTime(720, this.ctx.currentTime + 0.16);
+               gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+               gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.16);
+               osc.connect(gain);
+               gain.connect(this.ctx.destination);
+               osc.start();
+               osc.stop(this.ctx.currentTime + 0.16);
+           }
+
+
+           playLevelUp() {
+               if (!this.ctx) return;
+               const notes = [523.25, 659.25, 783.99, 987.77, 1046.50, 1318.51];
+               notes.forEach((freq, idx) => {
+                   const osc = this.ctx.createOscillator();
+                   const gain = this.ctx.createGain();
+                   osc.type = 'triangle';
+                   osc.frequency.setValueAtTime(freq, this.ctx.currentTime + (idx * 0.05));
+                   gain.gain.setValueAtTime(0.25, this.ctx.currentTime + (idx * 0.05));
+                   gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + (idx * 0.05) + 0.2);
+                   osc.connect(gain);
+                   gain.connect(this.ctx.destination);
+                   osc.start(this.ctx.currentTime + (idx * 0.05));
+                   osc.stop(this.ctx.currentTime + (idx * 0.05) + 0.2);
+               });
+           }
+
+
+           playCoin() {
+               if (!this.ctx) return;
+               const osc = this.ctx.createOscillator();
+               const gain = this.ctx.createGain();
+               osc.type = 'triangle';
+               const baseFreq = 987.77 + (Math.min(this.comboPitch, 8) * 60);
+               osc.frequency.setValueAtTime(baseFreq, this.ctx.currentTime);
+               osc.frequency.setValueAtTime(baseFreq * 1.33, this.ctx.currentTime + 0.08);
+               gain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+               gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.22);
+               osc.connect(gain);
+               gain.connect(this.ctx.destination);
+               osc.start();
+               osc.stop(this.ctx.currentTime + 0.22);
+
+
+               this.comboPitch++;
+               clearTimeout(this.comboTimeout);
+               this.comboTimeout = setTimeout(() => { this.comboPitch = 0; }, 1200);
+           }
+
+
+           playPowerup() {
+               if (!this.ctx) return;
+               const notes = [523.25, 659.25, 783.99, 1046.50];
+               notes.forEach((freq, idx) => {
+                   const osc = this.ctx.createOscillator();
+                   const gain = this.ctx.createGain();
+                   osc.type = 'sine';
+                   osc.frequency.setValueAtTime(freq, this.ctx.currentTime + (idx * 0.06));
+                   gain.gain.setValueAtTime(0.2, this.ctx.currentTime + (idx * 0.06));
+                   gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + (idx * 0.06) + 0.18);
+                   osc.connect(gain);
+                   gain.connect(this.ctx.destination);
+                   osc.start(this.ctx.currentTime + (idx * 0.06));
+                   osc.stop(this.ctx.currentTime + (idx * 0.06) + 0.18);
+               });
+           }
+
+
+           playHit() {
+               if (!this.ctx) return;
+               const osc = this.ctx.createOscillator();
+               const gain = this.ctx.createGain();
+               osc.type = 'sawtooth';
+               osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+               osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+               gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+               gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+               osc.connect(gain);
+               gain.connect(this.ctx.destination);
+               osc.start();
+               osc.stop(this.ctx.currentTime + 0.3);
+           }
+       }
+
+
+       const sound = new SoundFX();
+
+
+       // --- Game Config & Variables ---
+       const LANES = [-2.2, 0, 2.2];
+       let currentLane = 1;
+       let targetX = 0;
+       let isJumping = false;
+       let isRolling = false;
+       let verticalVelocity = 0;
+       let gravity = 0.016;
+       let playerY = 0;
+       let rollTimer = 0;
+
+
+       let gameSpeed = 0.44;
+       const baseSpeed = 0.44;
+       let level = 1;
+       let score = 0;
+       let sweetsCount = 0;
+       let isGameOver = false;
+       let isGameStarted = false;
+       let cameraShake = 0;
+       let groundMesh = null;
+
+
+       const LEVEL_THEMES = [
+           { name: "달콤 파스텔 동산", bg: 0xfce7f3, ground: 0xe0f2fe, sub: "시작은 달콤하게! 🍮" },
+           { name: "노을빛 푸딩 언덕", bg: 0xffedd5, ground: 0xfef3c7, sub: "움직이는 수레 등장! ⚡" },
+           { name: "황혼의 디저트 길", bg: 0xf3e8ff, ground: 0xddd6fe, sub: "이중 장애물 주의! 🔥" },
+           { name: "별빛 밤하늘 달리기", bg: 0x1e1b4b, ground: 0x312e81, sub: "초고속 스피드 진입! 🌙" },
+           { name: "무지개 피버 테마파크", bg: 0xfef9c3, ground: 0xfef08a, sub: "한계 돌파 하이퍼 스피드! 🌈" }
+       ];
+
+
+       let selectedCharacter = localStorage.getItem('chiikawa_selected') || 'chiikawa';
+       let highScore = parseInt(localStorage.getItem('chiikawa_high_score')) || 0;
+       let totalSweets = parseInt(localStorage.getItem('chiikawa_total_sweets')) || 0;
+       let unlockedChars = JSON.parse(localStorage.getItem('chiikawa_unlocked')) || ['chiikawa'];
+
+
+       const CHAR_DATA = {
+           chiikawa: { name: '치이카와', price: 0, icon: '🐻', color: 'bg-pink-100', border: 'border-pink-300', desc: '기본 시작 (스타트 보호막 1개)' },
+           hachiware: { name: '하치와레', price: 20, icon: '🐱', color: 'bg-blue-100', border: 'border-blue-300', desc: '자석 지속시간 길어짐' },
+           usagi: { name: '우사기', price: 40, icon: '🐰', color: 'bg-yellow-100', border: 'border-yellow-300', desc: '슈퍼 점프 & 고속 스피드' },
+           momonga: { name: '모몽가', price: 70, icon: '🐿️', color: 'bg-purple-100', border: 'border-purple-300', desc: '하늘색 꼬리 & 푸딩 2배' },
+           kurimanju: { name: '쿠리만쥬', price: 100, icon: '🌰', color: 'bg-amber-100', border: 'border-amber-300', desc: '스타트 보호막 1개 보유' },
+           shisa: { name: '시사', price: 150, icon: '🦁', color: 'bg-red-100', border: 'border-red-300', desc: '점수 추가 획득 버프' },
+           rakko: { name: '랏코', price: 220, icon: '🦦', color: 'bg-gray-200', border: 'border-gray-400', desc: '용사의 순백 망토 & 용맹한 검' }
+       };
+
+
+       const powerups = {
+           magnet: 0,
+           shield: 0,
+           doubleCoins: 0
+       };
+
+
+       // --- Three.js Setup & Graphics ---
+       let scene, camera, renderer;
+       let playerGroup, characterMesh;
+       let obstacles = [];
+       let items = [];
+       let particles = [];
+       let environmentObjects = [];
+
+
+       const PALETTE = {
+           pink: 0xffb6c1,
+           lightPink: 0xffe4e1,
+           skyBlue: 0x87ceeb,
+           yellow: 0xfff176,
+           cream: 0xfffdd0,
+           white: 0xffffff,
+           wood: 0x8d6e63,
+           green: 0x81c784
+       };
+
+
+       function createFaceTexture(charKey) {
+           const canvas = document.createElement('canvas');
+           canvas.width = 256;
+           canvas.height = 256;
+           const ctx = canvas.getContext('2d');
+
+
+           ctx.fillStyle = '#1e293b';
+           ctx.beginPath();
+           ctx.arc(80, 120, 11, 0, Math.PI * 2);
+           ctx.arc(176, 120, 11, 0, Math.PI * 2);
+           ctx.fill();
+
+
+           ctx.fillStyle = '#ffffff';
+           ctx.beginPath();
+           ctx.arc(77, 116, 4, 0, Math.PI * 2);
+           ctx.arc(173, 116, 4, 0, Math.PI * 2);
+           ctx.fill();
+
+
+           ctx.fillStyle = '#f472b6';
+           ctx.globalAlpha = 0.65;
+           ctx.beginPath();
+           ctx.arc(60, 142, 16, 0, Math.PI * 2);
+           ctx.arc(196, 142, 16, 0, Math.PI * 2);
+           ctx.fill();
+           ctx.globalAlpha = 1.0;
+
+
+           ctx.strokeStyle = '#1e293b';
+           ctx.lineWidth = 5;
+           ctx.lineCap = 'round';
+
+
+           if (charKey === 'usagi') {
+               ctx.beginPath();
+               ctx.arc(128, 140, 14, 0, Math.PI * 2);
+               ctx.fillStyle = '#ef4444';
+               ctx.fill();
+               ctx.stroke();
+           } else if (charKey === 'shisa') {
+               ctx.beginPath();
+               ctx.arc(128, 130, 18, 0, Math.PI);
+               ctx.stroke();
+           } else {
+               ctx.beginPath();
+               ctx.arc(114, 134, 9, 0, Math.PI);
+               ctx.stroke();
+               ctx.beginPath();
+               ctx.arc(142, 134, 9, 0, Math.PI);
+               ctx.stroke();
+           }
+
+
+           return new THREE.CanvasTexture(canvas);
+       }
+
+
+       function initThreeJS() {
+           const container = document.getElementById('canvas-container');
+          
+           scene = new THREE.Scene();
+           scene.background = new THREE.Color(0xfce7f3);
+           scene.fog = new THREE.FogExp2(0xfce7f3, 0.014);
+
+
+           camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 120);
+           camera.position.set(0, 3.8, 6.5);
+           camera.lookAt(0, 1.2, -10);
+
+
+           renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+           renderer.setSize(window.innerWidth, window.innerHeight);
+           renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+           renderer.shadowMap.enabled = true;
+           renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+           container.appendChild(renderer.domElement);
+
+
+           const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+           scene.add(ambientLight);
+
+
+           const dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
+           dirLight.position.set(10, 22, 12);
+           dirLight.castShadow = true;
+           dirLight.shadow.mapSize.width = 2048;
+           dirLight.shadow.mapSize.height = 2048;
+           scene.add(dirLight);
+
+
+           createTrack();
+           createPlayer();
+           createSkyDecoration();
+
+
+           window.addEventListener('resize', onWindowResize);
+           updateMainMenuUI();
+       }
+
+
+       function createTrack() {
+           const groundGeo = new THREE.PlaneGeometry(28, 220);
+           const groundMat = new THREE.MeshLambertMaterial({ color: LEVEL_THEMES[0].ground });
+           groundMesh = new THREE.Mesh(groundGeo, groundMat);
+           groundMesh.rotation.x = -Math.PI / 2;
+           groundMesh.position.z = -90;
+           groundMesh.receiveShadow = true;
+           scene.add(groundMesh);
+
+
+           for (let i of [-1.1, 1.1]) {
+               const lineGeo = new THREE.PlaneGeometry(0.14, 220);
+               const lineMat = new THREE.MeshBasicMaterial({ color: 0xfbcfe8 });
+               const line = new THREE.Mesh(lineGeo, lineMat);
+               line.rotation.x = -Math.PI / 2;
+               line.position.set(i, 0.01, -90);
+               scene.add(line);
+           }
+
+
+           for (let z = 10; z > -180; z -= 8) {
+               createDecoration(-5.8, z);
+               createDecoration(5.8, z);
+           }
+       }
+
+
+       function createDecoration(x, z) {
+           const group = new THREE.Group();
+          
+           const trunk = new THREE.Mesh(
+               new THREE.CylinderGeometry(0.22, 0.32, 1.4, 8),
+               new THREE.MeshLambertMaterial({ color: PALETTE.wood })
+           );
+           trunk.position.y = 0.7;
+           trunk.castShadow = true;
+           group.add(trunk);
+
+
+           const foliageMat = new THREE.MeshLambertMaterial({ color: Math.random() > 0.5 ? 0xfbcfe8 : 0xbbf7d0 });
+           const foliage = new THREE.Mesh(new THREE.DodecahedronGeometry(0.85, 1), foliageMat);
+           foliage.position.y = 1.85;
+           foliage.castShadow = true;
+           group.add(foliage);
+
+
+           group.position.set(x, 0, z);
+           scene.add(group);
+           environmentObjects.push(group);
+       }
+
+
+       function createSkyDecoration() {
+           for (let i = 0; i < 12; i++) {
+               const cloud = new THREE.Mesh(
+                   new THREE.DodecahedronGeometry(1.5 + Math.random(), 1),
+                   new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+               );
+               cloud.position.set((Math.random() - 0.5) * 40, 8 + Math.random() * 6, -30 - Math.random() * 80);
+               scene.add(cloud);
+           }
+       }
+
+
+       function createPlayer() {
+           playerGroup = new THREE.Group();
+           playerGroup.position.set(0, 0, 0);
+
+
+           updatePlayerModel();
+           scene.add(playerGroup);
+       }
+
+
+       function updatePlayerModel() {
+           if (characterMesh) playerGroup.remove(characterMesh);
+
+
+           characterMesh = new THREE.Group();
+
+
+           let baseColor = PALETTE.white;
+           if (selectedCharacter === 'usagi') baseColor = 0xfef08a;
+           else if (selectedCharacter === 'kurimanju') baseColor = 0xf5deb3;
+           else if (selectedCharacter === 'shisa') baseColor = 0xfcd34d;
+           else if (selectedCharacter === 'rakko') baseColor = 0xf5e6d3;
+
+
+           const bodyMat = new THREE.MeshLambertMaterial({ color: baseColor });
+
+
+           const headGroup = new THREE.Group();
+           headGroup.position.y = 0.98;
+          
+           const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.44, 32, 32), bodyMat);
+           headGroup.add(headMesh);
+
+
+           const faceTex = createFaceTexture(selectedCharacter);
+           const faceMat = new THREE.MeshBasicMaterial({ map: faceTex, transparent: true });
+           const facePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.52), faceMat);
+           facePlane.position.set(0, 0, -0.42);
+           facePlane.rotation.y = Math.PI;
+           headGroup.add(facePlane);
+
+
+           if (selectedCharacter === 'chiikawa') {
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), bodyMat);
+                   ear.position.set(side * 0.32, 0.34, 0);
+                   headGroup.add(ear);
+               }
+           } else if (selectedCharacter === 'hachiware') {
+               const skyBlueMat = new THREE.MeshLambertMaterial({ color: 0x38bdf8 });
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 16), skyBlueMat);
+                   ear.position.set(side * 0.28, 0.4, 0);
+                   ear.rotation.z = -side * 0.2;
+                   headGroup.add(ear);
+               }
+               const blueHair = new THREE.Mesh(
+                   new THREE.SphereGeometry(0.45, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.35),
+                   skyBlueMat
+               );
+               blueHair.rotation.x = -0.2;
+               headGroup.add(blueHair);
+
+
+           } else if (selectedCharacter === 'usagi') {
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.72, 16), bodyMat);
+                   ear.position.set(side * 0.18, 0.62, -0.05);
+                   ear.rotation.z = side * 0.12;
+                   headGroup.add(ear);
+               }
+           } else if (selectedCharacter === 'momonga') {
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+                   ear.position.set(side * 0.32, 0.3, 0);
+                   headGroup.add(ear);
+               }
+               const tail = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), new THREE.MeshLambertMaterial({ color: 0x38bdf8 }));
+               tail.position.set(0, -0.2, 0.42);
+               headGroup.add(tail);
+           } else if (selectedCharacter === 'kurimanju') {
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 16), bodyMat);
+                   ear.position.set(side * 0.32, 0.22, 0);
+                   headGroup.add(ear);
+               }
+               const brownCap = new THREE.Mesh(
+                   new THREE.SphereGeometry(0.45, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.42),
+                   new THREE.MeshLambertMaterial({ color: 0xd97706 })
+               );
+               headGroup.add(brownCap);
+           } else if (selectedCharacter === 'shisa') {
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.3, 16), new THREE.MeshLambertMaterial({ color: 0xf97316 }));
+                   ear.position.set(side * 0.34, 0.3, 0);
+                   ear.rotation.z = -side * 0.4;
+                   headGroup.add(ear);
+               }
+           } else if (selectedCharacter === 'rakko') {
+               const cape = new THREE.Mesh(
+                   new THREE.PlaneGeometry(0.75, 0.85),
+                   new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })
+               );
+               cape.position.set(0, -0.2, 0.32);
+               cape.rotation.x = -0.2;
+               headGroup.add(cape);
+
+
+               const swordGroup = new THREE.Group();
+              
+               const blade = new THREE.Mesh(
+                   new THREE.BoxGeometry(0.04, 0.42, 0.015),
+                   new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 })
+               );
+               blade.position.y = 0.21;
+               swordGroup.add(blade);
+
+
+               const guard = new THREE.Mesh(
+                   new THREE.BoxGeometry(0.14, 0.03, 0.04),
+                   new THREE.MeshLambertMaterial({ color: 0xfacc15 })
+               );
+               guard.position.y = 0.42;
+               swordGroup.add(guard);
+
+
+               const handle = new THREE.Mesh(
+                   new THREE.CylinderGeometry(0.018, 0.018, 0.14, 8),
+                   new THREE.MeshLambertMaterial({ color: 0x78350f })
+               );
+               handle.position.y = 0.49;
+               swordGroup.add(handle);
+
+
+               const pommel = new THREE.Mesh(
+                   new THREE.SphereGeometry(0.03, 8, 8),
+                   new THREE.MeshLambertMaterial({ color: 0xfacc15 })
+               );
+               pommel.position.y = 0.57;
+               swordGroup.add(pommel);
+
+
+               swordGroup.position.set(0.08, -0.38, 0.48);
+               swordGroup.rotation.z = -0.65;
+               swordGroup.rotation.x = -0.1;
+               swordGroup.rotation.y = 0.1;
+               headGroup.add(swordGroup);
+
+
+               for (let side of [-1, 1]) {
+                   const ear = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), bodyMat);
+                   ear.position.set(side * 0.32, 0.34, 0);
+                   headGroup.add(ear);
+               }
+           }
+
+
+           const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.4, 0.58, 16), bodyMat);
+           bodyMesh.position.y = 0.44;
+           characterMesh.add(bodyMesh);
+
+
+           const armLGroup = new THREE.Group(); armLGroup.position.set(-0.44, 0.62, 0);
+           const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), bodyMat);
+           armL.position.y = -0.16; armLGroup.add(armL);
+
+
+           const armRGroup = new THREE.Group(); armRGroup.position.set(0.44, 0.62, 0);
+           const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.32, 8), bodyMat);
+           armR.position.y = -0.16; armRGroup.add(armR);
+
+
+           const legLGroup = new THREE.Group(); legLGroup.position.set(-0.17, 0.26, 0);
+           const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.28, 8), bodyMat);
+           legL.position.y = -0.14; legLGroup.add(legL);
+
+
+           const legRGroup = new THREE.Group(); legRGroup.position.set(0.17, 0.26, 0);
+           const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.28, 8), bodyMat);
+           legR.position.y = -0.14; legRGroup.add(legR);
+
+
+           characterMesh.add(armLGroup, armRGroup, legLGroup, legRGroup, headGroup);
+
+
+           characterMesh.traverse(child => {
+               if (child.isMesh) {
+                   child.castShadow = true;
+                   child.receiveShadow = true;
+               }
+           });
+
+
+           characterMesh.userData = {
+               headGroup: headGroup,
+               armL: armLGroup,
+               armR: armRGroup,
+               legL: legLGroup,
+               legR: legRGroup
+           };
+
+
+           playerGroup.add(characterMesh);
+       }
+
+
+       // --- Controls ---
+       function setupControls() {
+           window.addEventListener('keydown', (e) => {
+               if (!isGameStarted || isGameOver) return;
+               switch (e.key) {
+                   case 'ArrowLeft': case 'a': case 'A': moveLane(-1); break;
+                   case 'ArrowRight': case 'd': case 'D': moveLane(1); break;
+                   case 'ArrowUp': case 'w': case 'W': jump(); break;
+                   case 'ArrowDown': case 's': case 'S': roll(); break;
+               }
+           });
+
+
+           let startX = 0, startY = 0, isSwiping = false;
+           window.addEventListener('touchstart', (e) => {
+               startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+               isSwiping = true;
+           }, { passive: false });
+
+
+           window.addEventListener('touchmove', (e) => {
+               if (isGameStarted && !isGameOver) e.preventDefault();
+           }, { passive: false });
+
+
+           window.addEventListener('touchend', (e) => {
+               if (!isGameStarted || isGameOver || !isSwiping) return;
+               const diffX = e.changedTouches[0].clientX - startX;
+               const diffY = e.changedTouches[0].clientY - startY;
+
+
+               if (Math.abs(diffX) > 35 || Math.abs(diffY) > 35) {
+                   if (Math.abs(diffX) > Math.abs(diffY)) {
+                       if (diffX > 0) moveLane(1); else moveLane(-1);
+                   } else {
+                       if (diffY < 0) jump(); else roll();
+                   }
+               }
+               isSwiping = false;
+           }, { passive: false });
+       }
+
+
+       function moveLane(dir) {
+           currentLane = Math.max(0, Math.min(2, currentLane + dir));
+           targetX = LANES[currentLane];
+       }
+
+
+       function jump() {
+           if (!isJumping) {
+               isJumping = true;
+               verticalVelocity = selectedCharacter === 'usagi' ? 0.33 : 0.28;
+               if (isRolling) {
+                   isRolling = false;
+                   characterMesh.scale.set(1, 1, 1);
+               }
+               sound.playJump();
+           }
+       }
+
+
+       function roll() {
+           if (!isRolling) {
+               isRolling = true;
+               rollTimer = 35;
+               characterMesh.scale.set(1.15, 0.4, 1.15);
+               if (isJumping) verticalVelocity = -0.34;
+           }
+       }
+
+
+       // --- Spawner Logic ---
+       let spawnTimer = 0;
+       let lastPowerupSpawn = 0;
+
+
+       function spawnManager() {
+           spawnTimer++;
+           const currentInterval = Math.max(10, 32 - (level - 1) * 4);
+           if (spawnTimer % currentInterval === 0) {
+               const rand = Math.random();
+               const obstacleChance = Math.min(0.72, 0.52 + (level - 1) * 0.04);
+               const sweetsChance = 0.38;
+               const powerupChance = 0.05;
+
+
+               if (rand < obstacleChance) {
+                   if (level >= 3 && Math.random() < 0.35) {
+                       spawnDoubleObstacle();
+                   } else {
+                       const lane = Math.floor(Math.random() * 3);
+                       spawnObstacle(lane);
+                   }
+               }
+               else if (rand < obstacleChance + sweetsChance) {
+                   const lane = Math.floor(Math.random() * 3);
+                   spawnSweets(lane);
+                   if (Math.random() < 0.20) {
+                       const secondLane = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
+                       spawnSweets(secondLane);
+                   }
+               }
+               else if (rand < obstacleChance + sweetsChance + powerupChance && (spawnTimer - lastPowerupSpawn > 220)) {
+                   lastPowerupSpawn = spawnTimer;
+                   const lane = Math.floor(Math.random() * 3);
+                   spawnPowerup(lane);
+               }
+           }
+       }
+
+
+       function spawnDoubleObstacle() {
+           const safeLane = Math.floor(Math.random() * 3);
+           for (let l = 0; l < 3; l++) {
+               if (l !== safeLane) {
+                   spawnObstacle(l);
+               }
+           }
+           cameraShake = 5;
+       }
+
+
+       function spawnObstacle(lane) {
+           const laneX = LANES[lane];
+           const obsGroup = new THREE.Group();
+           const typeRand = Math.random();
+
+
+           if (level >= 2 && typeRand < 0.25) {
+               const wagonSpeed = 0.08 + (level - 1) * 0.015;
+               const wagonBox = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 1.4), new THREE.MeshLambertMaterial({ color: 0xd97706 }));
+               wagonBox.position.set(0, 0.4, 0);
+               const wheel1 = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.2), new THREE.MeshLambertMaterial({ color: 0x451a03 }));
+               wheel1.rotation.z = Math.PI / 2;
+               wheel1.position.set(-0.8, 0.25, 0.4);
+               const wheel2 = wheel1.clone(); wheel2.position.set(0.8, 0.25, 0.4);
+               const wheel3 = wheel1.clone(); wheel3.position.set(-0.8, 0.25, -0.4);
+               const wheel4 = wheel1.clone(); wheel4.position.set(0.8, 0.25, -0.4);
+               obsGroup.add(wagonBox, wheel1, wheel2, wheel3, wheel4);
+               obsGroup.userData = { type: 'obstacle', subtype: 'low', isMoving: true, speed: wagonSpeed };
+
+
+           } else if (typeRand < 0.50) {
+               const woodMat = new THREE.MeshLambertMaterial({ color: 0xf43f5e });
+               const post1 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.2, 0.22), woodMat); post1.position.set(-0.95, 1.1, 0);
+               const post2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.2, 0.22), woodMat); post2.position.set(0.95, 1.1, 0);
+               const banner = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.1, 0.12), new THREE.MeshLambertMaterial({ color: 0xfacc15 }));
+               banner.position.set(0, 1.1, 0);
+               obsGroup.add(post1, post2, banner);
+               obsGroup.userData = { type: 'obstacle', subtype: 'blocker' };
+
+
+           } else if (typeRand < 0.80) {
+               const bush = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5, 1), new THREE.MeshLambertMaterial({ color: 0x10b981 }));
+               bush.position.set(0, 0.4, 0);
+               const flower = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xf472b6 }));
+               flower.position.set(0, 0.85, 0);
+               obsGroup.add(bush, flower);
+               obsGroup.userData = { type: 'obstacle', subtype: 'low' };
+
+
+           } else {
+               const box = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), new THREE.MeshLambertMaterial({ color: 0xf97316 }));
+               box.position.y = 0.6;
+               obsGroup.add(box);
+               obsGroup.userData = { type: 'obstacle', subtype: 'low' };
+           }
+
+
+           obsGroup.position.set(laneX, 0, -85);
+           scene.add(obsGroup);
+           obstacles.push(obsGroup);
+       }
+
+
+       function spawnSweets(lane) {
+           const count = 4;
+           for (let i = 0; i < count; i++) {
+               const puddingGroup = new THREE.Group();
+              
+               const base = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.3, 16), new THREE.MeshLambertMaterial({ color: 0xfef08a }));
+               base.position.y = 0.15;
+               const caramel = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.35, 0.1, 16), new THREE.MeshLambertMaterial({ color: 0x78350f }));
+               caramel.position.y = 0.32;
+               const cherry = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+               cherry.position.y = 0.42;
+
+
+               puddingGroup.add(base, caramel, cherry);
+               puddingGroup.position.set(LANES[lane], 0.3, -85 - (i * 3.2));
+               puddingGroup.userData = { type: 'sweet', rotSpeed: 0.04 };
+              
+               scene.add(puddingGroup);
+               items.push(puddingGroup);
+           }
+       }
+
+
+       function spawnPowerup(lane) {
+           const types = ['shield', 'magnet', 'doubleCoins'];
+           const chosenType = types[Math.floor(Math.random() * types.length)];
+          
+           const pGroup = new THREE.Group();
+           let pMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+          
+           if (chosenType === 'shield') pMat = new THREE.MeshBasicMaterial({ color: 0xec4899 });
+           else if (chosenType === 'magnet') pMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+           else if (chosenType === 'doubleCoins') pMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+
+
+           const itemMesh = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), pMat);
+           itemMesh.position.y = 0.5;
+           pGroup.add(itemMesh);
+
+
+           pGroup.position.set(LANES[lane], 0.3, -85);
+           pGroup.userData = { type: 'powerup', pType: chosenType };
+
+
+           scene.add(pGroup);
+           items.push(pGroup);
+       }
+
+
+       function createSparkles(pos, colorHex, amount = 12) {
+           for (let i = 0; i < amount; i++) {
+               const p = new THREE.Mesh(
+                   new THREE.SphereGeometry(0.08, 8, 8),
+                   new THREE.MeshBasicMaterial({ color: colorHex })
+               );
+               p.position.copy(pos);
+               p.userData = {
+                   vx: (Math.random() - 0.5) * 0.2,
+                   vy: Math.random() * 0.2 + 0.1,
+                   vz: (Math.random() - 0.5) * 0.2,
+                   life: 25
+               };
+               scene.add(p);
+               particles.push(p);
+           }
+       }
+
+
+       // --- Main Game Update Loop ---
+       function update() {
+           if (!isGameStarted || isGameOver) return;
+
+
+           // Spawner
+           spawnManager();
+
+
+           // Player Lane Interpolation
+           playerGroup.position.x += (targetX - playerGroup.position.x) * 0.22;
+
+
+           // Jump Gravity Physics
+           if (isJumping) {
+               playerY += verticalVelocity;
+               verticalVelocity -= gravity;
+               if (playerY <= 0) {
+                   playerY = 0;
+                   verticalVelocity = 0;
+                   isJumping = false;
+               }
+           } else if (playerY > 0) {
+               playerY -= gravity * 2;
+               if (playerY <= 0) {
+                   playerY = 0;
+                   verticalVelocity = 0;
+               }
+           }
+           playerGroup.position.y = playerY;
+
+
+           // Rolling Timer
+           if (isRolling) {
+               rollTimer--;
+               if (rollTimer <= 0) {
+                   isRolling = false;
+                   characterMesh.scale.set(1, 1, 1);
+               }
+           }
+
+
+           // Running Animation Cycle
+           if (characterMesh && characterMesh.userData) {
+               const t = Date.now() * 0.012 * (gameSpeed / baseSpeed);
+               const { armL, armR, legL, legR, headGroup } = characterMesh.userData;
+               if (armL) armL.rotation.x = Math.sin(t) * 0.75;
+               if (armR) armR.rotation.x = -Math.sin(t) * 0.75;
+               if (legL) legL.rotation.x = -Math.sin(t) * 0.85;
+               if (legR) legR.rotation.x = Math.sin(t) * 0.85;
+               if (headGroup) headGroup.rotation.y = Math.sin(t * 0.5) * 0.08;
+           }
+
+
+           // Power-up Timers
+           if (powerups.magnet > 0) powerups.magnet--;
+           if (powerups.doubleCoins > 0) powerups.doubleCoins--;
+
+
+           updatePowerupHUD();
+
+
+           // Environment Scrolling
+           environmentObjects.forEach(obj => {
+               obj.position.z += gameSpeed;
+               if (obj.position.z > 15) {
+                   obj.position.z -= 195;
+               }
+           });
+
+
+           // Obstacles Logic
+           for (let i = obstacles.length - 1; i >= 0; i--) {
+               const obs = obstacles[i];
+               obs.position.z += gameSpeed;
+
+
+               if (obs.userData.isMoving) {
+                   obs.position.z += obs.userData.speed;
+               }
+
+
+               const distZ = Math.abs(obs.position.z - playerGroup.position.z);
+               const distX = Math.abs(obs.position.x - playerGroup.position.x);
+
+
+               if (distZ < 0.85 && distX < 0.8) {
+                   const isLow = obs.userData.subtype === 'low';
+                   const isHigh = obs.userData.subtype === 'blocker';
+
+
+                   let hit = false;
+                   if (isLow && playerY < 0.75) hit = true;
+                   else if (isHigh && (!isRolling || playerY > 0.3)) hit = true;
+
+
+                   if (hit) {
+                       if (powerups.shield > 0) {
+                           powerups.shield--;
+                           createSparkles(playerGroup.position, 0x38bdf8, 20);
+                           sound.playHit();
+                           scene.remove(obs);
+                           obstacles.splice(i, 1);
+                           continue;
+                       } else {
+                           handleGameOver();
+                           return;
+                       }
+                   }
+               }
+
+
+               if (obs.position.z > 10) {
+                   scene.remove(obs);
+                   obstacles.splice(i, 1);
+               }
+           }
+
+
+           // Items & Puddings Logic
+           for (let i = items.length - 1; i >= 0; i--) {
+               const item = items[i];
+               item.position.z += gameSpeed;
+               item.rotation.y += item.userData.rotSpeed || 0.03;
+
+
+               // Magnet Attraction
+               if (powerups.magnet > 0 && item.userData.type === 'sweet') {
+                   const distToPlayer = item.position.distanceTo(playerGroup.position);
+                   if (distToPlayer < 7.0) {
+                       item.position.x += (playerGroup.position.x - item.position.x) * 0.18;
+                       item.position.y += (playerGroup.position.y + 0.5 - item.position.y) * 0.18;
+                       item.position.z += (playerGroup.position.z - item.position.z) * 0.18;
+                   }
+               }
+
+
+               const distZ = Math.abs(item.position.z - playerGroup.position.z);
+               const distX = Math.abs(item.position.x - playerGroup.position.x);
+               const distY = Math.abs(item.position.y - (playerGroup.position.y + 0.5));
+
+
+               if (distZ < 0.9 && distX < 0.9 && distY < 1.2) {
+                   if (item.userData.type === 'sweet') {
+                       let gain = (powerups.doubleCoins > 0 || selectedCharacter === 'momonga') ? 2 : 1;
+                       sweetsCount += gain;
+                       totalSweets += gain;
+                       score += 15 * gain;
+                       sound.playCoin();
+                       createSparkles(item.position, 0xfacc15, 8);
+                   } else if (item.userData.type === 'powerup') {
+                       sound.playPowerup();
+                       const dur = selectedCharacter === 'hachiware' ? 420 : 300;
+                       if (item.userData.pType === 'shield') powerups.shield++;
+                       else if (item.userData.pType === 'magnet') powerups.magnet = dur;
+                       else if (item.userData.pType === 'doubleCoins') powerups.doubleCoins = dur;
+                       createSparkles(item.position, 0x38bdf8, 15);
+                   }
+
+
+                   scene.remove(item);
+                   items.splice(i, 1);
+                   continue;
+               }
+
+
+               if (item.position.z > 10) {
+                   scene.remove(item);
+                   items.splice(i, 1);
+               }
+           }
+
+
+           // Particles Update
+           for (let i = particles.length - 1; i >= 0; i--) {
+               const p = particles[i];
+               p.position.x += p.userData.vx;
+               p.position.y += p.userData.vy;
+               p.position.z += p.userData.vz;
+               p.userData.life--;
+               if (p.userData.life <= 0) {
+                   scene.remove(p);
+                   particles.splice(i, 1);
+               }
+           }
+
+
+           // Score & Stage Progression
+           score += Math.round(gameSpeed * 2.2);
+           document.getElementById('score-text').innerText = score;
+           document.getElementById('sweets-text').innerText = sweetsCount;
+
+
+           const nextLevelScore = level * 3200;
+           const prevLevelScore = (level - 1) * 3200;
+           const progress = Math.min(100, Math.max(0, ((score - prevLevelScore) / (nextLevelScore - prevLevelScore)) * 100));
+           document.getElementById('level-progress-bar').style.width = `${progress}%`;
+
+
+           if (score >= nextLevelScore) {
+               levelUp();
+           }
+
+
+           // Camera Shake Effect
+           if (cameraShake > 0) {
+               camera.position.x = (Math.random() - 0.5) * 0.15;
+               camera.position.y = 3.8 + (Math.random() - 0.5) * 0.15;
+               cameraShake--;
+           } else {
+               camera.position.x = 0;
+               camera.position.y = 3.8;
+           }
+       }
+
+
+       function updatePowerupHUD() {
+           const pBar = document.getElementById('powerup-bar');
+           pBar.innerHTML = '';
+
+
+           if (powerups.shield > 0) {
+               pBar.innerHTML += `<div class="bg-pink-500 border-2 border-white text-white font-bold text-xs px-3 py-1 rounded-full shadow-md animate-pulse">🛡️ 보호막 ${powerups.shield}개</div>`;
+           }
+           if (powerups.magnet > 0) {
+               const secs = Math.ceil(powerups.magnet / 60);
+               pBar.innerHTML += `<div class="bg-red-500 border-2 border-white text-white font-bold text-xs px-3 py-1 rounded-full shadow-md">🧲 자석 흡수중! ${secs}초</div>`;
+           }
+           if (powerups.doubleCoins > 0) {
+               const secs = Math.ceil(powerups.doubleCoins / 60);
+               pBar.innerHTML += `<div class="bg-yellow-500 border-2 border-white text-white font-bold text-xs px-3 py-1 rounded-full shadow-md">🍮 2배 푸딩! ${secs}초</div>`;
+           }
+       }
+
+
+       function levelUp() {
+           level++;
+           gameSpeed += 0.05;
+           sound.playLevelUp();
+
+
+           const themeIdx = Math.min(level - 1, LEVEL_THEMES.length - 1);
+           const theme = LEVEL_THEMES[themeIdx];
+
+
+           scene.background.setHex(theme.bg);
+           scene.fog.color.setHex(theme.bg);
+           if (groundMesh) groundMesh.material.color.setHex(theme.ground);
+
+
+           document.getElementById('level-text').innerText = level;
+           document.getElementById('level-multiplier').innerText = `x${(1 + (level - 1) * 0.2).toFixed(1)}`;
+           document.getElementById('level-up-title').innerText = `STAGE ${level}!`;
+           document.getElementById('level-up-sub').innerText = theme.sub;
+
+
+           const banner = document.getElementById('level-up-banner');
+           banner.classList.remove('scale-0', 'opacity-0');
+           banner.classList.add('scale-100', 'opacity-100');
+
+
+           setTimeout(() => {
+               banner.classList.remove('scale-100', 'opacity-100');
+               banner.classList.add('scale-0', 'opacity-0');
+           }, 2200);
+       }
+
+
+       function handleGameOver() {
+           isGameOver = true;
+           sound.playHit();
+
+
+           if (score > highScore) {
+               highScore = score;
+               localStorage.setItem('chiikawa_high_score', highScore);
+           }
+           localStorage.setItem('chiikawa_total_sweets', totalSweets);
+
+
+           document.getElementById('final-score').innerText = score;
+           document.getElementById('final-sweets').innerText = sweetsCount;
+           document.getElementById('gameover-screen').classList.remove('hidden');
+           document.getElementById('hud').classList.add('hidden');
+       }
+
+
+       function startGame() {
+           sound.init();
+           isGameStarted = true;
+           isGameOver = false;
+           score = 0;
+           sweetsCount = 0;
+           level = 1;
+           gameSpeed = baseSpeed;
+           currentLane = 1;
+           targetX = 0;
+           playerY = 0;
+           verticalVelocity = 0;
+           isJumping = false;
+           isRolling = false;
+
+
+           powerups.magnet = 0;
+           powerups.shield = (selectedCharacter === 'chiikawa' || selectedCharacter === 'kurimanju') ? 1 : 0;
+           powerups.doubleCoins = 0;
+
+
+           obstacles.forEach(o => scene.remove(o));
+           items.forEach(i => scene.remove(i));
+           obstacles = [];
+           items = [];
+
+
+           scene.background.setHex(LEVEL_THEMES[0].bg);
+           scene.fog.color.setHex(LEVEL_THEMES[0].bg);
+           if (groundMesh) groundMesh.material.color.setHex(LEVEL_THEMES[0].ground);
+
+
+           document.getElementById('start-screen').classList.add('hidden');
+           document.getElementById('gameover-screen').classList.add('hidden');
+           document.getElementById('hud').classList.remove('hidden');
+           document.getElementById('level-text').innerText = '1';
+           document.getElementById('level-progress-bar').style.width = '0%';
+       }
+
+
+       function restartGame() {
+           startGame();
+       }
+
+
+       function goHome() {
+           isGameStarted = false;
+           isGameOver = false;
+           playerY = 0;
+           verticalVelocity = 0;
+           isJumping = false;
+
+
+           obstacles.forEach(o => scene.remove(o));
+           items.forEach(i => scene.remove(i));
+           obstacles = [];
+           items = [];
+
+
+           updateMainMenuUI();
+           document.getElementById('start-screen').classList.remove('hidden');
+           document.getElementById('gameover-screen').classList.add('hidden');
+           document.getElementById('shop-screen').classList.add('hidden');
+           document.getElementById('hud').classList.add('hidden');
+       }
+
+
+       function updateMainMenuUI() {
+           document.getElementById('high-score-display').innerText = highScore;
+           document.getElementById('total-sweets-display').innerText = totalSweets;
+       }
+
+
+       function openShop() {
+           document.getElementById('shop-sweets').innerText = totalSweets;
+           renderShop();
+           document.getElementById('shop-screen').classList.remove('hidden');
+       }
+
+
+       function closeShop() {
+           document.getElementById('shop-screen').classList.add('hidden');
+           updateMainMenuUI();
+       }
+
+
+       function renderShop() {
+           const container = document.getElementById('shop-items');
+           container.innerHTML = '';
+
+
+           Object.keys(CHAR_DATA).forEach(key => {
+               const char = CHAR_DATA[key];
+               const isUnlocked = unlockedChars.includes(key);
+               const isSelected = selectedCharacter === key;
+
+
+               const card = document.createElement('div');
+               card.className = `p-3 rounded-2xl border-2 flex flex-col items-center text-center relative ${char.color} ${char.border} shadow-sm`;
+
+
+               let btnHTML = '';
+               if (isSelected) {
+                   btnHTML = `<span class="bg-pink-500 text-white font-black text-xs px-3 py-1 rounded-full">사용 중</span>`;
+               } else if (isUnlocked) {
+                   btnHTML = `<button onclick="selectChar('${key}')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full btn-kawaii">선택하기</button>`;
+               } else {
+                   btnHTML = `<button onclick="buyChar('${key}')" class="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs px-3 py-1 rounded-full btn-kawaii">🍮 ${char.price} 구매</button>`;
+               }
+
+
+               card.innerHTML = `
+                   <div class="text-4xl mb-1">${char.icon}</div>
+                   <span class="font-extrabold text-gray-800 text-sm mb-0.5">${char.name}</span>
+                   <span class="text-[10px] text-gray-600 mb-2 leading-tight">${char.desc}</span>
+                   ${btnHTML}
+               `;
+               container.appendChild(card);
+           });
+       }
+
+
+       function selectChar(key) {
+           selectedCharacter = key;
+           localStorage.setItem('chiikawa_selected', key);
+           updatePlayerModel();
+           renderShop();
+       }
+
+
+       function buyChar(key) {
+           const char = CHAR_DATA[key];
+           if (totalSweets >= char.price) {
+               totalSweets -= char.price;
+               unlockedChars.push(key);
+               localStorage.setItem('chiikawa_total_sweets', totalSweets);
+               localStorage.setItem('chiikawa_unlocked', JSON.stringify(unlockedChars));
+               selectChar(key);
+               document.getElementById('shop-sweets').innerText = totalSweets;
+           } else {
+               sound.playHit();
+           }
+       }
+
+
+       function onWindowResize() {
+           camera.aspect = window.innerWidth / window.innerHeight;
+           camera.updateProjectionMatrix();
+           renderer.setSize(window.innerWidth, window.innerHeight);
+       }
+
+
+       function animate() {
+           requestAnimationFrame(animate);
+           update();
+           renderer.render(scene, camera);
+       }
+
+
+       window.onload = function() {
+           initThreeJS();
+           setupControls();
+           animate();
+       };
+   </script>
+</body>
+</html>

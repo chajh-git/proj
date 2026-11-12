@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>성격 기반 음식 추천</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ffe0cc, #fff5ee);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 650px;
+      background: white;
+      padding: 35px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.15);
+      text-align: center;
+    }
+
+    h1 {
+      color: #ff6333;
+    }
+
+    h2 {
+      color: #333;
+    }
+
+    button {
+      background: #ff7f50;
+      color: white;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 12px;
+      font-size: 17px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background: #ff5a1f;
+    }
+
+    .option {
+      background: #f7f7f7;
+      padding: 12px;
+      border-radius: 10px;
+      margin: 10px 0;
+      text-align: left;
+    }
+
+    .option:hover {
+      background: #ececec;
+    }
+
+    #result {
+      font-size: 28px;
+      margin-top: 20px;
+      color: #222;
+    }
+
+    .emoji {
+      font-size: 60px;
+      margin-top: 20px;
+    }
+
+    .description {
+      margin-top: 20px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .progress {
+      margin-top: 15px;
+      color: #999;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>🍽 성격 기반 음식 추천</h1>
+
+  <!-- 시작 화면 -->
+  <div id="start-screen">
+    <p>
+      당신의 성격과 현재 기분을 분석해서<br>
+      오늘 먹으면 좋을 음식을 추천해드립니다!
+    </p>
+
+    <button onclick="startTest()">테스트 시작</button>
+  </div>
+
+  <!-- 질문 화면 -->
+  <div id="quiz-screen" style="display:none;">
+
+    <div class="progress" id="progress"></div>
+
+    <h2 id="question-title"></h2>
+
+    <div id="options"></div>
+
+    <button onclick="nextQuestion()">다음 질문</button>
+  </div>
+
+  <!-- 결과 화면 -->
+  <div id="result-screen" style="display:none;">
+
+    <h2>🎉 오늘의 추천 메뉴</h2>
+
+    <div id="result"></div>
+
+    <div class="emoji" id="foodEmoji"></div>
+
+    <div class="description" id="foodDescription"></div>
+
+    <button onclick="restart()">다시 테스트하기</button>
+  </div>
+
+</div>
+
+<script>
+
+const questions = [
+
+  {
+    question: "친구들과 어울리는 걸 좋아하나요?",
+    answers: [
+      { text: "엄청 좋아한다", type: "extrovert" },
+      { text: "보통이다", type: "balanced" },
+      { text: "혼자가 편하다", type: "introvert" }
+    ]
+  },
+
+  {
+    question: "새로운 음식에 도전하는 편인가요?",
+    answers: [
+      { text: "무조건 도전!", type: "adventure" },
+      { text: "가끔 도전", type: "balanced" },
+      { text: "익숙한 음식이 좋다", type: "safe" }
+    ]
+  },
+
+  {
+    question: "오늘 기분은 어떤가요?",
+    answers: [
+      { text: "아주 신난다", type: "happy" },
+      { text: "평범하다", type: "balanced" },
+      { text: "피곤하다", type: "tired" }
+    ]
+  },
+
+  {
+    question: "매운 음식을 좋아하나요?",
+    answers: [
+      { text: "엄청 좋아한다", type: "spicy" },
+      { text: "조금 좋아한다", type: "balanced" },
+      { text: "못 먹는다", type: "mild" }
+    ]
+  },
+
+  {
+    question: "오늘 얼마나 배고픈가요?",
+    answers: [
+      { text: "엄청 배고프다", type: "big" },
+      { text: "적당히 배고프다", type: "balanced" },
+      { text: "가볍게 먹고 싶다", type: "light" }
+    ]
+  },
+
+  {
+    question: "혼밥이 가능한가요?",
+    answers: [
+      { text: "혼자 먹는 게 편하다", type: "introvert" },
+      { text: "상관없다", type: "balanced" },
+      { text: "같이 먹는 게 좋다", type: "extrovert" }
+    ]
+  },
+
+  {
+    question: "오늘 원하는 분위기는?",
+    answers: [
+      { text: "스트레스 해소", type: "spicy" },
+      { text: "편안함", type: "safe" },
+      { text: "재미있는 경험", type: "adventure" }
+    ]
+  },
+
+  {
+    question: "평소 가장 좋아하는 음식 스타일은?",
+    answers: [
+      { text: "한식", type: "korean" },
+      { text: "양식", type: "western" },
+      { text: "일식/중식", type: "asian" }
+    ]
+  }
+
+];
+
+let currentQuestion = 0;
+
+let scores = {
+  extrovert: 0,
+  introvert: 0,
+  adventure: 0,
+  safe: 0,
+  happy: 0,
+  tired: 0,
+  spicy: 0,
+  mild: 0,
+  big: 0,
+  light: 0,
+  korean: 0,
+  western: 0,
+  asian: 0,
+  balanced: 0
+};
+
+function startTest() {
+
+  document.getElementById("start-screen").style.display = "none";
+  document.getElementById("quiz-screen").style.display = "block";
+
+  showQuestion();
+}
+
+function showQuestion() {
+
+  const q = questions[currentQuestion];
+
+  document.getElementById("progress").innerText =
+    `${currentQuestion + 1} / ${questions.length}`;
+
+  document.getElementById("question-title").innerText =
+    q.question;
+
+  const optionsDiv = document.getElementById("options");
+
+  optionsDiv.innerHTML = "";
+
+  q.answers.forEach(answer => {
+
+    optionsDiv.innerHTML += `
+      <div class="option">
+        <label>
+          <input type="radio" name="answer" value="${answer.type}">
+          ${answer.text}
+        </label>
+      </div>
+    `;
+  });
+}
+
+function nextQuestion() {
+
+  const selected =
+    document.querySelector('input[name="answer"]:checked');
+
+  if (!selected) {
+    alert("답변을 선택해주세요!");
+    return;
+  }
+
+  scores[selected.value]++;
+
+  currentQuestion++;
+
+  if (currentQuestion < questions.length) {
+    showQuestion();
+  }
+
+  else {
+    showResult();
+  }
+}
+
+function showResult() {
+
+  document.getElementById("quiz-screen").style.display = "none";
+  document.getElementById("result-screen").style.display = "block";
+
+  let food = "";
+  let emoji = "";
+  let desc = "";
+
+  // 음식 추천 로직
+
+  if (scores.spicy >= 2 && scores.adventure >= 1) {
+    food = "마라탕";
+    emoji = "🍲";
+    desc = "자극적이고 강렬한 맛을 원하는 당신에게 딱!";
+  }
+
+  else if (scores.tired >= 1 && scores.safe >= 1) {
+    food = "국밥";
+    emoji = "🍚";
+    desc = "지친 하루를 따뜻하게 회복시켜줄 음식!";
+  }
+
+  else if (scores.light >= 1 && scores.western >= 1) {
+    food = "샐러드";
+    emoji = "🥗";
+    desc = "가볍고 건강하게 먹고 싶은 날 추천!";
+  }
+
+  else if (scores.extrovert >= 2 && scores.big >= 1) {
+    food = "삼겹살";
+    emoji = "🥩";
+    desc = "사람들과 신나게 먹기 좋은 메뉴!";
+  }
+
+  else if (scores.introvert >= 2) {
+    food = "카레라이스";
+    emoji = "🍛";
+    desc = "혼자서도 편안하게 즐길 수 있는 음식!";
+  }
+
+  else if (scores.happy >= 1 && scores.western >= 1) {
+    food = "피자";
+    emoji = "🍕";
+    desc = "기분 좋은 날 더욱 즐거워지는 메뉴!";
+  }
+
+  else if (scores.asian >= 1 && scores.safe >= 1) {
+    food = "초밥";
+    emoji = "🍣";
+    desc = "깔끔하고 안정적인 맛을 좋아하는 당신에게!";
+  }
+
+  else if (scores.spicy >= 1 && scores.big >= 1) {
+    food = "떡볶이";
+    emoji = "🌶";
+    desc = "스트레스를 날려버릴 매콤한 선택!";
+  }
+
+  else if (scores.korean >= 1 && scores.big >= 1) {
+    food = "김치찌개";
+    emoji = "🍲";
+    desc = "든든하고 익숙한 한국인의 소울푸드!";
+  }
+
+  else if (scores.adventure >= 2) {
+    food = "타코";
+    emoji = "🌮";
+    desc = "새로운 경험을 좋아하는 당신에게 추천!";
+  }
+
+  else {
+    food = "햄버거";
+    emoji = "🍔";
+    desc = "누구나 맛있게 즐길 수 있는 클래식 메뉴!";
+  }
+
+  document.getElementById("result").innerText =
+    food;
+
+  document.getElementById("foodEmoji").innerText =
+    emoji;
+
+  document.getElementById("foodDescription").innerText =
+    desc;
+}
+
+function restart() {
+
+  currentQuestion = 0;
+
+  scores = {
+    extrovert: 0,
+    introvert: 0,
+    adventure: 0,
+    safe: 0,
+    happy: 0,
+    tired: 0,
+    spicy: 0,
+    mild: 0,
+    big: 0,
+    light: 0,
+    korean: 0,
+    western: 0,
+    asian: 0,
+    balanced: 0
+  };
+
+  document.getElementById("result-screen").style.display = "none";
+  document.getElementById("start-screen").style.display = "block";
+}
+
+</script>
+
+</body>
+</html>

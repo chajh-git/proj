@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>맞춤 공부 플래너 추천기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { darkbg: '#0f172a' } } }
+    };
+    if (localStorage.theme === 'dark' ||
+        (!('theme' in localStorage) &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    * { font-family: 'Pretendard', sans-serif; }
+    body { transition: background-color .3s, color .3s; }
+    .glass-card {
+      background: rgba(255,255,255,.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0,0,0,.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,.05);
+    }
+    .dark .glass-card {
+      background: rgba(30,41,59,.7);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,.36);
+    }
+    .gradient-text {
+      background: linear-gradient(135deg,#818cf8 0%,#c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0,0,0,.05); border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(15,23,42,.6);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1; border-radius: 4px;
+    }
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
+    .pulse-glow { animation: pulseGlow 2s infinite alternate; }
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 15px rgba(99,102,241,.3); }
+      100% { box-shadow: 0 0 30px rgba(168,85,247,.6); }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen pb-12 bg-slate-50 dark:bg-darkbg text-slate-800 dark:text-slate-100">
+<header class="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 sticky top-0 z-40 backdrop-blur-md">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+    <div class="flex items-center justify-between w-full md:w-auto space-x-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shrink-0">
+          <i class="fa-solid fa-brain"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold gradient-text whitespace-nowrap">맞춤 공부 플래너 추천기</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">학습 효율 극대화 & 스마트 뽀모도로 트레이닝</p>
+        </div>
+      </div>
+      <button onclick="toggleTheme()" class="md:ml-4 w-10 h-10 rounded-full flex items-center justify-center bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-amber-400 hover:bg-slate-300 dark:hover:bg-slate-700 transition shrink-0">
+        <i class="fa-solid fa-sun hidden dark:block"></i>
+        <i class="fa-solid fa-moon block dark:hidden"></i>
+      </button>
+    </div>
+    <div class="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/50 w-full md:w-auto overflow-x-auto custom-scrollbar">
+      <button id="tabPlannerBtn" onclick="switchTab('planner')" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow">
+        <i class="fa-solid fa-calendar-check mr-2"></i>플래너
+      </button>
+      <button id="tabTimerBtn" onclick="switchTab('timer')" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+        <i class="fa-solid fa-stopwatch mr-2"></i>타이머
+      </button>
+      <button id="tabStorageBtn" onclick="switchTab('storage')" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+        <i class="fa-solid fa-folder-open mr-2"></i>보관함
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 mt-6 md:mt-8">
+  <div id="tabPlanner" class="space-y-6 md:space-y-8">
+    <div class="glass-card rounded-2xl p-5 md:p-6 border-l-4 border-indigo-500 flex items-center justify-between">
+      <div>
+        <h2 class="text-base md:text-lg font-bold mb-1">
+          <i class="fa-solid fa-lightbulb text-amber-500 mr-2"></i>개발 동기 및 목적
+        </h2>
+        <p class="text-xs md:text-sm text-slate-600 dark:text-slate-300">시험 기간에 비효율적인 공부 방식을 개선하고, 체계적인 시간 배분과 휴식으로 피로 없이 최고의 성과를 냅니다.</p>
+      </div>
+      <div class="hidden md:block text-slate-400 text-3xl shrink-0 ml-4"><i class="fa-solid fa-graduation-cap"></i></div>
+    </div>
+
+    <div class="glass-card rounded-2xl p-5 md:p-6">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <h3 class="text-base md:text-lg font-bold flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-indigo-500"></i>시험 과목 및 전 시험 점수 입력
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">과목을 등록하고 이전 점수 및 선호도를 입력하세요.</p>
+        </div>
+        <button onclick="addSubjectRow()" class="w-full sm:w-auto px-3 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 shadow">
+          <i class="fa-solid fa-plus"></i>과목 추가
+        </button>
+      </div>
+
+      <div class="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700 rounded-xl">
+        <table class="w-full text-left text-sm whitespace-nowrap min-w-[500px]">
+          <thead class="bg-slate-100 dark:bg-slate-800/80 text-xs text-slate-500 border-b border-slate-200 dark:border-slate-700">
+            <tr>
+              <th class="py-3 px-4">과목명</th>
+              <th class="py-3 px-4 w-32">지난 시험 점수</th>
+              <th class="py-3 px-4 w-48">과목 선호도</th>
+              <th class="py-3 px-4 text-center w-16">삭제</th>
+            </tr>
+          </thead>
+          <tbody id="subjectTableBody" class="divide-y divide-slate-200 dark:divide-slate-800 bg-white/50 dark:bg-transparent"></tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 p-4 bg-slate-100/50 dark:bg-slate-800/40 rounded-xl flex justify-between items-center border border-slate-200 dark:border-slate-700/50">
+        <span class="text-sm font-medium"><i class="fa-solid fa-calculator text-purple-500 mr-2"></i>전 시험 평균 점수</span>
+        <span id="avgScoreDisplay" class="text-lg font-bold text-indigo-600 dark:text-indigo-400">0.0 점</span>
+      </div>
+    </div>
+
+    <div class="glass-card rounded-2xl p-5 md:p-6">
+      <h3 class="text-base md:text-lg font-bold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-clock text-indigo-500"></i>목표 순수 공부 시간 설정
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">총 목표 시간 (시간)</label>
+          <input type="number" id="goalHours" min="0" max="24" value="3" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">총 목표 시간 (분)</label>
+          <input type="number" id="goalMinutes" min="0" max="59" value="0" step="10" class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5">
+        </div>
+        <button onclick="generatePlan()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl shadow-lg pulse-glow flex items-center justify-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>AI 맞춤 플랜 생성하기
+        </button>
+      </div>
+      <p class="text-xs text-slate-500 mt-3">설정된 시간은 과목별로 가중 배분됩니다. 과목당 최소 30분을 보장합니다.</p>
+    </div>
+
+    <div id="planResults" class="hidden glass-card rounded-2xl p-5 md:p-6 border border-indigo-200 dark:border-indigo-500/30">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <h3 class="text-base md:text-lg font-bold"><i class="fa-solid fa-chart-pie text-purple-500 mr-2"></i>AI 추천 공부 시간표</h3>
+        <button onclick="saveCurrentPlan()" class="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1">
+          <i class="fa-solid fa-bookmark"></i>플랜 저장하기
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+        <div class="bg-slate-100/80 dark:bg-slate-800/60 p-4 rounded-xl text-center sm:text-left">
+          <p class="text-xs text-slate-500">순수 목표 공부 시간</p>
+          <p id="totalStudyTimeDisplay" class="text-xl font-bold text-indigo-600 mt-1">0시간 0분</p>
+        </div>
+        <div class="bg-slate-100/80 dark:bg-slate-800/60 p-4 rounded-xl text-center sm:text-left">
+          <p class="text-xs text-slate-500">자동 계산된 총 휴식 시간</p>
+          <p id="totalBreakTimeDisplay" class="text-xl font-bold text-emerald-600 mt-1">0분</p>
+        </div>
+        <div class="bg-slate-100/80 dark:bg-slate-800/60 p-4 rounded-xl text-center sm:text-left">
+          <p class="text-xs text-slate-500">총 예상 소요 시간</p>
+          <p id="totalDurationDisplay" class="text-xl font-bold text-purple-600 mt-1">0시간 0분</p>
+        </div>
+      </div>
+
+      <div id="planList" class="space-y-3 md:space-y-4"></div>
+      <div class="mt-6 text-center">
+        <button onclick="startTimerWithPlan()" class="w-full md:w-auto px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl shadow-lg inline-flex items-center justify-center gap-2">
+          <i class="fa-solid fa-play"></i>이 플랜으로 스마트 뽀모도로 시작하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabTimer" class="hidden space-y-6 md:space-y-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+      <div class="lg:col-span-2 glass-card rounded-2xl p-6 md:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[400px]">
+        <div id="timerStatusBadge" class="px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 rounded-full text-xs font-semibold mb-6">집중 학습 모드</div>
+        <h2 id="timerSubjectName" class="text-xl md:text-2xl font-bold mb-2">과목을 준비하세요</h2>
+        <p id="timerPhaseDesc" class="text-xs text-slate-500 mb-8">과목별 공부 시간을 완료하면 5분 휴식 후 다음 과목으로 넘어갑니다.</p>
+
+        <div class="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center mb-8">
+          <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="45" stroke="currentColor" class="text-slate-200 dark:text-slate-700" stroke-width="6" fill="transparent"/>
+            <circle id="timerProgressCircle" cx="50" cy="50" r="45" stroke="#6366f1" stroke-width="6" fill="transparent" stroke-dasharray="282.7" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-1000"/>
+          </svg>
+          <div class="absolute flex flex-col items-center">
+            <span id="timerDisplay" class="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white font-mono">60:00</span>
+            <span id="timerSubInfo" class="text-xs text-slate-500 mt-2">남은 세션</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <button id="startBtn" onclick="toggleTimer()" class="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg">
+            <i class="fa-solid fa-play"></i>
+          </button>
+          <button onclick="resetTimer()" class="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-lg border">
+            <i class="fa-solid fa-rotate-right"></i>
+          </button>
+          <button onclick="skipToNextQueue()" class="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-lg border" title="다음 과목으로 넘어가기">
+            <i class="fa-solid fa-forward"></i>
+          </button>
+        </div>
+
+        <div id="freeTimerControls" class="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 w-full max-w-xs text-left hidden">
+          <label class="block text-xs text-slate-500 mb-2">자유 타이머 시간 입력 (분)</label>
+          <div class="flex gap-2">
+            <input type="number" id="freeTimerMin" min="1" max="180" value="60" class="w-full bg-white dark:bg-slate-900 border rounded-lg px-3 py-1.5 text-sm">
+            <button onclick="setFreeTimer()" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-xs rounded-lg font-semibold">설정</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 md:p-6 flex flex-col justify-between">
+        <div>
+          <h3 class="font-bold mb-1"><i class="fa-solid fa-layer-group text-indigo-500 mr-2"></i>스마트 학습 대기열</h3>
+          <p class="text-xs text-slate-500 mb-4">배정된 공부 시간이 많은 과목부터 진행됩니다.</p>
+          <div id="timerQueueList" class="space-y-3 custom-scrollbar max-h-60 lg:max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+        <div class="mt-6 p-4 bg-slate-100/50 dark:bg-slate-800/40 rounded-xl text-xs text-slate-600 dark:text-slate-400 space-y-1">
+          <p><strong>자동 루틴 시스템</strong></p>
+          <p>공부 세션이 끝나면 5분 휴식이 자동으로 시작됩니다. 휴식이 끝나면 다음 세션 또는 다음 과목으로 넘어갑니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabStorage" class="hidden space-y-6">
+    <div class="glass-card rounded-2xl p-5 md:p-6">
+      <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-box-archive text-indigo-500 mr-2"></i>저장된 공부 플랜 내역</h3>
+      <p class="text-xs text-slate-500 mb-6">이전에 생성하고 저장한 플랜 기록입니다. 클릭하여 다시 불러올 수 있습니다.</p>
+      <div id="storageList" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+  </div>
+</main>
+
+<div id="customModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-6 rounded-2xl max-w-sm w-full text-center shadow-2xl">
+    <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xl mx-auto mb-4">
+      <i class="fa-solid fa-circle-exclamation"></i>
+    </div>
+    <h4 class="text-lg font-bold mb-2">알림</h4>
+    <p id="modalMessage" class="text-sm text-slate-600 dark:text-slate-300 mb-6">메시지 내용</p>
+    <button onclick="closeModal()" class="w-full py-2.5 bg-indigo-600 text-white font-semibold text-sm rounded-xl">확인</button>
+  </div>
+</div>
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  html.classList.toggle('dark');
+  localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+}
+
+let subjects = [];
+let nextSubjectId = 1;
+let currentPlan = null;
+let savedPlans = [];
+
+let timerQueue = [];
+let currentQueueIndex = 0;
+let timerPhase = 'study';
+let totalSessionTime = 3600;
+let currentSessionSec = 3600;
+let timeRemaining = 3600;
+let timerInterval = null;
+let isTimerRunning = false;
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadSavedPlansFromStorage();
+  renderSubjects();
+  prepareTimerUI();
+});
+
+function showAlert(msg) {
+  document.getElementById('modalMessage').innerText = msg;
+  document.getElementById('customModal').classList.remove('hidden');
+}
+function closeModal() {
+  document.getElementById('customModal').classList.add('hidden');
+}
+function capitalize(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function switchTab(tab) {
+  ['planner', 'timer', 'storage'].forEach(t => {
+    document.getElementById('tab' + capitalize(t)).classList.add('hidden');
+    document.getElementById('tab' + capitalize(t) + 'Btn').className =
+      'flex-1 md:flex-none whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+  });
+  document.getElementById('tab' + capitalize(tab)).classList.remove('hidden');
+  document.getElementById('tab' + capitalize(tab) + 'Btn').className =
+    'flex-1 md:flex-none whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow';
+  if (tab === 'storage') renderStorageList();
+  if (tab === 'timer') prepareTimerUI();
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function updateAverageScore() {
+  const display = document.getElementById('avgScoreDisplay');
+  if (!display) return;
+  if (subjects.length === 0) {
+    display.innerText = '0.0 점';
+    return;
+  }
+  const total = subjects.reduce((sum, sub) => {
+    const score = Number(sub.score);
+    return sum + (Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 70);
+  }, 0);
+  display.innerText = `${(total / subjects.length).toFixed(1)} 점`;
+}
+
+function renderSubjects() {
+  const tbody = document.getElementById('subjectTableBody');
+  tbody.innerHTML = '';
+
+  if (subjects.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="4" class="py-8 text-center text-slate-400 text-sm">
+        <i class="fa-solid fa-folder-plus text-2xl mb-2 block"></i>
+        등록된 과목이 없습니다. [과목 추가] 버튼을 눌러 과목을 입력하세요.
+      </td></tr>`;
+    updateAverageScore();
+    return;
+  }
+
+  subjects.forEach((sub, idx) => {
+    if (!Number.isFinite(Number(sub.id))) sub.id = nextSubjectId++;
+    if (!sub.name || !String(sub.name).trim()) sub.name = `새 과목 ${idx + 1}`;
+    if (sub.score === undefined || sub.score === null || sub.score === '') sub.score = 70;
+
+    const parsedScore = Number(sub.score);
+    sub.score = Number.isFinite(parsedScore) ? Math.max(0, Math.min(100, parsedScore)) : 70;
+    if (!['dislike', 'neutral', 'like'].includes(sub.pref)) sub.pref = 'neutral';
+
+    const tr = document.createElement('tr');
+    tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition';
+    tr.innerHTML = `
+      <td class="py-2 px-4">
+        <input type="text" value="${escapeHtml(sub.name)}"
+          onchange="updateSubject(${Number(sub.id)}, 'name', this.value)"
+          aria-label="과목명"
+          class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm w-full">
+      </td>
+      <td class="py-2 px-4">
+        <input type="number" min="0" max="100" value="${sub.score}"
+          onchange="updateSubject(${Number(sub.id)}, 'score', this.value)"
+          aria-label="지난 시험 점수"
+          class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm w-full md:w-28">
+      </td>
+      <td class="py-2 px-4">
+        <select onchange="updateSubject(${Number(sub.id)}, 'pref', this.value)"
+          aria-label="과목 선호도"
+          class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm w-full">
+          <option value="dislike" ${sub.pref === 'dislike' ? 'selected' : ''}>취약/불호 (우선 배분)</option>
+          <option value="neutral" ${sub.pref === 'neutral' ? 'selected' : ''}>보통 과목</option>
+          <option value="like" ${sub.pref === 'like' ? 'selected' : ''}>선호 과목</option>
+        </select>
+      </td>
+      <td class="py-2 px-4 text-center">
+        <button type="button" onclick="deleteSubject(${Number(sub.id)})" aria-label="과목 삭제"
+          class="text-slate-400 hover:text-red-500 transition p-1">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  updateAverageScore();
+}
+
+function addSubjectRow() {
+  subjects.push({
+    id: nextSubjectId++,
+    name: `새 과목 ${subjects.length + 1}`,
+    score: 70,
+    pref: 'neutral'
+  });
+  renderSubjects();
+}
+
+function updateSubject(id, field, value) {
+  const target = subjects.find(s => Number(s.id) === Number(id));
+  if (!target) return;
+
+  if (field === 'name') {
+    target.name = String(value ?? '').trim() || `새 과목 ${subjects.indexOf(target) + 1}`;
+  } else if (field === 'score') {
+    const score = Number(value);
+    target.score = value === '' || !Number.isFinite(score) ? 0 : Math.max(0, Math.min(100, score));
+    updateAverageScore();
+  } else if (field === 'pref') {
+    target.pref = ['dislike', 'neutral', 'like'].includes(value) ? value : 'neutral';
+  }
+}
+
+function deleteSubject(id) {
+  subjects = subjects.filter(s => Number(s.id) !== Number(id));
+  renderSubjects();
+}
+
+function generatePlan() {
+  if (subjects.length === 0) {
+    showAlert('과목을 최소 1개 이상 등록해 주세요.');
+    return;
+  }
+
+  const hours = Math.max(0, parseInt(document.getElementById('goalHours').value, 10) || 0);
+  const minutes = Math.max(0, Math.min(59, parseInt(document.getElementById('goalMinutes').value, 10) || 0));
+  const totalGoalMins = hours * 60 + minutes;
+  const minRequiredMins = subjects.length * 30;
+
+  if (totalGoalMins < minRequiredMins) {
+    showAlert(`과목이 ${subjects.length}개이므로 최소 ${minRequiredMins}분 이상 설정해 주세요.`);
+    return;
+  }
+
+  const remainingMins = totalGoalMins - minRequiredMins;
+  let totalWeight = 0;
+
+  const weightedSubjects = subjects.map(sub => {
+    const score = Number.isFinite(Number(sub.score)) ? Math.max(0, Math.min(100, Number(sub.score))) : 70;
+    const scoreFactor = 100 - score;
+    const prefMult = sub.pref === 'dislike' ? 1.6 : sub.pref === 'like' ? 0.7 : 1;
+    const weight = scoreFactor * prefMult + 10;
+    totalWeight += weight;
+    return { ...sub, score, weight };
+  });
+
+  let allocatedList = weightedSubjects.map(sub => ({
+    id: sub.id,
+    name: sub.name,
+    score: sub.score,
+    pref: sub.pref,
+    allocatedMins: 30 + (remainingMins > 0 ? Math.round(remainingMins * sub.weight / totalWeight) : 0)
+  }));
+
+  const allocatedSum = allocatedList.reduce((sum, item) => sum + item.allocatedMins, 0);
+  const diff = totalGoalMins - allocatedSum;
+  if (diff !== 0 && allocatedList.length) allocatedList[0].allocatedMins += diff;
+
+  allocatedList.sort((a, b) => b.allocatedMins - a.allocatedMins);
+
+  const totalBreakMins = allocatedList.reduce((sum, item) => {
+    const mins = Math.max(0, Number(item.allocatedMins) || 0);
+    const breaks = mins > 90 ? Math.ceil(mins / 60) : 1;
+    return sum + breaks * 5;
+  }, 0);
+
+  currentPlan = {
+    id: Date.now(),
+    date: new Date().toLocaleString('ko-KR', {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    }),
+    totalStudyMins: totalGoalMins,
+    totalBreakMins,
+    items: allocatedList
+  };
+
+  renderPlanResult();
+  if (window.innerWidth < 768) {
+    setTimeout(() => document.getElementById('planResults').scrollIntoView({ behavior: 'smooth' }), 100);
+  }
+}
+
+function renderPlanResult() {
+  if (!currentPlan) return;
+  document.getElementById('planResults').classList.remove('hidden');
+
+  const studyH = Math.floor(currentPlan.totalStudyMins / 60);
+  const studyM = currentPlan.totalStudyMins % 60;
+  document.getElementById('totalStudyTimeDisplay').innerText = `${studyH}시간 ${studyM}분`;
+  document.getElementById('totalBreakTimeDisplay').innerText = `${currentPlan.totalBreakMins}분`;
+
+  const totalDuration = currentPlan.totalStudyMins + currentPlan.totalBreakMins;
+  document.getElementById('totalDurationDisplay').innerText =
+    `${Math.floor(totalDuration / 60)}시간 ${totalDuration % 60}분`;
+
+  const list = document.getElementById('planList');
+  list.innerHTML = '';
+  const maxAlloc = Math.max(1, ...currentPlan.items.map(item => item.allocatedMins));
+
+  currentPlan.items.forEach(item => {
+    const timeStr = item.allocatedMins >= 60
+      ? `${Math.floor(item.allocatedMins / 60)}시간 ${item.allocatedMins % 60}분`
+      : `${item.allocatedMins}분`;
+    const percentage = Math.round(item.allocatedMins / maxAlloc * 100);
+    const div = document.createElement('div');
+    div.className = 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-4';
+    div.innerHTML = `
+      <div class="flex justify-between text-sm mb-2">
+        <span class="font-bold">${escapeHtml(item.name)}</span>
+        <span class="text-indigo-600 font-bold">${timeStr}</span>
+      </div>
+      <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5">
+        <div class="bg-indigo-500 h-2.5 rounded-full" style="width:${percentage}%"></div>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+/* 타이머: 90분 초과 과목은 60분 세션 단위로 공부.
+   90분 이하 과목은 배정 시간을 한 세션으로 공부.
+   모든 공부 세션 후 5분 휴식. */
+
+function prepareTimerUI() {
+  document.getElementById('freeTimerControls').classList.toggle('hidden', timerQueue.length > 0);
+  renderQueueList();
+  updateTimerDisplay();
+  updateStartBtnIcon();
+}
+
+function buildTimerQueueFromPlan() {
+  if (!currentPlan) {
+    showAlert('먼저 공부 플랜을 생성해 주세요.');
+    return;
+  }
+  stopTimer();
+
+  timerQueue = currentPlan.items.map(item => ({
+    name: item.name || '새 과목',
+    totalSec: item.allocatedMins * 60,
+    remainingSec: item.allocatedMins * 60,
+    chunkable: true
+  }));
+
+  currentQueueIndex = 0;
+  timerPhase = 'study';
+  setupTimerSession();
+  document.getElementById('freeTimerControls').classList.add('hidden');
+}
+
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  isTimerRunning = false;
+  updateStartBtnIcon();
+}
+
+function setupTimerSession() {
+  const status = document.getElementById('timerStatusBadge');
+  const subjectName = document.getElementById('timerSubjectName');
+  const phaseDesc = document.getElementById('timerPhaseDesc');
+
+  if (timerQueue.length === 0) {
+    status.innerText = '대기 중';
+    subjectName.innerText = '과목을 준비하세요';
+    phaseDesc.innerText = '자유 타이머 시간을 설정하거나 공부 플랜을 생성하세요.';
+    totalSessionTime = currentSessionSec = timeRemaining = 3600;
+    updateTimerDisplay();
+    renderQueueList();
+    updateStartBtnIcon();
+    return;
+  }
+
+  if (currentQueueIndex >= timerQueue.length) {
+    stopTimer();
+    status.innerText = '완료';
+    subjectName.innerText = '모든 목표 달성!';
+    phaseDesc.innerText = '정말 고생 많으셨습니다!';
+    timeRemaining = 0;
+    totalSessionTime = currentSessionSec = 1;
+    updateTimerDisplay();
+    renderQueueList();
+    return;
+  }
+
+  const item = timerQueue[currentQueueIndex];
+
+  if (timerPhase === 'study') {
+    const remaining = Math.max(0, Number(item.remainingSec) || 0);
+    const sessionSeconds = item.chunkable !== false && remaining > 90 * 60
+      ? Math.min(60 * 60, remaining)
+      : remaining;
+
+    currentSessionSec = Math.max(1, sessionSeconds);
+    totalSessionTime = currentSessionSec;
+    timeRemaining = currentSessionSec;
+
+    status.innerText = '집중 학습 모드';
+    status.className = 'px-3 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 rounded-full text-xs font-semibold mb-6';
+    subjectName.innerText = item.name;
+    phaseDesc.innerText = `이번 세션: ${Math.ceil(currentSessionSec / 60)}분 · 과목 남은 시간: ${Math.ceil(remaining / 60)}분`;
+  } else {
+    totalSessionTime = currentSessionSec = 300;
+    timeRemaining = 300;
+    status.innerText = '휴식 모드';
+    status.className = 'px-3 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 rounded-full text-xs font-semibold mb-6';
+    subjectName.innerText = '휴식 시간';
+    phaseDesc.innerText = '다음 집중을 위해 머리를 식혀주세요.';
+  }
+
+  updateTimerDisplay();
+  renderQueueList();
+  updateStartBtnIcon();
+}
+
+function toggleTimer() {
+  if (!timerQueue.length || currentQueueIndex >= timerQueue.length) {
+    showAlert('먼저 자유 타이머 시간을 설정하거나 공부 플랜을 생성해 주세요.');
+    return;
+  }
+
+  if (isTimerRunning) {
+    stopTimer();
+  } else {
+    isTimerRunning = true;
+    timerInterval = setInterval(timerTick, 1000);
+    updateStartBtnIcon();
+  }
+}
+
+function updateStartBtnIcon() {
+  const btn = document.getElementById('startBtn');
+  if (!btn) return;
+  if (isTimerRunning) {
+    btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    btn.className = 'w-14 h-14 bg-amber-500 text-white rounded-full flex items-center justify-center text-xl shadow-lg';
+  } else {
+    btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+    btn.className = 'w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xl shadow-lg';
+  }
+}
+
+function timerTick() {
+  if (timeRemaining > 0) timeRemaining--;
+  updateTimerDisplay();
+
+  if (timeRemaining <= 0) {
+    stopTimer();
+    handleSessionEnd();
+  }
+}
+
+function handleSessionEnd() {
+  const item = timerQueue[currentQueueIndex];
+  if (!item) {
+    currentQueueIndex = timerQueue.length;
+    setupTimerSession();
+    return;
+  }
+
+  if (timerPhase === 'study') {
+    item.remainingSec = Math.max(0, item.remainingSec - currentSessionSec);
+    timerPhase = 'break';
+  } else {
+    if (item.remainingSec <= 0) currentQueueIndex++;
+    timerPhase = 'study';
+  }
+
+  setupTimerSession();
+
+  if (currentQueueIndex < timerQueue.length) {
+    isTimerRunning = true;
+    timerInterval = setInterval(timerTick, 1000);
+    updateStartBtnIcon();
+  }
+}
+
+function updateTimerDisplay() {
+  const safeRemaining = Math.max(0, Number(timeRemaining) || 0);
+  const hours = Math.floor(safeRemaining / 3600);
+  const minutes = Math.floor((safeRemaining % 3600) / 60);
+  const seconds = Math.floor(safeRemaining % 60);
+  const pad = n => String(n).padStart(2, '0');
+
+  // 시간은 숫자 형식으로만 표시하여 코드가 노출되지 않도록 합니다.
+  const timeText = hours > 0
+    ? `
+pad(hours):{pad(minutes)}:${pad(seconds)}`
+    : `pad(minutes):{pad(seconds)}`;
+
+  document.getElementById('timerDisplay').textContent = timeText;
+  document.getElementById('timerSubInfo').textContent = timerPhase === 'break' ? '남은 휴식 시간' : '남은 공부 시간';
+
+  const circle = document.getElementById('timerProgressCircle');
+  const circumference = 2 * Math.PI * 45;
+  const percent = totalSessionTime > 0 ? Math.max(0, Math.min(1, safeRemaining / totalSessionTime)) : 0;
+  circle.style.strokeDashoffset = circumference * (1 - percent);
+}
+
+function resetTimer() {
+  stopTimer();
+  setupTimerSession();
+}
+
+function skipToNextQueue() {
+  if (currentQueueIndex >= timerQueue.length) return;
+
+  stopTimer();
+  timerQueue[currentQueueIndex].remainingSec = 0;
+  currentQueueIndex++;
+  timerPhase = 'study';
+  setupTimerSession();
+}
+
+function renderQueueList() {
+  const container = document.getElementById('timerQueueList');
+  container.innerHTML = '';
+
+  if (timerQueue.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-500">대기열이 없습니다.</p>';
+    return;
+  }
+
+  timerQueue.forEach((item, idx) => {
+    const isCurrent = idx === currentQueueIndex;
+    const isDone = idx < currentQueueIndex;
+    const mins = Math.ceil(Math.max(0, item.remainingSec) / 60);
+    const cardClass = isCurrent
+      ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700'
+      : isDone
+        ? 'bg-slate-50 dark:bg-slate-800/20 border-slate-200 dark:border-slate-800 opacity-50'
+        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700';
+    const badgeClass = isCurrent
+      ? 'bg-indigo-600 text-white'
+      : isDone
+        ? 'bg-slate-300 dark:bg-slate-700 text-slate-500'
+        : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400';
+
+    const div = document.createElement('div');
+    div.className = `p-3 rounded-xl border ${cardClass} flex justify-between items-center transition`;
+    div.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs ${badgeClass}">
+          ${isDone ? '<i class="fa-solid fa-check"></i>' : idx + 1}
+        </div>
+        <div>
+          <p class="text-sm font-bold">${escapeHtml(item.name)}</p>
+          <p class="text-xs text-slate-500">남은 시간: ${mins}분</p>
+        </div>
+      </div>
+      ${isCurrent && timerPhase === 'study' ? '<div class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></div>' : ''}`;
+    container.appendChild(div);
+  });
+}
+
+function setFreeTimer() {
+  const mins = Number.parseInt(document.getElementById('freeTimerMin').value, 10);
+  if (!Number.isInteger(mins) || mins < 1 || mins > 180) {
+    showAlert('1분부터 180분 사이의 시간을 입력하세요.');
+    return;
+  }
+
+  stopTimer();
+  timerQueue = [{
+    name: '자율 학습',
+    totalSec: mins * 60,
+    remainingSec: mins * 60,
+    chunkable: false
+  }];
+  currentQueueIndex = 0;
+  timerPhase = 'study';
+  document.getElementById('freeTimerControls').classList.add('hidden');
+  setupTimerSession();
+}
+
+function startTimerWithPlan() {
+  if (!currentPlan) {
+    showAlert('먼저 공부 플랜을 생성해 주세요.');
+    return;
+  }
+  switchTab('timer');
+  buildTimerQueueFromPlan();
+}
+
+/* 보관함 */
+
+function saveCurrentPlan() {
+  if (!currentPlan) {
+    showAlert('먼저 플랜을 생성해 주세요.');
+    return;
+  }
+  savedPlans.push(JSON.parse(JSON.stringify(currentPlan)));
+  localStorage.setItem('studyPlans', JSON.stringify(savedPlans));
+  showAlert('플랜이 성공적으로 저장되었습니다.');
+}
+
+function loadSavedPlansFromStorage() {
+  try {
+    const stored = localStorage.getItem('studyPlans');
+    const parsed = stored ? JSON.parse(stored) : [];
+    savedPlans = Array.isArray(parsed) ? parsed.filter(p => p && Array.isArray(p.items)) : [];
+  } catch (error) {
+    savedPlans = [];
+  }
+}
+
+function renderStorageList() {
+  const container = document.getElementById('storageList');
+  container.innerHTML = '';
+
+  if (!savedPlans.length) {
+    container.innerHTML = '<p class="col-span-full text-center text-slate-500 py-10 text-sm">저장된 플랜이 없습니다.</p>';
+    return;
+  }
+
+  [...savedPlans].reverse().forEach(plan => {
+    const hours = Math.floor(plan.totalStudyMins / 60);
+    const mins = plan.totalStudyMins % 60;
+    const names = plan.items.map(item => item.name).join(', ');
+
+    const div = document.createElement('div');
+    div.className = 'bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition cursor-pointer flex flex-col justify-between';
+
+    const heading = document.createElement('div');
+    heading.className = 'flex justify-between items-start mb-2';
+
+    const date = document.createElement('span');
+    date.className = 'text-xs font-medium px-2 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-md';
+    date.textContent = plan.date || '저장된 플랜';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'text-slate-400 hover:text-red-500 transition';
+    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+    deleteBtn.onclick = event => {
+      event.stopPropagation();
+      deletePlan(plan.id);
+    };
+
+    heading.append(date, deleteBtn);
+
+    const title = document.createElement('h4');
+    title.className = 'font-bold mb-1 truncate';
+    title.textContent = names;
+
+    const details = document.createElement('p');
+    details.className = 'text-xs text-slate-500';
+    details.textContent = `총 공부: ${hours}시간 ${mins}분 / 휴식: ${plan.totalBreakMins}분`;
+
+    const footer = document.createElement('div');
+    footer.className = 'mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-right text-xs font-bold text-indigo-600';
+    footer.textContent = '불러오기 →';
+
+    div.append(heading, title, details, footer);
+    div.onclick = () => loadPlan(plan.id);
+    container.appendChild(div);
+  });
+}
+
+function loadPlan(id) {
+  const plan = savedPlans.find(p => Number(p.id) === Number(id));
+  if (!plan) return;
+
+  currentPlan = JSON.parse(JSON.stringify(plan));
+  subjects = currentPlan.items.map((item, index) => ({
+    id: Number(item.id) || nextSubjectId++,
+    name: item.name || `새 과목 ${index + 1}`,
+    score: Number.isFinite(Number(item.score)) ? Number(item.score) : 70,
+    pref: ['dislike', 'neutral', 'like'].includes(item.pref) ? item.pref : 'neutral'
+  }));
+
+  nextSubjectId = Math.max(nextSubjectId, ...subjects.map(s => s.id + 1));
+  renderSubjects();
+  renderPlanResult();
+  switchTab('planner');
+  showAlert('플랜을 성공적으로 불러왔습니다.');
+}
+
+function deletePlan(id) {
+  savedPlans = savedPlans.filter(plan => Number(plan.id) !== Number(id));
+  localStorage.setItem('studyPlans', JSON.stringify(savedPlans));
+  renderStorageList();
+}
+</script>
+</body>
+</html>

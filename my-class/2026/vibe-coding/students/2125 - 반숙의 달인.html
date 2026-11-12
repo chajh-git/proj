@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>계란 노른자 지키기 (Egg Yolk Balance)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap');
+        
+        body {
+            font-family: 'Gowun Dodum', sans-serif;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #2c221e;
+        }
+
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+
+        /* Glassmorphism UI elements */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .wood-pattern {
+            background-color: #3e2723;
+            background-image: radial-gradient(#4e342e 15%, transparent 16%),
+                              radial-gradient(#4e342e 15%, transparent 16%);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
+        }
+
+        /* Custom pulsing animations */
+        @keyframes pulse-flame {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.15); opacity: 1; }
+        }
+
+        .anim-flame {
+            animation: pulse-flame 0.4s infinite alternate ease-in-out;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 12px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 6px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #f59e0b;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="wood-pattern min-h-screen text-slate-800 flex flex-col items-center justify-between p-2 sm:p-4 overflow-x-hidden">
+
+    <!-- Top Navigation Header -->
+    <header class="w-full max-w-2xl flex justify-between items-center glass-card rounded-2xl p-3 px-5 mb-2 shadow-lg">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-400 flex items-center justify-center text-white text-xl shadow">
+                <i class="fa-solid fa-egg"></i>
+            </div>
+            <div>
+                <h1 class="font-jua text-xl sm:text-2xl text-amber-900 leading-tight">계란 노른자 지키기</h1>
+                <p class="text-xs text-amber-700">노른자가 터지지 않게 프라이팬을 조심스럽게 기울이세요!</p>
+            </div>
+        </div>
+        <button id="btn-sound" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition shadow-sm">
+            <i class="fa-solid fa-volume-high text-lg" id="sound-icon"></i>
+        </button>
+    </header>
+
+    <!-- Main Game Workspace Area -->
+    <main class="w-full max-w-2xl flex flex-col items-center relative my-auto">
+
+        <!-- Stage Progress Banner (Top of Game) -->
+        <div id="prep-steps-bar" class="w-full glass-card rounded-xl p-2 mb-3 flex justify-around items-center text-xs sm:text-sm font-bold shadow-md">
+            <div id="step-1-badge" class="flex items-center gap-1.5 text-amber-600 font-jua">
+                <span class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs">1</span>
+                가스불 켜기
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+            <div id="step-2-badge" class="flex items-center gap-1.5 text-slate-400 font-jua">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs">2</span>
+                기름 두르기 (WASD)
+            </div>
+            <i class="fa-solid fa-chevron-right text-slate-400 text-xs"></i>
+            <div id="step-3-badge" class="flex items-center gap-1.5 text-slate-400 font-jua">
+                <span class="w-6 h-6 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs">3</span>
+                계란 구우며 팬 조종
+            </div>
+        </div>
+
+        <!-- Canvas Container with Interactive Layer Overlay -->
+        <div class="relative w-full aspect-square max-w-[480px] rounded-3xl overflow-hidden shadow-2xl border-4 border-amber-900/40 bg-stone-900 flex items-center justify-center">
+            
+            <!-- Canvas Object -->
+            <canvas id="gameCanvas" width="500" height="500" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+
+            <!-- Oil Progress Bar Overlay (Step 2) -->
+            <div id="oil-progress-container" class="absolute top-4 left-4 right-4 glass-card p-3 rounded-2xl shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none">
+                <div class="flex justify-between items-center text-xs font-bold text-amber-900 mb-1">
+                    <span><i class="fa-solid fa-bottle-droplet text-amber-500 mr-1.5"></i>식용유 칠하기 (WASD 조종)</span>
+                    <span id="oil-progress-text" class="font-jua text-sm text-amber-700">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 h-3.5 rounded-full overflow-hidden border border-slate-300">
+                    <div id="oil-progress-bar" class="bg-gradient-to-r from-amber-400 to-yellow-500 h-full w-0% transition-all duration-75"></div>
+                </div>
+            </div>
+
+            <!-- On-Screen HUD Overlay for Gameplay (Step 3) -->
+            <div id="game-hud" class="absolute top-3 left-3 right-3 flex justify-between gap-2 pointer-events-none opacity-0 transition-opacity duration-300">
+                <!-- Cooking Progress Gauge -->
+                <div class="glass-card rounded-xl p-2 px-3 flex-1 shadow">
+                    <div class="flex justify-between text-xs font-bold text-amber-900 mb-1">
+                        <span><i class="fa-solid fa-fire text-orange-500 mr-1"></i>익힘 정도 (목표: 반숙)</span>
+                        <span id="cook-text">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden border border-slate-300">
+                        <div id="cook-bar" class="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 h-full w-0% transition-all duration-100"></div>
+                    </div>
+                </div>
+
+                <!-- Yolk Stress / Danger Gauge -->
+                <div class="glass-card rounded-xl p-2 px-3 flex-1 shadow">
+                    <div class="flex justify-between text-xs font-bold text-amber-900 mb-1">
+                        <span><i class="fa-solid fa-heart-pulse text-red-500 mr-1"></i>노른자 데미지</span>
+                        <span id="stress-text" class="text-red-600">안전</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-3 overflow-hidden border border-slate-300">
+                        <div id="stress-bar" class="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 h-full w-0% transition-all duration-100"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Action Guide Floating Card -->
+            <div id="action-guide" class="absolute bottom-4 left-1/2 -translate-x-1/2 glass-card px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-bold text-slate-800 animate-bounce pointer-events-none z-10">
+                <i class="fa-solid fa-hand-pointer text-amber-600"></i>
+                <span id="guide-text">아래 조작반에서 가스불을 켜주세요!</span>
+            </div>
+
+            <!-- Result Overlay Modal Screen -->
+            <div id="result-modal" class="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4 sm:p-6 text-center text-white opacity-0 pointer-events-none transition-all duration-300 z-20">
+                
+                <h2 id="result-title" class="font-jua text-2xl sm:text-3xl text-amber-300 mb-1">완성!</h2>
+                <p id="result-desc" class="text-xs text-slate-200 mb-3 max-w-xs">부드럽고 촉촉한 완벽한 반숙 노른자 프라이가 완성되었습니다!</p>
+                
+                <!-- Plate & Score Flex Container -->
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-md mb-3">
+                    
+                    <!-- Beautiful Plate with Cooked Egg Animation -->
+                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 bg-slate-100 rounded-full border-4 border-slate-300 shadow-2xl flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <!-- Plate inner rim -->
+                        <div class="absolute inset-2 rounded-full border border-slate-200 bg-slate-50"></div>
+                        
+                        <!-- Cooked Egg Graphics on Plate -->
+                        <div id="cooked-egg-graphic" class="relative w-28 h-28 sm:w-32 sm:h-32 flex items-center justify-center animate-bounce" style="animation-duration: 2s;">
+                            <!-- Egg White -->
+                            <div class="absolute inset-0 bg-white/95 rounded-[40%_60%_70%_30%/50%_60%_40%_50%] border-2 border-amber-500/30 shadow-md"></div>
+                            <!-- Egg Yolk -->
+                            <div id="cooked-yolk-graphic" class="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-amber-500 shadow-lg flex items-center justify-center transform active:scale-110 transition">
+                                <div class="w-4 h-4 bg-white/60 rounded-full absolute top-2 left-2"></div>
+                                <!-- Cute Face -->
+                                <span id="cooked-yolk-face" class="text-amber-950 font-bold text-xs select-none">^─^</span>
+                            </div>
+                        </div>
+
+                        <!-- Sparkle FX Badge -->
+                        <div class="absolute top-2 right-2 text-yellow-400 text-lg animate-spin" style="animation-duration: 4s;">✨</div>
+                    </div>
+
+                    <!-- Evaluation Score Card -->
+                    <div class="bg-white/10 rounded-2xl p-3 sm:p-4 w-full border border-white/20 flex flex-col gap-1.5 text-left">
+                        <div class="flex justify-between items-center border-b border-white/10 pb-1.5">
+                            <span class="text-xs text-slate-300">최종 요리 점수</span>
+                            <span id="result-score" class="font-jua text-2xl sm:text-3xl text-yellow-300">95점</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-300">
+                            <span>요리 타이틀</span>
+                            <span id="result-grade" class="font-jua text-sm sm:text-base text-amber-400">명품 반숙 마스터!</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-300">
+                            <span>완성도 평가</span>
+                            <span id="result-stars" class="text-amber-300 text-xs sm:text-sm">⭐⭐⭐⭐⭐</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs text-slate-300 pt-1 border-t border-white/5">
+                            <span>익힘 상태</span>
+                            <span id="final-cook-stat" class="font-bold text-white">촉촉한 반숙 (92%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-restart" class="w-full max-w-xs py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-jua text-base sm:text-lg rounded-2xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 다시 요리하기
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Console Panel -->
+        <div class="w-full glass-card rounded-2xl p-4 mt-3 shadow-lg flex flex-col gap-3">
+            
+            <!-- Step Controls Button Group -->
+            <div id="prep-controls" class="grid grid-cols-3 gap-2">
+                <button id="btn-stove" class="py-3 px-2 bg-gradient-to-b from-orange-500 to-red-600 text-white font-jua rounded-xl shadow border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition flex flex-col items-center justify-center gap-1">
+                    <i class="fa-solid fa-fire text-lg"></i>
+                    <span class="text-xs sm:text-sm">1. 불켜기</span>
+                </button>
+                <button id="btn-oil" disabled class="py-3 px-2 bg-slate-300 text-slate-500 font-jua rounded-xl shadow border-b-4 border-slate-400 transition flex flex-col items-center justify-center gap-1 cursor-not-allowed">
+                    <i class="fa-solid fa-bottle-droplet text-lg"></i>
+                    <span class="text-xs sm:text-sm">2. 기름두르기</span>
+                </button>
+                <button id="btn-egg" disabled class="py-3 px-2 bg-slate-300 text-slate-500 font-jua rounded-xl shadow border-b-4 border-slate-400 transition flex flex-col items-center justify-center gap-1 cursor-not-allowed">
+                    <i class="fa-solid fa-egg text-lg"></i>
+                    <span class="text-xs sm:text-sm">3. 계란 깨기</span>
+                </button>
+            </div>
+
+            <!-- Pan Movement Controls (Active during cooking phase) -->
+            <div id="tilt-controls" class="hidden flex-col gap-2">
+                <div class="flex justify-between items-center text-xs font-bold text-amber-900">
+                    <span id="pan-control-label"><i class="fa-solid fa-hand-holding-hand mr-1"></i>WASD / 방향키 / 드래그로 계란 위치를 조종하세요!</span>
+                    <span class="text-slate-500 font-normal">팬이 멋대로 흔들립니다!</span>
+                </div>
+                
+                <!-- D-Pad Directional Buttons for Mobile/Touch -->
+                <div class="grid grid-cols-3 gap-1.5 w-36 h-36 mx-auto my-1">
+                    <div></div>
+                    <button id="btn-tilt-up" class="bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 rounded-xl flex items-center justify-center text-lg font-bold shadow border border-amber-300">
+                        <i class="fa-solid fa-caret-up"></i>
+                    </button>
+                    <div></div>
+                    <button id="btn-tilt-left" class="bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 rounded-xl flex items-center justify-center text-lg font-bold shadow border border-amber-300">
+                        <i class="fa-solid fa-caret-left"></i>
+                    </button>
+                    <button id="btn-tilt-center" class="bg-amber-500 text-white rounded-xl flex items-center justify-center text-xs font-jua shadow border border-amber-600 active:scale-95">
+                        중앙
+                    </button>
+                    <button id="btn-tilt-right" class="bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 rounded-xl flex items-center justify-center text-lg font-bold shadow border border-amber-300">
+                        <i class="fa-solid fa-caret-right"></i>
+                    </button>
+                    <div></div>
+                    <button id="btn-tilt-down" class="bg-amber-100 hover:bg-amber-200 active:bg-amber-300 text-amber-900 rounded-xl flex items-center justify-center text-lg font-bold shadow border border-amber-300">
+                        <i class="fa-solid fa-caret-down"></i>
+                    </button>
+                    <div></div>
+                </div>
+
+                <!-- Complete Cooking Action Button -->
+                <button id="btn-off-stove" class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-jua text-base rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-1">
+                    <i class="fa-solid fa-power-off"></i> 불 끄고 그릇에 담기 (요리 완성)
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer Guide Information -->
+    <footer class="w-full max-w-2xl text-center text-xs text-amber-200/70 mt-3 mb-1">
+        💡 팁: 프라이팬이 요동치는 반대 방향으로 계란(WASD)을 살살 움직여 팬 중앙에 맞춰주세요!
+    </footer>
+
+    <!-- Game Engine Logic & Web Audio API -->
+    <script>
+        // --- Web Audio Synthesizer sound generator ---
+        class SoundSystem {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+                this.sizzleGain = null;
+                this.sizzleSource = null;
+                this.pourGain = null;
+                this.pourSource = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playClick() {
+                if (this.isMuted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            startPourOil() {
+                if (this.isMuted || this.pourSource) return;
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 1;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * 0.1;
+                }
+                this.pourSource = this.ctx.createBufferSource();
+                this.pourSource.buffer = buffer;
+                this.pourSource.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                filter.Q.setValueAtTime(4.0, this.ctx.currentTime);
+
+                this.pourGain = this.ctx.createGain();
+                this.pourGain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+
+                this.pourSource.connect(filter);
+                filter.connect(this.pourGain);
+                this.pourGain.connect(this.ctx.destination);
+                this.pourSource.start();
+            }
+
+            stopPourOil() {
+                if (this.pourSource) {
+                    try { this.pourSource.stop(); } catch(e){}
+                    this.pourSource = null;
+                    this.pourGain = null;
+                }
+            }
+
+            playCrackEgg() {
+                if (this.isMuted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            startSizzle() {
+                if (this.isMuted || this.sizzleSource) return;
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1);
+                }
+                this.sizzleSource = this.ctx.createBufferSource();
+                this.sizzleSource.buffer = buffer;
+                this.sizzleSource.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'highpass';
+                filter.frequency.setValueAtTime(1200, this.ctx.currentTime);
+
+                this.sizzleGain = this.ctx.createGain();
+                this.sizzleGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+
+                this.sizzleSource.connect(filter);
+                filter.connect(this.sizzleGain);
+                this.sizzleGain.connect(this.ctx.destination);
+                this.sizzleSource.start();
+            }
+
+            stopSizzle() {
+                if (this.sizzleSource) {
+                    try { this.sizzleSource.stop(); } catch (e) {}
+                    this.sizzleSource = null;
+                    this.sizzleGain = null;
+                }
+            }
+
+            playBurst() {
+                if (this.isMuted) return;
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playSuccess() {
+                if (this.isMuted) return;
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.1);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime + idx * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.1 + 0.3);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.1);
+                    osc.stop(this.ctx.currentTime + idx * 0.1 + 0.3);
+                });
+            }
+        }
+
+        const audio = new SoundSystem();
+
+        // --- Core Game Variables & Constants ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const STOVE_CENTER = { x: 250, y: 250 };
+        const PAN_RADIUS = 185; // 프라이팬 크기 확대 (기존 160 -> 185)
+
+        let gameState = {
+            step: 0, // 0: Idle, 1: Stove On, 2: Pouring Oil, 3: Egg Cooking, 4: Finished/Gameover
+            panX: 250,
+            panY: 250,
+            panVx: 0,
+            panVy: 0,
+            panShakeAngle: 0,
+            cookTime: 0, // Seconds spent cooking
+            oilPourTime: 0, // In seconds (Target ~4 seconds)
+            oilBottlePos: { x: 250, y: 250 },
+            cookProgress: 0, // 0 to 100
+            yolkStress: 0, // 0 to 100
+            isBurst: false,
+            isBurnt: false,
+            oilDrops: [], // Relative to Pan Center
+            blueFlameParticles: [],
+            steamParticles: [],
+            splatterParticles: []
+        };
+
+        // Egg physics simulation state
+        let egg = {
+            whitePoints: [],
+            relX: 0, // Relative X from Pan Center
+            relY: 0, // Relative Y from Pan Center
+            vx: 0,
+            vy: 0,
+            radius: 36,
+            squishX: 1,
+            squishY: 1
+        };
+
+        const keys = { Up: false, Down: false, Left: false, Right: false };
+        let isDraggingEgg = false;
+        let dragStartPos = { x: 0, y: 0 };
+
+        function initEggWhite() {
+            egg.whitePoints = [];
+            const numPoints = 16;
+            for (let i = 0; i < numPoints; i++) {
+                const angle = (i / numPoints) * Math.PI * 2;
+                const dist = 70 + Math.random() * 20;
+                egg.whitePoints.push({
+                    angle: angle,
+                    dist: dist,
+                    relX: Math.cos(angle) * dist,
+                    relY: Math.sin(angle) * dist
+                });
+            }
+        }
+
+        // --- Event Listeners and Setup ---
+        window.addEventListener('DOMContentLoaded', () => {
+            setupUIControls();
+            setupInputs();
+            resetGame();
+            requestAnimationFrame(gameLoop);
+        });
+
+        function setupUIControls() {
+            document.getElementById('btn-sound').addEventListener('click', () => {
+                audio.isMuted = !audio.isMuted;
+                const icon = document.getElementById('sound-icon');
+                if (audio.isMuted) {
+                    icon.className = 'fa-solid fa-volume-xmark text-slate-400';
+                    audio.stopSizzle();
+                    audio.stopPourOil();
+                } else {
+                    icon.className = 'fa-solid fa-volume-high text-slate-700';
+                    if (gameState.step === 3) audio.startSizzle();
+                }
+            });
+
+            // Step 1: Turn on Stove
+            document.getElementById('btn-stove').addEventListener('click', () => {
+                if (gameState.step !== 0) return;
+                audio.playClick();
+                gameState.step = 1;
+                updateStepBadges();
+                
+                const btnOil = document.getElementById('btn-oil');
+                btnOil.disabled = false;
+                btnOil.className = 'py-3 px-2 bg-gradient-to-b from-amber-400 to-amber-600 text-white font-jua rounded-xl shadow border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 transition flex flex-col items-center justify-center gap-1 cursor-pointer animate-pulse';
+                
+                const btnStove = document.getElementById('btn-stove');
+                btnStove.disabled = true;
+                btnStove.className = 'py-3 px-2 bg-slate-200 text-slate-400 font-jua rounded-xl border border-slate-300 opacity-60 flex flex-col items-center justify-center gap-1 cursor-not-allowed';
+
+                document.getElementById('guide-text').innerText = "2. 기름두르기 버튼을 눌러 준비하세요!";
+            });
+
+            // Step 2: Pour Oil Setup
+            document.getElementById('btn-oil').addEventListener('click', () => {
+                if (gameState.step !== 1) return;
+                audio.playClick();
+                gameState.step = 2;
+                gameState.oilBottlePos = { x: gameState.panX, y: gameState.panY };
+                
+                updateStepBadges();
+
+                document.getElementById('oil-progress-container').classList.remove('opacity-0');
+                
+                const btnOil = document.getElementById('btn-oil');
+                btnOil.disabled = true;
+                btnOil.classList.remove('animate-pulse');
+                btnOil.className = 'py-3 px-2 bg-slate-200 text-slate-400 font-jua rounded-xl border border-slate-300 opacity-60 flex flex-col items-center justify-center gap-1 cursor-not-allowed';
+
+                document.getElementById('guide-text').innerText = "WASD / 방향키로 기름병을 움직여 4초간 팬에 둘러주세요!";
+            });
+
+            // Step 3: Crack Egg & Start Cooking
+            document.getElementById('btn-egg').addEventListener('click', () => {
+                if (gameState.step !== 2 || gameState.oilPourTime < 4.0) return;
+                audio.playCrackEgg();
+                audio.startSizzle();
+                gameState.step = 3;
+
+                egg.relX = 0;
+                egg.relY = 0;
+                egg.vx = 0;
+                egg.vy = 0;
+                initEggWhite();
+
+                updateStepBadges();
+
+                // UI 전환: 기름 게이지 숨기고 팬 조종 패널 표시
+                document.getElementById('oil-progress-container').classList.add('opacity-0');
+                document.getElementById('prep-controls').classList.add('hidden');
+                document.getElementById('tilt-controls').classList.remove('hidden');
+                document.getElementById('tilt-controls').classList.add('flex');
+                document.getElementById('pan-control-label').innerHTML = '<i class="fa-solid fa-hand-holding-heart mr-1"></i>WASD / 방향키로 계란을 조종하여 프라이팬 중앙을 유지하세요!';
+                document.getElementById('game-hud').classList.remove('opacity-0');
+
+                document.getElementById('action-guide').classList.add('hidden');
+            });
+
+            document.getElementById('btn-off-stove').addEventListener('click', () => {
+                if (gameState.step === 3) {
+                    finishGame();
+                }
+            });
+
+            document.getElementById('btn-restart').addEventListener('click', () => {
+                audio.playClick();
+                resetGame();
+            });
+
+            // Mobile Direction Buttons
+            const setupMoveBtn = (id, kName) => {
+                const btn = document.getElementById(id);
+                btn.addEventListener('mousedown', () => keys[kName] = true);
+                btn.addEventListener('mouseup', () => keys[kName] = false);
+                btn.addEventListener('mouseleave', () => keys[kName] = false);
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[kName] = true; });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[kName] = false; });
+            };
+
+            setupMoveBtn('btn-tilt-up', 'Up');
+            setupMoveBtn('btn-tilt-down', 'Down');
+            setupMoveBtn('btn-tilt-left', 'Left');
+            setupMoveBtn('btn-tilt-right', 'Right');
+
+            document.getElementById('btn-tilt-center').addEventListener('click', () => {
+                egg.vx = 0;
+                egg.vy = 0;
+            });
+        }
+
+        function updateStepBadges() {
+            const step1 = document.getElementById('step-1-badge');
+            const step2 = document.getElementById('step-2-badge');
+            const step3 = document.getElementById('step-3-badge');
+
+            if (gameState.step >= 1) {
+                step1.className = "flex items-center gap-1.5 text-emerald-600 font-jua";
+                step1.querySelector('span').className = "w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs";
+                step1.querySelector('span').innerHTML = '<i class="fa-solid fa-check"></i>';
+            }
+            if (gameState.step >= 2) {
+                step2.className = "flex items-center gap-1.5 text-amber-600 font-jua";
+                step2.querySelector('span').className = "w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs";
+            }
+            if (gameState.step >= 3) {
+                step2.className = "flex items-center gap-1.5 text-emerald-600 font-jua";
+                step2.querySelector('span').className = "w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs";
+                step2.querySelector('span').innerHTML = '<i class="fa-solid fa-check"></i>';
+
+                step3.className = "flex items-center gap-1.5 text-amber-600 font-jua";
+                step3.querySelector('span').className = "w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs";
+            }
+        }
+
+        function setupInputs() {
+            window.addEventListener('keydown', (e) => {
+                switch (e.key) {
+                    case 'ArrowLeft': case 'a': case 'A': keys.Left = true; break;
+                    case 'ArrowRight': case 'd': case 'D': keys.Right = true; break;
+                    case 'ArrowUp': case 'w': case 'W': keys.Up = true; break;
+                    case 'ArrowDown': case 's': case 'S': keys.Down = true; break;
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                switch (e.key) {
+                    case 'ArrowLeft': case 'a': case 'A': keys.Left = false; break;
+                    case 'ArrowRight': case 'd': case 'D': keys.Right = false; break;
+                    case 'ArrowUp': case 'w': case 'W': keys.Up = false; break;
+                    case 'ArrowDown': case 's': case 'S': keys.Down = false; break;
+                }
+            });
+
+            const handleStart = (x, y) => {
+                isDraggingEgg = true;
+                dragStartPos = { x, y };
+            };
+
+            const handleMove = (x, y) => {
+                if (isDraggingEgg) {
+                    const dx = (x - dragStartPos.x) * 0.1;
+                    const dy = (y - dragStartPos.y) * 0.1;
+                    if (gameState.step === 2) {
+                        gameState.oilBottlePos.x += dx;
+                        gameState.oilBottlePos.y += dy;
+                    } else if (gameState.step === 3) {
+                        egg.vx += dx * 0.35;
+                        egg.vy += dy * 0.35;
+                    }
+                    dragStartPos = { x, y };
+                }
+            };
+
+            const handleEnd = () => { isDraggingEgg = false; };
+
+            canvas.addEventListener('mousedown', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                handleStart(e.clientX - rect.left, e.clientY - rect.top);
+            });
+            window.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                handleMove(e.clientX - rect.left, e.clientY - rect.top);
+            });
+            window.addEventListener('mouseup', handleEnd);
+
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    const rect = canvas.getBoundingClientRect();
+                    handleStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+                }
+            });
+            window.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    const rect = canvas.getBoundingClientRect();
+                    handleMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top);
+                }
+            });
+            window.addEventListener('touchend', handleEnd);
+        }
+
+        function resetGame() {
+            audio.stopSizzle();
+            audio.stopPourOil();
+            gameState = {
+                step: 0,
+                panX: 250,
+                panY: 250,
+                panVx: 0,
+                panVy: 0,
+                panShakeAngle: 0,
+                cookTime: 0,
+                oilPourTime: 0,
+                oilBottlePos: { x: 250, y: 250 },
+                cookProgress: 0,
+                yolkStress: 0,
+                isBurst: false,
+                isBurnt: false,
+                oilDrops: [],
+                blueFlameParticles: [],
+                steamParticles: [],
+                splatterParticles: []
+            };
+
+            document.getElementById('prep-controls').classList.remove('hidden');
+            document.getElementById('tilt-controls').classList.add('hidden');
+            document.getElementById('tilt-controls').classList.remove('flex');
+            document.getElementById('game-hud').classList.add('opacity-0');
+            document.getElementById('oil-progress-container').classList.add('opacity-0');
+            document.getElementById('action-guide').classList.remove('hidden');
+            document.getElementById('result-modal').classList.add('opacity-0', 'pointer-events-none');
+
+            const btnStove = document.getElementById('btn-stove');
+            btnStove.disabled = false;
+            btnStove.className = 'py-3 px-2 bg-gradient-to-b from-orange-500 to-red-600 text-white font-jua rounded-xl shadow border-b-4 border-red-800 active:border-b-0 active:translate-y-1 transition flex flex-col items-center justify-center gap-1 cursor-pointer';
+
+            const btnOil = document.getElementById('btn-oil');
+            btnOil.disabled = true;
+            btnOil.className = 'py-3 px-2 bg-slate-300 text-slate-500 font-jua rounded-xl shadow border-b-4 border-slate-400 transition flex flex-col items-center justify-center gap-1 cursor-not-allowed';
+
+            const btnEgg = document.getElementById('btn-egg');
+            btnEgg.disabled = true;
+            btnEgg.className = 'py-3 px-2 bg-slate-300 text-slate-500 font-jua rounded-xl shadow border-b-4 border-slate-400 transition flex flex-col items-center justify-center gap-1 cursor-not-allowed';
+
+            document.getElementById('step-1-badge').className = "flex items-center gap-1.5 text-amber-600 font-jua";
+            document.getElementById('step-1-badge').querySelector('span').className = "w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs";
+            document.getElementById('step-1-badge').querySelector('span').innerText = "1";
+
+            document.getElementById('step-2-badge').className = "flex items-center gap-1.5 text-slate-400 font-jua";
+            document.getElementById('step-2-badge').querySelector('span').className = "w-6 h-6 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs";
+            document.getElementById('step-2-badge').querySelector('span').innerText = "2";
+
+            document.getElementById('step-3-badge').className = "flex items-center gap-1.5 text-slate-400 font-jua";
+            document.getElementById('step-3-badge').querySelector('span').className = "w-6 h-6 rounded-full bg-slate-300 text-slate-600 flex items-center justify-center text-xs";
+            document.getElementById('step-3-badge').querySelector('span').innerText = "3";
+
+            document.getElementById('guide-text').innerText = "아래 조작반에서 가스불을 켜주세요!";
+        }
+
+        // --- Main Game Loop & Physics Update ---
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            // Update Blue Flames (Step 1+)
+            if (gameState.step >= 1 && gameState.step < 4) {
+                if (Math.random() < 0.8) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = PAN_RADIUS + (Math.random() - 0.5) * 20;
+                    gameState.blueFlameParticles.push({
+                        x: STOVE_CENTER.x + Math.cos(angle) * r,
+                        y: STOVE_CENTER.y + Math.sin(angle) * r,
+                        vx: (Math.random() - 0.5) * 1.5,
+                        vy: -1.5 - Math.random() * 2,
+                        size: 8 + Math.random() * 14,
+                        life: 1.0,
+                        decay: 0.03 + Math.random() * 0.03
+                    });
+                }
+            }
+
+            for (let i = gameState.blueFlameParticles.length - 1; i >= 0; i--) {
+                const p = gameState.blueFlameParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= p.decay;
+                if (p.life <= 0) gameState.blueFlameParticles.splice(i, 1);
+            }
+
+            // --- Step 2: Pour Oil with WASD ---
+            if (gameState.step === 2) {
+                const bottleSpeed = 4.5;
+                let isMoving = false;
+                if (keys.Left) { gameState.oilBottlePos.x -= bottleSpeed; isMoving = true; }
+                if (keys.Right) { gameState.oilBottlePos.x += bottleSpeed; isMoving = true; }
+                if (keys.Up) { gameState.oilBottlePos.y -= bottleSpeed; isMoving = true; }
+                if (keys.Down) { gameState.oilBottlePos.y += bottleSpeed; isMoving = true; }
+
+                // Clamp oil bottle inside pan boundaries
+                const distToPan = Math.hypot(gameState.oilBottlePos.x - gameState.panX, gameState.oilBottlePos.y - gameState.panY);
+                if (distToPan > PAN_RADIUS - 30) {
+                    const angle = Math.atan2(gameState.oilBottlePos.y - gameState.panY, gameState.oilBottlePos.x - gameState.panX);
+                    gameState.oilBottlePos.x = gameState.panX + Math.cos(angle) * (PAN_RADIUS - 30);
+                    gameState.oilBottlePos.y = gameState.panY + Math.sin(angle) * (PAN_RADIUS - 30);
+                }
+
+                // Pour Oil Progress Logic
+                if (isMoving || isDraggingEgg) {
+                    audio.startPourOil();
+                    gameState.oilPourTime += 0.016; // Gain progress over ~4 seconds
+
+                    if (Math.random() < 0.6) {
+                        gameState.oilDrops.push({
+                            relX: gameState.oilBottlePos.x - gameState.panX + (Math.random() - 0.5) * 10,
+                            relY: gameState.oilBottlePos.y - gameState.panY + (Math.random() - 0.5) * 10,
+                            radius: 6 + Math.random() * 12
+                        });
+                    }
+                } else {
+                    audio.stopPourOil();
+                }
+
+                const oilPercent = Math.min(100, Math.floor((gameState.oilPourTime / 4.0) * 100));
+                document.getElementById('oil-progress-text').innerText = `${oilPercent}%`;
+                document.getElementById('oil-progress-bar').style.width = `${oilPercent}%`;
+
+                if (gameState.oilPourTime >= 4.0) {
+                    audio.stopPourOil();
+                    const btnEgg = document.getElementById('btn-egg');
+                    btnEgg.disabled = false;
+                    btnEgg.className = 'py-3 px-2 bg-gradient-to-b from-yellow-400 via-amber-500 to-amber-600 text-white font-jua rounded-xl shadow-lg border-b-4 border-amber-800 active:border-b-0 active:translate-y-1 transition flex flex-col items-center justify-center gap-1 cursor-pointer ring-4 ring-yellow-300 animate-bounce';
+                    document.getElementById('guide-text').innerText = "기름 준비 완료! 아래 '3. 계란 깨기' 버튼을 누르세요!";
+                    document.getElementById('action-guide').classList.remove('hidden');
+                }
+            }
+
+            // --- Step 3: Progressive Dynamic Difficulty Ramping ---
+            if (gameState.step === 3 && !gameState.isBurst) {
+                gameState.cookTime += 0.016; // Seconds spent in cooking phase
+
+                // Progressive shake force: Starts VERY VERY EASY (0.3x) and gradually increases over 25 seconds
+                const difficultyFactor = Math.min(1.0, 0.25 + (gameState.cookTime / 25.0) * 0.75);
+                
+                gameState.panShakeAngle += 0.05 + difficultyFactor * 0.04;
+                const forceX = (Math.sin(gameState.panShakeAngle * 1.5) * 2.8 + (Math.random() - 0.5) * 1.8) * difficultyFactor;
+                const forceY = (Math.cos(gameState.panShakeAngle * 1.9) * 2.8 + (Math.random() - 0.5) * 1.8) * difficultyFactor;
+
+                gameState.panVx += (forceX - (gameState.panX - STOVE_CENTER.x) * 0.06) * 0.2;
+                gameState.panVy += (forceY - (gameState.panY - STOVE_CENTER.y) * 0.06) * 0.2;
+
+                gameState.panVx *= 0.88;
+                gameState.panVy *= 0.88;
+
+                gameState.panX += gameState.panVx;
+                gameState.panY += gameState.panVy;
+
+                // Responsive WASD Player Control (더 쉬워진 계란 이동)
+                const eggAccel = 1.25; // 조작 가속도 대폭 상향 (기존 0.75 -> 1.25)
+                if (keys.Left) egg.vx -= eggAccel;
+                if (keys.Right) egg.vx += eggAccel;
+                if (keys.Up) egg.vy -= eggAccel;
+                if (keys.Down) egg.vy += eggAccel;
+
+                // Gentle inertia pushing egg
+                egg.vx -= gameState.panVx * 0.35;
+                egg.vy -= gameState.panVy * 0.35;
+
+                // 추가된 프라이팬 불규칙 기울기 관성 (WASD를 안 눌러도 노른자가 스스로 벽에 부딪히도록 유도)
+                egg.vx += (Math.sin(gameState.panShakeAngle * 2.1) * 0.85 + (Math.random() - 0.5) * 0.7) * difficultyFactor;
+                egg.vy += (Math.cos(gameState.panShakeAngle * 2.5) * 0.85 + (Math.random() - 0.5) * 0.7) * difficultyFactor;
+
+                // Friction inside pan (자연스럽게 미끄러지도록 마찰력 조정)
+                egg.vx *= 0.91;
+                egg.vy *= 0.91;
+
+                egg.relX += egg.vx;
+                egg.relY += egg.vy;
+
+                // Increase cooking progress (Reaches 100% in approx 22 seconds)
+                gameState.cookProgress += 0.075;
+                
+                // 익힘 100% 도달 시 바로 요리 자동 완결
+                if (gameState.cookProgress >= 100) {
+                    gameState.cookProgress = 100;
+                    finishGame();
+                    return;
+                }
+
+                // Collision with Pan Edge
+                const distFromPanCenter = Math.hypot(egg.relX, egg.relY);
+                const maxAllowedDist = PAN_RADIUS - egg.radius - 8;
+
+                if (distFromPanCenter > maxAllowedDist) {
+                    const angle = Math.atan2(egg.relY, egg.relX);
+                    egg.relX = Math.cos(angle) * maxAllowedDist;
+                    egg.relY = Math.sin(angle) * maxAllowedDist;
+
+                    const impactSpeed = Math.hypot(egg.vx, egg.vy);
+                    egg.vx *= -0.25;
+                    egg.vy *= -0.25;
+
+                    // Moderate stress build-up
+                    gameState.yolkStress += 2.5 + impactSpeed * 1.5;
+                    egg.squishX = 0.7;
+                    egg.squishY = 1.3;
+                } else {
+                    egg.squishX += (1 - egg.squishX) * 0.12;
+                    egg.squishY += (1 - egg.squishY) * 0.12;
+                }
+
+                // Outer zone stress vs inner safety zone recovery
+                if (distFromPanCenter > maxAllowedDist * 0.65) {
+                    gameState.yolkStress += 0.2;
+                } else {
+                    gameState.yolkStress = Math.max(0, gameState.yolkStress - 0.45); // Fast stress recovery in center
+                }
+
+                // Yolk Burst Check
+                if (gameState.yolkStress >= 100) {
+                    gameState.isBurst = true;
+                    audio.playBurst();
+                    createSplatterParticles(gameState.panX + egg.relX, gameState.panY + egg.relY);
+                    finishGame();
+                    return;
+                }
+
+                // Egg White follows Egg Yolk
+                egg.whitePoints.forEach(pt => {
+                    const targetX = egg.relX + Math.cos(pt.angle) * pt.dist;
+                    const targetY = egg.relY + Math.sin(pt.angle) * pt.dist;
+                    pt.relX += (targetX - pt.relX) * 0.12;
+                    pt.relY += (targetY - pt.relY) * 0.12;
+                });
+
+                // Steam
+                if (Math.random() < 0.3) {
+                    gameState.steamParticles.push({
+                        relX: egg.relX + (Math.random() - 0.5) * 120,
+                        relY: egg.relY + (Math.random() - 0.5) * 120,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: -1 - Math.random() * 1.5,
+                        alpha: 0.6,
+                        size: 3 + Math.random() * 6
+                    });
+                }
+            }
+
+            // Particle Updates
+            for (let i = gameState.steamParticles.length - 1; i >= 0; i--) {
+                const p = gameState.steamParticles[i];
+                p.relX += p.vx;
+                p.relY += p.vy;
+                p.alpha -= 0.015;
+                if (p.alpha <= 0) gameState.steamParticles.splice(i, 1);
+            }
+
+            for (let i = gameState.splatterParticles.length - 1; i >= 0; i--) {
+                const p = gameState.splatterParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2;
+                p.alpha -= 0.01;
+                if (p.alpha <= 0) gameState.splatterParticles.splice(i, 1);
+            }
+
+            // UI HUD Gauges
+            if (gameState.step === 3) {
+                const cookPercent = Math.min(100, Math.floor(gameState.cookProgress));
+                document.getElementById('cook-text').innerText = `${cookPercent}%`;
+                document.getElementById('cook-bar').style.width = `${cookPercent}%`;
+
+                const stressPercent = Math.min(100, Math.floor(gameState.yolkStress));
+                document.getElementById('stress-bar').style.width = `${stressPercent}%`;
+
+                const stressText = document.getElementById('stress-text');
+                if (stressPercent > 70) {
+                    stressText.innerText = "위험!";
+                    stressText.className = "text-red-600 font-bold animate-pulse";
+                } else if (stressPercent > 35) {
+                    stressText.innerText = "주의";
+                    stressText.className = "text-orange-500 font-bold";
+                } else {
+                    stressText.innerText = "안전";
+                    stressText.className = "text-emerald-600 font-bold";
+                }
+            }
+        }
+
+        function createSplatterParticles(x, y) {
+            for (let i = 0; i < 45; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 8;
+                gameState.splatterParticles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 4 + Math.random() * 8,
+                    alpha: 1,
+                    color: Math.random() < 0.7 ? '#fbbf24' : '#f59e0b'
+                });
+            }
+        }
+
+        function finishGame() {
+            audio.stopSizzle();
+            audio.stopPourOil();
+            gameState.step = 4;
+
+            const modal = document.getElementById('result-modal');
+            const title = document.getElementById('result-title');
+            const desc = document.getElementById('result-desc');
+            const scoreText = document.getElementById('result-score');
+            const gradeText = document.getElementById('result-grade');
+            const starsText = document.getElementById('result-stars');
+            const cookStat = document.getElementById('final-cook-stat');
+            
+            const cookedYolk = document.getElementById('cooked-yolk-graphic');
+            const cookedFace = document.getElementById('cooked-yolk-face');
+
+            const cookVal = Math.min(100, Math.floor(gameState.cookProgress));
+            const stressVal = Math.floor(gameState.yolkStress);
+
+            if (gameState.isBurst) {
+                cookedYolk.className = 'relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-red-500 shadow-lg flex items-center justify-center transform scale-y-50';
+                cookedFace.innerText = 'x_x';
+                title.innerText = '노른자가 터졌습니다!';
+                title.className = 'font-jua text-2xl sm:text-3xl text-red-400 mb-1';
+                desc.innerText = '프라이팬 가장자리에 부딪혀 노른자가 터져버렸습니다.';
+                scoreText.innerText = '0점';
+                gradeText.innerText = '터진 노른자';
+                starsText.innerText = '❌❌❌❌❌';
+                cookStat.innerText = `터짐 (${cookVal}%)`;
+            } else if (gameState.isBurnt) {
+                cookedYolk.className = 'relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-stone-800 shadow-lg flex items-center justify-center';
+                cookedFace.innerText = 'T_T';
+                title.innerText = '새까맣게 탔습니다!';
+                title.className = 'font-jua text-2xl sm:text-3xl text-stone-400 mb-1';
+                desc.innerText = '너무 오래 구워 계란이 까맣게 타고 말았습니다.';
+                scoreText.innerText = '15점';
+                gradeText.innerText = '탄 계란 요리사';
+                starsText.innerText = '⭐☆☆☆☆';
+                cookStat.innerText = `새까맣게 탊 (100%)`;
+            } else {
+                audio.playSuccess();
+                cookedYolk.className = 'relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-amber-500 shadow-lg flex items-center justify-center';
+                cookedFace.innerText = '^─^';
+
+                // Comprehensive Score Calculation
+                let donenessScore = 0;
+                if (cookVal >= 80 && cookVal <= 98) {
+                    donenessScore = 60; // Perfect soft-boiled
+                } else if (cookVal >= 60) {
+                    donenessScore = 45;
+                } else if (cookVal >= 40) {
+                    donenessScore = 30;
+                } else {
+                    donenessScore = 15;
+                }
+
+                const healthScore = Math.max(0, 40 - Math.floor(stressVal * 0.4));
+                const totalScore = Math.min(100, donenessScore + healthScore);
+
+                scoreText.innerText = `${totalScore}점`;
+
+                if (totalScore >= 90) {
+                    title.innerText = '명품 반숙 완성!';
+                    title.className = 'font-jua text-2xl sm:text-3xl text-amber-300 mb-1';
+                    desc.innerText = '촉촉하고 부드러운 노른자가 완벽하게 보존된 황금빛 반숙 프라이!';
+                    gradeText.innerText = '👑 명품 반숙 마스터!';
+                    starsText.innerText = '⭐⭐⭐⭐⭐';
+                    cookStat.innerText = `환상적인 반숙 (${cookVal}%)`;
+                } else if (totalScore >= 75) {
+                    title.innerText = '맛있는 프라이 완성!';
+                    title.className = 'font-jua text-2xl sm:text-3xl text-amber-300 mb-1';
+                    desc.innerText = '고소하고 훌륭한 계란 프라이가 완성되었습니다!';
+                    gradeText.innerText = '🍳 골든 셰프';
+                    starsText.innerText = '⭐⭐⭐⭐☆';
+                    cookStat.innerText = `촉촉한 반숙 (${cookVal}%)`;
+                } else if (totalScore >= 50) {
+                    title.innerText = '완숙 요리 완료!';
+                    title.className = 'font-jua text-2xl sm:text-3xl text-yellow-300 mb-1';
+                    desc.innerText = '약간 단단하지만 담백한 완숙 프라이입니다.';
+                    gradeText.innerText = '👍 든든한 요리사';
+                    starsText.innerText = '⭐⭐⭐☆☆';
+                    cookStat.innerText = `담백한 완숙 (${cookVal}%)`;
+                } else {
+                    title.innerText = '살짝 덜 익음!';
+                    title.className = 'font-jua text-2xl sm:text-3xl text-slate-200 mb-1';
+                    desc.innerText = '노른자가 아직 날것에 가깝습니다. 조금 더 익혀보세요!';
+                    gradeText.innerText = '🐥 초보 요리사';
+                    starsText.innerText = '⭐⭐☆☆☆';
+                    cookStat.innerText = `덜 익은 날계란 (${cookVal}%)`;
+                }
+            }
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        // --- Rendering Engine ---
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Gas Burner Stove & Blue Flame (Step 1)
+            drawStoveAndBlueFlames();
+
+            // 2. Draw Frying Pan at Pan Position
+            ctx.save();
+            ctx.translate(gameState.panX, gameState.panY);
+
+            drawFryingPan();
+
+            // 3. Draw Safety Circle Overlay inside Pan
+            if (gameState.step >= 3) {
+                drawSafetyZone();
+            }
+
+            // 4. Draw Oil Layer inside Pan
+            if (gameState.step >= 2) {
+                drawOilLayer();
+            }
+
+            // 5. Draw Egg White & Yolk
+            if (gameState.step >= 3) {
+                drawEgg();
+            }
+
+            // 6. Draw Steam Effect
+            drawSteamParticles();
+
+            ctx.restore();
+
+            // 7. Draw Splatter Particles
+            drawSplatterParticles();
+
+            // 8. Draw Oil Bottle Overlay (Step 2)
+            if (gameState.step === 2) {
+                drawOilBottle();
+            }
+        }
+
+        function drawStoveAndBlueFlames() {
+            // Draw Gas Burner Metal Base
+            ctx.fillStyle = '#292524';
+            ctx.beginPath();
+            ctx.arc(STOVE_CENTER.x, STOVE_CENTER.y, PAN_RADIUS + 15, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#44403c';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Gas Burner Grates (Top, Bottom, Left, Right)
+            ctx.strokeStyle = '#1c1917';
+            ctx.lineWidth = 10;
+            const grateLength = PAN_RADIUS + 25;
+            for (let i = 0; i < 4; i++) {
+                const angle = (i * Math.PI) / 2;
+                ctx.beginPath();
+                ctx.moveTo(STOVE_CENTER.x + Math.cos(angle) * 40, STOVE_CENTER.y + Math.sin(angle) * 40);
+                ctx.lineTo(STOVE_CENTER.x + Math.cos(angle) * grateLength, STOVE_CENTER.y + Math.sin(angle) * grateLength);
+                ctx.stroke();
+            }
+
+            // Draw Blue Flame Particles when Stove is ON (Step 1, 2, 3)
+            if (gameState.step >= 1 && gameState.step < 4) {
+                // Inner Gas Flame Ring Glow
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+                ctx.beginPath();
+                ctx.arc(STOVE_CENTER.x, STOVE_CENTER.y, PAN_RADIUS + 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                gameState.blueFlameParticles.forEach(p => {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'screen';
+
+                    const flameGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                    flameGrad.addColorStop(0, 'rgba(255, 255, 255, ' + p.life + ')');
+                    flameGrad.addColorStop(0.3, 'rgba(56, 189, 248, ' + (p.life * 0.9) + ')');
+                    flameGrad.addColorStop(0.7, 'rgba(37, 99, 235, ' + (p.life * 0.6) + ')');
+                    flameGrad.addColorStop(1, 'rgba(29, 78, 216, 0)');
+
+                    ctx.fillStyle = flameGrad;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                });
+            }
+        }
+
+        function drawSafetyZone() {
+            // Draw Center Safe Zone Indicator
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.25)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.arc(0, 0, (PAN_RADIUS - egg.radius - 8) * 0.65, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function drawFryingPan() {
+            // Pan Handle
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.roundRect(-22, PAN_RADIUS - 10, 44, 110, 12);
+            ctx.fill();
+
+            // Handle Grip Highlight
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(-8, PAN_RADIUS + 20, 16, 65);
+
+            // Pan Outer Dark Rim
+            ctx.fillStyle = '#18181b';
+            ctx.beginPath();
+            ctx.arc(0, 0, PAN_RADIUS, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pan Edge Highlight
+            ctx.strokeStyle = '#3f3f46';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+
+            // Pan Inner Surface
+            const panGrad = ctx.createRadialGradient(-30, -30, 10, 0, 0, PAN_RADIUS - 10);
+            if (gameState.isBurnt) {
+                panGrad.addColorStop(0, '#1c1917');
+                panGrad.addColorStop(1, '#0c0a09');
+            } else {
+                panGrad.addColorStop(0, '#27272a');
+                panGrad.addColorStop(0.85, '#18181b');
+                panGrad.addColorStop(1, '#09090b');
+            }
+
+            ctx.fillStyle = panGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, PAN_RADIUS - 8, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawOilLayer() {
+            ctx.fillStyle = 'rgba(252, 211, 77, 0.22)';
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+            ctx.lineWidth = 1.5;
+
+            gameState.oilDrops.forEach(drop => {
+                ctx.beginPath();
+                ctx.arc(drop.relX, drop.relY, drop.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            });
+        }
+
+        function drawOilBottle() {
+            ctx.save();
+            ctx.translate(gameState.oilBottlePos.x, gameState.oilBottlePos.y);
+
+            // Bottle Glass Body
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.85)';
+            ctx.strokeStyle = '#b45309';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.roundRect(-16, -25, 32, 50, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // Bottle Cap
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(-8, -33, 16, 8);
+
+            // Oil Stream Dropping onto Pan
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(0, 25, 5 + Math.sin(Date.now() * 0.02) * 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function drawEgg() {
+            // Egg White
+            ctx.beginPath();
+            if (egg.whitePoints.length > 0) {
+                const firstPt = egg.whitePoints[0];
+                ctx.moveTo(firstPt.relX, firstPt.relY);
+
+                for (let i = 1; i < egg.whitePoints.length; i++) {
+                    const pt = egg.whitePoints[i];
+                    const prevPt = egg.whitePoints[i - 1];
+                    const xc = (prevPt.relX + pt.relX) / 2;
+                    const yc = (prevPt.relY + pt.relY) / 2;
+                    ctx.quadraticCurveTo(prevPt.relX, prevPt.relY, xc, yc);
+                }
+            }
+            ctx.closePath();
+
+            const cookRatio = Math.min(1, gameState.cookProgress / 100);
+            let whiteAlpha = 0.45 + cookRatio * 0.5;
+            let whiteR = 255, whiteG = 255, whiteB = Math.floor(240 + (1 - cookRatio) * 15);
+
+            if (gameState.isBurnt) {
+                whiteR = 50; whiteG = 40; whiteB = 35;
+            }
+
+            ctx.fillStyle = `rgba(${whiteR}, ${whiteG}, ${whiteB}, ${whiteAlpha})`;
+            ctx.fill();
+
+            if (cookRatio > 0.5) {
+                ctx.strokeStyle = `rgba(180, 83, 9, ${(cookRatio - 0.5) * 0.8})`;
+                ctx.lineWidth = 3 + cookRatio * 2;
+                ctx.stroke();
+            }
+
+            // Egg Yolk with Cute Face Expression
+            if (!gameState.isBurst) {
+                ctx.save();
+                ctx.translate(egg.relX, egg.relY);
+                ctx.scale(egg.squishX, egg.squishY);
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.arc(3, 4, egg.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                const yolkGrad = ctx.createRadialGradient(-8, -10, 4, 0, 0, egg.radius);
+                if (gameState.isBurnt) {
+                    yolkGrad.addColorStop(0, '#78350f');
+                    yolkGrad.addColorStop(1, '#451a03');
+                } else {
+                    yolkGrad.addColorStop(0, '#fef08a');
+                    yolkGrad.addColorStop(0.35, '#fbbf24');
+                    yolkGrad.addColorStop(0.85, '#f59e0b');
+                    yolkGrad.addColorStop(1, '#d97706');
+                }
+
+                ctx.fillStyle = yolkGrad;
+                ctx.beginPath();
+                ctx.arc(0, 0, egg.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (!gameState.isBurnt) {
+                    // Glossy Highlight
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+                    ctx.beginPath();
+                    ctx.arc(-egg.radius * 0.35, -egg.radius * 0.35, egg.radius * 0.28, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Cute Yolk Face Expression based on stress level
+                    ctx.fillStyle = '#451a03';
+                    ctx.strokeStyle = '#451a03';
+                    ctx.lineWidth = 2.5;
+
+                    if (gameState.yolkStress > 50) {
+                        // Dizzy Panic Face (x_x)
+                        ctx.beginPath();
+                        ctx.moveTo(-12, -4); ctx.lineTo(-4, 4);
+                        ctx.moveTo(-4, -4); ctx.lineTo(-12, 4);
+                        ctx.moveTo(4, -4); ctx.lineTo(12, 4);
+                        ctx.moveTo(12, -4); ctx.lineTo(4, 4);
+                        ctx.stroke();
+
+                        // Open Worried Mouth
+                        ctx.beginPath();
+                        ctx.arc(0, 10, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else {
+                        // Happy Cute Face (^─^)
+                        ctx.beginPath();
+                        ctx.arc(-8, 0, 3, 0, Math.PI * 2);
+                        ctx.arc(8, 0, 3, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Smile Curve
+                        ctx.beginPath();
+                        ctx.arc(0, 2, 7, 0.1 * Math.PI, 0.9 * Math.PI);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.restore();
+            }
+        }
+
+        function drawSplatterParticles() {
+            gameState.splatterParticles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawSteamParticles() {
+            gameState.steamParticles.forEach(p => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                ctx.beginPath();
+                ctx.arc(p.relX, p.relY, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    </script>
+</body>
+</html>

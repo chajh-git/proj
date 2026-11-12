@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 건강 음식 추천 프로그램</title>
+
+<style>
+
+body{
+   font-family: Arial, sans-serif;
+   background:#f2f7f8;
+   margin:0;
+   padding:20px;
+}
+
+.container{
+   max-width:950px;
+   margin:auto;
+   background:white;
+   padding:25px;
+   border-radius:15px;
+   box-shadow:0 0 15px rgba(0,0,0,0.1);
+}
+
+h1{
+   text-align:center;
+   color:#1f7a7a;
+}
+
+textarea{
+   width:100%;
+   height:120px;
+   padding:12px;
+   border-radius:10px;
+   border:1px solid #ccc;
+   font-size:16px;
+   resize:none;
+}
+
+button{
+   width:100%;
+   padding:15px;
+   margin-top:15px;
+   border:none;
+   border-radius:10px;
+   background:#1f7a7a;
+   color:white;
+   font-size:18px;
+   cursor:pointer;
+}
+
+button:hover{
+   background:#155d5d;
+}
+
+.box{
+   margin-top:20px;
+   padding:18px;
+   border-radius:12px;
+   background:#eef7f7;
+}
+
+.food-card{
+   background:white;
+   padding:15px;
+   border-radius:12px;
+   margin-top:15px;
+   border-left:6px solid #1f7a7a;
+}
+
+.food-card h3{
+   margin:0;
+   color:#1f7a7a;
+}
+
+.tag{
+   display:inline-block;
+   background:#d7f0f0;
+   padding:5px 10px;
+   border-radius:20px;
+   margin:4px;
+   font-size:14px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🥗 AI 건강 음식 추천 프로그램</h1>
+
+<p>
+오늘 또는 어제 먹은 음식을 입력하세요!<br>
+예시: 치킨, 피자, 떡볶이, 햄버거
+</p>
+
+<textarea id="foodInput" placeholder="먹은 음식을 입력하세요"></textarea>
+
+<button onclick="analyzeFood()">분석하고 추천받기</button>
+
+<div id="result"></div>
+
+</div>
+
+<script>
+
+// 음식 데이터베이스
+const foodDatabase = {
+
+   // 한식
+   "김치찌개":{ nutrients:["나트륨","지방"] },
+   "된장찌개":{ nutrients:["나트륨","단백질"] },
+   "불고기":{ nutrients:["단백질","지방"] },
+   "비빔밥":{ nutrients:["탄수화물","비타민"] },
+   "삼겹살":{ nutrients:["지방","단백질"] },
+   "갈비":{ nutrients:["지방","단백질","나트륨"] },
+   "김밥":{ nutrients:["탄수화물","단백질"] },
+   "떡볶이":{ nutrients:["탄수화물","나트륨"] },
+   "순대":{ nutrients:["지방","단백질"] },
+   "라면":{ nutrients:["나트륨","탄수화물","지방"] },
+   "냉면":{ nutrients:["탄수화물","나트륨"] },
+   "제육볶음":{ nutrients:["지방","단백질","나트륨"] },
+
+   // 패스트푸드
+   "햄버거":{ nutrients:["지방","탄수화물","나트륨"] },
+   "피자":{ nutrients:["지방","나트륨","탄수화물"] },
+   "치킨":{ nutrients:["지방","단백질","나트륨"] },
+   "핫도그":{ nutrients:["지방","나트륨"] },
+   "감자튀김":{ nutrients:["지방","탄수화물"] },
+
+   // 분식
+   "어묵":{ nutrients:["나트륨","단백질"] },
+   "튀김":{ nutrients:["지방"] },
+   "컵밥":{ nutrients:["탄수화물","나트륨"] },
+
+   // 중식
+   "짜장면":{ nutrients:["탄수화물","지방","나트륨"] },
+   "짬뽕":{ nutrients:["나트륨","지방"] },
+   "탕수육":{ nutrients:["지방","탄수화물"] },
+
+   // 일식
+   "초밥":{ nutrients:["탄수화물","단백질"] },
+   "돈까스":{ nutrients:["지방","탄수화물"] },
+   "우동":{ nutrients:["탄수화물","나트륨"] },
+
+   // 양식
+   "파스타":{ nutrients:["탄수화물","지방"] },
+   "스테이크":{ nutrients:["단백질","지방"] },
+   "샐러드":{ nutrients:["비타민","식이섬유"] },
+
+   // 디저트
+   "케이크":{ nutrients:["당분","지방","탄수화물"] },
+   "아이스크림":{ nutrients:["당분","지방"] },
+   "초콜릿":{ nutrients:["당분","지방"] },
+
+   // 음료
+   "콜라":{ nutrients:["당분"] },
+   "사이다":{ nutrients:["당분"] },
+   "에너지드링크":{ nutrients:["당분","카페인"] },
+
+   // 야식
+   "족발":{ nutrients:["지방","단백질","나트륨"] },
+   "보쌈":{ nutrients:["단백질","지방"] },
+   "닭발":{ nutrients:["나트륨","지방"] }
+};
+
+
+// 건강 추천 음식
+const healthyRecommendations = {
+
+   "지방":[
+
+       {
+           name:"닭가슴살 샐러드",
+           calories:"320kcal",
+           info:"지방이 적고 단백질이 풍부해요."
+       },
+
+       {
+           name:"두부 야채볶음",
+           calories:"280kcal",
+           info:"채소와 식물성 단백질이 많아요."
+       },
+
+       {
+           name:"연어 샐러드",
+           calories:"350kcal",
+           info:"오메가3와 단백질이 풍부해요."
+       },
+
+       {
+           name:"현미 닭가슴살 도시락",
+           calories:"430kcal",
+           info:"균형 잡힌 저지방 식단이에요."
+       },
+
+       {
+           name:"야채 비빔밥",
+           calories:"410kcal",
+           info:"식이섬유와 비타민이 풍부해요."
+       }
+   ],
+
+   "나트륨":[
+
+       {
+           name:"현미밥과 된장찌개",
+           calories:"450kcal",
+           info:"짜지 않고 균형 잡힌 한식이에요."
+       },
+
+       {
+           name:"연어 덮밥",
+           calories:"500kcal",
+           info:"오메가3와 단백질이 풍부해요."
+       },
+
+       {
+           name:"계란 야채죽",
+           calories:"300kcal",
+           info:"속이 편하고 나트륨이 적어요."
+       },
+
+       {
+           name:"고등어구이 정식",
+           calories:"520kcal",
+           info:"단백질과 건강한 지방이 많아요."
+       },
+
+       {
+           name:"토마토 파스타",
+           calories:"430kcal",
+           info:"크림 파스타보다 지방과 나트륨이 적어요."
+       }
+   ],
+
+   "탄수화물":[
+
+       {
+           name:"계란 샐러드",
+           calories:"300kcal",
+           info:"단백질 중심 식단이에요."
+       },
+
+       {
+           name:"고구마와 우유",
+           calories:"290kcal",
+           info:"건강한 탄수화물 식단이에요."
+       },
+
+       {
+           name:"그릭요거트와 과일",
+           calories:"270kcal",
+           info:"단백질과 비타민을 함께 먹을 수 있어요."
+       },
+
+       {
+           name:"닭가슴살 스테이크",
+           calories:"380kcal",
+           info:"포만감이 오래가요."
+       },
+
+       {
+           name:"아보카도 샌드위치",
+           calories:"400kcal",
+           info:"건강한 지방과 단백질이 많아요."
+       }
+   ],
+
+   "당분":[
+
+       {
+           name:"바나나와 견과류",
+           calories:"250kcal",
+           info:"자연 당분과 영양소를 섭취할 수 있어요."
+       },
+
+       {
+           name:"사과와 요거트",
+           calories:"220kcal",
+           info:"건강한 간식으로 좋아요."
+       },
+
+       {
+           name:"블루베리 오트밀",
+           calories:"310kcal",
+           info:"포만감이 오래가고 건강해요."
+       },
+
+       {
+           name:"딸기 스무디",
+           calories:"260kcal",
+           info:"비타민C가 풍부해요."
+       },
+
+       {
+           name:"과일 샐러드",
+           calories:"240kcal",
+           info:"상큼하고 건강한 디저트예요."
+       }
+   ],
+
+   "카페인":[
+
+       {
+           name:"과일 스무디",
+           calories:"220kcal",
+           info:"피로 회복과 수분 보충에 좋아요."
+       },
+
+       {
+           name:"바나나 우유",
+           calories:"260kcal",
+           info:"에너지 회복에 도움이 돼요."
+       },
+
+       {
+           name:"닭죽",
+           calories:"340kcal",
+           info:"속이 편안해지는 음식이에요."
+       },
+
+       {
+           name:"토스트와 우유",
+           calories:"330kcal",
+           info:"간단하면서 든든해요."
+       },
+
+       {
+           name:"과일 요거트볼",
+           calories:"290kcal",
+           info:"비타민과 단백질이 풍부해요."
+       }
+   ],
+
+   "비타민":[
+
+       {
+           name:"닭가슴살 도시락",
+           calories:"430kcal",
+           info:"단백질을 추가로 보충할 수 있어요."
+       },
+
+       {
+           name:"소고기 미역국",
+           calories:"370kcal",
+           info:"철분과 단백질이 풍부해요."
+       },
+
+       {
+           name:"계란 볶음밥",
+           calories:"420kcal",
+           info:"든든한 한 끼 식사예요."
+       },
+
+       {
+           name:"참치 샌드위치",
+           calories:"390kcal",
+           info:"오메가3와 단백질이 많아요."
+       },
+
+       {
+           name:"닭가슴살 또띠아",
+           calories:"410kcal",
+           info:"맛있고 건강한 간편식이에요."
+       }
+   ]
+};
+
+
+// 분석 함수
+function analyzeFood(){
+
+   const input = document.getElementById("foodInput").value.trim();
+   const result = document.getElementById("result");
+
+   if(input === ""){
+       result.innerHTML = `
+       <div class="box">
+       ⚠️ 음식을 입력해주세요!
+       </div>
+       `;
+       return;
+   }
+
+   let foundFoods = [];
+   let nutrients = [];
+   let recommendations = [];
+
+   // 음식 찾기
+   for(let food in foodDatabase){
+
+       if(input.includes(food)){
+
+           foundFoods.push(food);
+
+           foodDatabase[food].nutrients.forEach(n=>{
+               nutrients.push(n);
+           });
+       }
+   }
+
+   // 중복 제거
+   nutrients = [...new Set(nutrients)];
+
+   // 추천 음식 찾기
+   nutrients.forEach(nutrient=>{
+
+       if(healthyRecommendations[nutrient]){
+
+           healthyRecommendations[nutrient].forEach(food=>{
+               recommendations.push(food);
+           });
+       }
+   });
+
+   // 중복 제거
+   recommendations = recommendations.filter(
+       (item, index, self) =>
+       index === self.findIndex((t) => t.name === item.name)
+   );
+
+   // 랜덤 추천 섞기
+   recommendations.sort(() => Math.random() - 0.5);
+
+   // 최대 6개 추천
+   recommendations = recommendations.slice(0,6);
+
+   let html = "";
+
+   // 분석 결과
+   if(foundFoods.length > 0){
+
+       html += `
+       <div class="box">
+
+       <h2>🔍 음식 분석 결과</h2>
+
+       <p>
+       <strong>입력한 음식:</strong>
+       ${foundFoods.join(", ")}
+       </p>
+
+       <p><strong>많이 포함된 성분:</strong></p>
+       `;
+
+       nutrients.forEach(n=>{
+           html += `<span class="tag">${n}</span>`;
+       });
+
+       html += `</div>`;
+
+   } else {
+
+       html += `
+       <div class="box">
+       입력한 음식 데이터를 찾지 못했어요 😢
+       </div>
+       `;
+   }
+
+   // 추천 음식 출력
+   html += `
+   <div class="box">
+   <h2>🥗 건강 추천 음식</h2>
+   `;
+
+   recommendations.forEach(food=>{
+
+       html += `
+       <div class="food-card">
+
+           <h3>${food.name}</h3>
+
+           <p>
+           <strong>칼로리:</strong>
+           ${food.calories}
+           </p>
+
+           <p>
+           <strong>설명:</strong>
+           ${food.info}
+           </p>
+
+       </div>
+       `;
+   });
+
+   html += `
+   </div>
+
+   <div class="box">
+
+   💡 건강 팁<br><br>
+
+   • 나트륨이 많은 음식 후에는 물을 충분히 마셔보세요.<br>
+   • 기름진 음식을 먹었다면 채소를 함께 먹는 것이 좋아요.<br>
+   • 성장기에는 단백질과 칼슘 섭취가 중요해요!
+
+   </div>
+   `;
+
+   result.innerHTML = html;
+}
+
+</script>
+
+</body>
+</html>

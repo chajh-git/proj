@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>기억력 게임</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Google Sans', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: manipulation;
+        }
+
+        /* Stealth Mode Pads: Neutral dark stealth metallic appearance in idle state */
+        .stealth-pad {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 2px solid #334155;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease, background 0.1s ease;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stealth-pad:hover {
+            border-color: #475569;
+            transform: translateY(-2px);
+        }
+
+        .stealth-pad:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* Active Flashed Dynamic State */
+        .pad-flash {
+            background: var(--flash-bg) !important;
+            border-color: var(--flash-border) !important;
+            transform: scale(1.04) !important;
+            box-shadow: 0 0 35px var(--flash-glow), inset 0 0 15px rgba(255, 255, 255, 0.7) !important;
+            z-index: 10;
+        }
+
+        @keyframes border-glow {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+        }
+        
+        .user-turn-active {
+            animation: border-glow 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-4 sm:p-6 select-none overflow-x-hidden">
+
+    <!-- Header Section -->
+    <header class="w-full max-w-md flex justify-between items-center mt-2 mb-4">
+        <div class="flex items-center gap-3">
+            <div class="flex gap-1.5">
+                <span class="w-3.5 h-3.5 rounded-full bg-[#EA4335]"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-[#FBBC05]"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-[#34A853]"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-[#4285F4]"></span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-100">
+                기억력 게임
+            </h1>
+        </div>
+
+        <!-- Mute / Unmute Button -->
+        <button id="soundToggle" class="p-2.5 bg-slate-800/80 rounded-full shadow-md hover:bg-slate-700 transition active:scale-95 text-slate-300 border border-slate-700/80" aria-label="음소거 토글">
+            <svg id="soundIconOn" class="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072M17.535 6.465a8 8 0 010 11.314M11 5L6 9H2v6h4l5 4V5z"/></svg>
+            <svg id="soundIconOff" class="w-5 h-5 text-slate-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+        </button>
+    </header>
+
+    <!-- Main Game Board & Stats Container -->
+    <main class="w-full max-w-md flex flex-col items-center gap-5 my-auto">
+        
+        <!-- Scoreboard -->
+        <div class="w-full grid grid-cols-2 gap-3">
+            <div class="bg-slate-800/60 rounded-2xl p-4 text-center border border-slate-700/60 shadow-lg backdrop-blur-md">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">현재 단계</span>
+                <span id="levelDisplay" class="text-3xl font-extrabold text-slate-100">0</span>
+            </div>
+            <div class="bg-slate-800/60 rounded-2xl p-4 text-center border border-slate-700/60 shadow-lg backdrop-blur-md">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">최고 기록</span>
+                <span id="highScoreDisplay" class="text-3xl font-extrabold text-blue-400">0</span>
+            </div>
+        </div>
+
+        <!-- Status Message Banner -->
+        <div id="statusBox" class="w-full bg-slate-800/60 rounded-2xl py-3.5 px-4 text-center border border-slate-700/60 shadow-lg backdrop-blur-md transition-all duration-300">
+            <p id="statusMessage" class="text-sm sm:text-base font-medium text-slate-300">
+                시작 버튼을 눌러 게임을 시작하세요
+            </p>
+        </div>
+
+        <!-- 6 Stealth Game Pads Grid (3x2 Grid layout) -->
+        <div id="boardContainer" class="relative w-full aspect-[3/2] p-4 bg-slate-900/80 rounded-3xl shadow-2xl border border-slate-800 grid grid-cols-3 grid-rows-2 gap-3.5 transition-all backdrop-blur">
+            <button data-pad="0" aria-label="Pad 1" class="stealth-pad rounded-2xl"></button>
+            <button data-pad="1" aria-label="Pad 2" class="stealth-pad rounded-2xl"></button>
+            <button data-pad="2" aria-label="Pad 3" class="stealth-pad rounded-2xl"></button>
+            <button data-pad="3" aria-label="Pad 4" class="stealth-pad rounded-2xl"></button>
+            <button data-pad="4" aria-label="Pad 5" class="stealth-pad rounded-2xl"></button>
+            <button data-pad="5" aria-label="Pad 6" class="stealth-pad rounded-2xl"></button>
+
+            <!-- Board Overlay to prevent clicking during sequence playback -->
+            <div id="boardOverlay" class="absolute inset-0 bg-transparent rounded-3xl z-20"></div>
+        </div>
+
+        <!-- Start Button -->
+        <button id="mainBtn" class="w-full max-w-[260px] py-3.5 px-6 bg-blue-600 hover:bg-blue-500 text-white font-bold text-base rounded-full shadow-lg shadow-blue-600/20 active:scale-95 transition duration-200 cursor-pointer tracking-wide border border-blue-400/30">
+            게임 시작
+        </button>
+
+    </main>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl transform scale-90 transition-transform duration-300 border border-slate-800" id="modalContent">
+            <h2 class="text-2xl font-bold text-slate-100 mb-2">게임 오버!</h2>
+            <p class="text-slate-400 text-sm mb-6">순서를 잘 기억하고 다시 도전해보세요.</p>
+
+            <div class="bg-slate-800/60 rounded-2xl p-4 mb-6 space-y-3 border border-slate-800">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400 font-medium">달성 단계</span>
+                    <span id="finalScore" class="text-xl font-extrabold text-slate-100">0</span>
+                </div>
+                <div class="h-px bg-slate-700/60"></div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400 font-medium">최고 기록</span>
+                    <span id="modalHighScore" class="text-xl font-extrabold text-blue-400">0</span>
+                </div>
+            </div>
+
+            <button id="modalRestartBtn" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-base rounded-full shadow-lg shadow-blue-600/20 active:scale-95 transition duration-200 cursor-pointer">
+                다시 도전
+            </button>
+        </div>
+    </div>
+
+    <footer class="mt-4 text-xs text-slate-500 font-normal">
+        기억력 게임
+    </footer>
+
+    <script>
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playTone(freq, duration = 250) {
+                if (this.muted) return;
+                this.init();
+
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.3, this.ctx.currentTime + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + (duration / 1000));
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + (duration / 1000));
+                } catch (e) {
+                    console.error("Audio error:", e);
+                }
+            }
+
+            playFailTone() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.4);
+
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+
+            playSuccessTone() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+                    gain.gain.setValueAtTime(0.2, now + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.2);
+
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start(now + idx * 0.06);
+                    osc.stop(now + idx * 0.06 + 0.2);
+                });
+            }
+        }
+
+        const padConfigs = [
+            { bg: '#EA4335', border: '#ff6b5e', glow: 'rgba(234, 67, 53, 0.95)', pitch: 392.00 }, // Pad 0: Red - Sol
+            { bg: '#FBBC05', border: '#fcd34d', glow: 'rgba(251, 188, 5, 0.95)', pitch: 261.63 }, // Pad 1: Yellow - Do
+            { bg: '#4285F4', border: '#6ba5ff', glow: 'rgba(66, 133, 244, 0.95)', pitch: 349.23 }, // Pad 2: Blue - Fa
+            { bg: '#34A853', border: '#52c46f', glow: 'rgba(52, 168, 83, 0.95)', pitch: 440.00 }, // Pad 3: Green - La
+            { bg: '#A855F7', border: '#c084fc', glow: 'rgba(168, 85, 247, 0.95)', pitch: 293.66 }, // Pad 4: Purple - Re
+            { bg: '#FF7043', border: '#ff8a65', glow: 'rgba(255, 112, 67, 0.95)', pitch: 329.63 }  // Pad 5: Orange - Mi
+        ];
+
+        const audioEngine = new AudioEngine();
+        let sequence = [];
+        let playerSequence = [];
+        let level = 0;
+        let highScore = parseInt(localStorage.getItem('memory_game_korean_high_score') || '0', 10);
+        let isPlaying = false;
+        let isPlayerTurn = false;
+
+        const padBtns = document.querySelectorAll('.stealth-pad');
+        const boardOverlay = document.getElementById('boardOverlay');
+        const boardContainer = document.getElementById('boardContainer');
+        const mainBtn = document.getElementById('mainBtn');
+        const levelDisplay = document.getElementById('levelDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const statusMessage = document.getElementById('statusMessage');
+        const soundToggle = document.getElementById('soundToggle');
+        const soundIconOn = document.getElementById('soundIconOn');
+        const soundIconOff = document.getElementById('soundIconOff');
+
+        const gameOverModal = document.getElementById('gameOverModal');
+        const modalContent = document.getElementById('modalContent');
+        const finalScore = document.getElementById('finalScore');
+        const modalHighScore = document.getElementById('modalHighScore');
+        const modalRestartBtn = document.getElementById('modalRestartBtn');
+
+        highScoreDisplay.textContent = highScore;
+
+        soundToggle.addEventListener('click', () => {
+            audioEngine.muted = !audioEngine.muted;
+            soundIconOn.classList.toggle('hidden', audioEngine.muted);
+            soundIconOff.classList.toggle('hidden', !audioEngine.muted);
+        });
+
+        function flashPad(padIndex, duration = 250) {
+            return new Promise((resolve) => {
+                const pad = padBtns[padIndex];
+                const config = padConfigs[padIndex];
+
+                pad.style.setProperty('--flash-bg', config.bg);
+                pad.style.setProperty('--flash-border', config.border);
+                pad.style.setProperty('--flash-glow', config.glow);
+                
+                pad.classList.add('pad-flash');
+                audioEngine.playTone(config.pitch, duration);
+
+                setTimeout(() => {
+                    pad.classList.remove('pad-flash');
+                    setTimeout(resolve, 100);
+                }, duration);
+            });
+        }
+
+        function startGame() {
+            sequence = [];
+            playerSequence = [];
+            level = 0;
+            isPlaying = true;
+            mainBtn.classList.add('hidden');
+            nextRound();
+        }
+
+        async function nextRound() {
+            isPlayerTurn = false;
+            boardOverlay.classList.remove('hidden');
+            boardContainer.classList.remove('user-turn-active');
+            level++;
+            levelDisplay.textContent = level;
+            playerSequence = [];
+
+            statusMessage.textContent = `단계 ${level} - 소리와 불빛의 순서를 기억하세요!`;
+            statusMessage.className = "text-sm sm:text-base font-medium text-slate-300";
+
+            sequence.push(Math.floor(Math.random() * 6));
+
+            await new Promise(r => setTimeout(r, 500));
+
+            const duration = Math.max(180, 350 - (level * 8));
+            for (let i = 0; i < sequence.length; i++) {
+                await flashPad(sequence[i], duration);
+            }
+
+            isPlayerTurn = true;
+            boardOverlay.classList.add('hidden');
+            boardContainer.classList.add('user-turn-active');
+            statusMessage.textContent = `단계 ${level} - 순서대로 패드를 누르세요`;
+            statusMessage.className = "text-sm sm:text-base font-bold text-blue-400";
+        }
+
+        function handlePadClick(e) {
+            if (!isPlaying || !isPlayerTurn) return;
+
+            const padIndex = parseInt(e.currentTarget.getAttribute('data-pad'), 10);
+
+            flashPad(padIndex, 220);
+            playerSequence.push(padIndex);
+
+            const currentStep = playerSequence.length - 1;
+
+            if (playerSequence[currentStep] !== sequence[currentStep]) {
+                handleGameOver();
+                return;
+            }
+
+            if (playerSequence.length === sequence.length) {
+                isPlayerTurn = false;
+                boardOverlay.classList.remove('hidden');
+                boardContainer.classList.remove('user-turn-active');
+                audioEngine.playSuccessTone();
+
+                statusMessage.textContent = '성공! 다음 단계로 이동합니다...';
+                statusMessage.className = "text-sm sm:text-base font-bold text-emerald-400";
+
+                if (level > highScore) {
+                    highScore = level;
+                    highScoreDisplay.textContent = highScore;
+                    localStorage.setItem('memory_game_korean_high_score', highScore);
+                }
+
+                setTimeout(nextRound, 800);
+            }
+        }
+
+        function handleGameOver() {
+            isPlaying = false;
+            isPlayerTurn = false;
+            boardOverlay.classList.remove('hidden');
+            boardContainer.classList.remove('user-turn-active');
+            audioEngine.playFailTone();
+
+            statusMessage.textContent = '아쉽습니다! 순서가 틀렸습니다.';
+            statusMessage.className = "text-sm sm:text-base font-bold text-red-400";
+
+            finalScore.textContent = `${level} 단계`;
+            modalHighScore.textContent = `${highScore} 단계`;
+
+            gameOverModal.classList.remove('hidden');
+            setTimeout(() => {
+                gameOverModal.classList.remove('opacity-0');
+                modalContent.classList.remove('scale-90');
+                modalContent.classList.add('scale-100');
+            }, 50);
+        }
+
+        function hideModalAndReset() {
+            gameOverModal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-90');
+
+            setTimeout(() => {
+                gameOverModal.classList.add('hidden');
+                startGame();
+            }, 300);
+        }
+
+        padBtns.forEach(btn => btn.addEventListener('click', handlePadClick));
+        mainBtn.addEventListener('click', startGame);
+        modalRestartBtn.addEventListener('click', hideModalAndReset);
+    </script>
+</body>
+</html>

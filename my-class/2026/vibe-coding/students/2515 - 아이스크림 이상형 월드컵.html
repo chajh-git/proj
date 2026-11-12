@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>빙그레 아이스크림 이상형 월드컵 🍦</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+      background: linear-gradient(135deg, #fff5f7 0%, #e8f4ff 50%, #fff8e7 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      font-size: 1.8rem;
+      margin: 10px 0 6px;
+      background: linear-gradient(90deg, #ff6b9d, #4ecdc4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { color: #666; margin-bottom: 16px; font-size: 0.95rem; }
+    .progress {
+      background: #fff;
+      border-radius: 999px;
+      padding: 8px 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 24px;
+      font-weight: 600;
+      color: #ff6b9d;
+    }
+    .match-area {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: stretch;
+      max-width: 900px;
+      width: 100%;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      width: 280px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      border: 3px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover {
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 16px 40px rgba(255,107,157,0.25);
+      border-color: #ff6b9d;
+    }
+    .card.selected {
+      border-color: #4ecdc4;
+      background: #f0fffc;
+    }
+    .icon {
+      font-size: 4.5rem;
+      margin-bottom: 12px;
+      line-height: 1;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    }
+    .name {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 6px;
+    }
+    .brand {
+      font-size: 0.85rem;
+      color: #ff6b9d;
+      font-weight: 600;
+    }
+    .vs {
+      font-size: 2rem;
+      font-weight: 900;
+      color: #ff6b9d;
+      align-self: center;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .winner-screen {
+      display: none;
+      text-align: center;
+      background: #fff;
+      border-radius: 24px;
+      padding: 48px 32px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+      max-width: 420px;
+      width: 100%;
+    }
+    .winner-screen.show { display: block; animation: pop 0.5s ease; }
+    @keyframes pop {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .winner-icon { font-size: 6rem; margin-bottom: 12px; }
+    .winner-name { font-size: 2rem; font-weight: 800; color: #ff6b9d; margin-bottom: 8px; }
+    .restart-btn {
+      margin-top: 24px;
+      background: linear-gradient(90deg, #ff6b9d, #4ecdc4);
+      color: #fff;
+      border: none;
+      padding: 14px 36px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .restart-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(255,107,157,0.4);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>🍦 빙그레 아이스크림 이상형 월드컵</h1>
+  <p class="subtitle">빙그레 제품만 · 중복 없이 · 32강 토너먼트</p>
+  <div class="progress" id="progress">32강 · 1/16 경기</div>
+
+  <div class="match-area" id="matchArea">
+    <div class="card" id="card1" onclick="choose(0)">
+      <div class="icon" id="icon1">🍦</div>
+      <div class="name" id="name1">-</div>
+      <div class="brand">Binggrae</div>
+    </div>
+    <div class="vs">VS</div>
+    <div class="card" id="card2" onclick="choose(1)">
+      <div class="icon" id="icon2">🍦</div>
+      <div class="name" id="name2">-</div>
+      <div class="brand">Binggrae</div>
+    </div>
+  </div>
+
+  <div class="winner-screen" id="winnerScreen">
+    <div class="winner-icon" id="winnerIcon">🏆</div>
+    <div class="winner-name" id="winnerName">-</div>
+    <p style="color:#666; margin-top:8px;">당신의 최애 빙그레 아이스크림!</p>
+    <button class="restart-btn" onclick="restart()">다시 하기</button>
+  </div>
+
+  <script>
+    // 빙그레 아이스크림 32종 (중복 없음)
+    const ALL = [
+      { name: "메로나", icon: "🍈" },
+      { name: "메로나 망고", icon: "🥭" },
+      { name: "메로나 바나나", icon: "🍌" },
+      { name: "비비빅", icon: "🫘" },
+      { name: "붕어싸만코", icon: "🐟" },
+      { name: "빵또아", icon: "🍞" },
+      { name: "투게더", icon: "🍦" },
+      { name: "요맘때 딸기", icon: "🍓" },
+      { name: "요맘때 복숭아", icon: "🍑" },
+      { name: "요맘때 플레인", icon: "🥛" },
+      { name: "쿠앤크바", icon: "🍪" },
+      { name: "캔디바", icon: "🍬" },
+      { name: "엔초", icon: "☕" },
+      { name: "누가바", icon: "🥜" },
+      { name: "쌍쌍바", icon: "👯" },
+      { name: "바밤바", icon: "🌰" },
+      { name: "폴라포", icon: "🍇" },
+      { name: "부라보콘", icon: "📯" },
+      { name: "탱크보이", icon: "🚀" },
+      { name: "아이스가이", icon: "😎" },
+      { name: "시모나", icon: "🥞" },
+      { name: "인절미바", icon: "🍙" },
+      { name: "뽕따", icon: "🫧" },
+      { name: "딥앤로우", icon: "🍫" },
+      { name: "엑설런트", icon: "✨" },
+      { name: "끌레도르", icon: "👑" },
+      { name: "카페오레바", icon: "🤎" },
+      { name: "생귤탱귤", icon: "🍊" },
+      { name: "따옴바", icon: "🧃" },
+      { name: "호두마루", icon: "🌰" },
+      { name: "슈퍼콘", icon: "🎉" },
+      { name: "더위사냥", icon: "❄️" }
+    ];
+
+    let candidates = [];
+    let nextRound = [];
+    let matchIndex = 0;
+    let roundSize = 32;
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function roundLabel(size) {
+      if (size === 32) return "32강";
+      if (size === 16) return "16강";
+      if (size === 8) return "8강";
+      if (size === 4) return "4강";
+      if (size === 2) return "결승";
+      return "우승";
+    }
+
+    function updateProgress() {
+      const totalMatches = candidates.length / 2;
+      const current = matchIndex + 1;
+      document.getElementById("progress").textContent =
+        `${roundLabel(roundSize)} · 
+current/{totalMatches} 경기`;
+    }
+
+    function showMatch() {
+      if (matchIndex * 2 >= candidates.length) {
+        // 라운드 종료
+        if (nextRound.length === 1) {
+          showWinner(nextRound[0]);
+          return;
+        }
+        candidates = nextRound;
+        nextRound = [];
+        matchIndex = 0;
+        roundSize = candidates.length;
+      }
+
+      const a = candidates[matchIndex * 2];
+      const b = candidates[matchIndex * 2 + 1];
+
+      document.getElementById("icon1").textContent = a.icon;
+      document.getElementById("name1").textContent = a.name;
+      document.getElementById("icon2").textContent = b.icon;
+      document.getElementById("name2").textContent = b.name;
+
+      document.getElementById("card1").classList.remove("selected");
+      document.getElementById("card2").classList.remove("selected");
+
+      updateProgress();
+    }
+
+    function choose(side) {
+      const winner = candidates[matchIndex * 2 + side];
+      nextRound.push(winner);
+
+      // 선택 피드백
+      document.getElementById(side === 0 ? "card1" : "card2").classList.add("selected");
+
+      setTimeout(() => {
+        matchIndex++;
+        showMatch();
+      }, 280);
+    }
+
+    function showWinner(item) {
+      document.getElementById("matchArea").classList.add("hidden");
+      document.getElementById("progress").classList.add("hidden");
+      document.getElementById("winnerIcon").textContent = item.icon + " 🏆";
+      document.getElementById("winnerName").textContent = item.name;
+      document.getElementById("winnerScreen").classList.add("show");
+    }
+
+    function restart() {
+      document.getElementById("winnerScreen").classList.remove("show");
+      document.getElementById("matchArea").classList.remove("hidden");
+      document.getElementById("progress").classList.remove("hidden");
+      start();
+    }
+
+    function start() {
+      candidates = shuffle(ALL); // 매 게임 섞어서 대진 랜덤 + 중복 없음
+      nextRound = [];
+      matchIndex = 0;
+      roundSize = 32;
+      showMatch();
+    }
+
+    start();
+  </script>
+</body>
+</html>

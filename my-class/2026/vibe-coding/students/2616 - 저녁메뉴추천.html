@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오늘 저녁 뭐 먹지?</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f6;--card:#fff;--tx:#1d2433;--mu:#5f6b82;--ac:#c2255c;--on:#fff;--ac2:#f9e0e9;--bd:#d5dbe6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13161d;--card:#1b1f2a;--tx:#eef1f6;--mu:#9aa5bb;--ac:#ff7aa2;--on:#13161d;--ac2:#3a1f2b;--bd:#2c3242}}
+:root[data-theme="dark"]{--bg:#13161d;--card:#1b1f2a;--tx:#eef1f6;--mu:#9aa5bb;--ac:#ff7aa2;--on:#13161d;--ac2:#3a1f2b;--bd:#2c3242}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 "Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+main{max-width:620px;margin:0 auto;padding:24px 16px 48px}
+h1{font:2.1rem/1.2 "Black Han Sans","Noto Sans KR",sans-serif;margin:0 0 6px}
+.sub{color:var(--mu);margin:0 0 24px}
+section{border-top:1px solid var(--bd);padding:16px 0 8px}
+h2{font-size:1rem;margin:0 0 4px}
+.l{display:block;font-size:.85rem;color:var(--mu);margin:12px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:7px 13px;border-radius:999px;font:inherit;font-size:.9rem;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ac);border-color:var(--ac);color:var(--on)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+select{font:inherit;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx)}
+.note{font-size:.8rem;color:var(--mu);margin:12px 0 0}
+.go{width:100%;margin:16px 0 20px;padding:15px;border:0;border-radius:10px;background:var(--ac);color:var(--on);font:inherit;font-weight:700;font-size:1.05rem;cursor:pointer}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+article{padding:16px 0;border-top:1px solid var(--bd)}
+article.top{background:var(--card);border:2px solid var(--ac);border-radius:14px;padding:18px;margin-bottom:12px}
+.tag{margin:0;font-size:.85rem;color:var(--ac);font-weight:700}
+h3{margin:2px 0 0;font-size:1.15rem}
+.top h3{font:2.2rem/1.25 "Black Han Sans","Noto Sans KR",sans-serif}
+.meta,.why{margin:2px 0;color:var(--mu);font-size:.9rem}
+.why{color:var(--tx)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.acts button,.lnk{font:inherit;font-size:.85rem;padding:6px 12px;border:1px solid var(--bd);border-radius:8px;background:transparent;color:var(--tx);cursor:pointer}
+.acts button:disabled{opacity:.6;cursor:default}
+ul{padding-left:18px;margin:6px 0 10px}
+</style></head><body><main>
+<h1>오늘 저녁 뭐 먹지?</h1>
+<p class="sub">못 먹는 건 먼저 빼고, 오늘 상황에 맞게 점수를 매겨 3가지를 골라드려요.</p>
+<section><h2>조건 고르기</h2>
+<p class="note" style="margin:0">고르지 않은 조건은 따지지 않고, 고른 조건에는 모두 맞는 메뉴를 추천해요.</p>
+<span class="l">1. 먹는 방식</span><div class="chips" id="mode"></div>
+<div class="row"><div><label class="l" for="bud">2. 예산 (1인)</label><select id="bud"><option value="0">상관없음</option><option value="8000">8,000원 이하</option><option value="12000">12,000원 이하</option><option value="20000">20,000원 이하</option></select></div>
+<div><label class="l" for="tm">3. 걸리는 시간</label><select id="tm"><option value="0">상관없음</option><option value="15">15분 이내</option><option value="30">30분 이내</option><option value="60">60분 이내</option></select></div></div>
+<span class="l">4. 오늘의 기분</span><div class="chips" id="mood"></div>
+<span class="l">5. 인원</span><div class="chips" id="who"></div>
+<span class="l">6. 맛 취향</span><div class="chips" id="taste"></div>
+<span class="l">7. 식사의 무게</span><div class="chips" id="wt"></div>
+<span class="l">못 먹는 재료 (선택)</span><div class="chips" id="diet"></div>
+<p class="note">걸리는 시간은 요리 시간, 배달(약 40분), 외식(약 30분)으로 계산해요. 알레르기 정보는 대략적인 참고용이니 실제 재료와 성분을 꼭 확인하세요.</p></section>
+<button class="go" id="go">저녁 메뉴 추천받기</button>
+<div id="res" aria-live="polite"></div>
+<section id="hs" hidden><h2>최근 먹은 메뉴</h2><ul id="hl"></ul><button class="lnk" id="rs">기록 초기화</button></section>
+</main>
+<script>
+// 메뉴 데이터: 이름|분류|1인가격|방식(c요리,d배달,o외식)|조리분|재료태그|맛|기분|날씨
+const D=`김치찌개|한식|9000|cdo|30|pork|spicy,soup|tired,stress,hearty|cold,rain
+된장찌개|한식|8000|cdo|25|-|mild,soup|tired,light|cold,rain
+순두부찌개|한식|9000|cdo|20|seafood,egg|spicy,soup|stress,tired|cold,rain
+제육볶음|한식|10000|cdo|25|pork|spicy,rich|stress,hearty|-
+비빔밥|한식|9000|cdo|20|egg,beef|mild|light,tired|hot
+삼겹살구이|한식|15000|co|25|pork|rich|treat,hearty|-
+불고기|한식|12000|cdo|30|beef|mild,rich|hearty,treat|-
+닭볶음탕|한식|13000|cdo|45|chicken|spicy,soup|stress,hearty|cold,rain
+닭갈비|한식|13000|cdo|30|chicken|spicy,rich|stress,hearty|-
+부대찌개|한식|11000|cdo|30|pork,gluten,dairy|spicy,soup,rich|stress,hearty|cold,rain
+콩나물국밥|한식|8000|cdo|25|egg|mild,soup|tired|cold,rain
+삼계탕|한식|14000|do|0|chicken|mild,soup|tired|hot
+냉면|한식|10000|do|0|beef|mild,soup|light|hot
+칼국수|한식|9000|cdo|25|gluten,shellfish|mild,soup|tired,hearty|rain,cold
+계란말이와 밥|한식|6000|c|15|egg|mild|tired,light|-
+두부김치|한식|8000|c|20|pork|spicy|light,stress|-
+떡볶이|분식|8000|cdo|20|gluten|spicy|stress,treat|-
+라면과 계란|분식|3500|c|10|gluten,egg|spicy,soup|tired,stress|rain,cold
+김밥|분식|5000|cdo|20|egg|mild|light,tired|-
+짜장면|중식|8000|do|0|gluten,pork|rich|tired,hearty|-
+짬뽕|중식|10000|do|0|gluten,shellfish,pork|spicy,soup|stress,hearty|rain,cold
+볶음밥|중식|8000|cdo|15|egg,pork|rich|tired,hearty|-
+마라탕|중식|13000|do|0|beef,gluten,nut|spicy,soup|stress,treat|cold,rain
+토마토 달걀볶음과 밥|중식|6000|c|15|egg|mild|light,tired|-
+초밥|일식|18000|do|0|seafood|mild|treat,light|-
+연어덮밥|일식|13000|cdo|15|seafood|mild|light,treat|hot
+돈카츠|일식|11000|cdo|30|pork,gluten,egg|rich|hearty,treat|-
+우동|일식|8000|cdo|15|gluten,seafood|mild,soup|tired,light|cold,rain
+규동|일식|9000|cdo|20|beef,egg|rich|hearty,tired|-
+카레라이스|일식|8000|cdo|35|chicken,dairy,gluten|rich,mild|hearty,tired|-
+토마토 파스타|양식|10000|cdo|25|gluten|mild|light,treat|-
+크림 파스타|양식|12000|cdo|25|gluten,dairy|rich|treat,hearty|-
+피자|양식|18000|do|0|gluten,dairy|rich|treat,hearty|-
+스테이크|양식|25000|co|30|beef|rich|treat|-
+햄버거|양식|9000|do|0|beef,gluten,dairy,egg|rich|hearty,treat|-
+오므라이스|양식|9000|cdo|20|egg,chicken|mild|tired,treat|-
+샌드위치|양식|7000|cdo|10|gluten,egg,dairy|mild|light,tired|hot
+닭가슴살 샐러드|양식|9000|cdo|10|chicken|mild|light|hot
+치킨|기타|18000|do|0|chicken,gluten|rich|treat,stress|-
+쌀국수|기타|10000|do|0|beef|mild,soup|light,tired|cold,rain`.split("\n").map(r=>{const p=r.split("|"),s=x=>x==="-"?[]:x.split(",");return{n:p[0],c:p[1],p:+p[2],m:p[3],t:+p[4],a:s(p[5]),ta:s(p[6]),mo:s(p[7]),w:s(p[8])}});
+const DIET=[["veg","채식"],["pork","돼지고기"],["beef","소고기"],["chicken","닭고기"],["seafood","해산물"],["shellfish","갑각류"],["egg","계란"],["dairy","유제품"],["gluten","밀가루"],["nut","견과류"]];
+const MOOD=[["tired","피곤해요"],["stress","스트레스 받아요"],["light","가볍게"],["hearty","든든하게"],["treat","기분 내고 싶어요"]];
+const TASTE=[["spicy","매콤한"],["mild","담백한"],["rich","진한"],["soup","국물"]];
+const TN=Object.fromEntries(TASTE),DAY=864e5,$=s=>document.querySelector(s);
+const S={diet:new Set(),mode:"",mood:"",who:"",taste:new Set(),wt:""};
+// 저장소: 이 기기에서만 유지되며, 비어 있어도 동작해야 함
+const K="dinner-v1";
+const load=()=>{try{return JSON.parse(localStorage.getItem(K))||{h:[],f:{}}}catch(e){return{h:[],f:{}}}};
+const save=d=>{try{localStorage.setItem(K,JSON.stringify(d))}catch(e){}};
+let DB=load();
+function mk(id,items,key,multi){const el=$(id);
+ el.innerHTML=items.map(([v,l])=>`<button type="button" class="chip" data-v="
+v"aria-pressed="false">{l}</button>`).join("");
+ el.onclick=e=>{const b=e.target.closest(".chip");if(!b)return;const v=b.dataset.v;
+  if(multi){S[key].has(v)?S[key].delete(v):S[key].add(v)}else{S[key]=S[key]===v?"":v}
+  el.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",multi?S[key].has(c.dataset.v):S[key]===c.dataset.v));
+  }}
+mk("#diet",DIET,"diet",1);mk("#mode",[["c","직접 요리"],["d","배달"],["o","외식"]],"mode");
+mk("#mood",MOOD,"mood");mk("#taste",TASTE,"taste",1);mk("#who",[["1","혼자"],["2","둘이서"],["3","3명 이상"]],"who");mk("#wt",[["L","가볍게"],["M","보통"],["H","든든하게"]],"wt");
+const NOSOLO=new Set(["삼겹살구이","닭볶음탕","닭갈비","부대찌개","피자","치킨"]);
+const SHARE=new Set(["삼겹살구이","닭볶음탕","닭갈비","부대찌개","피자","치킨","불고기","김치찌개","제육볶음","떡볶이","마라탕","두부김치"]);
+const LIGHT=new Set(["비빔밥","냉면","계란말이와 밥","두부김치","김밥","토마토 달걀볶음과 밥","초밥","연어덮밥","샌드위치","닭가슴살 샐러드","토마토 파스타","쌀국수","된장찌개","우동"]);
+const HEAVY=new Set(["삼겹살구이","제육볶음","닭볶음탕","닭갈비","부대찌개","돈카츠","피자","스테이크","햄버거","치킨","크림 파스타","마라탕","짬뽕","불고기"]);
+const wt=d=>LIGHT.has(d.n)?"L":HEAVY.has(d.n)?"H":"M";
+const mins=(d,m)=>Math.min(...((m&&d.m.includes(m))?[m]:d.m.split("")).map(x=>x==="c"?d.t:x==="d"?40:30));
+function rec(){
+ const now=Date.now(),bud=+("#bud").value,tm=+("#tm").value;
+ const ex=[...S.diet].filter(x=>x!=="veg");
+ if(S.diet.has("veg"))ex.push("pork","beef","chicken","seafood","shellfish");
+ const last=DB.h[DB.h.length-1],out=[];
+ for(const d of D){
+  if(d.a.some(x=>ex.includes(x)))continue; // 못 먹는 재료는 항상 제외
+  const ago=DB.h.filter(h=>h.n===d.n).map(h=>(now-h.d)/DAY),mn=ago.length?Math.min(...ago):99;
+  if(mn<3)continue; // 최근 3일 안에 먹은 메뉴 제외
+  const ok=[],miss=[],t=mins(d,S.mode);
+  const chk=(on,pass,y,n)=>{if(on)(pass?ok:miss).push(pass?y:n)};
+  chk(S.mode,d.m.includes(S.mode),"먹는 방식에 맞아요","먹는 방식");
+  chk(bud,d.p<=bud,"예산 안이에요","예산");
+  chk(tm,t<=tm,"약 "+t+"분이면 돼요","걸리는 시간");
+  chk(S.mood,d.mo.includes(S.mood),"기분에 어울려요","기분");
+  chk(S.who,S.who==="1"?!NOSOLO.has(d.n):S.who==="3"?SHARE.has(d.n):1,"인원에 맞아요","인원");
+  chk(S.taste.size,[...S.taste].some(x=>d.ta.includes(x)),"맛 취향에 맞아요","맛 취향");
+  chk(S.wt,wt(d)===S.wt,"식사 무게에 맞아요","식사의 무게");
+  // 점수: 조건이 많이 맞을수록 위, 같은 조건이면 최근 메뉴와 피드백으로 보정
+  let s=-miss.length*10;
+  if(mn<7)s-=3;
+  if(last&&last.c===d.c)s-=1.5;
+  s+=(DB.f[d.n]||0)+Math.random()*1.5;
+  out.push({d,s,ok,miss});
+ }
+ out.sort((a,b)=>b.s-a.s);
+ const full=out.filter(x=>!x.miss.length);
+ return(full.length?full:out).slice(0,3);
+}
+function show(){
+ const L=rec(),r=$("#res");
+ if(!L.length){r.innerHTML='<p class="meta">고를 수 있는 메뉴가 없어요. 못 먹는 재료를 줄이거나 최근 먹은 기록을 초기화해 보세요.</p>';return}
+ const part=L[0].miss.length>0;
+ r.innerHTML=(part?'<p class="meta">고른 조건에 모두 맞는 메뉴가 없어서, 가장 많이 맞는 메뉴를 골랐어요.</p>':"")+L.map((x,i)=>`<article class="i?"alt":"top""><pclass="tag">{i?"다른 후보":"오늘의 추천"}</p><h3>x.d.n</h3><pclass="meta">{x.d.c}, 1인 약 x.d.p.toLocaleString()원</p><pclass="why">{x.ok.join(", ")||"조건 없이 골랐어요"}</p>${x.miss.length?`<p class="meta">맞지 않는 조건: ${x.miss.join(", ")}</p>`:""}<div class="acts" data-n="${x.d.n}"><button data-a="eat">이걸로 먹기</button><button data-a="up">좋아요</button><button data-a="dn">별로예요</button></div></article>`).join("");
+}
+function hist(){
+ const h=DB.h.slice(-7).reverse();$("#hs").hidden=!h.length;
+ $("#hl").innerHTML=h.map(x=>{const n=Math.floor((Date.now()-x.d)/DAY);return`<li>${x.n} (${n?n+"일 전":"오늘"})</li>`}).join("");
+}
+$("#go").onclick=show;
+$("#res").onclick=e=>{const b=e.target.closest("button[data-a]");if(!b)return;
+ const n=b.parentNode.dataset.n,a=b.dataset.a,d=D.find(x=>x.n===n);
+ if(a==="eat"){DB.h.push({n,c:d.c,d:Date.now()});DB.h=DB.h.slice(-30);save(DB);hist();b.textContent="기록했어요"}
+ else{DB.f[n]=Math.max(-6,Math.min(3,(DB.f[n]||0)+(a==="up"?1:-2)));save(DB);b.textContent=a==="up"?"좋아요 반영했어요":"덜 추천할게요"}
+ b.disabled=true};
+$("#rs").onclick=()=>{DB={h:[],f:{}};save(DB);hist()};
+hist();
+</script></body></html>

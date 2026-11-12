@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>검 강화 & 정원 방치형 게임</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- FontAwesome Icons -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <!-- Custom Styles -->
+   <style>
+       @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+       * {
+           font-family: 'Pretendard', sans-serif;
+           user-select: none;
+       }
+       @keyframes pulse-glow {
+           0%, 100% { filter: drop-shadow(0 0 15px rgba(234, 179, 8, 0.6)); transform: scale(1); }
+           50% { filter: drop-shadow(0 0 30px rgba(234, 179, 8, 0.95)); transform: scale(1.03); }
+       }
+       .sword-glow {
+           animation: pulse-glow 2.5s infinite ease-in-out;
+       }
+       @keyframes shake {
+           0%, 100% { transform: translate(0, 0) rotate(0deg); }
+           10% { transform: translate(-10px, -10px) rotate(-10deg); }
+           20% { transform: translate(10px, 10px) rotate(10deg); }
+           30% { transform: translate(-10px, 10px) rotate(-10deg); }
+           40% { transform: translate(10px, -10px) rotate(10deg); }
+           50% { transform: translate(-5px, -5px) rotate(-5deg); }
+           60% { transform: translate(5px, 5px) rotate(5deg); }
+       }
+       .shake-anim {
+           animation: shake 0.5s ease-in-out;
+       }
+       /* Progress animation for garden income tick */
+       .income-progress {
+           transition: width 0.1s linear;
+       }
+       /* Custom Scrollbar */
+       ::-webkit-scrollbar { width: 6px; }
+       ::-webkit-scrollbar-track { background: #0f172a; }
+       ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+   </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-indigo-500 selection:text-white">
+
+
+   <!-- Top Header Navigation Bar -->
+   <header class="bg-slate-900/90 border-b border-indigo-900/40 p-4 sticky top-0 z-40 backdrop-blur-md">
+       <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
+           <!-- Navigation Switch Buttons -->
+           <div id="nav-btn-container" class="flex items-center gap-2">
+               <button id="btn-goto-garden" onclick="openGardenModal()" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black py-2.5 px-4 rounded-xl shadow-lg border border-emerald-400/30 flex items-center gap-2 transition duration-200 transform hover:scale-105 active:scale-95 text-sm">
+                   <i class="fa-solid fa-tree text-lg text-emerald-200"></i>
+                   <span>정원</span>
+               </button>
+               <button id="btn-goto-forge" onclick="switchView('forge')" class="hidden bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black py-2.5 px-4 rounded-xl shadow-lg border border-indigo-400/30 flex items-center gap-2 transition duration-200 transform hover:scale-105 active:scale-95 text-sm">
+                   <i class="fa-solid fa-hammer text-lg text-indigo-200"></i>
+                   <span>강화하러 돌아가기</span>
+               </button>
+
+
+               <!-- Save/Reset Data Controls -->
+               <button onclick="resetGameData()" class="bg-slate-800 hover:bg-rose-950/80 text-slate-400 hover:text-rose-300 font-semibold py-2.5 px-3 rounded-xl border border-slate-700 hover:border-rose-800 text-xs flex items-center gap-1.5 transition">
+                   <i class="fa-solid fa-rotate-left"></i>
+                   <span class="hidden sm:inline">초기화</span>
+               </button>
+           </div>
+
+
+           <!-- User Gold Display -->
+           <div class="flex items-center bg-slate-950/90 px-4 py-2 rounded-2xl border border-amber-500/40 shadow-inner">
+               <i class="fa-solid fa-coins text-amber-400 text-xl mr-2.5 animate-pulse"></i>
+               <span class="text-xs text-slate-400 mr-2 font-medium">소지금</span>
+               <span id="player-gold" class="text-lg sm:text-xl font-black text-amber-400 tracking-wider">10,000 원</span>
+           </div>
+       </div>
+   </header>
+
+
+   <!-- MAIN VIEW : FORGE (검 강화소) -->
+   <main id="view-forge" class="max-w-4xl mx-auto w-full p-4 flex-grow flex flex-col justify-center my-2">
+       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+           <!-- Left: Sword Stage & Action Area -->
+           <div class="md:col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-between shadow-2xl relative overflow-hidden backdrop-blur-sm">
+               <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-amber-500 via-indigo-500 to-emerald-500"></div>
+              
+               <!-- Title & Current Level -->
+               <div class="text-center w-full">
+                   <div id="sword-name-tag" class="inline-block bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 px-4 py-1 rounded-full text-xs font-semibold mb-2">
+                       일반 등급
+                   </div>
+                   <h2 id="sword-title" class="text-2xl sm:text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500">
+                       +0 낡은 연습용 검
+                   </h2>
+               </div>
+
+
+               <!-- Sword Visual Frame -->
+               <div id="sword-container" class="my-6 relative flex items-center justify-center h-60 w-full bg-slate-950/60 rounded-2xl border border-slate-800/80 overflow-hidden">
+                   <div id="sword-icon" class="text-8xl text-slate-400 transition-all duration-300 transform sword-glow">
+                       <i class="fa-solid fa-shield-halved rotate-45"></i>
+                   </div>
+                   <!-- VFX Text overlay -->
+                   <div id="effect-overlay" class="absolute inset-0 flex items-center justify-center opacity-0 pointer-events-none transition-all duration-300 bg-slate-950/60 z-20">
+                       <span id="effect-text" class="text-4xl font-black tracking-widest"></span>
+                   </div>
+               </div>
+
+
+               <!-- Stats: Success Rate / Destruction Rate / Price -->
+               <div class="w-full grid grid-cols-3 gap-2 bg-slate-950/90 p-3 rounded-xl border border-slate-800 text-center text-xs mb-4">
+                   <div class="p-1">
+                       <div class="text-slate-400 mb-1">성공 확률</div>
+                       <div id="rate-success" class="text-emerald-400 font-bold text-sm">95%</div>
+                   </div>
+                   <div class="p-1 border-x border-slate-800">
+                       <div class="text-slate-400 mb-1">파괴 확률</div>
+                       <div id="rate-destroy" class="text-rose-400 font-bold text-sm">0%</div>
+                   </div>
+                   <div class="p-1">
+                       <div class="text-slate-400 mb-1">판매 가치</div>
+                       <div id="sword-value" class="text-amber-400 font-bold text-sm">500 원</div>
+                   </div>
+               </div>
+
+
+               <!-- Active Buff Indicators & Scroll Toggle Switch -->
+               <div class="w-full flex flex-col sm:flex-row items-center justify-between gap-2 mb-4 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800">
+                   <div class="flex items-center gap-2">
+                       <span id="buff-luck-badge" class="hidden text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full flex items-center gap-1.5 font-semibold">
+                           <i class="fa-solid fa-flask"></i> 행운 포션 적용 중 (+5%)
+                       </span>
+                       <span id="buff-potion-none" class="text-xs text-slate-500 font-medium px-2">
+                           사용 가능한 버프 없음
+                       </span>
+                   </div>
+
+
+                   <!-- Scroll Protection Toggle Switch -->
+                   <div class="flex items-center gap-2.5">
+                       <span class="text-xs font-semibold text-indigo-300 flex items-center gap-1">
+                           <i class="fa-solid fa-shield-halved"></i> 파괴 방지 적용
+                       </span>
+                       <label class="relative inline-flex items-center cursor-pointer">
+                           <input type="checkbox" id="toggle-protection" class="sr-only peer" onchange="toggleScrollProtection()">
+                           <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                       </label>
+                       <span id="scroll-count-tag" class="text-[11px] bg-indigo-950 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-md font-bold">0개 보유</span>
+                   </div>
+               </div>
+
+
+               <!-- Enhancement Buttons -->
+               <div class="w-full grid grid-cols-2 gap-4">
+                   <button id="btn-enhance" onclick="enhanceSword()" class="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 font-black py-4 px-6 rounded-2xl shadow-lg transition duration-200 transform hover:-translate-y-0.5 active:translate-y-0 text-center flex flex-col items-center justify-center">
+                       <span class="text-lg">강화하기</span>
+                       <span id="enhance-cost" class="text-xs font-bold text-slate-900/90 mt-0.5">비용: 500원</span>
+                   </button>
+                   <button id="btn-sell" onclick="sellSword()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold py-4 px-6 rounded-2xl border border-amber-500/20 shadow-lg transition duration-200 flex flex-col items-center justify-center">
+                       <span class="text-lg">판매하기</span>
+                       <span id="sell-btn-val" class="text-xs text-amber-300/90 font-semibold mt-0.5">+500원 회수 (0강 초기화)</span>
+                   </button>
+               </div>
+           </div>
+
+
+           <!-- Right: Forge Consumables Shop -->
+           <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 flex flex-col justify-between shadow-2xl backdrop-blur-sm">
+               <div>
+                   <h3 class="text-md font-bold text-slate-200 border-b border-slate-800 pb-3 mb-4 flex items-center gap-2">
+                       <i class="fa-solid fa-store text-indigo-400"></i> 대장간 상점
+                   </h3>
+
+
+                   <!-- Item 1: Luck Potion -->
+                   <div class="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 mb-3 hover:border-slate-700 transition">
+                       <div class="flex items-center gap-3 mb-2">
+                           <div class="w-10 h-10 bg-amber-950/60 border border-amber-500/40 rounded-xl flex items-center justify-center text-amber-400 shrink-0">
+                               <i class="fa-solid fa-flask text-lg"></i>
+                           </div>
+                           <div>
+                               <div class="font-bold text-sm text-slate-200">행운 포션</div>
+                               <div class="text-[11px] text-slate-400">다음 강화 성공 확률 +5%</div>
+                           </div>
+                       </div>
+                       <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-800/80">
+                           <span class="text-xs font-bold text-amber-400">10,000 원</span>
+                           <button onclick="buyPotion()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                               구매하기
+                           </button>
+                       </div>
+                   </div>
+
+
+                   <!-- Item 2: Destruction Protection Scroll -->
+                   <div class="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800 hover:border-slate-700 transition">
+                       <div class="flex items-center gap-3 mb-2">
+                           <div class="w-10 h-10 bg-indigo-950/60 border border-indigo-500/40 rounded-xl flex items-center justify-center text-indigo-400 shrink-0">
+                               <i class="fa-solid fa-scroll text-lg"></i>
+                           </div>
+                           <div>
+                               <div class="font-bold text-sm text-slate-200">파괴 방지 주문서</div>
+                               <div class="text-[11px] text-slate-400">실패 시 검 파괴 방지 (1회 소모)</div>
+                           </div>
+                       </div>
+                       <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-800/80">
+                           <span class="text-xs font-bold text-amber-400">100,000 원</span>
+                           <button onclick="buyScroll()" class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                               구매하기
+                           </button>
+                       </div>
+                   </div>
+               </div>
+
+
+               <!-- Info Guide Box -->
+               <div class="mt-4 bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
+                   <div class="text-xs text-slate-400 mb-1 font-semibold flex items-center gap-1.5">
+                       <i class="fa-solid fa-circle-info text-indigo-400"></i> 강화 시스템 가이드
+                   </div>
+                   <p class="text-[11px] text-slate-500 leading-relaxed">
+                       시작 소지금은 1만원입니다! 고단계 검일수록 판매 가격이 높지만 부서질 확률도 커집니다. 정원에서 수입을 올려 파괴 방지 주문서를 구비해보세요.
+                   </p>
+               </div>
+           </div>
+       </div>
+   </main>
+
+
+   <!-- MAIN VIEW : GARDEN (정원 텃밭) -->
+   <main id="view-garden" class="hidden max-w-5xl mx-auto w-full p-4 flex-grow flex-col my-2">
+       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+           <!-- Garden 10 Slots Board -->
+           <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-sm flex flex-col justify-between">
+               <div>
+                   <div class="flex justify-between items-center mb-4">
+                       <h2 class="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                           <i class="fa-solid fa-wheat-awn"></i> 비밀 정원 텃밭 (10칸)
+                       </h2>
+                       <span id="garden-slot-count" class="text-xs bg-emerald-950 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full font-bold">
+                           사용 중: 0 / 10
+                       </span>
+                   </div>
+
+
+                   <!-- 10 Slots Grid -->
+                   <div id="garden-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-3 my-2">
+                       <!-- Slots generated dynamically -->
+                   </div>
+               </div>
+
+
+               <!-- Live Revenue Status & Progress Bar -->
+               <div class="mt-6 bg-slate-950/80 border border-emerald-900/40 p-4 rounded-2xl flex flex-col gap-2">
+                   <div class="flex items-center justify-between">
+                       <div class="flex items-center gap-3">
+                           <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
+                               <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                           </div>
+                           <div>
+                               <div class="text-xs text-slate-400">실시간 총 정원 수익 (1분당)</div>
+                               <div id="garden-total-cps" class="text-lg font-extrabold text-emerald-400">1분당 +0원</div>
+                           </div>
+                       </div>
+                       <div class="text-xs text-slate-400 font-mono" id="income-timer-text">
+                           0초 / 60초
+                       </div>
+                   </div>
+
+
+                   <!-- Progress Bar Component -->
+                   <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+                       <div id="income-progress-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-0 income-progress"></div>
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- Garden Right Side: Seed Inventory & Fruit Shop -->
+           <div class="flex flex-col gap-6">
+               <!-- Seed Inventory -->
+               <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-2xl backdrop-blur-sm">
+                   <h3 class="text-md font-bold text-slate-200 border-b border-slate-800 pb-2 mb-3 flex items-center justify-between">
+                       <span class="flex items-center gap-2"><i class="fa-solid fa-boxes-packing text-amber-400"></i> 씨앗 인벤토리</span>
+                       <span id="inventory-selected-hint" class="text-xs text-amber-400 font-normal">심을 씨앗을 선택하세요</span>
+                   </h3>
+                   <div id="inventory-list" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                       <!-- Inventory Items dynamically rendered -->
+                   </div>
+               </div>
+
+
+               <!-- Fruit Seed Shop -->
+               <div class="bg-slate-900/80 border border-slate-800 rounded-3xl p-5 shadow-2xl backdrop-blur-sm flex-grow flex flex-col">
+                   <h3 class="text-md font-bold text-slate-200 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2">
+                       <i class="fa-solid fa-store text-emerald-400"></i> 열매 상점
+                   </h3>
+                   <div id="fruit-shop-list" class="space-y-2 overflow-y-auto max-h-80 pr-1 flex-grow">
+                       <!-- Fruit Shop Items dynamically rendered in exact required order -->
+                   </div>
+               </div>
+           </div>
+       </div>
+   </main>
+
+
+   <!-- Modal: First Time Garden Access Fee -->
+   <div id="modal-garden-pay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+       <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center transform transition-all">
+           <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-3xl mb-4 border border-emerald-500/30">
+               <i class="fa-solid fa-key"></i>
+           </div>
+           <h3 class="text-xl font-bold text-white mb-2">정원 입장 승인 필요</h3>
+           <p class="text-slate-300 text-sm mb-6 leading-relaxed">
+               비밀 정원에 입장하려면 최초 1회 입장료 <span class="text-emerald-400 font-bold">100만원(1,000,000원)</span>이 필요합니다.<br>
+               한 번 지불하면 이후 언제든지 자유롭게 왕래할 수 있습니다!
+           </p>
+           <div class="flex gap-3">
+               <button onclick="closeGardenModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 px-4 rounded-xl transition text-sm">
+                   취소
+               </button>
+               <button onclick="payAndEnterGarden()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition text-sm">
+                   100만원 지불 후 입장
+               </button>
+           </div>
+       </div>
+   </div>
+
+
+   <!-- Toast Container -->
+   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+
+   <script>
+       /* CONSTANTS & GAME STATE WITH INITIAL 10,000 GOLD */
+       const DEFAULT_STATE = {
+           gold: 10000, // Starting Gold strictly set to 10,000
+           swordLevel: 0,
+           hasLuckPotion: false,
+           protectionScrollCount: 0,
+           useProtectionScroll: false,
+           gardenUnlocked: false,
+           inventory: {
+               strawberry: 0,
+               blueberry: 0,
+               banana: 0,
+               grape: 0,
+               peach: 0,
+               coconut: 0,
+               dragonfruit: 0
+           },
+           selectedSeed: null,
+           gardenSlots: Array(10).fill(null)
+       };
+
+
+       let gameState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+       let incomeCycleTimer = 0; // Tracks 0-60 second interval for visual feedback
+
+
+       /* FRUIT CONFIGURATION (Required exact ordering and stats) */
+       const FRUITS = [
+           { id: 'strawberry', name: '딸기', price: 1000000, incomePerMin: 100000, icon: '🍓', color: 'from-red-500/20 to-rose-500/10 border-rose-500/40' },
+           { id: 'blueberry', name: '블루베리', price: 2500000, incomePerMin: 250000, icon: '🫐', color: 'from-blue-500/20 to-indigo-500/10 border-blue-500/40' },
+           { id: 'banana', name: '바나나', price: 5000000, incomePerMin: 500000, icon: '🍌', color: 'from-yellow-500/20 to-amber-500/10 border-yellow-500/40' },
+           { id: 'grape', name: '포도', price: 10000000, incomePerMin: 1000000, icon: '🍇', color: 'from-purple-500/20 to-fuchsia-500/10 border-purple-500/40' },
+           { id: 'peach', name: '복숭아', price: 25000000, incomePerMin: 2500000, icon: '🍑', color: 'from-orange-500/20 to-pink-500/10 border-orange-500/40' },
+           { id: 'coconut', name: '코코넛', price: 50000000, incomePerMin: 5000000, icon: '🥥', color: 'from-amber-700/20 to-yellow-800/10 border-amber-700/40' },
+           { id: 'dragonfruit', name: '용과', price: 100000000, incomePerMin: 10000000, icon: '🐉', color: 'from-pink-600/20 to-rose-600/10 border-pink-500/40' }
+       ];
+
+
+       /* SWORD TITLES & ICON STYLES */
+       const SWORD_NAMES = [
+           "낡은 연습용 검", "목검", "녹슨 철검", "강철검", "정제된 칼날",
+           "기사의 장검", "명인의 자도", "빛나는 성검", "용사자검", "마법의 영혼검",
+           "파멸의 대검", "신성의 수호검", "황혼의 지평선", "용의 이빨", "신살의 명검",
+           "절망의 흑도", "차원 절단검", "천상의 칼날", "시공간 검", "불멸의 전설검", "신화의 종언"
+       ];
+
+
+       /* SAVE & LOAD STORAGE SYSTEM */
+       function saveGameData() {
+           try {
+               localStorage.setItem('sword_garden_game_save', JSON.stringify(gameState));
+           } catch (e) {}
+       }
+
+
+       function loadGameData() {
+           try {
+               const saved = localStorage.getItem('sword_garden_game_save');
+               if (saved) {
+                   const parsed = JSON.parse(saved);
+                   gameState = { ...DEFAULT_STATE, ...parsed };
+                   if (!gameState.gardenSlots || gameState.gardenSlots.length !== 10) {
+                       gameState.gardenSlots = Array(10).fill(null);
+                   }
+               }
+           } catch (e) {
+               gameState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+           }
+       }
+
+
+       function resetGameData() {
+           if (confirm("정말로 모든 게임 데이터를 초기화하고 처음 상태(1만원)로 돌아가시겠습니까?")) {
+               localStorage.removeItem('sword_garden_game_save');
+               gameState = JSON.parse(JSON.stringify(DEFAULT_STATE));
+               updateUI();
+               renderFruitShop();
+               renderInventory();
+               renderGardenGrid();
+               showToast("게임 데이터가 초기화되었습니다.", "info");
+           }
+       }
+
+
+       /* WEB AUDIO SYNTHESIZER FOR SOUND EFFECTS */
+       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+       function playSound(type) {
+           if (audioCtx.state === 'suspended') {
+               audioCtx.resume();
+           }
+           try {
+               const osc = audioCtx.createOscillator();
+               const gain = audioCtx.createGain();
+               osc.connect(gain);
+               gain.connect(audioCtx.destination);
+
+
+               const now = audioCtx.currentTime;
+
+
+               if (type === 'enhance') {
+                   osc.type = 'triangle';
+                   osc.frequency.setValueAtTime(300, now);
+                   osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+                   gain.gain.setValueAtTime(0.1, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                   osc.start(now);
+                   osc.stop(now + 0.15);
+               } else if (type === 'success') {
+                   osc.type = 'sine';
+                   osc.frequency.setValueAtTime(523.25, now);
+                   osc.frequency.setValueAtTime(659.25, now + 0.1);
+                   osc.frequency.setValueAtTime(783.99, now + 0.2);
+                   osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                   gain.gain.setValueAtTime(0.15, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                   osc.start(now);
+                   osc.stop(now + 0.5);
+               } else if (type === 'fail') {
+                   osc.type = 'sawtooth';
+                   osc.frequency.setValueAtTime(200, now);
+                   osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+                   gain.gain.setValueAtTime(0.15, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                   osc.start(now);
+                   osc.stop(now + 0.3);
+               } else if (type === 'destroy') {
+                   osc.type = 'square';
+                   osc.frequency.setValueAtTime(150, now);
+                   osc.frequency.exponentialRampToValueAtTime(40, now + 0.5);
+                   gain.gain.setValueAtTime(0.2, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                   osc.start(now);
+                   osc.stop(now + 0.5);
+               } else if (type === 'buy') {
+                   osc.type = 'sine';
+                   osc.frequency.setValueAtTime(400, now);
+                   osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                   gain.gain.setValueAtTime(0.1, now);
+                   gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                   osc.start(now);
+                   osc.stop(now + 0.1);
+               }
+           } catch (e) {}
+       }
+
+
+       /* FORMAT KOREAN CURRENCY */
+       function formatKoreanMoney(amount) {
+           amount = Math.floor(amount);
+           if (amount <= 0) return "0 원";
+           let result = '';
+           const eok = Math.floor(amount / 100000000);
+           const man = Math.floor((amount % 100000000) / 10000);
+           const rest = Math.floor(amount % 10000);
+
+
+           if (eok > 0) result += `${eok.toLocaleString()}억 `;
+           if (man > 0) result += `${man.toLocaleString()}만 `;
+           if (rest > 0 && eok === 0 && man === 0) result += `${rest.toLocaleString()} `;
+
+
+           return result.trim() + " 원";
+       }
+
+
+       /* TOAST NOTIFICATIONS */
+       function showToast(message, type = 'info') {
+           const container = document.getElementById('toast-container');
+           const toast = document.createElement('div');
+          
+           let bgClass = 'bg-slate-800 border-slate-600 text-slate-200';
+           let icon = 'fa-circle-info';
+          
+           if (type === 'success') {
+               bgClass = 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200';
+               icon = 'fa-circle-check';
+           } else if (type === 'error') {
+               bgClass = 'bg-rose-950/90 border-rose-500/50 text-rose-200';
+               icon = 'fa-triangle-exclamation';
+           } else if (type === 'warning') {
+               bgClass = 'bg-amber-950/90 border-amber-500/50 text-amber-200';
+               icon = 'fa-bell';
+           }
+
+
+           toast.className = `p-3 px-4 rounded-xl border shadow-xl flex items-center gap-2.5 text-xs font-semibold backdrop-blur-md transform transition-all duration-300 translate-y-2 opacity-0 ${bgClass}`;
+           toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+          
+           container.appendChild(toast);
+
+
+           setTimeout(() => {
+               toast.classList.remove('translate-y-2', 'opacity-0');
+           }, 10);
+
+
+           setTimeout(() => {
+               toast.classList.add('opacity-0', 'translate-y-2');
+               setTimeout(() => toast.remove(), 300);
+           }, 3000);
+       }
+
+
+       /* VIEW NAVIGATION */
+       function switchView(viewName) {
+           const forgeView = document.getElementById('view-forge');
+           const gardenView = document.getElementById('view-garden');
+           const btnGotoGarden = document.getElementById('btn-goto-garden');
+           const btnGotoForge = document.getElementById('btn-goto-forge');
+
+
+           if (viewName === 'garden') {
+               forgeView.classList.add('hidden');
+               gardenView.classList.remove('hidden');
+               gardenView.classList.add('flex');
+               btnGotoGarden.classList.add('hidden');
+               btnGotoForge.classList.remove('hidden');
+               renderGardenGrid();
+               renderInventory();
+               renderFruitShop();
+           } else {
+               gardenView.classList.add('hidden');
+               gardenView.classList.remove('flex');
+               forgeView.classList.remove('hidden');
+               btnGotoForge.classList.add('hidden');
+               btnGotoGarden.classList.remove('hidden');
+           }
+       }
+
+
+       /* GARDEN UNLOCK MODAL */
+       function openGardenModal() {
+           if (gameState.gardenUnlocked) {
+               switchView('garden');
+           } else {
+               document.getElementById('modal-garden-pay').classList.remove('hidden');
+           }
+       }
+
+
+       function closeGardenModal() {
+           document.getElementById('modal-garden-pay').classList.add('hidden');
+       }
+
+
+       function payAndEnterGarden() {
+           const ENTRY_FEE = 1000000;
+           if (gameState.gold >= ENTRY_FEE) {
+               gameState.gold -= ENTRY_FEE;
+               gameState.gardenUnlocked = true;
+               saveGameData();
+               closeGardenModal();
+               updateUI();
+               switchView('garden');
+               playSound('buy');
+               showToast("100만원을 지불하고 비밀 정원에 입장했습니다!", "success");
+           } else {
+               showToast("정원 입장료(100만원)가 부족합니다!", "error");
+           }
+       }
+
+
+       /* SWORD STAT FORMULAS */
+       function getEnhanceCost(level) {
+           return Math.floor(500 * Math.pow(1.5, level));
+       }
+
+
+       // Sword sale price calculation updated to be halved again (25% of full base value)
+       function getSwordValue(level) {
+           if (level === 0) return 250; // Halved from 500
+           const fullValue = Math.floor(1000 * Math.pow(2.3, level));
+           return Math.floor(fullValue / 4); // Halved again (1/4 of full base value)
+       }
+
+
+       // Reduced success rates by 5% across all levels (maintaining a minimum floor of 5%)
+       function getSuccessRate(level) {
+           let baseRate = 100;
+           if (level === 0) baseRate = 95; // 100% -> 95%
+           else if (level < 3) baseRate = 85; // 90% -> 85%
+           else if (level < 6) baseRate = 70; // 75% -> 70%
+           else if (level < 9) baseRate = 55; // 60% -> 55%
+           else if (level < 12) baseRate = 40; // 45% -> 40%
+           else if (level < 15) baseRate = 25; // 30% -> 25%
+           else if (level < 18) baseRate = 15; // 20% -> 15%
+           else baseRate = Math.max(5, 10 - (level - 18) * 2); // 15% -> 10%
+          
+           return Math.max(5, baseRate); // Minimum 5% safety floor
+       }
+
+
+       function getDestroyRate(level) {
+           if (level < 3) return 0;
+           if (level < 6) return 5;
+           if (level < 9) return 15;
+           if (level < 12) return 25;
+           if (level < 15) return 35;
+           if (level < 18) return 45;
+           return 55;
+       }
+
+
+       function toggleScrollProtection() {
+           const checkbox = document.getElementById('toggle-protection');
+           gameState.useProtectionScroll = checkbox.checked;
+           saveGameData();
+           if (gameState.useProtectionScroll && gameState.protectionScrollCount <= 0) {
+               showToast("보유한 파괴 방지 주문서가 없습니다. 상점에서 구매하세요!", "warning");
+           }
+       }
+
+
+       /* ENHANCE ACTION */
+       function enhanceSword() {
+           const cost = getEnhanceCost(gameState.swordLevel);
+           if (gameState.gold < cost) {
+               showToast("강화 비용이 부족합니다!", "error");
+               return;
+           }
+
+
+           gameState.gold -= cost;
+           playSound('enhance');
+
+
+           let successRate = getSuccessRate(gameState.swordLevel);
+           if (gameState.hasLuckPotion) {
+               successRate += 5;
+               gameState.hasLuckPotion = false;
+           }
+
+
+           const destroyRate = getDestroyRate(gameState.swordLevel);
+           const random = Math.random() * 100;
+
+
+           const swordIcon = document.getElementById('sword-icon');
+           swordIcon.classList.add('shake-anim');
+           setTimeout(() => swordIcon.classList.remove('shake-anim'), 500);
+
+
+           if (random < successRate) {
+               // SUCCESS
+               gameState.swordLevel++;
+               playSound('success');
+               showEffectText("강화 성공!", "text-emerald-400");
+               showToast(`강화 성공! +${gameState.swordLevel} 달성!`, "success");
+           } else {
+               // FAILURE
+               const destroyRoll = Math.random() * 100;
+               if (destroyRoll < destroyRate) {
+                   // Check if protection scroll is ON and AVAILABLE
+                   if (gameState.useProtectionScroll && gameState.protectionScrollCount > 0) {
+                       gameState.protectionScrollCount--;
+                       playSound('fail');
+                       showEffectText("파괴 방지!", "text-amber-400");
+                       showToast("강화 실패! 파괴 방지 주문서가 소모되며 검이 보호되었습니다.", "warning");
+                   } else {
+                       // DESTROYED
+                       gameState.swordLevel = 0;
+                       playSound('destroy');
+                       showEffectText("검 파괴됨!", "text-rose-500");
+                       showToast("강화 실패로 검이 부서져 +0으로 초기화되었습니다!", "error");
+                   }
+               } else {
+                   playSound('fail');
+                   showEffectText("강화 실패", "text-slate-400");
+                   showToast("강화에 실패했습니다.", "warning");
+               }
+           }
+
+
+           saveGameData();
+           updateUI();
+       }
+
+
+       function showEffectText(text, colorClass) {
+           const overlay = document.getElementById('effect-overlay');
+           const textElem = document.getElementById('effect-text');
+           textElem.textContent = text;
+           textElem.className = `text-3xl font-black ${colorClass} drop-shadow-lg`;
+          
+           overlay.classList.remove('opacity-0');
+           setTimeout(() => {
+               overlay.classList.add('opacity-0');
+           }, 900);
+       }
+
+
+       function sellSword() {
+           const val = getSwordValue(gameState.swordLevel);
+           gameState.gold += val;
+           playSound('buy');
+           showToast(`검을 판매하여 ${formatKoreanMoney(val)}을(를) 획득했습니다!`, "success");
+           gameState.swordLevel = 0;
+           saveGameData();
+           updateUI();
+       }
+
+
+       /* SHOP ACTIONS FOR FORGE */
+       function buyPotion() {
+           const PRICE = 10000;
+           if (gameState.hasLuckPotion) {
+               showToast("이미 행운 포션을 소지하고 있습니다.", "warning");
+               return;
+           }
+           if (gameState.gold >= PRICE) {
+               gameState.gold -= PRICE;
+               gameState.hasLuckPotion = true;
+               playSound('buy');
+               saveGameData();
+               showToast("행운 포션을 구매했습니다! (다음 강화 성공률 +5%)", "success");
+               updateUI();
+           } else {
+               showToast("골드가 부족합니다.", "error");
+           }
+       }
+
+
+       function buyScroll() {
+           const PRICE = 100000; // 10만 골드
+           if (gameState.gold >= PRICE) {
+               gameState.gold -= PRICE;
+               gameState.protectionScrollCount = (gameState.protectionScrollCount || 0) + 1;
+               playSound('buy');
+               saveGameData();
+               showToast("파괴 방지 주문서를 구매했습니다!", "success");
+               updateUI();
+           } else {
+               showToast("골드가 부족합니다 (10만 골드 필요)", "error");
+           }
+       }
+
+
+       /* GARDEN SHOP & INVENTORY */
+       function renderFruitShop() {
+           const shopContainer = document.getElementById('fruit-shop-list');
+           shopContainer.innerHTML = '';
+
+
+           // Exact required order rendering
+           FRUITS.forEach(fruit => {
+               const item = document.createElement('div');
+               item.className = 'bg-slate-950/60 border border-slate-800 rounded-2xl p-2.5 flex items-center justify-between hover:border-slate-700 transition';
+               item.innerHTML = `
+                   <div class="flex items-center gap-2.5">
+                       <div class="text-2xl">${fruit.icon}</div>
+                       <div>
+                           <div class="font-bold text-xs text-slate-200">${fruit.name} 씨앗</div>
+                           <div class="text-[10px] text-emerald-400">1분당 +${formatKoreanMoney(fruit.incomePerMin)}</div>
+                       </div>
+                   </div>
+                   <div class="flex items-center gap-2">
+                       <span class="text-xs font-bold text-amber-400">${formatKoreanMoney(fruit.price)}</span>
+                       <button onclick="buyFruitSeed('${fruit.id}')" class="bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-lg text-xs font-bold transition">
+                           구매
+                       </button>
+                   </div>
+               `;
+               shopContainer.appendChild(item);
+           });
+       }
+
+
+       function buyFruitSeed(fruitId) {
+           const fruit = FRUITS.find(f => f.id === fruitId);
+           if (!fruit) return;
+
+
+           if (gameState.gold >= fruit.price) {
+               gameState.gold -= fruit.price;
+               gameState.inventory[fruitId] = (gameState.inventory[fruitId] || 0) + 1;
+               playSound('buy');
+               saveGameData();
+               showToast(`${fruit.name} 씨앗을 구매하였습니다!`, "success");
+               updateUI();
+               renderInventory();
+           } else {
+               showToast("씨앗을 구매할 골드가 부족합니다.", "error");
+           }
+       }
+
+
+       function renderInventory() {
+           const invContainer = document.getElementById('inventory-list');
+           invContainer.innerHTML = '';
+
+
+           let hasItem = false;
+           FRUITS.forEach(fruit => {
+               const count = gameState.inventory[fruit.id] || 0;
+               if (count > 0) {
+                   hasItem = true;
+                   const isSelected = gameState.selectedSeed === fruit.id;
+                   const card = document.createElement('div');
+                   card.onclick = () => selectSeed(fruit.id);
+                   card.className = `cursor-pointer p-2 rounded-xl border flex items-center justify-between transition ${
+                       isSelected
+                       ? 'bg-emerald-950/80 border-emerald-400 shadow-md ring-1 ring-emerald-400'
+                       : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                   }`;
+                   card.innerHTML = `
+                       <div class="flex items-center gap-1.5">
+                           <span class="text-xl">${fruit.icon}</span>
+                           <span class="text-xs font-bold text-slate-200">${fruit.name}</span>
+                       </div>
+                       <span class="text-xs bg-slate-800 px-2 py-0.5 rounded-full font-bold text-emerald-400">${count}</span>
+                   `;
+                   invContainer.appendChild(card);
+               }
+           });
+
+
+           if (!hasItem) {
+               invContainer.innerHTML = '<div class="col-span-2 text-center text-xs text-slate-500 py-6">보유 중인 씨앗이 없습니다.</div>';
+           }
+
+
+           const hint = document.getElementById('inventory-selected-hint');
+           if (gameState.selectedSeed) {
+               const selectedFruit = FRUITS.find(f => f.id === gameState.selectedSeed);
+               hint.textContent = `'${selectedFruit.name}' 선택 중`;
+               hint.className = "text-xs text-emerald-400 font-semibold animate-pulse";
+           } else {
+               hint.textContent = "심을 씨앗을 선택하세요";
+               hint.className = "text-xs text-amber-400 font-normal";
+           }
+       }
+
+
+       function selectSeed(fruitId) {
+           if (gameState.selectedSeed === fruitId) {
+               gameState.selectedSeed = null;
+           } else {
+               gameState.selectedSeed = fruitId;
+           }
+           renderInventory();
+       }
+
+
+       function renderGardenGrid() {
+           const gridContainer = document.getElementById('garden-grid');
+           gridContainer.innerHTML = '';
+
+
+           let activeCount = 0;
+
+
+           for (let i = 0; i < 10; i++) {
+               const item = gameState.gardenSlots[i];
+               const slot = document.createElement('div');
+              
+               if (item) {
+                   activeCount++;
+                   const fruit = FRUITS.find(f => f.id === item.fruitId);
+                   slot.className = `relative bg-gradient-to-br ${fruit.color} border p-3 rounded-2xl flex flex-col items-center justify-between h-28 shadow-lg backdrop-blur-xs transition`;
+                   slot.innerHTML = `
+                       <button onclick="removeCrop(${i})" title="작물 삭제" class="absolute top-1.5 right-1.5 text-slate-400 hover:text-rose-400 text-xs w-5 h-5 bg-slate-950/60 rounded-full flex items-center justify-center transition">
+                           <i class="fa-solid fa-xmark"></i>
+                       </button>
+                       <div class="text-3xl mt-1 animate-bounce">${fruit.icon}</div>
+                       <div class="text-center w-full">
+                           <div class="text-xs font-bold text-slate-200">${fruit.name}</div>
+                           <div class="text-[10px] text-emerald-400 font-semibold">+${formatKoreanMoney(fruit.incomePerMin)}/분</div>
+                       </div>
+                   `;
+               } else {
+                   slot.onclick = () => plantCrop(i);
+                   slot.className = `cursor-pointer bg-slate-950/50 border border-dashed border-slate-800 hover:border-emerald-500/50 hover:bg-emerald-950/20 p-3 rounded-2xl flex flex-col items-center justify-center h-28 transition group`;
+                   slot.innerHTML = `
+                       <i class="fa-solid fa-plus text-slate-600 group-hover:text-emerald-400 text-xl mb-1 transition"></i>
+                       <span class="text-[11px] text-slate-500 group-hover:text-emerald-300 font-medium">빈 텃밭</span>
+                   `;
+               }
+
+
+               gridContainer.appendChild(slot);
+           }
+
+
+           document.getElementById('garden-slot-count').textContent = `사용 중: ${activeCount} / 10`;
+
+
+           let totalPerMin = 0;
+           gameState.gardenSlots.forEach(slot => {
+               if (slot) {
+                   const f = FRUITS.find(item => item.id === slot.fruitId);
+                   if (f) totalPerMin += f.incomePerMin;
+               }
+           });
+           document.getElementById('garden-total-cps').textContent = `1분당 +${formatKoreanMoney(totalPerMin)}`;
+       }
+
+
+       function plantCrop(slotIndex) {
+           if (!gameState.selectedSeed) {
+               showToast("인벤토리에서 심을 씨앗을 선택해주세요!", "warning");
+               return;
+           }
+
+
+           if ((gameState.inventory[gameState.selectedSeed] || 0) <= 0) {
+               showToast("선택한 씨앗 수량이 부족합니다.", "error");
+               gameState.selectedSeed = null;
+               renderInventory();
+               return;
+           }
+
+
+           gameState.inventory[gameState.selectedSeed]--;
+           gameState.gardenSlots[slotIndex] = {
+               fruitId: gameState.selectedSeed
+           };
+
+
+           const fruit = FRUITS.find(f => f.id === gameState.selectedSeed);
+
+
+           if (gameState.inventory[gameState.selectedSeed] <= 0) {
+               gameState.selectedSeed = null;
+           }
+
+
+           playSound('buy');
+           saveGameData();
+           showToast(`텃밭에 ${fruit.name}을(를) 심었습니다! 자라나 수익을 생성합니다.`, "success");
+           renderGardenGrid();
+           renderInventory();
+       }
+
+
+       function removeCrop(slotIndex) {
+           const crop = gameState.gardenSlots[slotIndex];
+           if (!crop) return;
+
+
+           const fruit = FRUITS.find(f => f.id === crop.fruitId);
+           gameState.gardenSlots[slotIndex] = null;
+           saveGameData();
+           showToast(`${fruit.name} 작물을 삭제(철거)하였습니다.`, "info");
+           renderGardenGrid();
+       }
+
+
+       /* REALTIME INCOME LOOP WITH TIMER & PROGRESS BAR */
+       function startGardenIncomeLoop() {
+           setInterval(() => {
+               incomeCycleTimer = (incomeCycleTimer + 1) % 60;
+              
+               // Update Progress Bar UI
+               const progressPct = (incomeCycleTimer / 60) * 100;
+               const progressBar = document.getElementById('income-progress-bar');
+               const timerText = document.getElementById('income-timer-text');
+              
+               if (progressBar) progressBar.style.width = `${progressPct}%`;
+               if (timerText) timerText.textContent = `${incomeCycleTimer}초 / 60초`;
+
+
+               // Calculate income tick per second
+               let totalIncomePerSec = 0;
+               gameState.gardenSlots.forEach(slot => {
+                   if (slot) {
+                       const fruit = FRUITS.find(f => f.id === slot.fruitId);
+                       if (fruit) {
+                           totalIncomePerSec += (fruit.incomePerMin / 60);
+                       }
+                   }
+               });
+
+
+               if (totalIncomePerSec > 0) {
+                   gameState.gold += totalIncomePerSec;
+                   updateUI(false);
+                   if (incomeCycleTimer === 0) {
+                       saveGameData();
+                   }
+               }
+           }, 1000);
+       }
+
+
+       /* UI RENDERER */
+       function updateUI(fullRender = true) {
+           document.getElementById('player-gold').textContent = formatKoreanMoney(Math.floor(gameState.gold));
+
+
+           if (!fullRender) return;
+
+
+           // Update Sword Specs
+           const level = gameState.swordLevel;
+           const sellVal = getSwordValue(level);
+           document.getElementById('sword-title').textContent = `+${level} ${SWORD_NAMES[Math.min(level, SWORD_NAMES.length - 1)]}`;
+           document.getElementById('sword-value').textContent = formatKoreanMoney(sellVal);
+           document.getElementById('enhance-cost').textContent = `비용: ${formatKoreanMoney(getEnhanceCost(level))}`;
+          
+           const sellBtnSubText = document.getElementById('sell-btn-val');
+           if (sellBtnSubText) {
+               sellBtnSubText.textContent = `+${formatKoreanMoney(sellVal)} 회수 (0강 초기화)`;
+           }
+
+
+           // Update Rates
+           let baseSuccess = getSuccessRate(level);
+           if (gameState.hasLuckPotion) baseSuccess += 5;
+           document.getElementById('rate-success').textContent = `${Math.min(100, baseSuccess)}%`;
+           document.getElementById('rate-destroy').textContent = `${getDestroyRate(level)}%`;
+
+
+           // Update Buffs & Scroll Status
+           const luckBadge = document.getElementById('buff-luck-badge');
+           const noBuffTag = document.getElementById('buff-potion-none');
+           if (gameState.hasLuckPotion) {
+               luckBadge.classList.remove('hidden');
+               noBuffTag.classList.add('hidden');
+           } else {
+               luckBadge.classList.add('hidden');
+               noBuffTag.classList.remove('hidden');
+           }
+
+
+           const toggle = document.getElementById('toggle-protection');
+           toggle.checked = gameState.useProtectionScroll;
+           document.getElementById('scroll-count-tag').textContent = `${gameState.protectionScrollCount || 0}개 보유`;
+       }
+
+
+       /* INITIALIZATION ON WINDOW LOAD */
+       window.onload = function() {
+           loadGameData();
+           updateUI();
+           renderFruitShop();
+           renderInventory();
+           renderGardenGrid();
+           startGardenIncomeLoop();
+       };
+   </script>
+</body>
+</html>

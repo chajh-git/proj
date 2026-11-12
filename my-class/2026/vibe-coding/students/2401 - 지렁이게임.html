@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>귀여운 지렁이 게임</title>
+
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #101713;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+
+  h1 {
+    margin: 0 0 15px;
+  }
+
+  canvas {
+    width: 560px;
+    height: 560px;
+    max-width: 90vw;
+    max-height: 90vw;
+    background: #18231e;
+    border-radius: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  }
+
+  .controls {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  button {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  #start {
+    background: #7ccf9b;
+  }
+
+  #restart {
+    background: #eeeeee;
+  }
+
+  #score {
+    font-weight: bold;
+  }
+
+  #status {
+    margin-top: 10px;
+    color: #b8c8bf;
+  }
+</style>
+</head>
+
+<body>
+
+<h1>🪱 귀여운 지렁이 게임</h1>
+
+<canvas id="board" width="560" height="560"></canvas>
+
+<div class="controls">
+  <button id="start">게임 시작</button>
+  <button id="restart">다시 시작</button>
+  <span>점수: <span id="score">0</span></span>
+</div>
+
+<div id="status">게임 시작을 눌러줘!</div>
+
+<script>
+(() => {
+
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+const startButton = document.getElementById("start");
+const restartButton = document.getElementById("restart");
+const scoreText = document.getElementById("score");
+const statusText = document.getElementById("status");
+
+const SIZE = 560;
+const CELL = 56;
+const CENTER = 28;
+
+const START_SPEED = 155;
+const SPEED_INCREASE = 7;
+const MAX_SPEED = 205;
+
+const TURN_TIME = 0.16;
+
+let running = false;
+let gameOver = false;
+
+let score = 0;
+let speed = START_SPEED;
+let wormLength = 7;
+
+let head = {
+  x: 280,
+  y: 280
+};
+
+let direction = {
+  x: 1,
+  y: 0
+};
+
+let wantedDirection = {
+  x: 1,
+  y: 0
+};
+
+let apple = {
+  x: 476,
+  y: 308
+};
+
+let trail = [];
+let turn = null;
+
+let animationFrame;
+let lastTime = 0;
+
+
+/* ---------------------------
+   게임 초기화
+---------------------------- */
+
+function resetGame() {
+
+  cancelAnimationFrame(animationFrame);
+
+  running = false;
+  gameOver = false;
+
+  score = 0;
+  speed = START_SPEED;
+  wormLength = 7;
+
+  head = {
+    x: 280,
+    y: 280
+  };
+
+  direction = {
+    x: 1,
+    y: 0
+  };
+
+  wantedDirection = {
+    x: 1,
+    y: 0
+  };
+
+  turn = null;
+
+  trail = [];
+
+  for (let i = 0; i < wormLength * 14; i++) {
+    trail.push({
+      x: 280 - i * 3.5,
+      y: 280
+    });
+  }
+
+  placeApple();
+
+  scoreText.textContent = "0";
+  statusText.textContent = "게임 시작을 눌러줘!";
+  startButton.disabled = false;
+  startButton.textContent = "게임 시작";
+
+  draw();
+}
+
+
+/* ---------------------------
+   사과 배치
+---------------------------- */
+
+function placeApple() {
+
+  let valid = false;
+
+  while (!valid) {
+
+    const gx = 1 + Math.floor(Math.random() * 8);
+    const gy = 1 + Math.floor(Math.random() * 8);
+
+    apple = {
+      x: gx * CELL + CENTER,
+      y: gy * CELL + CENTER
+    };
+
+    valid =
+      Math.hypot(
+        apple.x - head.x,
+        apple.y - head.y
+      ) > 90;
+  }
+}
+
+
+/* ---------------------------
+   방향 변경
+---------------------------- */
+
+function changeDirection(dx, dy) {
+
+  // 반대 방향으로 바로 돌아가는 것 방지
+  if (
+    dx === -direction.x &&
+    dy === -direction.y
+  ) {
+    return;
+  }
+
+  wantedDirection = {
+    x: dx,
+    y: dy
+  };
+}
+
+
+/* ---------------------------
+   방향키 입력
+---------------------------- */
+
+document.addEventListener(
+  "keydown",
+  function(e) {
+
+    const keys = [
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight"
+    ];
+
+    if (!keys.includes(e.key)) {
+      return;
+    }
+
+    e.preventDefault();
+
+    if (!running) {
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      changeDirection(0, -1);
+    }
+
+    if (e.key === "ArrowDown") {
+      changeDirection(0, 1);
+    }
+
+    if (e.key === "ArrowLeft") {
+      changeDirection(-1, 0);
+    }
+
+    if (e.key === "ArrowRight") {
+      changeDirection(1, 0);
+    }
+
+  },
+  true
+);
+
+
+/* ---------------------------
+   게임 시작
+---------------------------- */
+
+function startGame() {
+
+  if (running) {
+    return;
+  }
+
+  if (gameOver) {
+    resetGame();
+  }
+
+  running = true;
+  gameOver = false;
+
+  startButton.disabled = true;
+
+  statusText.textContent =
+    "방향키로 지렁이를 움직여봐!";
+
+  lastTime = performance.now();
+
+  animationFrame =
+    requestAnimationFrame(gameLoop);
+}
+
+
+/* ---------------------------
+   게임 오버
+---------------------------- */
+
+function endGame() {
+
+  running = false;
+  gameOver = true;
+
+  startButton.disabled = false;
+  startButton.textContent = "다시 시작";
+
+  statusText.textContent =
+    "게임 오버! 다시 시작해봐 😭";
+}
+
+
+/* ---------------------------
+   방향 전환 준비
+---------------------------- */
+
+function beginTurn() {
+
+  if (turn) {
+    return;
+  }
+
+  if (
+    wantedDirection.x === direction.x &&
+    wantedDirection.y === direction.y
+  ) {
+    return;
+  }
+
+  let targetX = head.x;
+  let targetY = head.y;
+
+  if (direction.x !== 0) {
+
+    if (direction.x > 0) {
+      targetX =
+        Math.floor(
+          (head.x - CENTER) / CELL + 1
+        ) * CELL + CENTER;
+    } else {
+      targetX =
+        Math.ceil(
+          (head.x - CENTER) / CELL - 1
+        ) * CELL + CENTER;
+    }
+
+  } else {
+
+    if (direction.y > 0) {
+      targetY =
+        Math.floor(
+          (head.y - CENTER) / CELL + 1
+        ) * CELL + CENTER;
+    } else {
+      targetY =
+        Math.ceil(
+          (head.y - CENTER) / CELL - 1
+        ) * CELL + CENTER;
+    }
+
+  }
+
+  const distance =
+    Math.abs(
+      direction.x !== 0
+        ? targetX - head.x
+        : targetY - head.y
+    );
+
+  if (distance <= speed * 0.05 + 1) {
+
+    head.x = targetX;
+    head.y = targetY;
+
+    turn = {
+      old: {
+        x: direction.x,
+        y: direction.y
+      },
+
+      next: {
+        x: wantedDirection.x,
+        y: wantedDirection.y
+      },
+
+      time: 0,
+      duration: TURN_TIME
+    };
+
+    direction = {
+      x: wantedDirection.x,
+      y: wantedDirection.y
+    };
+  }
+}
+
+
+/* ---------------------------
+   지렁이 이동
+---------------------------- */
+
+function move(dt) {
+
+  if (turn) {
+
+    turn.time += dt;
+
+    head.x +=
+      turn.next.x * speed * dt;
+
+    head.y +=
+      turn.next.y * speed * dt;
+
+    if (
+      turn.time >= turn.duration
+    ) {
+      turn = null;
+    }
+
+  } else {
+
+    head.x +=
+      direction.x * speed * dt;
+
+    head.y +=
+      direction.y * speed * dt;
+
+    beginTurn();
+  }
+}
+
+
+/* ---------------------------
+   게임 루프
+---------------------------- */
+
+function gameLoop(time) {
+
+  if (!running) {
+    return;
+  }
+
+  const dt =
+    Math.min(
+      (time - lastTime) / 1000,
+      0.035
+    );
+
+  lastTime = time;
+
+  beginTurn();
+  move(dt);
+
+  trail.unshift({
+    x: head.x,
+    y: head.y
+  });
+
+  if (trail.length > wormLength * 18 + 40) {
+    trail.length =
+      wormLength * 18 + 40;
+  }
+
+
+  // 벽 충돌
+  if (
+    head.x < 18 ||
+    head.x > SIZE - 18 ||
+    head.y < 18 ||
+    head.y > SIZE - 18
+  ) {
+
+    endGame();
+    return;
+  }
+
+
+  // 사과 먹기
+  if (
+    Math.hypot(
+      head.x - apple.x,
+      head.y - apple.y
+    ) < 23
+  ) {
+
+    score++;
+
+    scoreText.textContent =
+      score;
+
+    wormLength++;
+
+    speed =
+      Math.min(
+        MAX_SPEED,
+        speed + SPEED_INCREASE
+      );
+
+    placeApple();
+  }
+
+
+  draw();
+
+  animationFrame =
+    requestAnimationFrame(gameLoop);
+}
+
+
+/* ---------------------------
+   지렁이 몸 위치 계산
+---------------------------- */
+
+function getBodyPoint(distance) {
+
+  let remaining = distance;
+
+  for (
+    let i = 1;
+    i < trail.length;
+    i++
+  ) {
+
+    const a = trail[i - 1];
+    const b = trail[i];
+
+    const segmentLength =
+      Math.hypot(
+        a.x - b.x,
+        a.y - b.y
+      );
+
+    if (
+      remaining <= segmentLength
+    ) {
+
+      const ratio =
+        segmentLength === 0
+          ? 0
+          : remaining / segmentLength;
+
+      return {
+        x:
+          a.x +
+          (b.x - a.x) * ratio,
+
+        y:
+          a.y +
+          (b.y - a.y) * ratio
+      };
+    }
+
+    remaining -= segmentLength;
+  }
+
+  return trail[trail.length - 1] || head;
+}
+
+
+/* ---------------------------
+   화면 그리기
+---------------------------- */
+
+function draw() {
+
+  ctx.clearRect(
+    0,
+    0,
+    SIZE,
+    SIZE
+  );
+
+
+  // 배경
+  ctx.fillStyle = "#18231e";
+
+  ctx.fillRect(
+    0,
+    0,
+    SIZE,
+    SIZE
+  );
+
+
+  // 격자
+  ctx.strokeStyle =
+    "rgba(255,255,255,0.045)";
+
+  ctx.lineWidth = 1;
+
+  for (
+    let i = 0;
+    i <= SIZE;
+    i += CELL
+  ) {
+
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, SIZE);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(SIZE, i);
+    ctx.stroke();
+  }
+
+
+  // 사과
+  ctx.beginPath();
+
+  ctx.arc(
+    apple.x,
+    apple.y,
+    17,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle = "#ef4444";
+  ctx.fill();
+
+
+  // 사과 반짝임
+  ctx.beginPath();
+
+  ctx.arc(
+    apple.x - 5,
+    apple.y - 4,
+    5,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle =
+    "rgba(255,255,255,.25)";
+
+  ctx.fill();
+
+
+  // 지렁이 몸
+  if (trail.length) {
+
+    const points = [];
+
+    for (
+      let d = 0;
+      d <= (wormLength - 1) * 20;
+      d += 3
+    ) {
+
+      points.push(
+        getBodyPoint(d)
+      );
+    }
+
+
+    // 바깥 몸
+    ctx.beginPath();
+
+    ctx.moveTo(
+      points[0].x,
+      points[0].y
+    );
+
+    for (
+      let i = 1;
+      i < points.length;
+      i++
+    ) {
+
+      ctx.lineTo(
+        points[i].x,
+        points[i].y
+      );
+    }
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 30;
+    ctx.strokeStyle = "#74c69d";
+    ctx.stroke();
+
+
+    // 안쪽 몸
+    ctx.beginPath();
+
+    ctx.moveTo(
+      points[0].x,
+      points[0].y
+    );
+
+    for (
+      let i = 1;
+      i < points.length;
+      i++
+    ) {
+
+      ctx.lineTo(
+        points[i].x,
+        points[i].y
+      );
+    }
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 22;
+    ctx.strokeStyle = "#91ddb0";
+    ctx.stroke();
+  }
+
+
+  // 지렁이 머리
+  ctx.save();
+
+  ctx.translate(
+    head.x,
+    head.y
+  );
+
+  let angle =
+    Math.atan2(
+      direction.y,
+      direction.x
+    );
+
+
+  // 부드러운 회전
+  if (turn) {
+
+    const progress =
+      Math.min(
+        1,
+        turn.time / turn.duration
+      );
+
+    const smooth =
+      progress *
+      progress *
+      (3 - 2 * progress);
+
+    const oldAngle =
+      Math.atan2(
+        turn.old.y,
+        turn.old.x
+      );
+
+    const newAngle =
+      Math.atan2(
+        turn.next.y,
+        turn.next.x
+      );
+
+    let difference =
+      Math.atan2(
+        Math.sin(newAngle - oldAngle),
+        Math.cos(newAngle - oldAngle)
+      );
+
+    angle =
+      oldAngle +
+      difference * smooth;
+  }
+
+  ctx.rotate(angle);
+
+
+  // 머리
+  ctx.beginPath();
+
+  ctx.arc(
+    0,
+    0,
+    16,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fillStyle = "#a5e6bd";
+  ctx.fill();
+
+
+  // 눈 흰자
+  ctx.fillStyle = "white";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    5,
+    -6,
+    4.5,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.arc(
+    5,
+    6,
+    4.5,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+
+  // 눈동자
+  ctx.fillStyle = "#25352b";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    6,
+    -6,
+    2,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.arc(
+    6,
+    6,
+    2,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  ctx.restore();
+}
+
+
+/* ---------------------------
+   버튼
+---------------------------- */
+
+startButton.addEventListener(
+  "click",
+  startGame
+);
+
+restartButton.addEventListener(
+  "click",
+  () => {
+    resetGame();
+    startGame();
+  }
+);
+
+
+/* ---------------------------
+   처음 실행
+---------------------------- */
+
+resetGame();
+
+})();
+</script>
+
+</body>
+</html>

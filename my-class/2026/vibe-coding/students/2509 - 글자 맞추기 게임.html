@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>알파벳 막기</title>
+<style>
+:root{--bg:#f3f3f3;--fg:#222;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1b1b;--fg:#eee}}
+:root[data-theme="dark"]{--bg:#1b1b1b;--fg:#eee}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px}
+h1{font-size:18px;margin:0}
+#info{display:flex;gap:14px;font-size:15px;flex-wrap:wrap;justify-content:center}
+canvas{width:min(92vw,60vh,400px);aspect-ratio:1/1;height:auto;border-radius:6px}
+#msg{min-height:20px;font-size:14px;text-align:center}
+.help{font-size:12px;opacity:.7;text-align:center;max-width:360px}
+.pad{display:flex;gap:10px}
+.pad button{font-size:22px;padding:8px 26px;border-radius:8px;border:1px solid #888;background:transparent;color:var(--fg)}
+</style>
+</head>
+<body>
+<h1>알파벳 막기</h1>
+<div id="info"><span>점수 <b id="score">0</b></span><span>최고 <b id="best">0</b></span><span>속도 <b id="spd">1.7</b>칸/초</span><span>내 모양 <b id="mine">A</b></span></div>
+<canvas id="c" width="400" height="400"></canvas>
+<div id="msg">알파벳 키로 모양을 바꾸고 ←/→ 로 이동하세요</div>
+<div class="pad"><button id="L">◀</button><button id="R">▶</button></div>
+<div class="help">◀▶ 한 번에 한 칸 · 떨어지는 글자와 같은 모양으로 바꿔서 막으세요 · 다르거나 놓치면 0점<br>속도: 7점까지 1.7칸/초, 이후 점수당 +0.1 · 글자 간격: 8칸 → 5점 6칸 → 10점 4칸<br>특수 글자: 3점부터 10%, 2점마다 +10% (최대 50%)</div>
+<script>
+const COLS=10, ROWS=10, S=40;
+const BASE=1.7, STEP=0.1, MAXSPD=7.5, FLAT=7;  // 7점까지 BASE 유지, 이후 점수당 +STEP
+// 특수 글자 확률: 3점부터 10%, 2점 오를 때마다 +10%, 최대 50%
+const specialP=()=> score<3 ? 0 : Math.min(0.5, 0.1+Math.floor((score-3)/2)*0.1);
+const gap=()=> score>=10?4 : score>=5?6 : 8;  // 글자 사이 간격(칸): 기본 8, 5점 6, 10점 4
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+let score, best=0, px, shape, letters, timer;
+const rnd=n=>Math.floor(Math.random()*n);
+const ch=i=>String.fromCharCode(65+((i%26)+26)%26);
+const speed=()=>Math.min(MAXSPD, BASE+Math.max(0,score-FLAT)*STEP);
+
+function reset(){
+  score=0; px=Math.floor(COLS/2)-1; shape='A'; letters=[];
+  update(); spawn(); schedule();
+}
+function update(){
+  $('score').textContent=score; $('best').textContent=best;
+  $('mine').textContent=shape; $('spd').textContent=speed().toFixed(1);
+}
+function spawn(){
+  let drift=false, cycle=false;
+  if(Math.random()<specialP()){ if(Math.random()<0.5) drift=true; else cycle=true; }
+  letters.push({x:rnd(COLS), y:0, idx:rnd(26), drift, cycle, dir:Math.random()<.5?-1:1, steps:0});
+}
+function schedule(){ clearTimeout(timer); timer=setTimeout(tick, 1000/speed()); }
+
+function tick(){
+  for(const f of letters){
+    f.y++; f.steps++;
+    if(f.drift){
+      let nx=f.x+f.dir;
+      if(nx<0||nx>=COLS){ f.dir*=-1; nx=f.x+f.dir; }
+      f.x=nx;
+    }
+    if(f.cycle && f.steps%2===0) f.idx++;
+  }
+  let fail=null;
+  const next=[];
+  for(const f of letters){
+    if(f.y<ROWS-1){ next.push(f); continue; }
+    if(f.x===px && ch(f.idx)===shape){ score++; best=Math.max(best,score); msg('+1 성공!'); }
+    else fail = f.x===px ? `모양이 달라요 (${ch(f.idx)}) · 0점으로 초기화` : '놓쳤어요 · 0점으로 초기화';
+  }
+  letters=next;
+  if(fail){ msg(fail); update(); draw(); setTimeout(reset,500); return; }
+  // 모든 글자가 gap() 이상 내려왔을 때만 새 글자 등장
+  if(letters.every(l=>l.y>=gap()) && Math.random()<0.6) spawn();
+  update(); draw(); schedule();
+}
+function msg(t){ $('msg').textContent=t; }
+
+function cell(x,y,color,text){
+  ctx.fillStyle=color; ctx.fillRect(x*S+1,y*S+1,S-2,S-2);
+  if(text){ ctx.fillStyle='#fff'; ctx.font='bold 26px system-ui,sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,x*S+S/2,y*S+S/2+2); }
+}
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    cell(x,y,y===ROWS-1?'#c0392b':'#8d8d8d');
+  for(const f of letters)
+    cell(f.x,f.y,f.cycle?'#8e44ad':f.drift?'#e67e22':'#222',ch(f.idx));
+  cell(px,ROWS-1,'#2471d6',shape);
+}
+
+function move(d){ px=Math.max(0,Math.min(COLS-1,px+d)); draw(); }
+function setShape(s){ shape=s.toUpperCase(); update(); draw(); }
+
+document.addEventListener('keydown',e=>{
+  if(e.repeat) return;           // 꾹 누르기 방지
+  if(e.key==='ArrowLeft'){ e.preventDefault(); move(-1); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); move(1); }
+  else if(/^[a-zA-Z]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) setShape(e.key);
+});
+$('L').onclick=()=>move(-1);
+$('R').onclick=()=>move(1);
+reset();
+</script>
+</body>
+</html>

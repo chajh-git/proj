@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>두근두근 이름 궁합 테스트</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- Google Fonts: Jua & Gowun Dodum -->
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+   <!-- Canvas Confetti -->
+   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+   <style>
+       body {
+           font-family: 'Jua', 'Gowun Dodum', sans-serif;
+           background-color: #fff0f3;
+           user-select: none;
+       }
+       .font-sans-custom {
+           font-family: 'Gowun Dodum', sans-serif;
+       }
+   </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-gray-800">
+
+
+   <!-- 토스트 알림 메시지 -->
+   <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white px-5 py-2.5 rounded-2xl text-sm shadow-xl transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center gap-2">
+       <span id="toast-message">알림 내용</span>
+   </div>
+
+
+   <!-- 메인 컨테이너 -->
+   <main class="w-full max-w-md mx-auto relative">
+      
+       <!-- 시작 화면 카드 -->
+       <div id="start-screen" class="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6 transform transition-all border border-pink-100 relative overflow-hidden">
+           <!-- 하얀 박스 안 예쁜 하트 버튼 (클릭 시 관리자 창) -->
+           <div class="flex justify-center">
+               <button onclick="openAdminModal()" class="w-12 h-12 rounded-2xl bg-pink-100 hover:bg-pink-200 text-pink-500 flex items-center justify-center transition-all transform hover:scale-110 shadow-sm" title="관리자 창">
+                   <svg class="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                   </svg>
+               </button>
+           </div>
+
+
+           <div class="space-y-2">
+               <h1 class="text-3xl sm:text-4xl font-extrabold text-pink-600 tracking-tight">
+                   두근두근 이름 궁합
+               </h1>
+               <p class="text-base sm:text-lg text-pink-400 font-bold">
+                   우리는 과연 몇 퍼센트 일까?
+               </p>
+               <p class="text-xs sm:text-sm text-gray-500 font-medium font-sans-custom">
+                   두근두근 이름 궁합 테스트. 재미로 보는 연애운 시그널
+               </p>
+           </div>
+
+
+           <!-- 궁합 테스트 모드 선택 버튼 목록 -->
+           <div class="grid grid-cols-1 gap-3 pt-2">
+               <button onclick="selectMode('name')" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-pink-400 to-rose-400 text-white text-lg font-bold shadow-md hover:shadow-lg hover:from-pink-500 hover:to-rose-500 transition-all flex items-center justify-center gap-2 transform active:scale-95">
+                   <span>💖</span> 이름 궁합 테스트
+               </button>
+               <button onclick="selectMode('birth')" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-400 to-pink-400 text-white text-lg font-bold shadow-md hover:shadow-lg hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 transform active:scale-95">
+                   <span>🎂</span> 생일 궁합 테스트
+               </button>
+               <button onclick="selectMode('contact')" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-400 to-pink-400 text-white text-lg font-bold shadow-md hover:shadow-lg hover:from-rose-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 transform active:scale-95">
+                   <span>📱</span> 연락 궁합 테스트
+               </button>
+               <button onclick="selectMode('some')" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-400 to-pink-400 text-white text-lg font-bold shadow-md hover:shadow-lg hover:from-amber-500 hover:to-pink-500 transition-all flex items-center justify-center gap-2 transform active:scale-95">
+                   <span>🔥</span> 썸 온도 궁합 테스트
+               </button>
+           </div>
+       </div>
+
+
+       <!-- 입력 화면 카드 -->
+       <div id="input-screen" class="hidden bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6 border border-pink-100">
+           <div class="flex items-center justify-between">
+               <button onclick="goBackToStart()" class="text-xs text-gray-400 hover:text-pink-500 transition-colors flex items-center gap-1 font-sans-custom">
+                   ◀ 뒤로가기
+               </button>
+               <span id="mode-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-600 font-sans-custom">
+                   이름 궁합
+               </span>
+           </div>
+
+
+           <h2 id="input-title" class="text-2xl font-bold text-pink-600">
+               두 사람의 이름을 입력해주세요
+           </h2>
+
+
+           <!-- 이름 / 생일 입력 폼 -->
+           <div id="form-name-birth" class="space-y-4">
+               <div class="relative">
+                   <label id="label-name1" class="block text-xs text-pink-400 font-bold mb-1 text-left px-1 font-sans-custom">첫 번째 사람 (내 이름/생일)</label>
+                   <input type="text" id="name1" placeholder="예: 홍길동 (또는 2000.01.01)" class="w-full px-4 py-3 rounded-2xl border-2 border-pink-100 focus:border-pink-400 focus:outline-none text-center text-lg font-bold bg-pink-50/30 transition-all">
+               </div>
+
+
+               <div>
+                   <label id="label-name2" class="block text-xs text-pink-400 font-bold mb-1 text-left px-1 font-sans-custom">두 번째 사람 (상대방 이름/생일)</label>
+                   <input type="text" id="name2" placeholder="예: 성춘향 (또는 2001.05.05)" class="w-full px-4 py-3 rounded-2xl border-2 border-pink-100 focus:border-pink-400 focus:outline-none text-center text-lg font-bold bg-pink-50/30 transition-all">
+               </div>
+
+
+               <button onclick="calculateCompatibility()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-500 text-white text-lg font-bold shadow-lg hover:from-pink-600 hover:to-rose-600 transition-all transform active:scale-95">
+                   궁합 확인하기 ✨
+               </button>
+           </div>
+
+
+           <!-- 단계별 대화형 질문 화면 (연락 / 썸 온도 전용) -->
+           <div id="form-wizard" class="hidden space-y-5 text-left font-sans-custom">
+               <!-- 질문 단계 및 진행상황 표시 -->
+               <div class="flex items-center justify-between text-xs font-bold text-pink-400">
+                   <span id="wizard-step-label">질문 1 / 6</span>
+                   <div class="w-24 bg-pink-100 h-2 rounded-full overflow-hidden">
+                       <div id="wizard-progress-bar" class="bg-pink-500 h-full w-1/6 transition-all duration-300"></div>
+                   </div>
+               </div>
+
+
+               <div class="bg-pink-50/50 p-4 rounded-2xl border border-pink-100">
+                   <h3 id="wizard-question-title" class="text-base font-bold text-gray-800 text-center mb-1">
+                       질문 내용
+                   </h3>
+               </div>
+
+
+               <!-- 선택할 수 있는 보기 버튼 목록 -->
+               <div id="wizard-options-container" class="space-y-2.5">
+                   <!-- 자바스크립트로 동적 생성 -->
+               </div>
+           </div>
+       </div>
+
+
+       <!-- 로딩 화면 -->
+       <div id="loading-section" class="hidden bg-white/95 backdrop-blur-md rounded-3xl p-8 shadow-xl text-center space-y-4 border border-pink-100">
+           <div class="w-12 h-12 border-4 border-pink-200 border-t-pink-500 rounded-full animate-spin mx-auto"></div>
+           <p class="text-pink-600 font-bold text-lg">두 사람의 궁합을 계산하고 있어요...</p>
+       </div>
+
+
+       <!-- 결과 화면 -->
+       <div id="result-section" class="hidden bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl text-center space-y-6 border border-pink-100">
+           <div>
+               <span class="text-xs text-pink-400 font-bold uppercase tracking-wider font-sans-custom">RESULT</span>
+               <h2 class="text-2xl font-bold text-gray-800" id="result-title">궁합 결과</h2>
+           </div>
+
+
+           <div class="bg-pink-50/80 rounded-2xl p-6 border border-pink-100">
+               <div class="text-5xl font-black text-pink-600 mb-2">
+                   <span id="score-display">0</span><span class="text-3xl">%</span>
+               </div>
+               <!-- 썸 온도 궁합 전용 시각적 온도계 UI -->
+               <div id="thermometer-wrapper" class="hidden my-4 max-w-xs mx-auto space-y-2">
+                   <div class="flex justify-between items-center text-xs font-bold px-1">
+                       <span class="text-blue-400">❄️ 0℃ (차가움)</span>
+                       <span id="thermometer-degree" class="text-rose-500 font-extrabold text-sm">50℃</span>
+                       <span class="text-rose-500">🔥 100℃ (뜨거움)</span>
+                   </div>
+                   <!-- 온도계 가로 바 -->
+                   <div class="relative w-full h-7 bg-gray-200 rounded-full p-1 shadow-inner flex items-center overflow-hidden border-2 border-pink-200">
+                       <div id="thermometer-fill" class="h-full bg-gradient-to-r from-blue-400 via-pink-500 to-rose-600 rounded-full transition-all duration-1000 shadow-md" style="width: 0%;"></div>
+                   </div>
+               </div>
+
+
+               <p id="score-message" class="text-base text-pink-700 font-bold font-sans-custom">
+                   완벽한 운명의 짝꿍입니다!
+               </p>
+           </div>
+
+
+           <!-- 중간 계산 과정 (이름/생일) -->
+           <div id="process-wrapper" class="space-y-3 font-sans-custom">
+               <div id="stroke-breakdown-list" class="flex flex-wrap gap-1.5 justify-center"></div>
+               <div id="pyramid-box" class="bg-pink-50/40 p-4 rounded-2xl border border-pink-100"></div>
+           </div>
+
+
+           <!-- 버튼 모음 -->
+           <div class="space-y-2 pt-2">
+               <!-- 결과 화면에서도 순서 바꾸고 다시 검사하기 (이름 궁합 전용) -->
+               <button id="btn-result-swap" onclick="swapNamesAndRecheck()" class="w-full py-3 rounded-2xl bg-pink-500 hover:bg-pink-600 text-white font-bold text-base transition-all font-sans-custom shadow-md">
+                   🔄 이름 순서 바꾸고 다시 보기
+               </button>
+               <button onclick="shareResult()" class="w-full py-3 rounded-2xl bg-pink-100 hover:bg-pink-200 text-pink-600 font-bold text-base transition-all font-sans-custom">
+                   결과 복사하기 📋
+               </button>
+               <button onclick="resetCalculator()" class="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-base transition-all font-sans-custom">
+                   다시 테스트하기 🔄
+               </button>
+           </div>
+       </div>
+
+
+   </main>
+
+
+   <!-- 관리자 모달 -->
+   <div id="admin-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+       <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 font-sans-custom">
+           <div class="flex justify-between items-center">
+               <h3 class="text-lg font-bold text-gray-800">🔒 관리자 전용창</h3>
+               <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600">✕</button>
+           </div>
+
+
+           <!-- 비밀번호 입력 영역 -->
+           <div id="admin-auth" class="space-y-3">
+               <p class="text-xs text-gray-500">관리자 비밀번호를 입력해주세요.</p>
+               <input type="password" id="admin-pass" placeholder="비밀번호 입력" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm">
+               <button onclick="checkAdminPass()" class="w-full py-2.5 bg-pink-500 text-white font-bold rounded-xl text-sm">인증하기</button>
+           </div>
+
+
+           <!-- 기록 관리 영역 -->
+           <div id="admin-content" class="hidden space-y-4">
+               <div class="flex justify-between items-center">
+                   <span class="text-sm font-bold text-pink-600">📊 사용자 테스트 기록 (이름 궁합)</span>
+                   <button onclick="clearHistory()" class="text-xs text-red-500 hover:underline">기록 전체 삭제</button>
+               </div>
+               <div id="history-list" class="max-h-60 overflow-y-auto space-y-2 text-xs text-gray-600 border border-gray-100 p-2 rounded-xl">
+                   <!-- 자바스크립트로 동적 추가 -->
+               </div>
+           </div>
+       </div>
+   </div>
+
+
+   <!-- 한글 자음/모음 획수 데이터 & 메인 로직 -->
+   <script>
+       // 초성/중성/종성 획수 표
+       const strokeData = {
+           initial: { 'ㄱ': 2, 'ㄲ': 4, 'ㄴ': 2, 'ㄷ': 3, 'ㄸ': 6, 'ㄹ': 5, 'ㅁ': 4, 'ㅂ': 4, 'ㅃ': 8, 'ㅅ': 2, 'ㅆ': 4, 'ㅇ': 1, 'ㅈ': 3, 'ㅉ': 6, 'ㅊ': 4, 'ㅋ': 3, 'ㅌ': 4, 'ㅍ': 4, 'ㅎ': 3 },
+           medial: { 'ㅏ': 2, 'ㅐ': 3, 'ㅑ': 3, 'ㅒ': 4, 'ㅓ': 2, 'ㅔ': 3, 'ㅕ': 3, 'ㅖ': 4, 'ㅗ': 2, 'ㅘ': 4, 'ㅙ': 5, 'ㅚ': 3, 'ㅛ': 3, 'ㅜ': 2, 'ㅝ': 4, 'ㅞ': 5, 'ㅟ': 3, 'ㅠ': 3, 'ㅡ': 1, 'ㅢ': 2, 'ㅣ': 1 },
+           final: { '': 0, 'ㄱ': 2, 'ㄲ': 4, 'ㄳ': 4, 'ㄴ': 2, 'ㄵ': 5, 'ㄶ': 5, 'ㄷ': 3, 'ㄹ': 5, 'ㄺ': 7, 'ㄻ': 9, 'ㄼ': 9, 'ㄽ': 7, 'ㄾ': 9, 'ㄿ': 9, 'ㅀ': 8, 'ㅁ': 4, 'ㅂ': 4, 'ㅄ': 6, 'ㅅ': 2, 'ㅆ': 4, 'ㅇ': 1, 'ㅈ': 3, 'ㅊ': 4, 'ㅋ': 3, 'ㅌ': 4, 'ㅍ': 4, 'ㅎ': 3 }
+       };
+
+
+       let currentMode = 'name';
+       let testHistory = JSON.parse(localStorage.getItem('love_test_history') || '[]');
+
+
+       let wizardStep = 1;
+       let wizardAnswers = {};
+
+
+       // 6개 이상의 구체적인 질문 모음 (0점부터 20점까지 구별)
+       const wizardQuestions = {
+           contact: [
+               {
+                   title: "1. 나의 선호 연락 빈도는 어떤가요?",
+                   options: [
+                       { label: "📱 수시로! 답장은 칼답이 기본", score: 20 },
+                       { label: "☕ 여유 있을 때마다 하루 몇 번씩", score: 10 },
+                       { label: "🌙 바쁘면 밤에 한두 번만 연락해도 괜찮음", score: 0 }
+                   ]
+               },
+               {
+                   title: "2. 상대방의 평소 답장 속도는 어떤가요?",
+                   options: [
+                       { label: "⚡ 거의 칼답에 가깝게 빠른 편", score: 20 },
+                       { label: "⏳ 가끔 안 읽씹을 하지만 1~2시간 내 답장", score: 10 },
+                       { label: "🐢 몇 시간씩 텀이 길거나 자주 안 읽씹함", score: 0 }
+                   ]
+               },
+               {
+                   title: "3. 전화 통화(음성/영상)에 대한 두 사람의 생각은?",
+                   options: [
+                       { label: "📞 텍스트보다 목소리 들으며 긴 통화 선호", score: 20 },
+                       { label: "💬 평소엔 문자, 필요한 경우에만 가끔 통화", score: 10 },
+                       { label: "🙈 전화도 메시지도 어색하거나 귀찮아함", score: 0 }
+                   ]
+               },
+               {
+                   title: "4. 자기 전 마지막 연락 패턴은 어떤가요?",
+                   options: [
+                       { label: "😴 '잘 자' 인사 나누고 기상 직후 다시 연락", score: 20 },
+                       { label: "🌙 각자 할 일 하다가 자연스럽게 피곤할 때 끝남", score: 10 },
+                       { label: "❓ 말없이 읽씹/안 읽씹한 채 밤을 넘김", score: 0 }
+                   ]
+               },
+               {
+                   title: "5. 주말이나 쉬는 날 연락 스타일에 대한 선호는?",
+                   options: [
+                       { label: "🎉 쉬는 날일수록 하루 종일 일상 공유 선호", score: 20 },
+                       { label: "🌿 쉬는 날엔 개인 시간 존중하며 가끔 안부", score: 10 },
+                       { label: "📴 휴일엔 연락 자체를 완전히 끊는 편", score: 0 }
+                   ]
+               },
+               {
+                   title: "6. 약속 없이 할 말이 없을 때 두 사람의 반응은?",
+                   options: [
+                       { label: "📸 의미 없는 짤, 셀카, 일상 소식이라도 자발적 공유", score: 20 },
+                       { label: "💡 딱히 할 말 없으면 안부 물어보고 텀 두기", score: 10 },
+                       { label: "😶 할 말 없으면 대화가 몇 일씩 완전히 단절됨", score: 0 }
+                   ]
+               }
+           ],
+           some: [
+               {
+                   title: "1. 둘만의 선톡/선연락 비율은 어떤가요?",
+                   options: [
+                       { label: "🤝 서로 번갈아가며 비슷하게 먼저 함", score: 20 },
+                       { label: "🙋‍♂️ 한 사람이 일방적으로 먼저 보냄", score: 10 },
+                       { label: "👀 아무도 먼저 연락하지 않고 눈치만 봄", score: 0 }
+                   ]
+               },
+               {
+                   title: "2. 둘만의 약속 잡기 분위기는 어떤가요?",
+                   options: [
+                       { label: "🗓️ 단둘이 만나자는 이야기를 자주 주고받음", score: 20 },
+                       { label: "💬 '언제 한번 보자' 말만 가볍게 흘림", score: 10 },
+                       { label: "🙈 둘이 만나는 걸 의도적으로 피하는 느낌임", score: 0 }
+                   ]
+               },
+               {
+                   title: "3. 만났을 때 눈빛이나 스킨십, 아이컨택 분위기는?",
+                   options: [
+                       { label: "💓 자연스러운 은근한 스킨십과 깊은 눈빛 주고받음", score: 20 },
+                       { label: "😊 웃음이 많지만 스킨십엔 아직 조심스러움", score: 10 },
+                       { label: "😳 시선을 피하고 어색한 정적만 흐름", score: 0 }
+                   ]
+               },
+               {
+                   title: "4. 상대방이 나에게 보여주는 관심 표현 정도는?",
+                   options: [
+                       { label: "🎁 내가 했던 소소한 말, 취향을 다 기억해 줌", score: 20 },
+                       { label: "🙋 질문도 종종 하고 리액션도 잘해 주는 편", score: 10 },
+                       { label: "🤔 내 이야기에 관심이 없고 자기 말만 하거나 건성임", score: 0 }
+                   ]
+               },
+               {
+                   title: "5. 타인이나 친구들에게 서로를 소개할 때 반응은?",
+                   options: [
+                       { label: "✨ 특별한 사람처럼 은근히 챙기고 다정함", score: 20 },
+                       { label: "👫 칭찬은 많이 하지만 편한 친구처럼 대함", score: 10 },
+                       { label: "😶 남들 앞에선 완전히 남처럼 선을 그음", score: 0 }
+                   ]
+               },
+               {
+                   title: "6. 질투나 다른 이성 이야기가 나왔을 때의 반응은?",
+                   options: [
+                       { label: "🔥 티 나게 신경 쓰거나 은근히 질투하는 모습을 보임", score: 20 },
+                       { label: "😃 표정 변화는 없지만 장난스럽게 물어봄", score: 10 },
+                       { label: "🧊 전혀 신경 쓰지 않고 아무 관심도 없어 보임", score: 0 }
+                   ]
+               }
+           ]
+       };
+
+
+       function showToast(msg) {
+           const toast = document.getElementById('toast');
+           document.getElementById('toast-message').textContent = msg;
+           toast.classList.remove('opacity-0', 'pointer-events-none');
+           setTimeout(() => {
+               toast.classList.add('opacity-0', 'pointer-events-none');
+           }, 2500);
+       }
+
+
+       // 이름 순서 바꾸기 함수 (이름 궁합 전용)
+       function swapNames() {
+           const n1 = document.getElementById('name1');
+           const n2 = document.getElementById('name2');
+          
+           const temp = n1.value;
+           n1.value = n2.value;
+           n2.value = temp;
+
+
+           showToast('이름 순서가 변경되었습니다! 🔄');
+       }
+
+
+       // 결과 화면에서 바로 순서 바꾸고 다시 테스트
+       function swapNamesAndRecheck() {
+           swapNames();
+           calculateCompatibility();
+       }
+
+
+       function selectMode(mode) {
+           currentMode = mode;
+           wizardStep = 1;
+           wizardAnswers = {};
+
+
+           document.getElementById('start-screen').classList.add('hidden');
+           document.getElementById('input-screen').classList.remove('hidden');
+
+
+           const badge = document.getElementById('mode-badge');
+           const title = document.getElementById('input-title');
+           const formNameBirth = document.getElementById('form-name-birth');
+           const formWizard = document.getElementById('form-wizard');
+
+
+           formNameBirth.classList.add('hidden');
+           formWizard.classList.add('hidden');
+
+
+           if (mode === 'name') {
+               badge.textContent = '이름 궁합';
+               title.textContent = '두 사람의 이름을 입력해주세요';
+               document.getElementById('label-name1').textContent = '첫 번째 사람 (내 이름)';
+               document.getElementById('label-name2').textContent = '두 번째 사람 (상대방 이름)';
+               document.getElementById('name1').placeholder = '예: 홍길동';
+               document.getElementById('name2').placeholder = '예: 성춘향';
+               formNameBirth.classList.remove('hidden');
+           } else if (mode === 'birth') {
+               badge.textContent = '생일 궁합';
+               title.textContent = '두 사람의 생년월일을 입력해주세요';
+               document.getElementById('label-name1').textContent = '첫 번째 사람 (내 생년월일)';
+               document.getElementById('label-name2').textContent = '두 번째 사람 (상대방 생년월일)';
+               document.getElementById('name1').placeholder = '예: 2000.01.01';
+               document.getElementById('name2').placeholder = '예: 2001.05.05';
+               formNameBirth.classList.remove('hidden');
+           } else if (mode === 'contact' || mode === 'some') {
+               badge.textContent = mode === 'contact' ? '연락 궁합' : '썸 온도 궁합';
+               title.textContent = mode === 'contact' ? '연락 스타일 질문' : '썸 상태 질문';
+               formWizard.classList.remove('hidden');
+               renderWizardQuestion();
+           }
+       }
+
+
+       function renderWizardQuestion() {
+           const questions = wizardQuestions[currentMode];
+           const qData = questions[wizardStep - 1];
+
+
+           document.getElementById('wizard-step-label').textContent = `질문 ${wizardStep} / ${questions.length}`;
+           document.getElementById('wizard-progress-bar').style.width = `${(wizardStep / questions.length) * 100}%`;
+           document.getElementById('wizard-question-title').textContent = qData.title;
+
+
+           const container = document.getElementById('wizard-options-container');
+           container.innerHTML = qData.options.map((opt) => `
+               <button type="button" onclick="selectWizardAnswer(${opt.score})" class="w-full text-left p-3.5 rounded-2xl bg-pink-50/60 hover:bg-pink-100/80 border border-pink-200 text-gray-700 font-bold text-sm transition-all flex items-center justify-between group active:scale-98">
+                   <span>${opt.label}</span>
+                   <span class="text-pink-400 opacity-0 group-hover:opacity-100 transition-opacity">선택 ▶</span>
+               </button>
+           `).join('');
+       }
+
+
+       function selectWizardAnswer(score) {
+           wizardAnswers[`q${wizardStep}`] = score;
+           const questions = wizardQuestions[currentMode];
+
+
+           if (wizardStep < questions.length) {
+               wizardStep++;
+               renderWizardQuestion();
+           } else {
+               document.getElementById('input-screen').classList.add('hidden');
+               document.getElementById('loading-section').classList.remove('hidden');
+
+
+               setTimeout(() => {
+                   document.getElementById('loading-section').classList.add('hidden');
+                   if (currentMode === 'contact') {
+                       processWizardResults('연락 스타일 궁합');
+                   } else if (currentMode === 'some') {
+                       processWizardResults('썸 온도 궁합');
+                   }
+               }, 600);
+           }
+       }
+
+
+       function goBackToStart() {
+           document.getElementById('input-screen').classList.add('hidden');
+           document.getElementById('result-section').classList.add('hidden');
+           document.getElementById('start-screen').classList.remove('hidden');
+       }
+
+
+       function getHangulStrokes(char) {
+           const code = char.charCodeAt(0) - 44032;
+           if (code < 0 || code > 11172) return 2;
+          
+           const initialIdx = Math.floor(code / 588);
+           const medialIdx = Math.floor((code % 588) / 28);
+           const finalIdx = code % 28;
+
+
+           const initialChars = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+           const medialChars = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+           const finalChars = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+
+
+           const c1 = initialChars[initialIdx];
+           const c2 = medialChars[medialIdx];
+           const c3 = finalChars[finalIdx];
+
+
+           return (strokeData.initial[c1] || 1) + (strokeData.medial[c2] || 1) + (strokeData.final[c3] || 0);
+       }
+
+
+       function calculateCompatibility() {
+           if (currentMode === 'name' || currentMode === 'birth') {
+               const name1 = document.getElementById('name1').value.trim();
+               const name2 = document.getElementById('name2').value.trim();
+
+
+               if (!name1 || !name2) {
+                   showToast(currentMode === 'name' ? '두 이름을 모두 입력해주세요!' : '두 생년월일을 모두 입력해주세요!');
+                   return;
+               }
+
+
+               document.getElementById('input-screen').classList.add('hidden');
+               document.getElementById('loading-section').classList.remove('hidden');
+
+
+               setTimeout(() => {
+                   document.getElementById('loading-section').classList.add('hidden');
+                   if (currentMode === 'name') {
+                       processNameCompatibility(name1, name2);
+                   } else {
+                       processBirthCompatibility(name1, name2);
+                   }
+               }, 600);
+           }
+       }
+
+
+       function processNameCompatibility(name1, name2) {
+           const maxLength = Math.max(name1.length, name2.length);
+           let combinedChars = [];
+           let initialStrokes = [];
+
+
+           for (let i = 0; i < maxLength; i++) {
+               if (i < name1.length) {
+                   combinedChars.push(name1[i]);
+                   initialStrokes.push(getHangulStrokes(name1[i]));
+               }
+               if (i < name2.length) {
+                   combinedChars.push(name2[i]);
+                   initialStrokes.push(getHangulStrokes(name2[i]));
+               }
+           }
+
+
+           let currentStrokes = [...initialStrokes];
+           let pyramidRows = [[...currentStrokes]];
+
+
+           while (currentStrokes.length > 2) {
+               let nextStrokes = [];
+               for (let i = 0; i < currentStrokes.length - 1; i++) {
+                   nextStrokes.push((currentStrokes[i] + currentStrokes[i + 1]) % 10);
+               }
+               pyramidRows.push(nextStrokes);
+               currentStrokes = nextStrokes;
+           }
+
+
+           let finalScore = currentStrokes[0] * 10 + currentStrokes[1];
+           if (finalScore === 0) finalScore = 100;
+
+
+           saveTestRecord(name1, name2, finalScore);
+           renderNameBreakdown(combinedChars, pyramidRows);
+           displayScoreAndMessage(finalScore, name1, name2, 'name');
+
+
+           // 결과 화면의 '이름 순서 바꾸기' 버튼 활성화
+           document.getElementById('btn-result-swap').classList.remove('hidden');
+
+
+           document.getElementById('result-section').classList.remove('hidden');
+           if (finalScore >= 70) triggerConfetti();
+       }
+
+
+       function renderNameBreakdown(combinedChars, pyramidRows) {
+           document.getElementById('process-wrapper').classList.remove('hidden');
+           const breakdownContainer = document.getElementById('stroke-breakdown-list');
+           const pyramidBox = document.getElementById('pyramid-box');
+
+
+           breakdownContainer.innerHTML = combinedChars.map((char, idx) => `
+               <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-pink-50 border border-pink-200 text-pink-700">
+                   <span>${char}</span>
+                   <span class="text-[10px] opacity-75">(${pyramidRows[0][idx]}획)</span>
+               </div>
+           `).join('');
+
+
+           pyramidBox.innerHTML = pyramidRows.map((row, idx) => `
+               <div class="flex gap-1.5 justify-center my-1">
+                   ${row.map(val => `
+                       <span class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black ${idx === pyramidRows.length - 1 ? 'bg-pink-500 text-white shadow-md scale-105' : 'bg-pink-100/70 text-pink-700'}">
+                           ${val}
+                       </span>
+                   `).join('')}
+               </div>
+           `).join('');
+       }
+
+
+       function getLifePathNumber(str) {
+           let digits = str.replace(/[^0-9]/g, '');
+           if (!digits) return 5;
+           let sum = digits.split('').reduce((acc, curr) => acc + parseInt(curr), 0);
+           while (sum > 9) {
+               sum = sum.toString().split('').reduce((acc, curr) => acc + parseInt(curr), 0);
+           }
+           return sum || 1;
+       }
+
+
+       function processBirthCompatibility(name1, name2) {
+           const num1 = getLifePathNumber(name1);
+           const num2 = getLifePathNumber(name2);
+
+
+           let diff = Math.abs(num1 - num2);
+           let finalScore = 80;
+
+
+           if (diff === 0) finalScore = 98;
+           else if (diff === 1 || diff === 2) finalScore = 88;
+           else if (diff === 3 || diff === 4) finalScore = 76;
+           else finalScore = 65;
+
+
+           saveTestRecord('생일:' + name1, '생일:' + name2, finalScore);
+
+
+           document.getElementById('process-wrapper').classList.remove('hidden');
+           document.getElementById('stroke-breakdown-list').innerHTML = `
+               <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-pink-50 border border-pink-200 text-pink-700">
+                   <span>내 생일: ${name1} (수비학: ${num1})</span>
+               </div>
+               <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-purple-50 border border-purple-200 text-purple-700">
+                   <span>상대 생일: ${name2} (수비학: ${num2})</span>
+               </div>
+           `;
+
+
+           document.getElementById('pyramid-box').innerHTML = `
+               <div class="text-center py-3 space-y-2">
+                   <p class="text-xs text-purple-600 font-bold">🔮 생일 수비학(Numerology) 운명 수 분석</p>
+                   <p class="text-sm font-bold text-gray-700">두 사람의 운명의 수 <b>${num1}</b>과 <b>${num2}</b>가 만난 시너지 효과입니다.</p>
+               </div>
+           `;
+
+
+           // 이름 궁합이 아닌 경우 결과 화면 순서바꾸기 버튼 숨김
+           document.getElementById('btn-result-swap').classList.add('hidden');
+
+
+           displayScoreAndMessage(finalScore, name1, name2, 'birth');
+           document.getElementById('result-section').classList.remove('hidden');
+           if (finalScore >= 70) triggerConfetti();
+       }
+
+
+       // 연락 및 썸 온도 질문 점수 집계 처리
+       function processWizardResults(titleText) {
+           const scores = Object.values(wizardAnswers);
+           const totalScore = scores.reduce((acc, curr) => acc + curr, 0);
+           const maxScore = scores.length * 20;
+
+
+           let finalScore = Math.round((totalScore / maxScore) * 100);
+
+
+           saveTestRecord(currentMode === 'contact' ? '연락질문6개' : '썸질문6개', '응답완료', finalScore);
+
+
+           document.getElementById('process-wrapper').classList.add('hidden');
+           document.getElementById('btn-result-swap').classList.add('hidden');
+
+
+           displayScoreAndMessage(finalScore, '나', '상대방', currentMode);
+           document.getElementById('result-section').classList.remove('hidden');
+           if (finalScore >= 70) triggerConfetti();
+       }
+
+
+       function displayScoreAndMessage(score, name1, name2, mode) {
+           document.getElementById('score-display').textContent = score;
+           const msgEl = document.getElementById('score-message');
+           const thermoWrapper = document.getElementById('thermometer-wrapper');
+
+
+           // 썸 온도 궁합 전용 온도계 노출
+           if (mode === 'some') {
+               thermoWrapper.classList.remove('hidden');
+               document.getElementById('thermometer-degree').textContent = `${score}℃`;
+               // 애니메이션 효과를 위해 타임아웃 적용
+               setTimeout(() => {
+                   document.getElementById('thermometer-fill').style.width = `${Math.max(score, 5)}%`;
+               }, 100);
+           } else {
+               thermoWrapper.classList.add('hidden');
+           }
+
+
+           if (score >= 90) {
+               msgEl.textContent = mode === 'some' ? "🔥 폭발 직전의 핫한 온도! 당장 연애로 직행할 타이밍입니다." : "💖 완벽 그 자체! 환상의 호흡을 보여주는 불꽃 커플입니다.";
+           } else if (score >= 75) {
+               msgEl.textContent = mode === 'some' ? "💓 두근두근 따뜻한 썸! 서로에게 깊게 끌리고 있습니다." : "😊 설렘 가득! 서로에게 끌리고 있는 아주 긍정적인 신호입니다.";
+           } else if (score >= 60) {
+               msgEl.textContent = mode === 'some' ? "☕ 미지근하게 은근한 온기! 조금만 더 적극적인 표현이 필요해요." : "🙂 잔잔한 관계! 표현을 조금만 더 늘리면 훨씬 가까워져요.";
+           } else {
+               msgEl.textContent = mode === 'some' ? "❄️ 아직은 쌀쌀한 온도! 서로에 대해 더 탐색할 시간이 필요해요." : "⚡ 서로의 스타일 차이를 맞춰가는 대화와 관심이 필요해요!";
+           }
+       }
+
+
+       function triggerConfetti() {
+           confetti({
+               particleCount: 80,
+               spread: 60,
+               origin: { y: 0.6 }
+           });
+       }
+
+
+       function saveTestRecord(n1, n2, score) {
+           const record = {
+               id: Date.now(),
+               mode: currentMode,
+               name1: n1,
+               name2: n2,
+               score: score,
+               date: new Date().toLocaleString('ko-KR')
+           };
+           testHistory.unshift(record);
+           localStorage.setItem('love_test_history', JSON.stringify(testHistory));
+       }
+
+
+       function openAdminModal() {
+           document.getElementById('admin-modal').classList.remove('hidden');
+       }
+
+
+       function closeAdminModal() {
+           document.getElementById('admin-modal').classList.add('hidden');
+           // 관리자 모달 닫을 때 비밀번호 및 인증 상태 초기화 (재접속 시 비밀번호 다시 요구)
+           document.getElementById('admin-pass').value = '';
+           document.getElementById('admin-auth').classList.remove('hidden');
+           document.getElementById('admin-content').classList.add('hidden');
+       }
+
+
+       function checkAdminPass() {
+           const pass = document.getElementById('admin-pass').value;
+           if (pass === 'hay1259') {
+               document.getElementById('admin-auth').classList.add('hidden');
+               document.getElementById('admin-content').classList.remove('hidden');
+               renderAdminHistory();
+               showToast('관리자 인증에 성공하였습니다!');
+           } else {
+               showToast('비밀번호가 올바르지 않습니다.');
+           }
+       }
+
+
+       function renderAdminHistory() {
+           const listEl = document.getElementById('history-list');
+          
+           // '이름 궁합' 모드인 기록만 필터링
+           const nameHistory = testHistory.filter(item => item.mode === 'name');
+
+
+           if (nameHistory.length === 0) {
+               listEl.innerHTML = '<p class="text-center text-gray-400 py-4">기록된 이름 궁합 데이터가 없습니다.</p>';
+               return;
+           }
+
+
+           listEl.innerHTML = nameHistory.map(item => `
+               <div class="p-2.5 bg-pink-50/50 rounded-lg flex justify-between items-center border border-pink-100">
+                   <div>
+                       <span class="font-bold text-pink-600">[이름 궁합]</span>
+                       <span>${item.name1} ♡ ${item.name2}</span>
+                       <div class="text-[10px] text-gray-400">${item.date}</div>
+                   </div>
+                   <span class="font-black text-pink-500 text-sm">${item.score}%</span>
+               </div>
+           `).join('');
+       }
+
+
+       function clearHistory() {
+           // 이름 궁합 기록만 삭제하고 다른 기록은 유지
+           testHistory = testHistory.filter(item => item.mode !== 'name');
+           localStorage.setItem('love_test_history', JSON.stringify(testHistory));
+           renderAdminHistory();
+           showToast('이름 궁합 기록이 모두 삭제되었습니다.');
+       }
+
+
+       function resetCalculator() {
+           document.getElementById('result-section').classList.add('hidden');
+           document.getElementById('input-screen').classList.add('hidden');
+           document.getElementById('start-screen').classList.remove('hidden');
+          
+           document.getElementById('name1').value = '';
+           document.getElementById('name2').value = '';
+           wizardStep = 1;
+           wizardAnswers = {};
+       }
+
+
+       function shareResult() {
+           const score = document.getElementById('score-display').textContent;
+           let text = `[두근두근 궁합 테스트] 내 궁합 결과는 ${score}% 입니다! 💕`;
+          
+           if (navigator.clipboard && navigator.clipboard.writeText) {
+               navigator.clipboard.writeText(text).then(() => {
+                   showToast('결과 문구가 클립보드에 복사되었습니다! 📋');
+               }).catch(() => {
+                   copyFallback(text);
+               });
+           } else {
+               copyFallback(text);
+           }
+       }
+
+
+       function copyFallback(text) {
+           const textArea = document.createElement("textarea");
+           textArea.value = text;
+           document.body.appendChild(textArea);
+           textArea.select();
+           document.execCommand('copy');
+           document.body.removeChild(textArea);
+           showToast('결과 문구가 클립보드에 복사되었습니다! 📋');
+       }
+   </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal Color Studio</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fffaf6;color:#493a3a;font-family:Arial,sans-serif}
+main{max-width:760px;margin:30px auto;padding:24px}
+header{text-align:center;padding:32px 15px;background:linear-gradient(135deg,#f8e5e5,#f8eee0)}
+h1{font-family:Georgia,serif;font-size:38px;font-weight:normal}
+.card{background:white;border:1px solid #eee1dc;border-radius:16px;padding:18px;margin:12px 0}
+button{padding:13px 18px;border:1px solid #e7d7d2;border-radius:10px;background:white;color:#493a3a;cursor:pointer}
+button:hover{background:#fbedf0}
+.primary{background:#986477;color:white}
+.primary:hover{background:#815167}
+.option{display:block;width:100%;text-align:left;margin:8px 0}
+.option.selected{border:2px solid #ad667d;background:#fbedf0}
+.bar{height:5px;background:#eadfdb;border-radius:5px;margin:15px 0}
+#progress{height:5px;background:#b66f84;width:12.5%;border-radius:5px}
+.palette{display:flex;gap:10px;margin:20px 0}
+.swatch{width:48px;height:48px;border-radius:50%}
+.products{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.product{background:#fff;border:1px solid #eee1dc;border-radius:14px;padding:12px}
+.product-color{height:65px;border-radius:10px;margin-bottom:10px}
+.muted{color:#907e7a;font-size:13px}
+.hidden{display:none}
+@media(max-width:520px){main{padding:12px}.products{grid-template-columns:1fr}h1{font-size:31px}}
+</style>
+</head>
+<body>
+<header>
+<div>THE BEAUTY DISCOVERY EXPERIENCE</div>
+<h1>Personal Color</h1>
+<p>나만의 분위기를 발견하는 컬러 여정</p>
+</header>
+<main>
+<section id="start" class="card">
+<h2>나에게 어울리는 색은?</h2>
+<p>8가지 질문에 답하고 나만의 퍼스널 컬러와 메이크업 추천을 확인해 봐!</p>
+<button class="primary" onclick="begin()">진단 시작하기 →</button>
+</section>
+<section id="quiz" class="hidden">
+<p id="stepLabel">QUESTION 01 / 08</p>
+<div class="bar"><div id="progress"></div></div>
+<h2 id="question"></h2>
+<p id="hint" class="muted"></p>
+<div id="options"></div>
+<p id="error" class="muted"></p>
+<button onclick="previous()">← 이전</button>
+<button class="primary" onclick="next()">다음 질문 →</button>
+</section>
+<section id="result" class="hidden">
+<p>YOUR PERSONAL COLOR REPORT</p>
+<h1 id="season"></h1>
+<h2 id="korean"></h2>
+<p id="subtitle"></p>
+<div id="palette" class="palette"></div>
+<div class="card"><h3>나의 컬러 무드</h3><p id="description"></p><p id="makeup"></p></div>
+<h2>추천 메이크업</h2>
+<div id="products" class="products"></div>
+<p class="muted">추천은 컬러 취향을 위한 예시이며 특정 제품의 구매를 의미하지 않습니다.</p>
+<h3>나의 답변</h3>
+<div id="summary"></div>
+<button onclick="restart()">처음부터 다시 ↻</button>
+</section>
+</main>
+<script>
+const questions=[
+{title:"피부 밝기는 어떤 편이야?",hint:"평소 민낯 피부를 기준으로 골라 줘.",options:["밝은 편","중간 정도","어두운 편"]},
+{title:"평소 사용하는 화장품은?",hint:"베이스와 색조의 조합을 골라 줘.",options:["밝은 베이스 + 피치·코랄","뉴트럴 베이스 + 로즈","웜 베이스 + 브릭·브라운","쿨 베이스 + 모브·베리"]},
+{title:"어떤 옷 색상이 잘 어울려?",hint:"입었을 때 얼굴이 편안해 보이는 색을 골라 줘.",options:["아이보리·코랄·피치","라벤더·소프트 핑크·블루","카멜·올리브·브라운","블랙·화이트·버건디"]},
+{title:"나를 표현하는 이미지는?",hint:"주관적인 이미지로 골라도 좋아.",options:["생기 있고 사랑스러운","청순하고 맑은","차분하고 분위기 있는","도회적이고 시크한"]},
+{title:"내 피부 톤은 어느 쪽 같아?",hint:"잘 모르겠다면 평소 경험을 기준으로 골라 줘.",options:["웜톤","쿨톤","잘 모르겠어"]},
+{title:"눈동자 색은?",hint:"자연광에서 본 눈동자 색을 떠올려 봐.",options:["밝은 갈색","진한 갈색","검정"]},
+{title:"자연 모발 색은?",hint:"염색했다면 원래 머리카락 색을 기준으로 해 줘.",options:["밝은 편","어두운 편"]},
+{title:"잘 어울리는 액세서리는?",hint:"금색과 은색 중 얼굴빛이 편안해 보이는 색.",options:["금색","은색","둘 다 괜찮아"]}
+];
+const data={
+spring:{en:"Spring Warm",ko:"봄 웜톤",subtitle:"맑고 따뜻한 생기의 컬러",colors:["#F2B19B","#E98983","#F2D6A3","#B9C99C"],desc:"밝고 화사한 컬러와 따뜻한 기운을 살려 봐. 피치와 코랄로 생기를 더하고 맑은 컬러를 활용해 보자.",makeup:"피치 블러셔 · 코랄 립 · 은은한 골드",products:[["아이섀도우 팔레트","피치·코랄·라이트 브라운","#e8b4a4"],["쿠션","내추럴 글로우","#e7c4ad"],["립","피치 코랄 틴트","#e88b79"]]},
+summer:{en:"Summer Cool",ko:"여름 쿨톤",subtitle:"부드럽고 청량한 컬러",colors:["#D9B9D0","#B9C8DF","#DDA9AE","#B9C9C3"],desc:"로즈와 모브, 라벤더처럼 부드럽고 차분한 쿨 컬러를 활용해 맑은 분위기를 연출해 보자.",makeup:"모브 섀도우 · 로즈 블러셔 · 쿨 핑크 립",products:[["아이섀도우 팔레트","로즈·모브·토프","#c6a4bf"],["쿠션","내추럴 세미 매트","#e6c5ba"],["립","로즈 핑크 틴트","#c97991"]]},
+autumn:{en:"Autumn Warm",ko:"가을 웜톤",subtitle:"깊고 따뜻한 자연의 컬러",colors:["#C77F61","#B65D4B","#B5A16C","#88785B"],desc:"테라코타와 브릭, 카멜처럼 차분하고 깊이 있는 색을 활용해 따뜻한 분위기를 만들어 보자.",makeup:"브라운 음영 · 테라코타 블러셔 · 브릭 립",products:[["아이섀도우 팔레트","브라운·카멜·올리브","#ad795f"],["쿠션","내추럴 세미 매트","#dcb59a"],["립","브릭 코랄 립","#a94f43"]]},
+winter:{en:"Winter Cool",ko:"겨울 쿨톤",subtitle:"선명하고 세련된 대비의 컬러",colors:["#B65D83","#8F426B","#9AAED0","#343344"],desc:"베리와 플럼, 쿨 레드처럼 선명한 컬러를 활용해 개성을 살려 보자.",makeup:"쿨 브라운 음영 · 베리 블러셔 · 체리 립",products:[["아이섀도우 팔레트","플럼·쿨 브라운·차콜","#92708f"],["쿠션","세미 매트 커버","#dfb9b1"],["립","베리 체리 립","#a32e56"]]}
+};
+let step=0,answers=Array(8).fill(null);
+function show(id){["start","quiz","result"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id))}
+function begin(){step=0;show("quiz");render()}
+function render(){
+const q=questions[step];
+document.getElementById("stepLabel").textContent=`QUESTION ${String(step+1).padStart(2,"0")} / 08`;
+document.getElementById("progress").style.width=((step+1)/8*100)+"%";
+document.getElementById("question").textContent=q.title;
+document.getElementById("hint").textContent=q.hint;
+document.getElementById("error").textContent="";
+document.getElementById("options").innerHTML="";
+q.options.forEach((o,i)=>{
+const b=document.createElement("button");
+b.className="option"+(answers[step]===i?" selected":"");
+b.textContent=o;
+b.onclick=()=>{answers[step]=i;render()};
+document.getElementById("options").appendChild(b);
+});
+}
+function previous(){if(step>0){step--;render()}}
+function next(){
+if(answers[step]===null){document.getElementById("error").textContent="답변을 하나 선택해 줘!";return}
+if(step<7){step++;render()}else finish()
+}
+function finish(){
+const scores={spring:0,summer:0,autumn:0,winter:0};
+const add=(k,n)=>scores[k]+=n;
+if(answers[0]===0)add("spring",2);
+if(answers[0]===2)add("autumn",2);
+[["spring","autumn"],["summer","autumn"],["spring","summer"],["spring","summer"],["spring","autumn","summer","winter"],["spring","autumn","winter"],["spring","autumn","winter"],["spring","summer","autumn","winter"]].forEach((keys,i)=>{
+const a=answers[i];
+if(i===1){add(["spring","autumn","autumn","winter"][a],2)}
+if(i===2){add(["spring","summer","autumn","winter"][a],2)}
+if(i===3){add(["spring","summer","autumn","winter"][a],2)}
+if(i===4){if(a===0){add("spring",4);add("autumn",2)}if(a===1){add("summer",4);add("winter",2)}}
+if(i===5){add(["spring","autumn","winter"][a],1)}
+if(i===6){add(a===0?"spring":"autumn",1)}
+if(i===7){if(a===0){add("spring",3);add("autumn",2)}if(a===1){add("summer",3);add("winter",2)}}
+});
+let key="spring";
+Object.keys(scores).forEach(k=>{if(scores[k]>scores[key])key=k});
+const d=data[key];
+document.getElementById("season").textContent=d.en;
+document.getElementById("korean").textContent=d.ko;
+document.getElementById("subtitle").textContent=d.subtitle;
+document.getElementById("description").textContent=d.desc;
+document.getElementById("makeup").textContent=d.makeup;
+document.getElementById("palette").innerHTML=d.colors.map(c=>`<div class="swatch" style="background:${c}"></div>`).join("");
+document.getElementById("products").innerHTML=d.products.map(p=>`<div class="product"><div class="product-color" style="background:
+p[2]"></div><b>{p[0]}</b><p>${p[1]}</p></div>`).join("");
+document.getElementById("summary").innerHTML=questions.map((q,i)=>`<div class="card"><b>q.title</b><p>{q.options[answers[i]]}</p></div>`).join("");
+show("result");
+}
+function restart(){answers=Array(8).fill(null);step=0;show("start")}
+</script>
+</body>
+</html>
+
+
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>퍼스널 컬러 진단 게임</title>
+
+<style>
+body{
+    margin:0;
+    font-family:'Pretendard',sans-serif;
+    background:linear-gradient(135deg,#ffdce5,#dff3ff);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    min-height:100vh;
+}
+
+.container{
+    width:90%;
+    max-width:700px;
+    background:white;
+    border-radius:25px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.1);
+}
+
+h1{
+    text-align:center;
+    color:#ff4d88;
+}
+
+.question{
+    margin-bottom:25px;
+}
+
+.question h3{
+    margin-bottom:10px;
+    color:#444;
+}
+
+label{
+    display:block;
+    background:#f7f7f7;
+    padding:12px;
+    border-radius:12px;
+    margin-bottom:10px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+label:hover{
+    background:#ececec;
+}
+
+button{
+    width:100%;
+    padding:15px;
+    border:none;
+    border-radius:15px;
+    background:#ff5f95;
+    color:white;
+    font-size:18px;
+    cursor:pointer;
+    transition:0.2s;
+}
+
+button:hover{
+    background:#ff3f7c;
+}
+
+.result{
+    display:none;
+    margin-top:30px;
+    padding:25px;
+    border-radius:20px;
+    background:#fafafa;
+}
+
+.result h2{
+    color:#ff4d88;
+}
+
+.palette{
+    display:flex;
+    gap:10px;
+    margin:15px 0;
+}
+
+.color{
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    border:2px solid #ddd;
+}
+
+.product{
+    background:white;
+    padding:15px;
+    border-radius:15px;
+    margin-top:10px;
+    border:1px solid #eee;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🎨 퍼스널 컬러 진단 게임</h1>
+
+<div class="question">
+<h3>1. 피부 밝기</h3>
+<label><input type="radio" name="skin" value="light"> 밝은 피부</label>
+<label><input type="radio" name="skin" value="dark"> 어두운 피부</label>
+</div>
+
+<div class="question">
+<h3>2. 평소 화장품 색조</h3>
+<label><input type="radio" name="makeup" value="warm"> 코랄 / 오렌지 계열</label>
+<label><input type="radio" name="makeup" value="cool"> 핑크 / 로즈 계열</label>
+</div>
+
+<div class="question">
+<h3>3. 어울리는 옷 컬러</h3>
+<label><input type="radio" name="cloth" value="warm"> 베이지 / 브라운</label>
+<label><input type="radio" name="cloth" value="cool"> 블루 / 블랙</label>
+</div>
+
+<div class="question">
+<h3>4. 자신의 이미지</h3>
+<label><input type="radio" name="image" value="soft"> 부드럽고 따뜻함</label>
+<label><input type="radio" name="image" value="sharp"> 시크하고 도시적</label>
+</div>
+
+<div class="question">
+<h3>5. 피부 톤</h3>
+<label><input type="radio" name="tone" value="warm"> 웜톤</label>
+<label><input type="radio" name="tone" value="cool"> 쿨톤</label>
+</div>
+
+<div class="question">
+<h3>6. 눈동자 색</h3>
+<label><input type="radio" name="eye" value="light"> 밝은 갈색</label>
+<label><input type="radio" name="eye" value="dark"> 진한 갈색</label>
+<label><input type="radio" name="eye" value="black"> 검정</label>
+</div>
+
+<div class="question">
+<h3>7. 머리카락 색</h3>
+<label><input type="radio" name="hair" value="light"> 밝음</label>
+<label><input type="radio" name="hair" value="dark"> 어두움</label>
+</div>
+
+<div class="question">
+<h3>8. 어울리는 액세서리 색</h3>
+<label><input type="radio" name="jewel" value="gold"> 금</label>
+<label><input type="radio" name="jewel" value="silver"> 은</label>
+</div>
+
+<button onclick="analyze()">결과 보기</button>
+
+<div class="result" id="resultBox">
+    <h2 id="title"></h2>
+    <p id="desc"></p>
+
+    <h3>추천 컬러</h3>
+    <div class="palette" id="palette"></div>
+
+    <h3>추천 화장품</h3>
+
+    <div class="product">
+        <strong>아이섀도우 팔레트</strong>
+        <p id="shadow"></p>
+    </div>
+
+    <div class="product">
+        <strong>쿠션 추천</strong>
+        <p id="cushion"></p>
+    </div>
+
+    <div class="product">
+        <strong>립 추천</strong>
+        <p id="lip"></p>
+    </div>
+</div>
+
+</div>
+
+<script>
+function analyze(){
+
+    const tone = document.querySelector('input[name="tone"]:checked')?.value;
+    const hair = document.querySelector('input[name="hair"]:checked')?.value;
+
+    if(!tone || !hair){
+        alert("모든 항목을 선택해주세요!");
+        return;
+    }
+
+    let result = "";
+    let desc = "";
+    let colors = [];
+    let shadow = "";
+    let cushion = "";
+    let lip = "";
+
+    if(tone === "warm" && hair === "light"){
+        result = "🌸 봄 웜톤";
+        desc = "화사하고 생기 있는 컬러가 잘 어울립니다!";
+        colors = ["#FFD54F","#FFB74D","#FF8A65","#FFF176"];
+        shadow = "코랄 피치 팔레트";
+        cushion = "옐로우 베이스 광채 쿠션";
+        lip = "코랄 오렌지 립";
+
+    }else if(tone === "warm" && hair === "dark"){
+        result = "🍂 가을 웜톤";
+        desc = "깊고 분위기 있는 컬러가 매력적입니다!";
+        colors = ["#8D6E63","#A1887F","#D2691E","#6D4C41"];
+        shadow = "브라운 음영 팔레트";
+        cushion = "세미매트 베이지 쿠션";
+        lip = "브릭 레드 립";
+
+    }else if(tone === "cool" && hair === "light"){
+        result = "❄️ 여름 쿨톤";
+        desc = "부드럽고 차분한 컬러가 잘 어울립니다!";
+        colors = ["#B39DDB","#90CAF9","#CE93D8","#B0BEC5"];
+        shadow = "뮤트 핑크 팔레트";
+        cushion = "핑크 베이스 촉촉 쿠션";
+        lip = "로즈 핑크 립";
+
+    }else{
+        result = "🌙 겨울 쿨톤";
+        desc = "선명하고 강렬한 컬러가 잘 어울립니다!";
+        colors = ["#000000","#3F51B5","#9C27B0","#FFFFFF"];
+        shadow = "쿨 스모키 팔레트";
+        cushion = "쿨 아이보리 매트 쿠션";
+        lip = "체리 레드 립";
+    }
+
+    document.getElementById("title").innerText = result;
+    document.getElementById("desc").innerText = desc;
+    document.getElementById("shadow").innerText = shadow;
+    document.getElementById("cushion").innerText = cushion;
+    document.getElementById("lip").innerText = lip;
+
+    const palette = document.getElementById("palette");
+    palette.innerHTML = "";
+
+    colors.forEach(c=>{
+        const div = document.createElement("div");
+        div.className = "color";
+        div.style.background = c;
+        palette.appendChild(div);
+    });
+
+    document.getElementById("resultBox").style.display = "block";
+}
+</script>
+
+</body>
+</html>

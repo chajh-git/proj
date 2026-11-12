@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>시험 장난치기</title>
+<style>
+:root{--bg:#f6f4ef;--card:#fff;--text:#222;--muted:#777;--accent:#d9480f;--ok:#2f9e44;--bad:#c92a2a;--line:#e3dfd6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b1a18;--card:#262522;--text:#eee;--muted:#999;--accent:#ff8c42;--ok:#51cf66;--bad:#ff6b6b;--line:#3a3834}}
+:root[data-theme="dark"]{--bg:#1b1a18;--card:#262522;--text:#eee;--muted:#999;--accent:#ff8c42;--ok:#51cf66;--bad:#ff6b6b;--line:#3a3834}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;line-height:1.5}
+main{max-width:640px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.5rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 16px;font-size:.9rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;transition:width .4s}
+#sus{background:var(--bad)} #score{background:var(--accent)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;text-align:left}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed;text-decoration:line-through}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent);text-align:center;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:460px){.grid{grid-template-columns:1fr}}
+.act small{display:block;color:var(--muted)}
+#log{max-height:140px;overflow-y:auto;font-size:.88rem;color:var(--muted)}
+.big{font-size:1.4rem;font-weight:800;margin:4px 0 8px}
+.win{color:var(--ok)} .lose{color:var(--bad)}
+#exam[hidden]{display:none}
+#exam{position:fixed;inset:0;z-index:11;background:rgba(15,14,12,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:#fff}
+#examEmoji{font-size:5rem;line-height:1.1;animation:bob 1s ease-in-out infinite}
+#examText{font-size:1.1rem;font-weight:700;min-height:1.6em}
+#examScoreLabel{font-size:.9rem;opacity:.7}
+#examScore{font-size:4.5rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;color:#ffd43b}
+#exam.done #examScore{color:var(--accent);animation:pop .5s ease-out}
+#examGoal{font-size:.9rem;opacity:.8;min-height:1.3em}
+#examBar{width:min(260px,70%);height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+#examBar>div{height:100%;width:0;background:var(--accent)}
+#scene{position:fixed;inset:0;z-index:10;background:rgba(15,14,12,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;color:#fff}
+#scene[hidden]{display:none}
+#sceneDay{font-size:.9rem;opacity:.7}
+#sceneEmoji{font-size:5.5rem;line-height:1.1;animation:pop .6s ease-out,bob 1.4s ease-in-out .6s infinite}
+#sceneText{font-size:1.15rem;font-weight:700;max-width:420px;white-space:pre-line}
+#scene.alert{background:rgba(60,10,10,.94)}
+#scene.gun #sceneBar{display:none}
+#scene.gun #sceneEmoji{font-size:7rem}
+#scene.flash{animation:flash .6s ease-out}
+@keyframes flash{0%{background:#fff}100%{background:rgba(60,10,10,.94)}}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-10px,6px)}40%{transform:translate(9px,-7px)}60%{transform:translate(-7px,-5px)}80%{transform:translate(6px,7px)}}
+#scene.shake #sceneEmoji{animation:shake .4s linear 2}
+#scene.alert #sceneDay{color:#ff8787;font-weight:800;font-size:1.2rem;opacity:1}
+#scene.alert #sceneBar>div{background:var(--bad)}
+#sceneBar{width:min(260px,70%);height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+#sceneBar>div{height:100%;width:0;background:var(--accent)}
+#scene.run #sceneBar>div{width:100%;transition:width 2s linear}
+@keyframes pop{0%{transform:scale(.2);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+</style>
+</head>
+<body>
+<main>
+  <h1>📝 시험 망치게 하기</h1>
+  <p class="sub">게임 속 가상의 장난 시뮬레이션입니다. 시험까지 10일, 하루에 한 가지 행동만, 같은 행동은 반복 불가! 가끔 방해꾼이 나타나 훼방을 놓아요.</p>
+
+  <div id="start" class="card">
+    <p><b>목표</b>: 시험 당일 들키지 않고, 상대의 예상 점수를 목표 점수 이하로 떨어뜨리기.<br>
+    들키면 <b class="lose">총 맞고 사망</b> 💀</p>
+    <p><b>난이도 선택</b></p>
+    <div class="grid" id="levels"></div>
+  </div>
+
+  <div id="game" hidden>
+    <div class="card">
+      <div class="row"><b id="lvname"></b><span id="day"></span></div>
+      <div class="row" style="margin-top:10px"><span>상대 예상 점수 <b id="scoreTxt"></b> (목표 <b id="goal"></b> 이하)</span></div>
+      <div class="bar"><div id="score"></div></div>
+      <div class="row" style="margin-top:10px"><span>의심도 <b id="susTxt"></b>%</span></div>
+      <div class="bar"><div id="sus"></div></div>
+    </div>
+    <div class="card"><b>오늘 할 행동을 고르세요</b><div class="grid" id="acts" style="margin-top:10px"></div></div>
+    <div class="card"><div id="log"></div></div>
+  </div>
+
+  <div id="scene" hidden>
+    <div id="sceneDay"></div>
+    <div id="sceneEmoji"></div>
+    <div id="sceneText"></div>
+    <div id="sceneBar"><div></div></div>
+  </div>
+
+  <div id="exam" hidden>
+    <div id="examDay">시험 당일</div>
+    <div id="examEmoji"></div>
+    <div id="examText"></div>
+    <div id="examScoreLabel">예상 점수</div>
+    <div id="examScore"></div>
+    <div id="examGoal"></div>
+    <div id="examBar"><div></div></div>
+  </div>
+
+  <div id="end" class="card" hidden>
+    <div id="endTitle" class="big"></div>
+    <p id="endMsg"></p>
+    <div class="grid">
+      <button class="primary" id="again">다시 하기</button>
+      <button class="primary" id="next" hidden>더 어려운 난이도 도전 ▶</button>
+    </div>
+  </div>
+</main>
+
+<script>
+// 알고리즘 데이터: 행동마다 (점수 하락, 의심도 증가)
+const ACTIONS=[
+ {n:"밤새 게임 같이하자고 톡 보내기",s:12,x:8},
+ {n:"교과서 위치 몰래 바꿔놓기",s:8,x:10},
+ {n:"'시험 범위 바뀌었대' 가짜 소문",s:18,x:25},
+ {n:"야식 쿠폰 선물하기 (졸음 유발)",s:10,x:4},
+ {n:"스터디카페에서 시끄럽게 떠들기",s:9,x:12},
+ {n:"알람시계를 10분 느리게 맞추기",s:14,x:18},
+ {n:"재밌는 웹툰 링크 보내기",s:7,x:3},
+ {n:"필기 노트 복사본에 오답 섞기",s:20,x:30},
+ {n:"간식 파티 열기",s:11,x:6},
+ {n:"'벌써 다 외웠어?' 불안 조성",s:13,x:9},
+ {n:"공부 방해 소음 틀기",s:10,x:15},
+ {n:"시치미 떼고 얌전히 지내기",s:0,x:-12},
+ {n:"공부 도와주는 척 질문 답해주기",s:-5,x:-12},
+ {n:"같이 도서관 가서 열공 모드",s:-7,x:-16},
+ {n:"요점정리 노트 진짜로 빌려주기",s:-9,x:-22}
+];
+const LEVELS=[
+ {name:"1단계 · 평범한 학생",base:75,goal:55,vig:1.0},
+ {name:"2단계 · 모범생",base:90,goal:65,vig:1.2},
+ {name:"3단계 · 전교 1등",base:98,goal:70,vig:1.5}
+];
+let lv=0,day=1,score=0,sus=0,used=[];
+const $=id=>document.getElementById(id);
+const clamp=v=>Math.max(0,Math.min(100,v)); // 점수·의심도는 0~100 사이로 제한
+
+function show(id){["start","game","end"].forEach(i=>$(i).hidden=i!==id)}
+function log(t){const d=document.createElement("div");d.textContent=t;$("log").prepend(d)}
+
+function init(){
+  $("levels").innerHTML="";
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement("button");
+    b.innerHTML=`<b>${L.name}</b><small style="color:var(--muted)">점수 ${L.base} → 목표 ${L.goal} 이하</small>`;
+    b.onclick=()=>begin(i);
+    $("levels").appendChild(b);
+  });
+  show("start");
+}
+
+function begin(i){
+  lv=i;day=1;score=LEVELS[i].base;sus=0;used=[];$("log").innerHTML="";
+  
+("lvname").textContent=LEVELS[i].name;("goal").textContent=LEVELS[i].goal;
+  log("시험까지 10일. 시작!");
+  draw();show("game");
+}
+
+function draw(){
+  ("day").textContent=day<=10?`D-{11-day} (${day}/10일차)`:"시험 당일!";
+  $("scoreTxt").textContent=Math.round(score);
+  $("score").style.width=Math.max(0,Math.min(100,score))+"%";
+  $("susTxt").textContent=Math.round(sus);
+  $("sus").style.width=Math.min(100,sus)+"%";
+  $("acts").innerHTML="";
+  ACTIONS.forEach((a,i)=>{
+    const b=document.createElement("button");
+    b.className="act";b.disabled=used.includes(i);
+    b.innerHTML=`a.n<small>{a.s>0?"점수 -"+a.s+" · ":a.s<0?"점수 +"+(-a.s)+" · ":""}의심 a.x>0?"+":""{a.x}</small>`;
+    b.onclick=()=>act(i);
+    $("acts").appendChild(b);
+  });
+}
+
+// 행동별 장면 (ACTIONS와 같은 순서)
+const SCENES=[
+ ["📱🎮","새벽 2시, '한 판만 더?' 톡을 보냈다…"],
+ ["📚🔀","교과서를 책장 맨 아래 칸으로 슬쩍…"],
+ ["🗣️❓","\"시험 범위 바뀌었대~\" 소문이 퍼진다…"],
+ ["🍗😴","야식 쿠폰을 받은 친구, 졸음이 쏟아진다…"],
+ ["☕📣","스터디카페가 갑자기 시끌벅적해졌다!"],
+ ["⏰🐢","알람시계가 10분 느리게 맞춰졌다…"],
+ ["📱😂","웹툰 링크 하나에 한 시간이 순삭…"],
+ ["📝❌","노트 사이에 오답이 슬쩍 섞였다…"],
+ ["🎉🍕","간식 파티가 열렸다! 공부는 내일부터…"],
+ ["😰💭","\"벌써 다 외웠어?\" 불안이 번져간다…"],
+ ["🔊🎵","공부방에 시끄러운 음악이 울려 퍼진다…"],
+ ["😇🤫","아무 일 없었다는 듯 얌전히 앉아 있다…"],
+ ["🙋💡","질문에 친절하게 답해주는 척했다…"],
+ ["🏛️🔥","도서관에서 같이 열공 모드!"],
+ ["🤝📒","요점정리 노트를 진짜로 빌려줬다…"]
+];
+let busy=false;
+function act(i){
+  if(busy)return;
+  busy=true;getCtx(); // 클릭 시점에 오디오 잠금 해제
+  const sc=$("scene");
+  ("sceneDay").textContent=`{day}일차`;
+  $("sceneEmoji").textContent=SCENES[i][0];
+  $("sceneText").textContent=SCENES[i][1];
+  sc.classList.remove("run","alert");sc.hidden=false;
+  void sc.offsetWidth;sc.classList.add("run");
+  setTimeout(()=>{sc.hidden=true;sc.classList.remove("run");busy=false;applyAct(i)},2000);
+}
+function applyAct(i){
+  const a=ACTIONS[i];used.push(i);
+  // 효과에 약간의 랜덤(±2)을 줌
+  const mag=Math.abs(a.s);
+  const v=mag?Math.max(1,mag+Math.floor(Math.random()*5)-2):0;
+  const dmg=a.s<0?-v:v; // 음수면 상대 점수가 오름
+  const before=score,sBefore=sus;
+  score=clamp(score-dmg);sus=clamp(sus+a.x);
+  const real=before-score,sReal=sus-sBefore; // 제한이 적용된 실제 변화량
+  log(`${day}일차: ${a.n} → ${real>0?"점수 -"+real+", ":real<0?"점수 +"+(-real)+", ":""}의심 sReal>0?"+":""{sReal}`);
+  day++;
+  if(day<=10)draw();
+  const after=()=>{if(day>10)exam();else draw()};
+  if(Math.random()<EVENT_CHANCE[lv])interrupt(after);else after();
+}
+
+// 방해꾼: 점수 s(양수=상대 점수 상승), 의심도 x
+const EVENT_CHANCE=[0.3,0.4,0.5]; // 난이도별 등장 확률
+const INTERRUPTERS=[
+ {e:"🧑‍🏫🔍",t:"눈치 빠른 담임선생님이 수상한 듯 쳐다본다…",s:0,x:12},
+ {e:"👧📖",t:"반장이 상대에게 요점정리를 알려준다!",s:8,x:0},
+ {e:"👩‍👧📵",t:"상대의 엄마가 \"공부해야지!\" 하며 게임기를 압수했다!",s:10,x:0},
+ {e:"🕵️❗",t:"눈치 빠른 친구가 \"너 요즘 이상해?\" 하고 캐묻는다…",s:0,x:15},
+ {e:"🧑‍🏫📚",t:"학원 선생님이 갑자기 보충수업을 열었다!",s:12,x:0},
+ {e:"👨‍👦💪",t:"상대의 아빠가 \"오늘은 아빠랑 같이 공부하자!\"",s:9,x:4}
+];
+let lastEvt=-1;
+function playAlert(){
+  try{
+    const ctx=getCtx(),t=ctx.currentTime;
+    [0,0.18].forEach(s=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type="square";o.frequency.value=880;
+      g.gain.setValueAtTime(0.0001,t+s);
+      g.gain.exponentialRampToValueAtTime(0.15,t+s+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+s+0.14);
+      o.connect(g);g.connect(ctx.destination);o.start(t+s);o.stop(t+s+0.16);
+    });
+  }catch(e){}
+}
+function interrupt(cb){
+  let k;do{k=Math.floor(Math.random()*INTERRUPTERS.length)}while(k===lastEvt);
+  lastEvt=k;
+  const ev=INTERRUPTERS[k],sc=$("scene");
+  busy=true;playAlert();
+  const fx=[ev.s?`상대 점수 +ev.s`:"",ev.x?`의심도+{ev.x}`:""].filter(Boolean).join(" · ");
+  $("sceneDay").textContent="⚠️ 방해꾼 등장!";
+  $("sceneEmoji").textContent=ev.e;
+  $("sceneText").textContent=ev.t+"\n("+fx+")";
+  sc.classList.remove("run");sc.classList.add("alert");sc.hidden=false;
+  void sc.offsetWidth;sc.classList.add("run");
+  setTimeout(()=>{
+    sc.hidden=true;sc.classList.remove("run","alert");busy=false;
+    score=clamp(score+ev.s);sus=clamp(sus+ev.x);
+    log(`⚠️ 방해꾼: ev.t({fx})`);
+    cb();
+  },2000);
+}
+
+// 오디오 컨텍스트는 한 번만 만들고 재사용 (클릭 때 미리 깨워 둠)
+let AUDIO=null;
+function getCtx(){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AUDIO)AUDIO=new AC();
+  if(AUDIO.state==="suspended")AUDIO.resume();
+  return AUDIO;
+}
+
+// 총소리: 외부 파일 없이 Web Audio로 직접 합성 (노이즈 폭발음 + 저음 쿵)
+function playGunshot(){
+  try{
+    const ctx=getCtx();
+    const t=ctx.currentTime,len=0.6;
+    const buf=ctx.createBuffer(1,ctx.sampleRate*len,ctx.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3);
+    const noise=ctx.createBufferSource();noise.buffer=buf;
+    const lp=ctx.createBiquadFilter();lp.type="lowpass";
+    lp.frequency.setValueAtTime(6000,t);lp.frequency.exponentialRampToValueAtTime(300,t+len);
+    const ng=ctx.createGain();ng.gain.setValueAtTime(1,t);ng.gain.exponentialRampToValueAtTime(0.001,t+len);
+    noise.connect(lp);lp.connect(ng);ng.connect(ctx.destination);noise.start(t);
+    const osc=ctx.createOscillator();osc.type="sine";
+    osc.frequency.setValueAtTime(160,t);osc.frequency.exponentialRampToValueAtTime(35,t+0.25);
+    const og=ctx.createGain();og.gain.setValueAtTime(0.9,t);og.gain.exponentialRampToValueAtTime(0.001,t+0.3);
+    osc.connect(og);og.connect(ctx.destination);osc.start(t);osc.stop(t+0.35);
+  }catch(e){}
+}
+
+// 성공 사운드: 밝은 팡파르 (도-미-솔-높은도 아르페지오 + 마지막 화음)
+function playSuccess(){
+  try{
+    const ctx=getCtx();
+    const t0=ctx.currentTime;
+    const tone=(freq,start,dur,vol)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type="triangle";o.frequency.value=freq;
+      g.gain.setValueAtTime(0.0001,t0+start);
+      g.gain.exponentialRampToValueAtTime(vol,t0+start+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+start+dur);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(t0+start);o.stop(t0+start+dur+0.05);
+    };
+    [523.25,659.25,783.99].forEach((f,i)=>tone(f,i*0.12,0.25,0.35));
+    [523.25,659.25,783.99,1046.5].forEach(f=>tone(f,0.4,0.9,0.22));
+  }catch(e){}
+}
+
+// 시험 당일: 점수가 오르락내리락하다가 최종 점수로 수렴한 뒤 결과 화면으로
+function exam(){
+  const base=LEVELS[lv].base;
+  score=Math.max(0,Math.min(100,Math.round(score)));
+  const fin=score,ov=$("exam");
+  const STAGES=[["📝✏️","시험 시작! 문제를 읽는 중…"],["🤔💦","어려운 문제에서 막혔다…"],["😅⏳","시간이 얼마 안 남았다!"],["🔔📄","종료! 답안지를 제출한다…"]];
+  $("examGoal").textContent=`목표 ${LEVELS[lv].goal}점 이하`;
+  $("examScoreLabel").textContent="예상 점수";
+  $("examScore").textContent=base;
+  ov.classList.remove("done");ov.hidden=false;
+  const T=4000,start=performance.now();
+  const timer=setInterval(()=>{
+    const p=Math.min(1,(performance.now()-start)/T);
+    const amp=30*(1-p)*(1-p);
+    const jitter=(Math.sin(p*40)*0.6+(Math.random()-0.5)*0.8)*amp;
+    const val=Math.max(0,Math.min(100,Math.round(base+(fin-base)*p+jitter)));
+    const st=STAGES[Math.min(3,Math.floor(p*4))];
+    ("examEmoji").textContent=st[0];("examText").textContent=st[1];
+    $("examScore").textContent=val;
+    $("examBar").firstElementChild.style.width=(p*100)+"%";
+    if(p>=1){
+      clearInterval(timer);
+      $("examScore").textContent=fin;
+      $("examEmoji").textContent="🏁";
+      $("examText").textContent="시험 끝!";
+      $("examScoreLabel").textContent="최종 점수";
+      ov.classList.add("done");
+      setTimeout(()=>{ov.hidden=true;showResult()},2000);
+    }
+  },90);
+}
+
+// 총 장전 사운드: 금속 "철컥" 소리를 세 번 (탄창 → 슬라이드 뒤로 → 앞으로)
+function metalClick(ctx,t,freq,vol){
+  const n=Math.floor(ctx.sampleRate*0.06);
+  const buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,4);
+  const src=ctx.createBufferSource();src.buffer=buf;
+  const bp=ctx.createBiquadFilter();bp.type="bandpass";bp.frequency.value=freq;bp.Q.value=2;
+  const g=ctx.createGain();g.gain.value=vol;
+  src.connect(bp);bp.connect(g);g.connect(ctx.destination);src.start(t);
+  const o=ctx.createOscillator(),og=ctx.createGain();
+  o.type="square";o.frequency.setValueAtTime(freq/2,t);
+  og.gain.setValueAtTime(vol*0.15,t);og.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+  o.connect(og);og.connect(ctx.destination);o.start(t);o.stop(t+0.06);
+}
+function playReload(){
+  try{
+    const ctx=getCtx(),t=ctx.currentTime;
+    metalClick(ctx,t,2200,1.2);
+    metalClick(ctx,t+0.28,3000,1.6);
+    metalClick(ctx,t+0.62,1800,2.0);
+  }catch(e){}
+}
+
+// 글록 17 스타일 권총 일러스트 (SVG). fire=true면 총구 화염 표시
+function glockSVG(fire){
+  return `<svg viewBox="0 0 310 180" width="300" style="max-width:80vw;height:auto" xmlns="http://www.w3.org/2000/svg" aria-label="글록 17">
+  <g stroke="#0f1115" stroke-width="2" stroke-linejoin="round">
+    <path d="M62 76 H238 V88 H198 V96 Q196 112 178 112 H150 Q140 112 138 100 L134 90 H122 L100 164 H48 Z" fill="#5b6472"/>
+    <rect x="46" y="160" width="56" height="9" rx="2" fill="#374151"/>
+    <rect x="40" y="40" width="200" height="38" rx="5" fill="#8a93a0"/>
+    <rect x="240" y="52" width="9" height="13" rx="2" fill="#4b5563"/>
+    <rect x="46" y="33" width="16" height="8" rx="1" fill="#374151"/>
+    <rect x="222" y="33" width="9" height="8" rx="1" fill="#374151"/>
+    <rect x="118" y="46" width="44" height="12" rx="2" fill="#1f2937"/>
+    <path d="M155 92 Q166 96 162 112" fill="none" stroke="#9ca3af" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g stroke="#1f2937" stroke-width="2">
+    <line x1="52" y1="46" x2="52" y2="72"/><line x1="58" y1="46" x2="58" y2="72"/>
+    <line x1="64" y1="46" x2="64" y2="72"/><line x1="70" y1="46" x2="70" y2="72"/>
+    <line x1="76" y1="46" x2="76" y2="72"/>
+  </g>
+  <g fill="#3f4753"><circle cx="72" cy="104" r="2.5"/><circle cx="84" cy="104" r="2.5"/><circle cx="96" cy="104" r="2.5"/>
+    <circle cx="68" cy="122" r="2.5"/><circle cx="80" cy="122" r="2.5"/><circle cx="92" cy="122" r="2.5"/>
+    <circle cx="64" cy="140" r="2.5"/><circle cx="76" cy="140" r="2.5"/><circle cx="88" cy="140" r="2.5"/></g>
+  <text x="168" y="70" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="11" fill="#1f2937">GLOCK 17</text>
+  ${fire?`<polygon points="250,58 280,38 272,56 308,58 272,66 284,84 250,66" fill="#ffd43b"/><polygon points="250,59 270,50 266,58 286,59 266,64 272,72 250,65" fill="#fff"/>`:""}
+  </svg>`;
+}
+
+// 들켰을 때 장면: 글록 17을 꺼냄 → 장전 소리 → 잠깐의 정적 → 발사
+function gunSequence(done){
+  const sc=$("scene");
+  busy=true;playAlert();
+  $("sceneDay").textContent="🚨 부정행위 발각!";
+  $("sceneEmoji").innerHTML=glockSVG(false);
+  $("sceneText").textContent="경호원이 글록 17을 꺼낸다…";
+  sc.className="alert gun";sc.hidden=false;
+  setTimeout(()=>{playReload();$("sceneText").textContent="글록 17 장전… 철컥! 철컥!";},500);
+  setTimeout(()=>{$("sceneText").textContent="…";},1500);
+  setTimeout(()=>{
+    playGunshot();
+    $("sceneEmoji").innerHTML=glockSVG(true);
+    $("sceneText").textContent="탕!!!";
+    sc.classList.add("flash","shake");
+  },2200);
+  setTimeout(()=>{sc.hidden=true;sc.className="";busy=false;done()},3400);
+}
+
+function showResult(){
+  const chance=Math.min(95,sus*LEVELS[lv].vig);
+  const roll=Math.random()*100;
+  $("next").hidden=true;
+  if(roll<chance){
+    gunSequence(()=>{
+    show("end");
+    $("endTitle").innerHTML='<span class="lose">💀 총 맞고 사망</span>';
+    $("endMsg").textContent=`부정행위 발각! 글록 17에 맞았다… (들킬 확률 ${Math.round(chance)}%) 다음엔 더 조용히 움직여 보자.`;
+    });
+    return;
+  }
+  show("end");
+  if(score<=LEVELS[lv].goal){
+    playSuccess();
+    $("endTitle").innerHTML='<span class="win">🎉 성공! 안 들키고 망쳤다</span>';
+    $("endMsg").textContent=`상대 점수 ${Math.round(score)}점 (목표 ${LEVELS[lv].goal}점 이하). 들킬 확률은 ${Math.round(chance)}%였다.`;
+    if(lv<LEVELS.length-1)$("next").hidden=false;
+    else $("endMsg").textContent+=" 모든 난이도 클리어!";
+  }else{
+    $("endTitle").innerHTML='<span class="lose">😅 안 들켰지만 실패</span>';
+    $("endMsg").textContent=`상대 점수가 Math.round(score)점으로목표({LEVELS[lv].goal}점 이하)에 못 미쳤다.`;
+  }
+}
+
+$("again").onclick=()=>begin(lv);
+$("next").onclick=()=>begin(lv+1);
+init();
+</script>
+</body>
+</html>

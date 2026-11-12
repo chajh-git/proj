@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>미끄러운 바닥 탈출</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    overflow:hidden;
+    background:#111827;
+    font-family:sans-serif;
+}
+
+canvas{
+    display:block;
+    image-rendering:pixelated;
+}
+
+.screen{
+
+    position:absolute;
+    inset:0;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    background:rgba(0,0,0,0.78);
+
+    color:white;
+
+    z-index:10;
+
+    text-align:center;
+}
+
+.title{
+
+    font-size:72px;
+
+    color:#fde68a;
+
+    text-shadow:6px 6px #000;
+
+    margin-bottom:25px;
+}
+
+.desc{
+
+    font-size:24px;
+
+    line-height:1.8;
+
+    max-width:900px;
+}
+
+button{
+
+    margin-top:40px;
+
+    padding:18px 44px;
+
+    font-size:28px;
+
+    border:none;
+
+    border-radius:14px;
+
+    background:#38bdf8;
+
+    color:white;
+
+    font-weight:bold;
+
+    cursor:pointer;
+
+    box-shadow:0 7px 0 #0284c7;
+}
+
+button:hover{
+
+    transform:translateY(2px);
+}
+
+.rank{
+
+    margin-top:20px;
+
+    font-size:26px;
+
+    color:#93c5fd;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="startScreen" class="screen">
+
+    <div class="title">미끄러운 바닥 탈출</div>
+
+    <div class="desc">
+
+        물이 가득 고인 학교 복도.<br>
+        학생은 멈출 수 없이 미끄러진다.<br><br>
+
+        장애물을 피하며 최대한 멀리 가자!<br><br>
+
+        ← → 방향키 이동<br><br>
+
+        학생 = 체력 감소<br>
+        공책 = 느려짐<br>
+        바나나 = 크게 미끄러짐<br>
+        선생님 = 즉시 게임오버
+
+    </div>
+
+    <div class="rank" id="bestScoreText"></div>
+
+    <button onclick="startGame()">PLAY</button>
+
+</div>
+
+<div id="resultScreen" class="screen" style="display:none">
+
+    <div class="title" id="resultText"></div>
+
+    <div class="rank" id="scoreText"></div>
+
+    <button onclick="restartGame()">다시하기</button>
+
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+
+function resize(){
+
+    canvas.width=window.innerWidth;
+    canvas.height=window.innerHeight;
+}
+
+resize();
+
+window.addEventListener("resize",resize);
+
+let gameRunning=false;
+
+let timer=150;
+
+let distance=0;
+
+let score=0;
+
+let bestScore=localStorage.getItem("bestScore") || 0;
+
+let keys={};
+
+let player;
+
+let puddles=[];
+
+let obstacles=[];
+
+let corridorX=0;
+
+const corridorWidth=620;
+
+let roadOffset=0;
+
+let lastTime=0;
+
+document.getElementById("bestScoreText").innerText =
+"최고 기록 : "+bestScore+"m";
+
+document.addEventListener("keydown",e=>{
+    keys[e.key]=true;
+});
+
+document.addEventListener("keyup",e=>{
+    keys[e.key]=false;
+});
+
+function setup(){
+
+    corridorX=(canvas.width-corridorWidth)/2;
+
+    player={
+
+        x:canvas.width/2-20,
+        y:canvas.height-170,
+
+        width:44,
+        height:58,
+
+        hp:100,
+
+        speed:6,
+
+        slideVel:0,
+
+        wobble:0,
+
+        slowTimer:0,
+
+        bananaTimer:0
+    };
+
+    puddles=[];
+
+    for(let i=0;i<30;i++){
+
+        puddles.push({
+
+            x:corridorX+50+Math.random()*520,
+
+            y:Math.random()*canvas.height,
+
+            w:60+Math.random()*90,
+
+            h:14+Math.random()*18
+        });
+    }
+
+    obstacles=[];
+}
+
+function startGame(){
+
+    document.getElementById("startScreen").style.display="none";
+
+    document.getElementById("resultScreen").style.display="none";
+
+    timer=150;
+
+    distance=0;
+
+    score=0;
+
+    setup();
+
+    gameRunning=true;
+
+    requestAnimationFrame(gameLoop);
+}
+
+function restartGame(){
+
+    startGame();
+}
+
+function gameOver(text){
+
+    gameRunning=false;
+
+    if(score>bestScore){
+
+        bestScore=score;
+
+        localStorage.setItem("bestScore",bestScore);
+    }
+
+    document.getElementById("resultScreen").style.display="flex";
+
+    document.getElementById("resultText").innerHTML=text;
+
+    document.getElementById("scoreText").innerHTML=
+    "기록 : "+score+"m<br><br>"+
+    "최고 기록 : "+bestScore+"m";
+}
+
+function createObstacle(){
+
+    const types=[
+        "student",
+        "banana",
+        "teacher",
+        "notebook"
+    ];
+
+    const type=types[Math.floor(Math.random()*types.length)];
+
+    obstacles.push({
+
+        type,
+
+        x:corridorX+40+Math.random()*500,
+
+        y:-120,
+
+        width:44,
+        height:44
+    });
+}
+
+function hit(a,b){
+
+    return(
+
+        a.x<b.x+b.width &&
+        a.x+a.width>b.x &&
+        a.y<b.y+b.height &&
+        a.y+a.height>b.y
+    );
+}
+
+function update(delta){
+
+    timer-=delta/1000;
+
+    if(timer<=0){
+
+        gameOver("시간 초과!");
+    }
+
+    if(player.hp<=0){
+
+        gameOver("체력이 모두 소진되었습니다!");
+    }
+
+    // 난이도 증가
+
+    const difficultySpeed=distance/5000;
+
+    player.slideVel+=0.012;
+
+    player.slideVel=Math.min(player.slideVel,2);
+
+    player.slideVel*=0.992;
+
+    const currentSpeed=
+        4.5+
+        player.slideVel+
+        difficultySpeed;
+
+    roadOffset+=currentSpeed;
+
+    distance+=currentSpeed;
+
+    score=Math.floor(distance/10);
+
+    let moveSpeed=player.speed;
+
+    if(player.slowTimer>0){
+
+        player.slowTimer-=delta;
+
+        moveSpeed=3;
+    }
+
+    if(player.bananaTimer>0){
+
+        player.bananaTimer-=delta;
+
+        player.wobble+=0.35;
+
+        player.x+=Math.sin(player.wobble)*9;
+    }
+
+    if(keys["ArrowLeft"]){
+
+        player.x-=moveSpeed;
+    }
+
+    if(keys["ArrowRight"]){
+
+        player.x+=moveSpeed;
+    }
+
+    player.x=Math.max(
+        corridorX+20,
+        Math.min(
+            corridorX+corridorWidth-player.width-20,
+            player.x
+        )
+    );
+
+    puddles.forEach(p=>{
+
+        p.y+=currentSpeed;
+
+        if(p.y>canvas.height+60){
+
+            p.y=-100;
+
+            p.x=corridorX+50+Math.random()*520;
+        }
+    });
+
+    if(Math.random()<0.085){
+
+        createObstacle();
+    }
+
+    obstacles.forEach(o=>{
+
+        o.y+=currentSpeed+1.4;
+
+        if(hit(player,o)){
+
+            // 학생
+
+            if(o.type==="student"){
+
+                player.hp-=15;
+
+                player.x+=player.x<o.x?-60:60;
+            }
+
+            // 바나나
+
+            if(o.type==="banana"){
+
+                player.bananaTimer=2500;
+
+                player.slideVel+=1;
+            }
+
+            // 공책
+
+            if(o.type==="notebook"){
+
+                player.slowTimer=2200;
+            }
+
+            // 선생님
+
+            if(o.type==="teacher"){
+
+                gameOver("선생님에게 걸렸다!");
+            }
+
+            o.y=canvas.height+500;
+        }
+    });
+
+    obstacles=obstacles.filter(o=>o.y<canvas.height+200);
+}
+
+function draw(){
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    drawBackground();
+
+    puddles.forEach(drawPuddle);
+
+    obstacles.forEach(drawObstacle);
+
+    drawPlayer();
+
+    drawUI();
+}
+
+function drawBackground(){
+
+    // 어두운 외부
+
+    ctx.fillStyle="#2a3447";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // 복도 바닥
+
+    let grad=ctx.createLinearGradient(
+        0,
+        0,
+        0,
+        canvas.height
+    );
+
+    grad.addColorStop(0,"#8b7d74");
+    grad.addColorStop(0.5,"#c2b6a8");
+    grad.addColorStop(1,"#75665d");
+
+    ctx.fillStyle=grad;
+
+    ctx.fillRect(
+        corridorX,
+        0,
+        corridorWidth,
+        canvas.height
+    );
+
+    // 햇빛 반사
+
+    for(
+        let y=-300+(roadOffset%300);
+        y<canvas.height;
+        y+=300
+    ){
+
+        ctx.fillStyle="rgba(255,240,180,0.18)";
+
+        ctx.beginPath();
+
+        ctx.moveTo(corridorX+350,y);
+        ctx.lineTo(corridorX+540,y);
+        ctx.lineTo(corridorX+480,y+260);
+        ctx.lineTo(corridorX+290,y+260);
+
+        ctx.fill();
+    }
+
+    // 창문
+
+    for(
+        let y=-140+(roadOffset%140);
+        y<canvas.height;
+        y+=140
+    ){
+
+        drawWindow(corridorX+540,y);
+
+        drawClassroom(corridorX-140,y);
+    }
+}
+
+function drawWindow(x,y){
+
+    ctx.fillStyle="#6b7280";
+    ctx.fillRect(x,y,90,120);
+
+    ctx.fillStyle="#fef3c7";
+
+    ctx.fillRect(x+6,y+6,78,108);
+
+    ctx.strokeStyle="rgba(255,255,255,0.3)";
+
+    for(let i=0;i<3;i++){
+
+        ctx.beginPath();
+
+        ctx.moveTo(x+25*i,y);
+
+        ctx.lineTo(x+25*i,y+120);
+
+        ctx.stroke();
+    }
+}
+
+function drawClassroom(x,y){
+
+    ctx.fillStyle="#6b4f3a";
+    ctx.fillRect(x,y,120,120);
+
+    ctx.fillStyle="#3f2a1d";
+    ctx.fillRect(x+32,y+20,56,72);
+
+    ctx.fillStyle="#8ecae6";
+    ctx.fillRect(x+45,y+34,30,20);
+}
+
+function drawPuddle(p){
+
+    ctx.fillStyle="rgba(56,189,248,0.42)";
+
+    ctx.beginPath();
+
+    ctx.ellipse(
+        p.x,
+        p.y,
+        p.w,
+        p.h,
+        0,
+        0,
+        Math.PI*2
+    );
+
+    ctx.fill();
+
+    // 반사광
+
+    ctx.fillStyle="rgba(255,255,255,0.18)";
+
+    ctx.fillRect(
+        p.x-p.w/3,
+        p.y-3,
+        p.w/2,
+        3
+    );
+}
+
+function drawPlayer(){
+
+    const x=player.x;
+
+    const y=player.y+
+        Math.sin(Date.now()/90)*2;
+
+    ctx.fillStyle="rgba(0,0,0,0.25)";
+    ctx.fillRect(x+8,y+55,28,5);
+
+    // 얼굴
+
+    ctx.fillStyle="#f1c7a5";
+    ctx.fillRect(x+10,y,22,18);
+
+    // 머리
+
+    ctx.fillStyle="#2d1b12";
+    ctx.fillRect(x+8,y,26,7);
+
+    // 눈
+
+    ctx.fillStyle="#111";
+
+    ctx.fillRect(x+15,y+8,2,2);
+    ctx.fillRect(x+25,y+8,2,2);
+
+    // 입
+
+    ctx.fillStyle="#991b1b";
+    ctx.fillRect(x+18,y+13,5,2);
+
+    // 교복
+
+    ctx.fillStyle="#6b4a34";
+    ctx.fillRect(x+8,y+18,26,26);
+
+    // 셔츠
+
+    ctx.fillStyle="#f8fafc";
+    ctx.fillRect(x+15,y+18,12,10);
+
+    // 다리
+
+    ctx.fillStyle="#1e293b";
+
+    ctx.fillRect(x+11,y+44,8,14);
+    ctx.fillRect(x+23,y+44,8,14);
+}
+
+function drawObstacle(o){
+
+    const x=o.x;
+    const y=o.y;
+
+    // 학생
+
+    if(o.type==="student"){
+
+        ctx.fillStyle="#f1c7a5";
+        ctx.fillRect(x+10,y,20,16);
+
+        ctx.fillStyle="#1f2937";
+        ctx.fillRect(x+8,y,24,6);
+
+        ctx.fillStyle="#2563eb";
+        ctx.fillRect(x+6,y+16,28,18);
+
+        ctx.fillStyle="#dbeafe";
+        ctx.fillRect(x+14,y+16,12,7);
+
+        ctx.fillStyle="#111";
+
+        ctx.fillRect(x+15,y+7,2,2);
+        ctx.fillRect(x+23,y+7,2,2);
+    }
+
+    // 바나나 픽셀아트
+
+    if(o.type==="banana"){
+
+        ctx.fillStyle="#facc15";
+
+        ctx.beginPath();
+
+        ctx.moveTo(x+6,y+28);
+        ctx.lineTo(x+16,y+14);
+        ctx.lineTo(x+28,y+8);
+        ctx.lineTo(x+36,y+16);
+        ctx.lineTo(x+24,y+30);
+        ctx.lineTo(x+10,y+34);
+
+        ctx.fill();
+
+        ctx.fillStyle="#84cc16";
+        ctx.fillRect(x+30,y+6,4,6);
+    }
+
+    // 공책
+
+    if(o.type==="notebook"){
+
+        ctx.fillStyle="#f8fafc";
+        ctx.fillRect(x+5,y+5,30,36);
+
+        ctx.strokeStyle="#94a3b8";
+
+        for(let i=0;i<5;i++){
+
+            ctx.beginPath();
+
+            ctx.moveTo(x+8,y+12+i*5);
+            ctx.lineTo(x+30,y+12+i*5);
+
+            ctx.stroke();
+        }
+    }
+
+    // 선생님
+
+    if(o.type==="teacher"){
+
+        ctx.fillStyle="#f1c7a5";
+        ctx.fillRect(x+10,y,20,18);
+
+        ctx.fillStyle="#111827";
+        ctx.fillRect(x+8,y,24,7);
+
+        // 안경
+
+        ctx.strokeStyle="#111";
+
+        ctx.strokeRect(x+11,y+7,6,5);
+        ctx.strokeRect(x+21,y+7,6,5);
+
+        ctx.beginPath();
+
+        ctx.moveTo(x+17,y+9);
+        ctx.lineTo(x+21,y+9);
+
+        ctx.stroke();
+
+        ctx.fillStyle="#374151";
+        ctx.fillRect(x+7,y+18,28,22);
+
+        // 책
+
+        ctx.fillStyle="#dc2626";
+        ctx.fillRect(x+18,y+24,12,10);
+    }
+}
+
+function drawUI(){
+
+    ctx.fillStyle="rgba(0,0,0,0.42)";
+    ctx.fillRect(0,0,canvas.width,60);
+
+    ctx.fillStyle="white";
+
+    ctx.font="22px Arial";
+
+    // 시간
+
+    ctx.fillText(
+        "시간 : "+Math.ceil(timer),
+        25,
+        38
+    );
+
+    // 점수
+
+    ctx.fillText(
+        "점수 : "+score+"m",
+        canvas.width/2-70,
+        38
+    );
+
+    // 체력
+
+    ctx.fillText(
+        "체력",
+        canvas.width-190,
+        24
+    );
+
+    ctx.fillStyle="#7f1d1d";
+
+    ctx.fillRect(
+        canvas.width-190,
+        32,
+        140,
+        16
+    );
+
+    ctx.fillStyle="#22c55e";
+
+    ctx.fillRect(
+        canvas.width-190,
+        32,
+        player.hp*1.4,
+        16
+    );
+
+    ctx.strokeStyle="white";
+
+    ctx.strokeRect(
+        canvas.width-190,
+        32,
+        140,
+        16
+    );
+}
+
+function gameLoop(timestamp){
+
+    if(!gameRunning)return;
+
+    let delta=timestamp-lastTime;
+
+    lastTime=timestamp;
+
+    update(delta);
+
+    draw();
+
+    requestAnimationFrame(gameLoop);
+}
+
+</script>
+
+</body>
+</html>

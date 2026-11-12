@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>ARAM 듀얼 프로토타입</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0a0f24;color:#fff;user-select:none;
+  font-family:'Pretendard','Noto Sans KR','Malgun Gothic',system-ui,sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+#ui{pointer-events:none}
+#top{position:fixed;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
+.panel{width:250px;background:rgba(10,16,38,.72);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+.panel .nm{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;font-weight:600}
+.bar{position:relative;height:12px;background:rgba(0,0,0,.55);border-radius:6px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:6px}
+.bar b{position:absolute;inset:0;font-size:10px;line-height:12px;text-align:center;font-weight:600;text-shadow:0 0 3px #000}
+.hp i{background:linear-gradient(#5be37d,#2fb457)}
+.panel.right .hp i{background:linear-gradient(#ff8080,#d63a3a)}
+.mp i{background:linear-gradient(#6fb6ff,#2f6fe0)}
+.xp i{background:linear-gradient(#e6c35a,#b8902a)}
+#center{text-align:center;text-shadow:0 2px 6px #000}
+#score{font-size:34px;font-weight:800;letter-spacing:4px}
+#timer{font-size:16px;opacity:.9}
+#timer.warn{color:#ff7070}
+#roundlbl{font-size:12px;opacity:.7;letter-spacing:2px}
+#bottom{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+#skills{display:flex;gap:10px}
+.skill{position:relative;width:66px;height:66px;border-radius:10px;background:rgba(10,16,38,.82);border:2px solid rgba(255,255,255,.25);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.skill .k{position:absolute;top:3px;left:6px;font-size:13px;font-weight:800;color:#ffd96a}
+.skill .n{font-size:11px;margin-top:10px;text-align:center;line-height:1.2;padding:0 2px}
+.skill .cdov{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(0,0,0,.7)}
+.skill .cdt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;text-shadow:0 0 4px #000}
+.skill.nomana{border-color:#3b6bd6}
+.skill.locked{opacity:.5}
+#bars{width:300px;display:flex;flex-direction:column;gap:3px}
+#hint{position:fixed;right:14px;bottom:14px;font-size:12px;line-height:1.7;opacity:.75;text-align:right;
+  background:rgba(10,16,38,.6);padding:8px 12px;border-radius:8px;pointer-events:none}
+#msg{position:fixed;top:26%;left:0;right:0;text-align:center;font-size:58px;font-weight:800;
+  text-shadow:0 3px 12px #000;pointer-events:none;display:none}
+#msg small{display:block;font-size:20px;font-weight:500;opacity:.85;margin-top:6px}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,8,20,.75);z-index:10}
+#overlay .card{width:min(460px,90vw);background:#121a3a;border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:28px 30px;text-align:center}
+#overlay h1{font-size:26px;margin-bottom:6px}
+#overlay p{font-size:14px;opacity:.85;line-height:1.7;margin:6px 0}
+#overlay ul{list-style:none;text-align:left;margin:14px auto;font-size:14px;line-height:1.9;width:fit-content}
+#overlay button{margin-top:14px;padding:11px 30px;font-size:16px;font-weight:700;border:0;border-radius:10px;
+  background:linear-gradient(#ffd96a,#e0a82a);color:#241a00;cursor:pointer}
+#overlay button:hover{filter:brightness(1.08)}
+#overlay .card.wide{width:min(980px,96vw);max-height:94vh;overflow:auto;padding:20px 24px}
+.sel-title{font-size:15px;font-weight:700;text-align:left;margin:14px 0 8px;letter-spacing:1px}
+.sel-title em{font-style:normal;color:#ffd96a;margin-left:8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:10px}
+#overlay .grid button.ch{margin:0;padding:10px 12px;text-align:left;font-weight:500;font-size:12px;line-height:1.45;
+  background:rgba(255,255,255,.06);color:#fff;border:2px solid rgba(255,255,255,.15);border-radius:12px;cursor:pointer}
+#overlay .grid button.ch:hover{background:rgba(255,255,255,.12);filter:none}
+#overlay .grid button.ch.on{border-color:#ffd96a;background:rgba(255,217,106,.14);box-shadow:0 0 0 2px rgba(255,217,106,.25)}
+.ch .sw{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.ch b{font-size:14px}.ch .rl{opacity:.7;font-size:11px;margin:1px 0 4px}
+.ch .ds{opacity:.85;margin-bottom:4px}.ch .sk{opacity:.65;font-size:11px}.ch .df{color:#ffd96a;font-size:11px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ui"></canvas>
+
+<div id="top">
+  <div class="panel left">
+    <div class="nm"><span id="pn">번개 마법사 (나)</span><span id="pl">Lv1</span></div>
+    <div class="bar hp"><i id="phb"></i><b id="pht"></b></div>
+  </div>
+  <div id="center">
+    <div id="roundlbl">ROUND 1 · 3판 2선승</div>
+    <div id="score">0 : 0</div>
+    <div id="timer">2:30</div>
+  </div>
+  <div class="panel right">
+    <div class="nm"><span id="bn">냉기 마법사 (봇)</span><span id="bl">Lv1</span></div>
+    <div class="bar hp"><i id="bhb"></i><b id="bht"></b></div>
+  </div>
+</div>
+
+<div id="bottom">
+  <div id="skills"></div>
+  <div id="bars">
+    <div class="bar hp"><i id="hb"></i><b id="ht"></b></div>
+    <div class="bar mp"><i id="mb"></i><b id="mt"></b></div>
+    <div class="bar xp" style="height:8px"><i id="xb"></i></div>
+  </div>
+</div>
+
+<div id="hint">우클릭: 이동 / 공격 (적 위 우클릭)<br>Q W E R: 스킬 (마우스 방향)<br>S: 정지</div>
+<div id="msg"></div>
+
+<div id="overlay">
+  <div class="card" id="card"></div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* =====================================================================
+   상수 / 유틸
+   - 시뮬레이션 좌표: u = 다리 축(좌하단 기지 0 → 우상단 기지 L), v = 다리 폭 방향
+   - 월드 좌표: x = u - L/2, z = v
+   ===================================================================== */
+const L = 56, HALF = 5.0, CX = L / 2;
+const TOWER_RANGE = 7.5, ROUND_TIME = 150, WAVE_INT = 25;
+const TEAM_COL = [0x4aa3ff, 0xff5a5a];
+const XP_NEXT = [60, 150, 270, 420, 600];
+const MAX_LVL = 6;
+
+const rand = (a, b) => a + Math.random() * (b - a);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const dist = (a, b) => Math.hypot(a.u - b.u, a.v - b.v);
+const $ = id => document.getElementById(id);
+
+/* =====================================================================
+   챔피언 정의
+   ===================================================================== */
+const DEFS = {
+  lightning: {
+    name: '번개 마법사', body: 0x6a4bd6, hat: 0xffd23f, orb: 0xffe45c,
+    skills: [
+      { key: 'Q', name: '연쇄 번개', type: 'chain', cd: 4.5, mana: 40, range: 14, speed: 26, radius: 0.8, dmg: 70, bounces: 2, bounceR: 6, bounceMul: 0.7, color: 0xffe45c },
+      { key: 'W', name: '전기 방어막', type: 'shield', cd: 14, mana: 50, shield: 140, dur: 3, haste: 0.3 },
+      { key: 'E', name: '번개 점멸', type: 'blink', cd: 9, mana: 35, range: 6, empower: 55 },
+      { key: 'R', name: '낙뢰', type: 'strike', cd: 40, mana: 100, range: 15, radius: 3.2, delay: 1.0, dmg: 250, stun: 0.7, lvl: 3, color: 0xfff08a },
+    ],
+  },
+  frost: {
+    name: '냉기 마법사', body: 0x3f9fd6, hat: 0xeaf8ff, orb: 0x9ff0ff,
+    skills: [
+      { key: 'Q', name: '얼음창', type: 'lance', cd: 5, mana: 40, range: 15, speed: 20, radius: 0.8, dmg: 65, pierce: true, slow: 0.35, slowDur: 1.6, color: 0xb8f3ff },
+      { key: 'W', name: '서리 장판', type: 'zone', cd: 14, mana: 60, range: 12, radius: 3.5, dur: 3, slow: 0.45, dps: 28, color: 0x9fe8ff },
+      { key: 'E', name: '후퇴 점멸', type: 'blink', cd: 10, mana: 35, range: 6 },
+      { key: 'R', name: '절대영도', type: 'nova', cd: 45, mana: 100, radius: 5, delay: 0.6, dmg: 170, stun: 1.4, lvl: 3, color: 0xcff6ff },
+    ],
+  },
+};
+
+/* =====================================================================
+   게임 상태
+   ===================================================================== */
+/* ---------- 챔피언 공통 스탯 / 소개 (선택 화면에서 사용) ---------- */
+const ST = (range, ms, hp, hpLv, mana, ad, as) => ({ range, ms, hp, hpLv, mana, ad, as });
+Object.assign(DEFS.lightning, { id: 'lightning', role: '원거리 마법사', ai: 'ranged', hatType: 'wizard', stats: ST(6.5, 5.6, 620, 85, 300, 46, 0.85),
+  desc: '연쇄 번개와 낙뢰로 압박하는 폭딜 마법사. 점멸 후 평타가 강화된다.', diff: 2 });
+Object.assign(DEFS.frost, { id: 'frost', role: '원거리 제어 마법사', ai: 'ranged', hatType: 'wizard', stats: ST(6.5, 5.6, 620, 85, 300, 46, 0.85),
+  desc: '슬로우와 기절로 거리를 벌리는 제어형 마법사.', diff: 2 });
+DEFS.summoner = {
+  id: 'summoner', name: '소환사', role: '원거리 소환사', ai: 'ranged', hatType: 'wizard', body: 0x2fa86e, hat: 0xcaff9a, orb: 0x7dffb4, stats: ST(6.0, 5.4, 640, 85, 320, 40, 0.8),
+  desc: '정령과 골렘을 소환해 함께 싸운다. 본체는 뒤에서 지원하는 것이 안전하다.', diff: 3,
+  skills: [
+    { key: 'Q', name: '정령탄', type: 'arrow', cd: 3.5, mana: 35, range: 13, speed: 20, radius: 0.8, dmg: 62, color: 0x7dffb4 },
+    { key: 'W', name: '정령 소환', type: 'summon', cd: 14, mana: 70, count: 2, hp: 260, pdmg: 24, interval: 0.9, dur: 10, ms: 5.6, range: 1.8, color: 0x7dffb4 },
+    { key: 'E', name: '정령 도약', type: 'blink', cd: 9, mana: 35, range: 5 },
+    { key: 'R', name: '골렘 소환', type: 'summon', cd: 50, mana: 110, lvl: 3, count: 1, hp: 1100, pdmg: 62, interval: 1.2, dur: 14, ms: 4.4, range: 2.4, big: true, color: 0xc9a46a },
+  ] };
+DEFS.archer = {
+  id: 'archer', name: '궁수', role: '원거리 궁수', ai: 'ranged', hatType: 'cap', body: 0x2f8a3a, hat: 0x6b4a2b, orb: 0xffe0a0, stats: ST(9.0, 5.5, 560, 80, 260, 55, 1.0),
+  desc: '긴 사거리의 평타 연사와 관통 화살. 저격 화살 한 방으로 승부를 가른다.', diff: 2,
+  skills: [
+    { key: 'Q', name: '관통 화살', type: 'arrow', cd: 4, mana: 35, range: 17, speed: 30, radius: 0.6, dmg: 85, pierce: true, color: 0xfff2a0 },
+    { key: 'W', name: '질풍', type: 'buff', cd: 14, mana: 40, haste: 0.35, asMul: 1.6, dur: 3.5 },
+    { key: 'E', name: '구르기', type: 'blink', cd: 8, mana: 30, range: 5.5 },
+    { key: 'R', name: '저격', type: 'bigarrow', cd: 45, mana: 100, lvl: 3, range: 30, speed: 40, radius: 1.0, dmg: 260, stun: 1.0, color: 0xffffff },
+  ] };
+DEFS.warrior = {
+  id: 'warrior', name: '전사', role: '근접 전사', ai: 'melee', hatType: 'helm', body: 0xb0402a, hat: 0xc0c6d4, orb: 0xffd0a0, stats: ST(2.4, 5.9, 800, 105, 200, 62, 0.85),
+  desc: '튼튼한 체력으로 돌진해 베어 넘기는 균형형 근접 딜탱.', diff: 1,
+  skills: [
+    { key: 'Q', name: '돌진', type: 'dash', cd: 7, mana: 40, range: 7, minRange: 3, radius: 1.8, dmg: 70, slow: 0.4, slowDur: 1.5, color: 0xffb070 },
+    { key: 'W', name: '방패 올리기', type: 'shield', cd: 13, mana: 40, shield: 150, dur: 2.5, haste: 0.15 },
+    { key: 'E', name: '회전 베기', type: 'nova', cd: 6, mana: 30, radius: 2.8, delay: 0.08, dmg: 85, color: 0xffd0a0 },
+    { key: 'R', name: '대지 강타', type: 'dash', cd: 40, mana: 90, lvl: 3, range: 8, minRange: 4, radius: 3.2, dmg: 210, stun: 1.1, color: 0xffe0a0 },
+  ] };
+DEFS.brawler = {
+  id: 'brawler', name: '격투가', role: '근접 격투가', ai: 'melee', hatType: 'band', body: 0xd6862a, hat: 0xff5a3a, orb: 0xffe0b0, stats: ST(2.0, 6.2, 740, 95, 180, 52, 1.2),
+  desc: '빠른 연타와 짧은 돌진으로 붙어서 터뜨리는 근접 콤보형.', diff: 2,
+  skills: [
+    { key: 'Q', name: '연타 돌진', type: 'dash', cd: 6, mana: 30, range: 5, minRange: 2.5, radius: 1.7, dmg: 55, stun: 0.35, color: 0xffc070 },
+    { key: 'W', name: '기합', type: 'shield', cd: 12, mana: 35, shield: 100, dur: 2.5, haste: 0.4 },
+    { key: 'E', name: '붕권', type: 'nova', cd: 5, mana: 25, radius: 2.4, delay: 0.08, dmg: 65, slow: 0.3, slowDur: 1.5, color: 0xffd090 },
+    { key: 'R', name: '필살 연타', type: 'nova', cd: 38, mana: 80, lvl: 3, radius: 3.0, delay: 0.35, dmg: 220, stun: 1.1, color: 0xff8a50 },
+  ] };
+DEFS.chain = {
+  id: 'chain', name: '사슬술사', role: '원거리 갈고리', ai: 'ranged', hatType: 'hood', body: 0x5a5f78, hat: 0x8a8fa8, orb: 0xff9a3a, stats: ST(7.0, 5.5, 680, 90, 280, 48, 0.8),
+  desc: '갈고리로 적을 끌어당겨 연계한다. 스킬샷 적중이 승패를 가른다.', diff: 3,
+  skills: [
+    { key: 'Q', name: '갈고리', type: 'hook', cd: 8, mana: 50, range: 15, speed: 30, radius: 0.7, dmg: 70, stun: 0.5, color: 0xffb060 },
+    { key: 'W', name: '사슬 결계', type: 'zone', cd: 14, mana: 55, range: 10, radius: 3.2, dur: 3, slow: 0.5, dps: 26, color: 0xffb060 },
+    { key: 'E', name: '사슬 도약', type: 'blink', cd: 9, mana: 35, range: 5.5 },
+    { key: 'R', name: '사슬 폭풍', type: 'strike', cd: 42, mana: 100, lvl: 3, range: 13, radius: 3.6, delay: 0.9, dmg: 190, stun: 1.0, color: 0xffa040 },
+  ] };
+DEFS.ninja = {
+  id: 'ninja', name: '닌자', role: '근접 암살자', ai: 'melee', hatType: 'mask', body: 0x2a2a3a, hat: 0x1a1a22, orb: 0xff4d6a, stats: ST(3.0, 6.4, 560, 80, 240, 58, 1.1),
+  desc: '은신으로 접근해 표창과 암습으로 순식간에 처치하는 암살자.', diff: 3,
+  skills: [
+    { key: 'Q', name: '표창', type: 'arrow', cd: 4, mana: 35, range: 11, speed: 30, radius: 0.5, dmg: 40, fan: 3, spread: 0.22, color: 0xff6a80 },
+    { key: 'W', name: '은신', type: 'stealth', cd: 14, mana: 45, dur: 3, haste: 0.3 },
+    { key: 'E', name: '그림자 점멸', type: 'blink', cd: 8, mana: 35, range: 6, empower: 50 },
+    { key: 'R', name: '암습', type: 'dash', cd: 40, mana: 90, lvl: 3, range: 9, minRange: 3, radius: 2.4, dmg: 240, stun: 0.6, color: 0xff4d6a },
+  ] };
+const ROSTER = ['lightning', 'frost', 'summoner', 'archer', 'warrior', 'brawler', 'chain', 'ninja'];
+
+const G = {
+  state: 'menu',       // menu | countdown | play | roundEnd | matchEnd
+  t: 0, roundT: 0, stateT: 0, timeScale: 1,
+  round: 1, score: [0, 0], lastWinner: -1,
+  units: [], projs: [], aoes: [], zones: [], fx: [], texts: [], spawnQ: [],
+  nextWaveT: 6, nextId: 1, shake: 0, player: null, bot: null,
+};
+
+/* =====================================================================
+   Three.js 기본 설정 (고정 사선 카메라)
+   ===================================================================== */
+const glCanvas = $('gl'), uiCanvas = $('ui');
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0f24);
+scene.fog = new THREE.Fog(0x0a0f24, 110, 230);
+
+const PITCH = 45 * Math.PI / 180, CAM_D = 100;
+const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
+const camBase = new THREE.Vector3(-0.7071 * Math.cos(PITCH) * CAM_D, Math.sin(PITCH) * CAM_D, 0.7071 * Math.cos(PITCH) * CAM_D);
+camera.position.copy(camBase);
+camera.lookAt(0, 0, 0);
+camera.updateMatrixWorld();
+const ZOOM_HALF_H = 11;                       // 값이 작을수록 더 확대
+const camHalf = { w: 16, h: 11 };
+const camCenter = new THREE.Vector3(-CX + 8, 0, 0);   // 현재 카메라가 바라보는 지면 위치
+
+let W = 1280, H = 720;
+function resize() {
+  W = window.innerWidth; H = window.innerHeight;
+  const aspect = W / H;
+  const halfH = Math.max(ZOOM_HALF_H, 17 / aspect);   // 교전 중심의 좁은 영역만 보이도록 확대
+  camHalf.h = halfH; camHalf.w = halfH * aspect;
+  camera.left = -camHalf.w; camera.right = camHalf.w;
+  camera.top = halfH; camera.bottom = -halfH;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  uiCanvas.width = W * dpr; uiCanvas.height = H * dpr;
+  uiCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+const uiCtx = uiCanvas.getContext('2d');
+window.addEventListener('resize', resize);
+
+/* ---------- 재질/지오메트리 캐시 ---------- */
+const matCache = new Map();
+function lam(c) {
+  const k = 'l' + c;
+  if (!matCache.has(k)) { const m = new THREE.MeshLambertMaterial({ color: c, flatShading: true }); m.userData.shared = true; matCache.set(k, m); }
+  return matCache.get(k);
+}
+function bas(c) {
+  const k = 'b' + c;
+  if (!matCache.has(k)) { const m = new THREE.MeshBasicMaterial({ color: c }); m.userData.shared = true; matCache.set(k, m); }
+  return matCache.get(k);
+}
+function ownMat(c, op) {
+  const m = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
+  m.userData.own = true; return m;
+}
+function disposeOwn(obj) {
+  obj.traverse(o => { if (o.material && o.material.userData && o.material.userData.own) o.material.dispose(); });
+}
+const gSphere = new THREE.SphereGeometry(1, 12, 8);
+const gBox = new THREE.BoxGeometry(1, 1, 1);
+const gRing = new THREE.RingGeometry(0.92, 1, 44); gRing.rotateX(-Math.PI / 2);
+const gDisc = new THREE.CircleGeometry(1, 44); gDisc.rotateX(-Math.PI / 2);
+const gCyl = new THREE.CylinderGeometry(1, 1, 1, 5);
+const UP = new THREE.Vector3(0, 1, 0);
+const w = (u, y = 0) => new THREE.Vector3(u.u - CX, y, u.v);
+
+/* =====================================================================
+   월드 구성
+   ===================================================================== */
+function buildWorld() {
+  scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x20263f, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8); sun.position.set(-30, 60, 20); scene.add(sun);
+
+  const bl = L + 8;
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(bl, 1.2, HALF * 2 + 1), lam(0x5b6785)); deck.position.set(0, -0.6, 0); scene.add(deck);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(bl, 0.02, 1.2), lam(0x7e8bb0)); stripe.position.y = 0.011; scene.add(stripe);
+  for (let x = -bl / 2 + 2; x < bl / 2; x += 4) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, HALF * 2 + 1), lam(0x6c7aa0)); t.position.set(x, 0.012, 0); scene.add(t);
+  }
+  for (const s of [-1, 1]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(bl, 0.7, 0.5), lam(0x8d9bc2)); rail.position.set(0, 0.35, s * (HALF + 0.75)); scene.add(rail);
+  }
+  for (const team of [0, 1]) {
+    const cx = (team === 0 ? 3 : L - 3) - CX;
+    const plat = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.2, 1.2, 32), lam(team === 0 ? 0x2a4a80 : 0x80302f));
+    plat.position.set(cx, -0.6 + 0.02, 0); scene.add(plat);
+    const glow = new THREE.Mesh(new THREE.TorusGeometry(5.3, 0.12, 6, 40), bas(TEAM_COL[team]));
+    glow.rotation.x = Math.PI / 2; glow.position.set(cx, 0.05, 0); scene.add(glow);
+  }
+  for (const x of [-22, -8, 6, 20]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.8, 18, 8), lam(0x3a4466)); p.position.set(x, -10, 0); scene.add(p);
+  }
+  // 별
+  const sp = [];
+  for (let i = 0; i < 420; i++) sp.push(rand(-130, 130), rand(-15, 50), rand(-130, 130));
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+  scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xaecbff, size: 2, sizeAttenuation: false })));
+  // 떠다니는 바위
+  G.rocks = [];
+  for (let i = 0; i < 14; i++) {
+    const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rand(1, 3), 0), lam(0x2c3552));
+    const side = Math.random() < 0.5 ? -1 : 1;
+    r.position.set(rand(-34, 34), rand(-14, -3), side * rand(10, 26));
+    r.rotation.set(rand(0, 3), rand(0, 3), 0); scene.add(r); G.rocks.push(r);
+  }
+}
+
+/* =====================================================================
+   이펙트
+   ===================================================================== */
+function particleUpd(f, k, dt) {
+  const p = f.mesh.position;
+  p.x += f.vx * dt; p.y += f.vy * dt; p.z += f.vz * dt; f.vy -= 9 * dt;
+  f.mesh.scale.setScalar(Math.max(0.001, f.size * (1 - k)));
+}
+function burst(x, y, z, color, n = 8, spd = 4, life = 0.5, size = 0.18) {
+  if (G.fx.length > 500) return;
+  const m = bas(color);
+  for (let i = 0; i < n; i++) {
+    const mesh = new THREE.Mesh(gBox, m); mesh.position.set(x, y, z); mesh.scale.setScalar(size); scene.add(mesh);
+    const a = rand(0, 6.283), e = rand(-0.2, 1), sp = rand(0.4, 1) * spd;
+    G.fx.push({ mesh, life: life * rand(0.6, 1), max: life, vx: Math.cos(a) * sp, vy: Math.abs(e) * sp + 1, vz: Math.sin(a) * sp, size, upd: particleUpd });
+  }
+}
+function ringFx(u, v, r0, r1, color, life, y = 0.06) {
+  const mat = ownMat(color, 0.9);
+  const mesh = new THREE.Mesh(gRing, mat); mesh.position.set(u - CX, y, v); mesh.scale.set(r0, 1, r0); scene.add(mesh);
+  G.fx.push({ mesh, life, max: life, upd: (f, k) => { const r = r0 + (r1 - r0) * k; f.mesh.scale.set(r, 1, r); mat.opacity = 0.9 * (1 - k); } });
+}
+function bolt(a, b, color, life) {
+  const g = new THREE.Group(), m = ownMat(color, 1);
+  const pts = [a.clone()], dir = b.clone().sub(a), n = 6;
+  for (let i = 1; i < n; i++) {
+    const p = a.clone().addScaledVector(dir, i / n);
+    p.x += rand(-0.35, 0.35); p.y += rand(-0.35, 0.35); p.z += rand(-0.35, 0.35); pts.push(p);
+  }
+  pts.push(b.clone());
+  for (let i = 0; i < pts.length - 1; i++) {
+    const s = pts[i], e = pts[i + 1], d = e.clone().sub(s), len = d.length();
+    const seg = new THREE.Mesh(gCyl, m);
+    seg.position.copy(s).addScaledVector(d, 0.5);
+    seg.quaternion.setFromUnitVectors(UP, d.normalize());
+    seg.scale.set(0.09, len, 0.09); g.add(seg);
+  }
+  scene.add(g);
+  G.fx.push({ mesh: g, life, max: life, upd: (f, k) => { m.opacity = 1 - k; } });
+}
+function updateFx(dt) {
+  for (const f of G.fx) {
+    f.life -= dt;
+    f.upd(f, clamp(1 - f.life / f.max, 0, 1), dt);
+    if (f.life <= 0) { scene.remove(f.mesh); disposeOwn(f.mesh); f.done = true; }
+  }
+  G.fx = G.fx.filter(f => !f.done);
+}
+function addText(u, v, str, color = '#fff', size = 16, y = 2.8) {
+  G.texts.push({ u, v, y, str, color, size, life: 0.9, max: 0.9 });
+}
+
+/* =====================================================================
+   모델
+   ===================================================================== */
+function makeChampMesh(def, team) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.5, 8), lam(def.body)); body.position.y = 0.75; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.32, 0), lam(0xffd9b0)); head.position.y = 1.7; g.add(head);
+  const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.06, 10), lam(def.hat)); brim.position.y = 1.92; g.add(brim);
+  const ht = def.hatType || 'wizard';
+  let hat;
+  if (ht === 'wizard') { hat = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 6), lam(def.hat)); hat.position.y = 2.3; hat.rotation.z = 0.15; }
+  else if (ht === 'cap') { hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.45, 6), lam(def.hat)); hat.position.y = 2.1; hat.rotation.z = -0.2; }
+  else if (ht === 'helm') { hat = new THREE.Mesh(gSphere, lam(def.hat)); hat.scale.set(0.4, 0.34, 0.4); hat.position.y = 1.88; brim.visible = false; }
+  else if (ht === 'band') { hat = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 8), lam(def.hat)); hat.position.y = 1.78; brim.visible = false; }
+  else if (ht === 'hood') { hat = new THREE.Mesh(new THREE.ConeGeometry(0.46, 0.7, 7), lam(def.hat)); hat.position.y = 2.05; brim.visible = false; }
+  else { hat = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.32, 8), lam(def.hat)); hat.position.y = 1.78; brim.visible = false; }  // mask(닌자)
+  g.add(hat);
+  const staff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.0, 6), lam(0x6b4a2b)); staff.position.set(0.15, 1.0, 0.65); g.add(staff);
+  const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), bas(def.orb)); orb.position.set(0.15, 2.1, 0.65); g.add(orb);
+  const ring = new THREE.Mesh(gRing, ownMat(TEAM_COL[team], 0.95)); ring.scale.set(1.15, 1, 1.15); ring.position.y = 0.04; g.add(ring);
+  const sh = new THREE.Mesh(gSphere, ownMat(0x9fd8ff, 0.28)); sh.scale.setScalar(1.3); sh.position.y = 1.2; sh.visible = false; g.add(sh);
+  const stun = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 5, 14), bas(0xffe45c)); stun.rotation.x = Math.PI / 2; stun.position.y = 2.9; stun.visible = false; g.add(stun);
+  g.userData = { orb, shield: sh, stun };
+  return g;
+}
+function makeMinionMesh(type, team) {
+  const g = new THREE.Group();
+  const col = team === 0 ? 0x4f9cff : 0xff6060;
+  if (type === 'melee') {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.46, 0.9, 8), lam(col)); b.position.y = 0.45; g.add(b);
+    const h = new THREE.Mesh(gSphere, lam(0xf2d0a4)); h.scale.setScalar(0.28); h.position.y = 1.08; g.add(h);
+    const sw = new THREE.Mesh(gBox, lam(0xd8dde8)); sw.scale.set(0.1, 0.8, 0.1); sw.position.set(0.45, 0.75, 0); g.add(sw);
+  } else {
+    const b = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.0, 7), lam(col)); b.position.y = 0.5; g.add(b);
+    const h = new THREE.Mesh(gSphere, lam(0xf2d0a4)); h.scale.setScalar(0.26); h.position.y = 1.15; g.add(h);
+    const o = new THREE.Mesh(gSphere, bas(TEAM_COL[team])); o.scale.setScalar(0.14); o.position.set(0.4, 0.9, 0.2); g.add(o);
+  }
+  return g;
+}
+function makeTowerMesh(team) {
+  const g = new THREE.Group();
+  const col = team === 0 ? 0x3d5f9c : 0x9c3d3d;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.8, 8), lam(0x4a5472)); base.position.y = 0.4; g.add(base);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 3.4, 8), lam(col)); shaft.position.y = 2.5; g.add(shaft);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.0, 0.5, 8), lam(0x4a5472)); top.position.y = 4.4; g.add(top);
+  const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.7, 0), bas(TEAM_COL[team])); cr.position.y = 5.4; g.add(cr);
+  const rg = new THREE.Mesh(gRing, ownMat(TEAM_COL[team], 0.22)); rg.scale.set(TOWER_RANGE, 1, TOWER_RANGE); rg.position.y = 0.03; g.add(rg);
+  g.userData = { crystal: cr };
+  return g;
+}
+
+/* =====================================================================
+   유닛 생성
+   ===================================================================== */
+function baseUnit(kind, team, u, v, radius, maxHp) {
+  return {
+    id: G.nextId++, kind, team, u, v, pu: u, pv: v, vu: 0, vv: 0, face: team === 0 ? 0 : Math.PI,
+    radius, hp: maxHp, maxHp, dead: false, slow: null, haste: null, shield: null, stunUntil: 0, flash: 0,
+    mesh: null, attackTarget: null, moveTarget: null, soft: false, nextAtk: 0, baseMs: 3.4,
+  };
+}
+function computeStats(c, init) {
+  const l = c.level, old = c.maxHp || 0, st = c.def.stats;
+  c.maxHp = st.hp + st.hpLv * (l - 1); c.maxMana = st.mana + 35 * (l - 1);
+  c.power = 1 + 0.14 * (l - 1); c.ad = st.ad + 5 * (l - 1); c.as = st.as + 0.03 * (l - 1);
+  if (!init) { c.hp += c.maxHp - old; c.mana = Math.min(c.maxMana, c.mana + 35); }
+}
+function makeChamp(key, team) {
+  const def = DEFS[key];
+  const c = baseUnit('champ', team, team === 0 ? 4 : L - 4, 0, 0.7, 1);
+  Object.assign(c, {
+    def, key, level: 1, xp: 0, cd: [0, 0, 0, 0], range: def.stats.range, baseMs: def.stats.ms, empowerUntil: 0, stealthUntil: 0, asBuff: null, aggroUntil: 0, deadT: 0,
+    nextThink: 0.5, dodgeUntil: 0, retreating: false, strafeUntil: 0, nextStrafe: 1, strafeDir: 1, laneV: 0, nextLane: 0,
+  });
+  computeStats(c, true); c.hp = c.maxHp; c.mana = c.maxMana;
+  c.mesh = makeChampMesh(def, team); scene.add(c.mesh);
+  G.units.push(c); return c;
+}
+function spawnMinion(type, team) {
+  const m = baseUnit('minion', team, team === 0 ? 4.5 : L - 4.5, rand(-2.5, 2.5), 0.5, type === 'melee' ? 320 : 210);
+  Object.assign(m, {
+    type, range: type === 'melee' ? 1.5 : 5.5, dmg: type === 'melee' ? 15 : 20, interval: type === 'melee' ? 1.0 : 1.25,
+    xp: type === 'melee' ? 28 : 22, baseMs: 3.4, target: null, nextScan: 0, laneV: rand(-2.5, 2.5),
+  });
+  m.mesh = makeMinionMesh(type, team); scene.add(m.mesh); G.units.push(m);
+}
+function makeTower(team, u) {
+  const t = baseUnit('tower', team, u, 0, 1.4, 1500);
+  Object.assign(t, { target: null, nextScan: 0, stack: 0, lastTarget: null });
+  t.mesh = makeTowerMesh(team); scene.add(t.mesh); G.units.push(t);
+}
+
+/* =====================================================================
+   전투 공통
+   ===================================================================== */
+function dealDamage(t, amt, src, silent) {
+  if (t.dead || amt <= 0) return;
+  const raw = amt;
+  if (t.shield && t.shield.amt > 0) { const a = Math.min(t.shield.amt, amt); t.shield.amt -= a; amt -= a; }
+  t.hp -= amt;
+  t.flash = 0.12;
+  if (src && src.kind === 'champ' && t.kind === 'champ') src.aggroUntil = G.t + 2.5;
+  if (!silent && raw >= 4) {
+    const isP = t.kind === 'champ' && t.team === 0;
+    addText(t.u + rand(-0.3, 0.3), t.v + rand(-0.3, 0.3), String(Math.round(raw)),
+      amt <= 0 ? '#9fd8ff' : isP ? '#ff6b6b' : t.kind === 'champ' ? '#ffe45c' : '#ffffff', t.kind === 'champ' ? 20 : 13,
+      t.kind === 'champ' ? 3.2 : t.kind === 'tower' ? 5.5 : 2.2);
+  }
+  if (t.hp <= 0) kill(t, src);
+}
+function kill(t) {
+  t.dead = true; t.hp = 0;
+  if (t.kind === 'champ') {
+    burst(t.u - CX, 1.2, t.v, TEAM_COL[t.team], 28, 7, 0.9, 0.25);
+    endRound(1 - t.team);
+  } else if (t.kind === 'minion') {
+    giveXp(t);
+    burst(t.u - CX, 0.8, t.v, TEAM_COL[t.team], 10, 3.5, 0.5, 0.16);
+  } else {
+    burst(t.u - CX, 3, t.v, TEAM_COL[t.team], 40, 8, 1.0, 0.35);
+    ringFx(t.u, t.v, 1, 7, 0xffffff, 0.6); G.shake = 0.5;
+  }
+}
+function giveXp(m) {
+  for (const c of G.units) {
+    if (c.kind !== 'champ' || c.dead || c.team === m.team) continue;
+    if (dist(c, m) < 14) addXp(c, m.xp);
+  }
+}
+function addXp(c, n) {
+  c.xp += n;
+  while (c.level < MAX_LVL && c.xp >= XP_NEXT[c.level - 1]) {
+    c.level++; computeStats(c);
+    addText(c.u, c.v, 'LEVEL UP!', '#ffd96a', 20, 4);
+    ringFx(c.u, c.v, 0.5, 3, 0xffd96a, 0.6);
+  }
+}
+function applySlow(t, pct, dur) {
+  const e = G.t + dur;
+  if (!t.slow || G.t >= t.slow.until || pct > t.slow.pct) t.slow = { pct, until: e };
+  else if (pct === t.slow.pct) t.slow.until = Math.max(t.slow.until, e);
+}
+function getSpeed(u) {
+  let s = u.baseMs;
+  if (u.haste && G.t < u.haste.until) s *= 1 + u.haste.pct;
+  if (u.slow && G.t < u.slow.until) s *= 1 - u.slow.pct;
+  return s;
+}
+function moveToward(u, tx, tz, dt, stop = 0.05) {
+  const dx = tx - u.u, dz = tz - u.v, d = Math.hypot(dx, dz);
+  if (d <= stop || d < 1e-4) return true;
+  const step = Math.min(getSpeed(u) * dt, d - stop > 0 ? d - stop : d);
+  u.u += dx / d * step; u.v += dz / d * step;
+  u.face = Math.atan2(dz, dx);
+  u.u = clamp(u.u, -1.5, L + 1.5); u.v = clamp(u.v, -HALF, HALF);
+  return d - step <= stop + 1e-3;
+}
+
+/* ---------- 투사체 ---------- */
+function spawnHoming(src, target, dmg, speed, color, size, big) {
+  const mesh = new THREE.Mesh(gSphere, bas(color)); mesh.scale.setScalar(size); scene.add(mesh);
+  G.projs.push({ kind: 'homing', team: src.team, src, target, dmg, speed, color, u: src.u + Math.cos(src.face) * 0.6, v: src.v + Math.sin(src.face) * 0.6, y: 1.7, mesh, born: G.t, big });
+}
+function doAttack(u, tg) {
+  const t = G.t;
+  const as = u.as * (u.asBuff && t < u.asBuff.until ? u.asBuff.mul : 1);
+  u.nextAtk = t + 1 / as;
+  u.face = Math.atan2(tg.v - u.v, tg.u - u.u);
+  u.stealthUntil = 0;                                   // 공격하면 은신 해제
+  let dmg = u.ad, color = u.def.orb, size = 0.28, big = false;
+  if (u.empowerUntil > t) { dmg += 55 * u.power; u.empowerUntil = 0; color = 0xffffff; size = 0.45; big = true; }
+  const melee = u.def.stats.range < 4;
+  spawnHoming(u, tg, dmg, melee ? 34 : 17, color, melee ? size * 0.8 : size, big);
+}
+function fireShot(u, s, aim) {
+  let dx = aim.u - u.u, dz = aim.v - u.v, d = Math.hypot(dx, dz);
+  if (d < 0.01) { dx = Math.cos(u.face); dz = Math.sin(u.face); d = 1; }
+  dx /= d; dz /= d; u.face = Math.atan2(dz, dx);
+  let mesh;
+  if (s.type === 'lance' || s.type === 'arrow' || s.type === 'bigarrow') {
+    const big = s.type === 'bigarrow';
+    mesh = new THREE.Mesh(new THREE.ConeGeometry(big ? 0.5 : s.type === 'arrow' ? 0.18 : 0.35, big ? 2.6 : 1.8, 6), bas(s.color));
+    mesh.quaternion.setFromUnitVectors(UP, new THREE.Vector3(dx, 0, dz));
+  } else {
+    mesh = new THREE.Mesh(gSphere, bas(s.color)); mesh.scale.setScalar(0.5);
+  }
+  scene.add(mesh);
+  G.projs.push({
+    kind: 'shot', team: u.team, src: u, s, u: u.u + dx * 0.8, v: u.v + dz * 0.8, y: 1.4, dx, dz,
+    speed: s.speed, left: s.range, r: s.radius, dmg: s.dmg * u.power, pierce: !!s.pierce, hit: new Set(), mesh, born: G.t,
+  });
+}
+function chainBounce(src, s, first, dmg) {
+  const hit = new Set([first.id]); let from = first;
+  for (let i = 0; i < s.bounces; i++) {
+    let best = null, bd = s.bounceR;
+    for (const e of G.units) {
+      if (e.dead || e.team === src.team || e.kind === 'tower' || hit.has(e.id)) continue;
+      const d = dist(from, e); if (d < bd) { bd = d; best = e; }
+    }
+    if (!best) break;
+    hit.add(best.id);
+    bolt(w(from, 1.3), w(best, 1.3), s.color, 0.28);
+    dealDamage(best, dmg * s.bounceMul, src);
+    burst(best.u - CX, 1.3, best.v, s.color, 6, 3, 0.4);
+    from = best;
+  }
+}
+function shotHit(p, e) {
+  const s = p.s;
+  dealDamage(e, p.dmg, p.src);
+  burst(e.u - CX, 1.3, e.v, s.color, 8, 3.5, 0.4);
+  if (s.type === 'chain') chainBounce(p.src, s, e, p.dmg);
+  else if (s.type === 'lance') applySlow(e, s.slow, s.slowDur);
+  else if (s.type === 'bigarrow') { e.stunUntil = Math.max(e.stunUntil, G.t + (s.stun || 0)); G.shake = Math.max(G.shake, 0.25); }
+  else if (s.type === 'hook') {                       // 갈고리: 시전자 앞으로 끌어당긴다
+    const src = p.src, dx = e.u - src.u, dz = e.v - src.v, d = Math.hypot(dx, dz) || 1, keep = src.radius + e.radius + 1.2;
+    if (d > keep) { e.u = clamp(src.u + dx / d * keep, -1.5, L + 1.5); e.v = clamp(src.v + dz / d * keep, -HALF, HALF); e.pu = e.u; e.pv = e.v; }
+    e.stunUntil = Math.max(e.stunUntil, G.t + (s.stun || 0));
+    bolt(w(src, 1.3), w(e, 1.3), s.color, 0.3);
+  }
+}
+function updateProjs(dt) {
+  for (const p of G.projs) {
+    if (p.dead) continue;
+    if (p.kind === 'homing') {
+      const tg = p.target;
+      if (tg.dead) { p.dead = true; continue; }
+      const dx = tg.u - p.u, dz = tg.v - p.v, d = Math.hypot(dx, dz), st = p.speed * dt;
+      if (d <= st + tg.radius * 0.6) {
+        dealDamage(tg, p.dmg, p.src);
+        burst(tg.u - CX, 1.5, tg.v, p.color, p.big ? 14 : 5, 3, 0.35);
+        p.dead = true;
+      } else { p.u += dx / d * st; p.v += dz / d * st; }
+    } else {
+      const mv = p.speed * dt, n = Math.max(1, Math.ceil(mv / 0.4)), sd = mv / n;
+      for (let i = 0; i < n && !p.dead; i++) {
+        p.u += p.dx * sd; p.v += p.dz * sd; p.left -= sd;
+        for (const e of G.units) {
+          if (e.dead || e.team === p.team || e.kind === 'tower' || p.hit.has(e.id)) continue;
+          if (Math.hypot(e.u - p.u, e.v - p.v) < p.r + e.radius) {
+            p.hit.add(e.id); shotHit(p, e);
+            if (!p.pierce) { p.dead = true; break; }
+          }
+        }
+        if (p.left <= 0) p.dead = true;
+      }
+      if (Math.random() < 0.7) burst(p.u - CX, p.y, p.v, p.s.color, 1, 0.8, 0.25, 0.14);
+    }
+    p.mesh.position.set(p.u - CX, p.y, p.v);
+  }
+  for (const p of G.projs) if (p.dead) { scene.remove(p.mesh); }
+  G.projs = G.projs.filter(p => !p.dead);
+}
+
+/* ---------- 범위기 / 장판 ---------- */
+function addAoe(o) {
+  const g = new THREE.Group();
+  const ring = new THREE.Mesh(gRing, ownMat(o.color, 0.9)); ring.scale.set(o.radius, 1, o.radius); g.add(ring);
+  const disc = new THREE.Mesh(gDisc, ownMat(o.color, 0.25)); disc.scale.set(0.01, 1, 0.01); g.add(disc);
+  g.position.set(o.u - CX, 0.07, o.v); scene.add(g);
+  Object.assign(o, { at: G.t + o.delay, born: G.t, mesh: g, disc });
+  G.aoes.push(o);
+}
+function triggerAoe(a) {
+  for (const e of G.units) {
+    if (e.dead || e.team === a.team || e.kind === 'tower') continue;
+    if (Math.hypot(e.u - a.u, e.v - a.v) <= a.radius + e.radius * 0.5) {
+      dealDamage(e, a.dmg, a.src);
+      if (a.stun) e.stunUntil = Math.max(e.stunUntil, G.t + a.stun);
+      if (a.slow) applySlow(e, a.slow, a.slowDur || 1.5);
+    }
+  }
+  ringFx(a.u, a.v, 0.5, a.radius * 1.15, a.color, 0.5);
+  if (a.kind === 'strike') {
+    bolt(new THREE.Vector3(a.u - CX + rand(-.5, .5), 30, a.v), new THREE.Vector3(a.u - CX, 0, a.v), 0xffffff, 0.35);
+    bolt(new THREE.Vector3(a.u - CX + rand(-.5, .5), 30, a.v), new THREE.Vector3(a.u - CX, 0, a.v), a.color, 0.3);
+    burst(a.u - CX, 0.5, a.v, a.color, 30, 8, 0.7, 0.25); G.shake = Math.max(G.shake, 0.45);
+  } else {
+    burst(a.u - CX, 0.8, a.v, a.color, 36, 9, 0.8, 0.22); G.shake = Math.max(G.shake, 0.3);
+  }
+}
+function updateAoes() {
+  for (const a of G.aoes) {
+    if (a.follow) { if (a.follow.dead) { a.dead = true; continue; } a.u = a.follow.u; a.v = a.follow.v; a.mesh.position.set(a.u - CX, 0.07, a.v); }
+    const k = clamp((G.t - a.born) / a.delay, 0, 1);
+    a.disc.scale.set(Math.max(0.01, a.radius * k), 1, Math.max(0.01, a.radius * k));
+    if (G.t >= a.at) { triggerAoe(a); a.dead = true; }
+  }
+  for (const a of G.aoes) if (a.dead) { scene.remove(a.mesh); disposeOwn(a.mesh); }
+  G.aoes = G.aoes.filter(a => !a.dead);
+}
+function updateZones(dt) {
+  for (const z of G.zones) {
+    if (G.t >= z.until) { z.dead = true; continue; }
+    for (const e of G.units) {
+      if (e.dead || e.team === z.team || e.kind === 'tower') continue;
+      if (Math.hypot(e.u - z.u, e.v - z.v) <= z.radius) { applySlow(e, z.slow, 0.3); dealDamage(e, z.dps * dt, z.src, true); }
+    }
+    if (Math.random() < 0.5) {
+      const a = rand(0, 6.28), r = Math.sqrt(Math.random()) * z.radius;
+      burst(z.u - CX + Math.cos(a) * r, 0.2, z.v + Math.sin(a) * r, 0xeaffff, 1, 0.6, 0.6, 0.13);
+    }
+  }
+  for (const z of G.zones) if (z.dead) { scene.remove(z.mesh); disposeOwn(z.mesh); }
+  G.zones = G.zones.filter(z => !z.dead);
+}
+
+/* ---------- 스킬 ---------- */
+function segDist(ax, az, bx, bz, px, pz) {
+  const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz;
+  const t = l2 < 1e-6 ? 0 : clamp(((px - ax) * dx + (pz - az) * dz) / l2, 0, 1);
+  return Math.hypot(px - (ax + dx * t), pz - (az + dz * t));
+}
+const visible = e => !(e.stealthUntil && G.t < e.stealthUntil);      // 은신 중인 챔피언은 자동 타겟팅 불가
+function makePetMesh(s, team) {
+  const g = new THREE.Group();
+  if (s.big) {
+    const b = new THREE.Mesh(gBox, lam(s.color)); b.scale.set(1.3, 1.5, 1.0); b.position.y = 0.9; g.add(b);
+    const h = new THREE.Mesh(gBox, lam(0x8a6a3a)); h.scale.set(0.7, 0.6, 0.7); h.position.y = 2.0; g.add(h);
+    for (const sx of [-0.85, 0.85]) { const a = new THREE.Mesh(gBox, lam(0x8a6a3a)); a.scale.set(0.45, 1.2, 0.45); a.position.set(0, 1.0, sx); g.add(a); }
+  } else {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42, 0), lam(s.color)); b.position.y = 0.8; g.add(b);
+    const c = new THREE.Mesh(gSphere, bas(0xffffff)); c.scale.setScalar(0.12); c.position.set(0.3, 0.9, 0.15); g.add(c);
+  }
+  const ring = new THREE.Mesh(gRing, ownMat(TEAM_COL[team], 0.9)); ring.scale.setScalar(s.big ? 1.3 : 0.6); ring.position.y = 0.04; g.add(ring);
+  return g;
+}
+function spawnPet(owner, s, i) {
+  const a = rand(0, 6.283), m = baseUnit('minion', owner.team, owner.u + Math.cos(a) * 1.4, owner.v + Math.sin(a) * 1.4, s.big ? 0.95 : 0.5, s.hp);
+  m.v = clamp(m.v, -HALF, HALF);
+  Object.assign(m, { type: 'pet', owner, range: s.range, dmg: s.pdmg * owner.power, interval: s.interval, xp: 0, baseMs: s.ms, target: null, nextScan: 0, laneV: 0, life: G.t + s.dur });
+  m.mesh = makePetMesh(s, owner.team); scene.add(m.mesh); G.units.push(m);
+  burst(m.u - CX, 0.8, m.v, s.color, 8, 3, 0.5);
+}
+function clampAim(u, aim, range) {
+  let dx = aim.u - u.u, dz = aim.v - u.v; const d = Math.hypot(dx, dz);
+  if (d > range) { dx = dx / d * range; dz = dz / d * range; }
+  return { u: clamp(u.u + dx, -1.5, L + 1.5), v: clamp(u.v + dz, -HALF - 1, HALF + 1) };
+}
+const SK = {
+  chain(u, s, aim) { fireShot(u, s, aim); },
+  lance(u, s, aim) { fireShot(u, s, aim); },
+  bigarrow(u, s, aim) { fireShot(u, s, aim); },
+  hook(u, s, aim) { fireShot(u, s, aim); },
+  shield(u, s) {
+    u.shield = { amt: s.shield * u.power, until: G.t + s.dur };
+    u.haste = { pct: s.haste, until: G.t + s.dur };
+    ringFx(u.u, u.v, 0.5, 2.4, 0x9fd8ff, 0.45);
+  },
+  blink(u, s, aim) {
+    let dx = aim.u - u.u, dz = aim.v - u.v, d = Math.hypot(dx, dz);
+    if (d < 0.01) { dx = Math.cos(u.face); dz = Math.sin(u.face); d = 1; }
+    dx /= d; dz /= d;
+    const dd = d < 1 ? s.range : Math.min(s.range, d);
+    burst(u.u - CX, 1, u.v, u.def.orb, 14, 5, 0.5, 0.2);
+    u.u = clamp(u.u + dx * dd, -1.5, L + 1.5); u.v = clamp(u.v + dz * dd, -HALF, HALF);
+    u.pu = u.u; u.pv = u.v; u.vu = u.vv = 0; u.face = Math.atan2(dz, dx);
+    if (s.empower) u.empowerUntil = G.t + 4;
+    burst(u.u - CX, 1, u.v, u.def.orb, 14, 5, 0.5, 0.2);
+    ringFx(u.u, u.v, 0.3, 1.6, u.def.orb, 0.35);
+  },
+  strike(u, s, aim) {
+    const p = clampAim(u, aim, s.range);
+    addAoe({ u: p.u, v: p.v, radius: s.radius, delay: s.delay, dmg: s.dmg * u.power, stun: s.stun, team: u.team, src: u, color: s.color, kind: 'strike' });
+  },
+  nova(u, s) {
+    addAoe({ u: u.u, v: u.v, radius: s.radius, delay: s.delay, dmg: s.dmg * u.power, stun: s.stun, slow: s.slow, slowDur: s.slowDur, team: u.team, src: u, color: s.color, kind: 'nova', follow: u });
+  },
+  arrow(u, s, aim) {
+    const n = s.fan || 1, base = Math.atan2(aim.v - u.v, aim.u - u.u);
+    for (let i = 0; i < n; i++) {
+      const a = base + (i - (n - 1) / 2) * (s.spread || 0.2);
+      fireShot(u, s, { u: u.u + Math.cos(a) * 10, v: u.v + Math.sin(a) * 10 });
+    }
+  },
+  buff(u, s) {
+    u.haste = { pct: s.haste, until: G.t + s.dur };
+    if (s.asMul) u.asBuff = { mul: s.asMul, until: G.t + s.dur };
+    ringFx(u.u, u.v, 0.5, 2.0, u.def.orb, 0.45);
+  },
+  stealth(u, s) {
+    u.stealthUntil = G.t + s.dur; u.haste = { pct: s.haste, until: G.t + s.dur }; u.empowerUntil = G.t + s.dur + 1.5;
+    burst(u.u - CX, 1, u.v, 0x7a5cff, 16, 4, 0.6, 0.2); ringFx(u.u, u.v, 0.4, 2.0, 0x7a5cff, 0.4);
+  },
+  dash(u, s, aim) {
+    let dx = aim.u - u.u, dz = aim.v - u.v, d = Math.hypot(dx, dz);
+    if (d < 0.01) { dx = Math.cos(u.face); dz = Math.sin(u.face); d = 1; }
+    dx /= d; dz /= d;
+    const dd = Math.max(s.minRange || 2.5, Math.min(s.range, d)), su = u.u, sv = u.v;
+    u.u = clamp(u.u + dx * dd, -1.5, L + 1.5); u.v = clamp(u.v + dz * dd, -HALF, HALF);
+    u.pu = u.u; u.pv = u.v; u.vu = u.vv = 0; u.face = Math.atan2(dz, dx);
+    bolt(new THREE.Vector3(su - CX, 1.0, sv), w(u, 1.0), s.color, 0.25);
+    for (const e of G.units) {
+      if (e.dead || e.team === u.team || e.kind === 'tower') continue;
+      if (segDist(su, sv, u.u, u.v, e.u, e.v) <= s.radius + e.radius * 0.5) {
+        dealDamage(e, s.dmg * u.power, u);
+        if (s.stun) e.stunUntil = Math.max(e.stunUntil, G.t + s.stun);
+        if (s.slow) applySlow(e, s.slow, s.slowDur || 1.5);
+        burst(e.u - CX, 1.2, e.v, s.color, 8, 4, 0.4);
+      }
+    }
+    ringFx(u.u, u.v, 0.4, s.radius * 1.2, s.color, 0.4);
+    if (s.radius > 3) G.shake = Math.max(G.shake, 0.3);
+  },
+  summon(u, s) {
+    for (let i = 0; i < s.count; i++) spawnPet(u, s, i);
+    ringFx(u.u, u.v, 0.5, 3, s.color, 0.5);
+  },
+  zone(u, s, aim) {
+    const p = clampAim(u, aim, s.range);
+    const g = new THREE.Group();
+    const disc = new THREE.Mesh(gDisc, ownMat(s.color, 0.3)); disc.scale.set(s.radius, 1, s.radius); g.add(disc);
+    const ring = new THREE.Mesh(gRing, ownMat(0xffffff, 0.7)); ring.scale.set(s.radius, 1, s.radius); g.add(ring);
+    g.position.set(p.u - CX, 0.05, p.v); scene.add(g);
+    G.zones.push({ u: p.u, v: p.v, radius: s.radius, until: G.t + s.dur, team: u.team, slow: s.slow, dps: s.dps, src: u, mesh: g });
+    ringFx(p.u, p.v, 0.5, s.radius, s.color, 0.4);
+  },
+};
+function canCast(u, i) {
+  const s = u.def.skills[i];
+  return !u.dead && G.t >= u.stunUntil && u.cd[i] <= 0 && u.mana >= s.mana && u.level >= (s.lvl || 1);
+}
+function cast(u, i, aim) {
+  if (G.state !== 'play' || !canCast(u, i)) return false;
+  const s = u.def.skills[i];
+  u.mana -= s.mana; u.cd[i] = s.cd;
+  if (s.type !== 'stealth' && s.type !== 'blink' && s.type !== 'buff' && s.type !== 'shield') u.stealthUntil = 0;   // 공격 스킬은 은신 해제
+  SK[s.type](u, s, aim);
+  return true;
+}
+
+/* =====================================================================
+   유닛 업데이트
+   ===================================================================== */
+function updateChamp(u, dt) {
+  const t = G.t;
+  if (u.dead) { u.deadT += dt; return; }
+  for (let i = 0; i < 4; i++) u.cd[i] = Math.max(0, u.cd[i] - dt);
+  u.hp = Math.min(u.maxHp, u.hp + 3 * dt);
+  u.mana = Math.min(u.maxMana, u.mana + (6 + 0.8 * u.level) * dt);
+  const bc = u.team === 0 ? 3 : L - 3;
+  if (Math.abs(u.u - bc) < 5.5) { u.hp = Math.min(u.maxHp, u.hp + u.maxHp * 0.1 * dt); u.mana = Math.min(u.maxMana, u.mana + 10 * dt); }
+  if (u.shield && t > u.shield.until) u.shield = null;
+  if (u.haste && t > u.haste.until) u.haste = null;
+  if (u.slow && t > u.slow.until) u.slow = null;
+  if (G.state !== 'play' || t < u.stunUntil) return;
+
+  let tg = u.attackTarget;
+  if (tg && tg.dead) { u.attackTarget = null; tg = null; }
+  if (!tg && !u.moveTarget) {
+    let best = null, bd = u.range + 0.5;
+    for (const e of G.units) {
+      if (e.dead || e.team === u.team || !visible(e)) continue;
+      const d = dist(u, e) - e.radius; if (d < bd) { bd = d; best = e; }
+    }
+    if (best) { u.attackTarget = best; u.soft = true; tg = best; }
+  }
+  if (tg) {
+    const d = dist(u, tg) - tg.radius;
+    if (d <= u.range) {
+      u.face = Math.atan2(tg.v - u.v, tg.u - u.u);
+      if (t >= u.nextAtk) doAttack(u, tg);
+    } else if (u.soft) u.attackTarget = null;
+    else moveToward(u, tg.u, tg.v, dt, u.range * 0.85 + tg.radius);
+  } else if (u.moveTarget) {
+    if (moveToward(u, u.moveTarget.u, u.moveTarget.v, dt, 0.1)) u.moveTarget = null;
+  }
+}
+function minionTarget(m) {
+  let best = null, bd = m.type === 'ranged' ? 6.5 : 5.5;
+  for (const e of G.units) {
+    if (e.dead || e.team === m.team || e.kind !== 'minion') continue;
+    const d = dist(m, e); if (d < bd) { bd = d; best = e; }
+  }
+  if (best) return best;
+  for (const e of G.units) {
+    if (e.dead || e.team === m.team || e.kind !== 'champ' || !visible(e)) continue;
+    if (dist(m, e) < 4.5) return e;
+  }
+  for (const e of G.units) {
+    if (e.dead || e.team === m.team || e.kind !== 'tower') continue;
+    if (dist(m, e) < 5 + e.radius) return e;
+  }
+  return null;
+}
+function updateMinion(m, dt) {
+  const t = G.t;
+  if (m.slow && t >= m.slow.until) m.slow = null;
+  if (m.type === 'pet') { updatePet(m, dt); return; }
+  if (t < m.stunUntil) return;
+  if (t >= m.nextScan) { m.nextScan = t + rand(0.25, 0.4); m.target = minionTarget(m); }
+  let tg = m.target;
+  if (tg && tg.dead) { tg = m.target = null; }
+  if (tg) {
+    const d = dist(m, tg) - tg.radius;
+    if (d <= m.range) {
+      m.face = Math.atan2(tg.v - m.v, tg.u - m.u);
+      if (t >= m.nextAtk) {
+        m.nextAtk = t + m.interval;
+        if (m.type === 'ranged') spawnHoming(m, tg, m.dmg, 14, TEAM_COL[m.team], 0.22);
+        else { dealDamage(tg, m.dmg, m); m.swing = 0.2; }
+      }
+    } else moveToward(m, tg.u, tg.v, dt, m.range * 0.8 + tg.radius);
+  } else {
+    const dir = m.team === 0 ? 1 : -1;
+    moveToward(m, m.u + dir * 4, m.laneV, dt, 0.01);
+    if ((m.team === 0 && m.u > L - 1.5) || (m.team === 1 && m.u < 1.5)) m.dead = true;
+  }
+}
+function updatePet(m, dt) {
+  const t = G.t, o = m.owner;
+  if (t >= m.life || !o || o.dead) { m.dead = true; burst(m.u - CX, 0.8, m.v, m.mesh ? 0xffffff : 0xffffff, 8, 3, 0.4); return; }
+  if (t < m.stunUntil) return;
+  if (t >= m.nextScan) {
+    m.nextScan = t + 0.3; let best = null, bd = 9;
+    for (const e of G.units) {                                    // 가까운 적 챔피언 우선, 없으면 적 미니언
+      if (e.dead || e.team === m.team || e.kind === 'tower' || !visible(e)) continue;
+      const d = dist(m, e) - (e.kind === 'champ' ? 3 : 0); if (d < bd && dist(o, e) < 12) { bd = d; best = e; }
+    }
+    m.target = best;
+  }
+  const tg = m.target;
+  if (tg && !tg.dead) {
+    const d = dist(m, tg) - tg.radius;
+    if (d <= m.range) {
+      m.face = Math.atan2(tg.v - m.v, tg.u - m.u);
+      if (t >= m.nextAtk) { m.nextAtk = t + m.interval; dealDamage(tg, m.dmg, m); m.swing = 0.2; }
+    } else moveToward(m, tg.u, tg.v, dt, m.range * 0.8 + tg.radius);
+  } else if (dist(m, o) > 3) moveToward(m, o.u, o.v, dt, 2.0);
+}
+function separateMinions() {
+  const ms = G.units.filter(u => u.kind === 'minion' && !u.dead);
+  for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
+    const a = ms[i], b = ms[j]; let dx = b.u - a.u, dz = b.v - a.v; const d = Math.hypot(dx, dz);
+    if (d < 0.85) {
+      if (d < 1e-4) { dx = rand(-1, 1); dz = rand(-1, 1); }
+      const dd = Math.hypot(dx, dz), push = (0.85 - d) / 2;
+      a.u -= dx / dd * push; a.v -= dz / dd * push; b.u += dx / dd * push; b.v += dz / dd * push;
+      a.v = clamp(a.v, -HALF, HALF); b.v = clamp(b.v, -HALF, HALF);
+    }
+  }
+}
+function updateTower(tw, dt) {
+  if (tw.dead) return;
+  const t = G.t;
+  if (t >= tw.nextScan) {
+    tw.nextScan = t + 0.25;
+    let best = null, bd = 1e9;
+    for (const e of G.units) {          // 1) 아군 챔피언을 때린 적 챔피언
+      if (e.dead || e.team === tw.team || e.kind !== 'champ' || e.aggroUntil <= t || !visible(e)) continue;
+      const d = dist(tw, e); if (d <= TOWER_RANGE + e.radius * 0.5 && d < bd) { bd = d; best = e; }
+    }
+    if (!best) {                         // 2) 미니언
+      bd = 1e9;
+      for (const e of G.units) {
+        if (e.dead || e.team === tw.team || e.kind !== 'minion') continue;
+        const d = dist(tw, e); if (d <= TOWER_RANGE + e.radius * 0.5 && d < bd) { bd = d; best = e; }
+      }
+    }
+    if (!best) {                         // 3) 챔피언
+      bd = 1e9;
+      for (const e of G.units) {
+        if (e.dead || e.team === tw.team || e.kind !== 'champ' || !visible(e)) continue;
+        const d = dist(tw, e); if (d <= TOWER_RANGE + e.radius * 0.5 && d < bd) { bd = d; best = e; }
+      }
+    }
+    tw.target = best;
+  }
+  const tg = tw.target;
+  if (tg && !tg.dead && t >= tw.nextAtk) {
+    if (dist(tw, tg) > TOWER_RANGE + tg.radius) { tw.target = null; return; }
+    tw.nextAtk = t + 1.1;
+    if (tw.lastTarget === tg) tw.stack = Math.min(4, tw.stack + 1); else tw.stack = 0;
+    tw.lastTarget = tg;
+    const dmg = tg.kind === 'minion' ? 130 : 65 * (1 + 0.3 * tw.stack);
+    const p = { u: tw.u, v: tw.v, face: Math.atan2(tg.v - tw.v, tg.u - tw.u), team: tw.team, kind: 'tower' };
+    spawnHoming(p, tg, dmg, 22, TEAM_COL[tw.team], 0.38);
+    G.projs[G.projs.length - 1].y = 5;
+    G.projs[G.projs.length - 1].src = tw;
+  }
+}
+
+/* =====================================================================
+   봇 AI (상태머신: 회피 → 후퇴 → 교전/카이팅 → 파밍)
+   ===================================================================== */
+function inEnemyTowerRange(b, pt) {
+  for (const tw of G.units) {
+    if (tw.kind !== 'tower' || tw.dead || tw.team === b.team) continue;
+    if (Math.hypot(pt.u - tw.u, pt.v - tw.v) < TOWER_RANGE + 0.8) {
+      if (tw.target && tw.target.kind === 'minion' && !tw.target.dead) continue;
+      return tw;
+    }
+  }
+  return null;
+}
+function leadAim(from, tgt, speed) {
+  let ax = tgt.u, az = tgt.v;
+  for (let i = 0; i < 2; i++) {
+    const tt = Math.hypot(ax - from.u, az - from.v) / speed;
+    ax = tgt.u + tgt.vu * tt * 0.85; az = tgt.v + tgt.vv * tt * 0.85;
+  }
+  return { u: ax + rand(-0.35, 0.35), v: az + rand(-0.35, 0.35) };
+}
+function setDodge(b, u, v, dur) {
+  b.moveTarget = { u: clamp(u, -1, L + 1), v: clamp(v, -HALF, HALF) };
+  b.attackTarget = null; b.dodgeUntil = G.t + dur;
+}
+/* 스킬 타입 기반 봇 시전 로직 (R부터 우선순위로 한 번에 하나만 시전) */
+const SHOTS = ['chain', 'lance', 'arrow', 'hook', 'bigarrow'];
+function botCasts(b, p, dP, hpR, dirx, dirz, retreat) {
+  const sk = b.def.skills, melee = b.def.ai === 'melee';
+  for (let i = 3; i >= 0; i--) {
+    if (!canCast(b, i)) continue;
+    const s = sk[i], ty = s.type;
+    if (SHOTS.includes(ty)) {
+      if (dP < s.range - 0.7 && (ty !== 'hook' || dP > 3)) { cast(b, i, leadAim(b, p, s.speed)); return; }
+    } else if (ty === 'nova') { if (!retreat || dP < 3) { if (dP < s.radius - 0.4) { cast(b, i, b); return; } } }
+    else if (ty === 'strike') { if (dP < s.range - 1) { cast(b, i, leadAim(b, p, 99)); return; } }
+    else if (ty === 'zone') { if (dP < s.range - 0.5 && dP > 2.5) { cast(b, i, leadAim(b, p, 99)); return; } }
+    else if (ty === 'dash') { if (!retreat && dP > 2.2 && dP < s.range - 0.3) { cast(b, i, { u: p.u, v: p.v }); return; } }
+    else if (ty === 'summon') { if (!retreat && dP < 14) { cast(b, i, b); return; } }
+    else if (ty === 'shield' || ty === 'buff') { if (dP < 9 && (retreat || hpR < 0.85 || melee)) { cast(b, i, b); return; } }
+    else if (ty === 'stealth') { if (retreat ? dP < 8 : (dP > 6 && dP < 13)) { cast(b, i, b); return; } }
+    else if (ty === 'blink') {
+      if (retreat) { if (dP < 6) { cast(b, i, { u: b.u + 6, v: b.v + rand(-2, 2) }); return; } }
+      else if (melee) { if (dP > 7.5 && dP < 14 && !inEnemyTowerRange(b, p)) { cast(b, i, { u: p.u, v: p.v }); return; } }
+      else if (dP < 3.2 && hpR < 0.65) { cast(b, i, { u: b.u + dirx * 6, v: b.v + dirz * 6 }); return; }
+    }
+  }
+}
+function botThink(b) {
+  const t = G.t, p = G.player;
+  if (b.dead || !p || p.dead || G.state !== 'play') return;
+  b.soft = true;
+  const dP = Math.max(0.01, dist(b, p)), hpR = b.hp / b.maxHp;
+  const seen = visible(p) || dP < 3.5;                               // 은신한 플레이어는 가까이 오기 전엔 보지 못한다
+  const dirx = (b.u - p.u) / dP, dirz = (b.v - p.v) / dP;     // 플레이어 → 봇 방향
+
+  // 1) 스킬 회피 (반응 지연 0.22초 + 55% 확률)
+  if (t >= b.dodgeUntil) {
+    for (const pr of G.projs) {
+      if (pr.kind !== 'shot' || pr.team === b.team || t - pr.born < 0.22) continue;
+      const rx = b.u - pr.u, rz = b.v - pr.v, along = rx * pr.dx + rz * pr.dz;
+      if (along < 0 || along > pr.left) continue;
+      const cross = rx * pr.dz - rz * pr.dx, need = pr.r + b.radius + 0.35;
+      if (Math.abs(cross) < need && along / pr.speed < 0.9) {
+        if (pr.roll === undefined) pr.roll = Math.random() < 0.55;
+        if (pr.roll) {
+          const sg = Math.abs(cross) < 0.05 ? (Math.random() < 0.5 ? 1 : -1) : Math.sign(cross);
+          const amt = need - Math.abs(cross) + 1.0;
+          setDodge(b, b.u + pr.dz * sg * amt, b.v - pr.dx * sg * amt, 0.5); break;
+        }
+      }
+    }
+  }
+  if (t >= b.dodgeUntil) {
+    for (const a of G.aoes) {
+      if (a.team === b.team || t - a.born < 0.25) continue;
+      const d = Math.hypot(b.u - a.u, b.v - a.v);
+      if (d < a.radius + 0.2) {
+        if (a.roll === undefined) a.roll = Math.random() < 0.7;
+        if (a.roll) {
+          let dx = b.u - a.u, dz = b.v - a.v; const dd = Math.hypot(dx, dz);
+          if (dd < 0.01) { dx = 1; dz = 0; } else { dx /= dd; dz /= dd; }
+          const out = { u: a.u + dx * (a.radius + 1.4), v: a.v + dz * (a.radius + 1.4) };
+          const bi = b.def.skills.findIndex(s => s.type === 'blink');
+          if (a.at - t < 0.4 && bi >= 0 && canCast(b, bi)) cast(b, bi, out);
+          setDodge(b, out.u, out.v, 0.7); break;
+        }
+      }
+    }
+  }
+  if (t < b.dodgeUntil) return;
+
+  // 2) 후퇴 (체력 32% 미만 → 80% 이상이 될 때까지 기지에서 회복)
+  if (hpR < 0.32) b.retreating = true; else if (hpR > 0.8) b.retreating = false;
+  if (b.retreating) {
+    b.attackTarget = null; b.moveTarget = { u: L - 3, v: 0 };
+    botCasts(b, p, dP, hpR, dirx, dirz, true);
+    return;
+  }
+
+  // 3) 타워 사거리 안이면 벗어난다
+  const tw = inEnemyTowerRange(b, b);
+  if (tw) {
+    const dx = b.u - tw.u, dz = b.v - tw.v, d = Math.hypot(dx, dz) || 1;
+    b.attackTarget = null;
+    b.moveTarget = { u: tw.u + dx / d * (TOWER_RANGE + 2), v: tw.v + dz / d * (TOWER_RANGE + 2) };
+    return;
+  }
+
+  // 4) 교전 (카이팅 + 스킬)
+  if (dP < 15 && seen) {
+    botCasts(b, p, dP, hpR, dirx, dirz, false);
+    if (b.def.ai === 'melee') {                                  // 근접: 타워 밖이면 끝까지 추격
+      if (inEnemyTowerRange(b, p)) { b.attackTarget = null; b.moveTarget = null; return; }
+      b.soft = false; b.moveTarget = null; b.attackTarget = p; return;
+    }
+    if (t >= b.nextStrafe) { b.strafeUntil = t + rand(0.4, 0.8); b.nextStrafe = t + rand(1.4, 2.4); b.strafeDir = Math.random() < 0.5 ? 1 : -1; }
+    const ready = canCast(b, 0) || canCast(b, 1);
+    let qr = 0; for (const s of b.def.skills) if (s.speed) qr = Math.max(qr, s.range);
+    const want = ready ? Math.max(b.range + 1.7, qr * 0.6) : Math.max(4, b.range - 0.5);
+    let mt = null, at = null;
+    if (dP < want - 1.3) mt = { u: b.u + dirx * 3, v: b.v + dirz * 3 };
+    else if (dP > want + 1.2) mt = { u: p.u + dirx * want, v: p.v + dirz * want };
+    else if (t < b.strafeUntil) mt = { u: b.u - dirz * b.strafeDir * 2.2, v: b.v + dirx * b.strafeDir * 2.2 };
+    else if (dP <= b.range + p.radius + 0.2) at = p;
+    if (mt && inEnemyTowerRange(b, mt)) mt = null;
+    if (mt) { b.moveTarget = mt; b.attackTarget = null; }
+    else { b.moveTarget = null; b.attackTarget = at; }
+    return;
+  }
+
+  // 5) 파밍 / 대기
+  let tgt = null, bd = b.range + 1.0;
+  for (const e of G.units) {
+    if (e.dead || e.team === b.team || e.kind !== 'minion') continue;
+    const d = dist(b, e); if (d < bd) { bd = d; tgt = e; }
+  }
+  if (tgt) { b.attackTarget = tgt; b.moveTarget = null; return; }
+  if (t > b.nextLane) { b.laneV = rand(-2.5, 2.5); b.nextLane = t + 4; }
+  let standU = L - 18, fm = null;
+  for (const m of G.units) if (m.kind === 'minion' && !m.dead && m.team === b.team && (!fm || m.u < fm.u)) fm = m;
+  if (fm) standU = fm.u + 3.0;
+  for (const e of G.units) if (e.kind === 'tower' && !e.dead && e.team !== b.team) standU = Math.max(standU, e.u + TOWER_RANGE + 1.2);
+  standU = Math.min(standU, L - 8);
+  const stand = { u: standU, v: b.laneV };
+  b.attackTarget = null;
+  b.moveTarget = dist(b, stand) > 1.5 ? stand : null;
+}
+
+/* =====================================================================
+   라운드 / 매치 흐름
+   ===================================================================== */
+let msgToken = 0;
+function showMsg(html, ms) {
+  const el = $('msg');
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.style.display = 'block';
+  if (ms) { const tk = ++msgToken; setTimeout(() => { if (tk === msgToken) el.style.display = 'none'; }, ms); }
+  else msgToken++;
+}
+function hideMsg() { msgToken++; $('msg').style.display = 'none'; }
+
+function clearWorldObjects() {
+  for (const u of G.units) { scene.remove(u.mesh); disposeOwn(u.mesh); }
+  for (const p of G.projs) scene.remove(p.mesh);
+  for (const a of G.aoes) { scene.remove(a.mesh); disposeOwn(a.mesh); }
+  for (const z of G.zones) { scene.remove(z.mesh); disposeOwn(z.mesh); }
+  for (const f of G.fx) { scene.remove(f.mesh); disposeOwn(f.mesh); }
+  G.units = []; G.projs = []; G.aoes = []; G.zones = []; G.fx = []; G.texts = []; G.spawnQ = [];
+}
+function resetRound() {
+  clearWorldObjects();
+  G.player = makeChamp(G.picks.me, 0);
+  G.bot = makeChamp(G.foeKey, 1);
+  makeTower(0, 9); makeTower(0, 18); makeTower(1, L - 9); makeTower(1, L - 18);
+  G.t = 0; G.roundT = 0; G.nextWaveT = 6; G.stateT = 0; G.timeScale = 1;
+  G.state = 'countdown';
+}
+function resolveFoe() {
+  G.foeKey = G.picks.foe === 'random' ? ROSTER[Math.floor(Math.random() * ROSTER.length)] : G.picks.foe;
+}
+function startMatch() {
+  G.score = [0, 0]; G.round = 1; G.lastWinner = -1;
+  $('overlay').style.display = 'none';
+  resolveFoe();
+  hideMsg(); resetRound();
+  buildSkillHud(G.player.def);
+  $('pn').textContent = G.player.def.name + ' (나)'; $('bn').textContent = G.bot.def.name + ' (봇)';
+  camCenter.x = clamp(G.player.u - CX, -CX + 8, CX - 8); camCenter.z = 0;
+}
+function endRound(winner) {
+  if (G.state !== 'play') return;
+  G.state = 'roundEnd'; G.stateT = 0; G.timeScale = 0.25; G.lastWinner = winner;
+  if (winner >= 0) G.score[winner]++;
+  const done = G.score[0] >= 2 || G.score[1] >= 2;
+  if (winner === 0) showMsg('라운드 승리!' + (done ? '' : '<small>다음 라운드 준비 중…</small>'));
+  else if (winner === 1) showMsg('라운드 패배' + (done ? '' : '<small>다음 라운드 준비 중…</small>'));
+  else showMsg('무승부<small>라운드를 다시 시작합니다</small>');
+}
+function timeUp() {
+  const p = G.player, b = G.bot, a = p.hp / p.maxHp, c = b.hp / b.maxHp;
+  endRound(Math.abs(a - c) < 0.001 ? -1 : a > c ? 0 : 1);
+}
+function finishMatch() {
+  G.state = 'matchEnd'; hideMsg();
+  const win = G.score[0] > G.score[1];
+  $('card').innerHTML = `<h1>${win ? '🏆 매치 승리!' : '💀 매치 패배'}</h1><p>최종 스코어 ${G.score[0]} : ${G.score[1]}</p>
+    <button id="again">챔피언 다시 선택</button>`;
+  $('card').className = 'card';
+  $('overlay').style.display = 'flex';
+  $('again').onclick = showSelect;
+}
+function processWaves() {
+  if (G.roundT >= G.nextWaveT) {
+    G.nextWaveT += WAVE_INT;
+    for (let i = 0; i < 4; i++) for (const team of [0, 1]) G.spawnQ.push({ at: G.roundT + i * 0.8, type: i < 3 ? 'melee' : 'ranged', team });
+  }
+  while (G.spawnQ.length && G.spawnQ[0].at <= G.roundT) { const s = G.spawnQ.shift(); spawnMinion(s.type, s.team); }
+}
+
+function simulate(dt) {
+  G.t += dt;
+  if (G.state === 'play') {
+    G.roundT += dt; processWaves();
+    if (G.bot && G.t >= G.bot.nextThink) { G.bot.nextThink = G.t + 0.2; botThink(G.bot); }
+  }
+  for (const u of G.units.slice()) {
+    if (u.dead && u.kind !== 'champ') continue;
+    if (u.kind === 'champ') updateChamp(u, dt);
+    else if (u.kind === 'minion') updateMinion(u, dt);
+    else updateTower(u, dt);
+  }
+  separateMinions();
+  // 속도 추적 (예측 사격용)
+  for (const u of G.units) {
+    if (u.kind !== 'champ' || dt <= 0) continue;
+    u.vu += ((u.u - u.pu) / dt - u.vu) * 0.5; u.vv += ((u.v - u.pv) / dt - u.vv) * 0.5; u.pu = u.u; u.pv = u.v;
+  }
+  updateProjs(dt); updateAoes(); updateZones(dt);
+  for (const tx of G.texts) tx.life -= dt;
+  G.texts = G.texts.filter(tx => tx.life > 0);
+  G.units = G.units.filter(u => {
+    if (u.dead && u.kind !== 'champ') { scene.remove(u.mesh); disposeOwn(u.mesh); return false; }
+    return true;
+  });
+  if (G.state === 'play' && G.roundT >= ROUND_TIME) timeUp();
+}
+
+/* =====================================================================
+   입력
+   ===================================================================== */
+const mouse = { ndc: new THREE.Vector2(), ground: { u: CX, v: 0 }, rightHeld: false };
+const ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hitV = new THREE.Vector3();
+function updateMouse(e) {
+  mouse.last = { clientX: e.clientX, clientY: e.clientY }; mouse.has = true;
+  mouse.ndc.set((e.clientX / W) * 2 - 1, -(e.clientY / H) * 2 + 1);
+  ray.setFromCamera(mouse.ndc, camera);
+  if (ray.ray.intersectPlane(plane, hitV)) { mouse.ground.u = hitV.x + CX; mouse.ground.v = hitV.z; }
+}
+function pickEnemy(p) {
+  let best = null, bd = 1e9;
+  for (const e of G.units) {
+    if (e.dead || e.team === 0 || !visible(e)) continue;
+    const d = Math.hypot(e.u - p.u, e.v - p.v);
+    if (d < e.radius + 0.9 && d < bd) { bd = d; best = e; }
+  }
+  return best;
+}
+function rightClick(p) {
+  const pl = G.player; if (!pl || pl.dead || G.state !== 'play') return;
+  const e = pickEnemy(p);
+  if (e) {
+    pl.attackTarget = e; pl.soft = false; pl.moveTarget = null; pl.clickMode = 'attack';
+    ringFx(e.u, e.v, 1.4, 0.5, 0xff5a5a, 0.4);
+  } else {
+    pl.attackTarget = null; pl.clickMode = 'move';
+    pl.moveTarget = { u: clamp(p.u, -1, L + 1), v: clamp(p.v, -HALF, HALF) };
+    ringFx(p.u, p.v, 0.9, 0.25, 0x6dff9a, 0.4);
+  }
+}
+window.addEventListener('contextmenu', e => e.preventDefault());
+window.addEventListener('pointermove', e => { updateMouse(e); });
+window.addEventListener('pointerdown', e => {
+  updateMouse(e);
+  if (e.button === 2) { mouse.rightHeld = true; rightClick(mouse.ground); }
+});
+window.addEventListener('pointerup', e => { if (e.button === 2) mouse.rightHeld = false; });
+const KEYMAP = { KeyQ: 0, KeyW: 1, KeyE: 2, KeyR: 3 };
+window.addEventListener('keydown', e => {
+  const pl = G.player; if (!pl || e.repeat) return;
+  if (e.code in KEYMAP) cast(pl, KEYMAP[e.code], mouse.ground);
+  else if (e.code === 'KeyS') { pl.moveTarget = null; pl.attackTarget = null; }
+});
+
+/* =====================================================================
+   렌더링 동기화 / UI
+   ===================================================================== */
+const _v = new THREE.Vector3();
+function syncMeshes(dt) {
+  const tm = performance.now() / 1000;
+  for (const u of G.units) {
+    const m = u.mesh; if (!m) continue;
+    u.flash = Math.max(0, u.flash - dt);
+    const f = 1 + u.flash * 1.2;
+    m.position.set(u.u - CX, 0, u.v);
+    m.rotation.y = -u.face;
+    m.scale.setScalar(f);
+    if (u.kind === 'champ') {
+      const d = m.userData;
+      if (u.dead) { m.rotation.z = Math.min(1.5, u.deadT * 3); m.position.y = -0.1; }
+      else m.position.y = Math.sin(tm * 3 + u.id) * 0.08;
+      const stl = !!(u.stealthUntil && G.t < u.stealthUntil);
+      m.visible = !(stl && u.team === 1);                                  // 은신한 적은 보이지 않음
+      d.shield.visible = stl || !!(u.shield && u.shield.amt > 0);
+      d.shield.material.color.setHex(stl ? 0x8a5cff : 0x9fd8ff);
+      d.stun.visible = !u.dead && G.t < u.stunUntil;
+      d.stun.rotation.z = tm * 8;
+      d.orb.scale.setScalar(1 + Math.sin(tm * 6) * 0.15);
+    } else if (u.kind === 'tower') {
+      u.mesh.userData.crystal.rotation.y = tm * 1.5;
+      u.mesh.userData.crystal.position.y = 5.4 + Math.sin(tm * 2) * 0.12;
+    } else if (u.swing > 0) { u.swing -= dt; m.position.x += Math.cos(u.face) * 0.25; m.position.z += Math.sin(u.face) * 0.25; }
+  }
+  if (G.rocks) for (const r of G.rocks) { r.rotation.y += dt * 0.1; r.rotation.x += dt * 0.05; }
+}
+function drawUI() {
+  const c = uiCtx; c.clearRect(0, 0, W, H);
+  for (const u of G.units) {
+    if (u.dead) continue;
+    if (u.team === 1 && u.stealthUntil && G.t < u.stealthUntil) continue;
+    const y = u.kind === 'tower' ? 6.5 : u.kind === 'champ' ? 3.4 : 2.0;
+    _v.set(u.u - CX, y, u.v).project(camera);
+    const sx = (_v.x * 0.5 + 0.5) * W, sy = (-_v.y * 0.5 + 0.5) * H;
+    const bw = u.kind === 'champ' ? 76 : u.kind === 'tower' ? 92 : 34, bh = u.kind === 'minion' ? 5 : 9;
+    c.fillStyle = 'rgba(0,0,0,.7)'; c.fillRect(sx - bw / 2 - 1, sy - bh - 1, bw + 2, bh + 2);
+    c.fillStyle = u.team === 0 ? '#3fd16a' : '#e04848';
+    c.fillRect(sx - bw / 2, sy - bh, bw * clamp(u.hp / u.maxHp, 0, 1), bh);
+    if (u.shield && u.shield.amt > 0) {
+      c.fillStyle = 'rgba(230,245,255,.9)';
+      c.fillRect(sx - bw / 2, sy - bh - 3, bw * clamp(u.shield.amt / u.maxHp, 0, 1), 3);
+    }
+    if (u.kind === 'champ') {
+      c.fillStyle = '#10163a'; c.fillRect(sx - bw / 2 - 18, sy - bh - 1, 16, bh + 2);
+      c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center'; c.fillText(String(u.level), sx - bw / 2 - 10, sy - 1);
+    }
+  }
+  c.textAlign = 'center';
+  for (const tx of G.texts) {
+    const k = 1 - tx.life / tx.max;
+    _v.set(tx.u - CX, tx.y + k * 1.2, tx.v).project(camera);
+    const sx = (_v.x * 0.5 + 0.5) * W, sy = (-_v.y * 0.5 + 0.5) * H;
+    c.globalAlpha = clamp(tx.life / tx.max * 1.6, 0, 1);
+    c.font = `800 ${tx.size}px sans-serif`; c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,.85)';
+    c.strokeText(tx.str, sx, sy); c.fillStyle = tx.color; c.fillText(tx.str, sx, sy);
+  }
+  c.globalAlpha = 1;
+  drawMinimap(c);
+}
+
+/* ---------- 미니맵 (카메라와 같은 사선 투영으로 다리를 그린다) ---------- */
+const MM = { w: 236, h: 176, pad: 12 };
+const mmProj = (u, v) => [0.7071 * ((u - CX) + v), 0.7071 * Math.sin(PITCH) * ((u - CX) - v)];
+const MM_SCALE = Math.min((MM.w - 24) / 47, (MM.h - 24) / 33.5);
+function drawMinimap(c) {
+  if (G.state === 'menu' || G.state === 'matchEnd') return;
+  const x0 = MM.pad, y0 = H - MM.pad - MM.h, cx = x0 + MM.w / 2, cy = y0 + MM.h / 2;
+  const P = (u, v) => { const q = mmProj(u, v); return [cx + q[0] * MM_SCALE, cy - q[1] * MM_SCALE]; };
+  c.save();
+  c.fillStyle = 'rgba(8,12,30,.82)'; c.strokeStyle = 'rgba(255,255,255,.25)'; c.lineWidth = 2;
+  c.beginPath(); c.roundRect(x0, y0, MM.w, MM.h, 10); c.fill(); c.stroke(); c.clip();
+  // 다리
+  const a = P(0, -HALF), b = P(L, -HALF), d = P(L, HALF), e = P(0, HALF);
+  c.fillStyle = '#4b5878'; c.beginPath(); c.moveTo(...a); c.lineTo(...b); c.lineTo(...d); c.lineTo(...e); c.closePath(); c.fill();
+  c.strokeStyle = '#8d9bc2'; c.lineWidth = 1.5; c.stroke();
+  for (const team of [0, 1]) {          // 기지
+    const p = P(team === 0 ? 3 : L - 3, 0);
+    c.fillStyle = team === 0 ? 'rgba(74,163,255,.35)' : 'rgba(255,90,90,.35)';
+    c.beginPath(); c.arc(p[0], p[1], 13, 0, 6.283); c.fill();
+  }
+  // 현재 카메라 화면 영역
+  const cc = mmProj(camCenter.x + CX, camCenter.z), vx = cx + cc[0] * MM_SCALE, vy = cy - cc[1] * MM_SCALE;
+  c.strokeStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.5;
+  c.strokeRect(vx - camHalf.w * MM_SCALE, vy - camHalf.h * MM_SCALE, camHalf.w * 2 * MM_SCALE, camHalf.h * 2 * MM_SCALE);
+  // 유닛
+  for (const u of G.units) {
+    if (u.dead) continue;
+    if (u.stealthUntil && G.t < u.stealthUntil && u.team === 1) continue;     // 은신한 적은 표시하지 않는다
+    const p = P(u.u, u.v), col = u.team === 0 ? '#4aa3ff' : '#ff5a5a';
+    c.fillStyle = col;
+    if (u.kind === 'tower') { c.fillRect(p[0] - 5, p[1] - 5, 10, 10); c.strokeStyle = '#fff'; c.lineWidth = 1; c.strokeRect(p[0] - 5, p[1] - 5, 10, 10); }
+    else if (u.kind === 'champ') {
+      c.beginPath(); c.arc(p[0], p[1], 6.5, 0, 6.283); c.fill();
+      c.strokeStyle = u === G.player ? '#ffd96a' : '#fff'; c.lineWidth = u === G.player ? 3 : 1.5; c.stroke();
+    } else { c.beginPath(); c.arc(p[0], p[1], 2.4, 0, 6.283); c.fill(); }
+  }
+  c.restore();
+}
+
+// HUD 초기 구성 (스킬 슬롯)
+const skillEls = [];
+function buildSkillHud(def) {
+  const box = $('skills'); box.innerHTML = ''; skillEls.length = 0;
+  def.skills.forEach(s => {
+    const d = document.createElement('div'); d.className = 'skill';
+    d.innerHTML = `<span class="k">${s.key}</span><span class="n">${s.name}</span><div class="cdov"></div><div class="cdt"></div>`;
+    box.appendChild(d); skillEls.push({ d, ov: d.querySelector('.cdov'), tx: d.querySelector('.cdt') });
+  });
+}
+function setBar(i, t, ratio, text) { $(i).style.width = (clamp(ratio, 0, 1) * 100) + '%'; if (t) $(t).textContent = text; }
+function updateHud() {
+  const p = G.player, b = G.bot; if (!p || !b) return;
+  setBar('phb', 'pht', p.hp / p.maxHp, `${Math.ceil(p.hp)} / ${p.maxHp}`);
+  setBar('bhb', 'bht', b.hp / b.maxHp, `${Math.ceil(b.hp)} / ${b.maxHp}`);
+  $('pl').textContent = 'Lv' + p.level; $('bl').textContent = 'Lv' + b.level;
+  setBar('hb', 'ht', p.hp / p.maxHp, `${Math.ceil(p.hp)} / ${p.maxHp}`);
+  setBar('mb', 'mt', p.mana / p.maxMana, `${Math.floor(p.mana)} / ${p.maxMana}`);
+  const lo = p.level <= 1 ? 0 : XP_NEXT[p.level - 2], hi = p.level >= MAX_LVL ? 1 : XP_NEXT[p.level - 1];
+  setBar('xb', null, p.level >= MAX_LVL ? 1 : (p.xp - lo) / (hi - lo));
+  p.def.skills.forEach((s, i) => {
+    const e = skillEls[i], locked = p.level < (s.lvl || 1);
+    e.d.classList.toggle('locked', locked);
+    e.d.classList.toggle('nomana', !locked && p.mana < s.mana);
+    if (locked) { e.ov.style.height = '100%'; e.tx.textContent = 'Lv' + s.lvl; e.tx.style.fontSize = '14px'; }
+    else {
+      e.tx.style.fontSize = '22px';
+      e.ov.style.height = (p.cd[i] > 0 ? p.cd[i] / s.cd * 100 : 0) + '%';
+      e.tx.textContent = p.cd[i] > 0 ? (p.cd[i] >= 1 ? Math.ceil(p.cd[i]) : p.cd[i].toFixed(1)) : '';
+    }
+  });
+  $('score').textContent = `${G.score[0]} : ${G.score[1]}`;
+  $('roundlbl').textContent = `ROUND ${G.round} · 3판 2선승`;
+  const rem = Math.max(0, Math.ceil(ROUND_TIME - G.roundT)), tm = $('timer');
+  tm.textContent = `${Math.floor(rem / 60)}:${String(rem % 60).padStart(2, '0')}`;
+  tm.classList.toggle('warn', rem <= 30);
+}
+
+/* =====================================================================
+   메인 루프
+   ===================================================================== */
+function step(rdt) {
+  G.stateT += rdt;
+  if (G.state === 'countdown') {
+    if (G.stateT >= 3) { G.state = 'play'; G.stateT = 0; showMsg('시작!', 700); }
+    else showMsg(String(Math.ceil(3 - G.stateT)));
+  }
+  if (G.state === 'play' && mouse.rightHeld && G.player && !G.player.dead && G.player.clickMode === 'move') {
+    G.player.moveTarget = { u: clamp(mouse.ground.u, -1, L + 1), v: clamp(mouse.ground.v, -HALF, HALF) };
+  }
+  if (G.state === 'play' || G.state === 'roundEnd') simulate(rdt * G.timeScale);
+  if (G.state === 'roundEnd') {
+    if (G.stateT > 1.3) G.timeScale = 1;
+    if (G.stateT > 3.8) {
+      if (G.score[0] >= 2 || G.score[1] >= 2) finishMatch();
+      else { if (G.lastWinner >= 0) G.round++; hideMsg(); resetRound(); }
+    }
+  }
+  updateFx(rdt * G.timeScale);
+  syncMeshes(rdt);
+  G.shake = Math.max(0, G.shake - rdt * 1.5);
+  updateCamera(rdt);
+}
+function updateCamera(dt) {
+  const p = G.player, b = G.bot;
+  let tu = CX + 8, tv = 0;
+  if (p) {
+    tu = p.u; tv = p.v;
+    if (b && !b.dead && !p.dead) {                     // 내 캐릭터 위주 + 가까운 적 쪽으로 약간 치우침
+      const d = dist(p, b);
+      if (d < 20) { const k = 0.28 * (1 - d / 20) + 0.08; tu += (b.u - p.u) * k; tv += (b.v - p.v) * k; }
+    }
+  }
+  const tx = clamp(tu - CX, -CX + 8, CX - 8), tz = clamp(tv, -3, 3);
+  const f = 1 - Math.exp(-dt * 7);
+  camCenter.x += (tx - camCenter.x) * f; camCenter.z += (tz - camCenter.z) * f;
+  camera.position.set(camCenter.x + camBase.x + rand(-1, 1) * G.shake, camBase.y + rand(-1, 1) * G.shake, camCenter.z + camBase.z + rand(-1, 1) * G.shake);
+  camera.updateMatrixWorld();
+  if (mouse.has) updateMouse(mouse.last);          // 카메라가 움직여도 마우스 지면 좌표 유지
+}
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const rdt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+  step(rdt);
+  renderer.render(scene, camera);
+  drawUI(); updateHud();
+}
+
+/* ---------- 시작 ---------- */
+buildWorld();
+resize();
+G.picks = { me: 'lightning', foe: 'random' };
+resolveFoe(); resetRound(); G.state = 'menu';
+
+/* ---------- 캐릭터 선택 화면 ---------- */
+const hex = c => '#' + c.toString(16).padStart(6, '0');
+function champCard(key, group, on) {
+  const d = DEFS[key];
+  return `<button class="ch${on ? ' on' : ''}" data-g="${group}" data-k="${key}">
+    <b><span class="sw" style="background:${hex(d.body)}"></span>${d.name}</b>
+    <div class="rl">${d.role} · 난이도 <span class="df">${'★'.repeat(d.diff)}${'☆'.repeat(3 - d.diff)}</span></div>
+    <div class="ds">${d.desc}</div>
+    <div class="sk">${d.skills.map(s => s.key + ' ' + s.name).join(' · ')}</div></button>`;
+}
+function showSelect() {
+  G.state = 'menu'; hideMsg();
+  const card = $('card'); card.className = 'card wide';
+  const nm = k => k === 'random' ? '랜덤' : DEFS[k].name;
+  card.innerHTML = `<h1>ARAM 듀얼 · 챔피언 선택</h1>
+    <p>카드를 클릭해서 <b>내 챔피언</b>과 <b>상대 챔피언</b>을 고르세요. 먼저 상대를 처치하면 라운드 승리 · 3판 2선승</p>
+    <div class="sel-title">① 내 챔피언 <em id="meLbl">${nm(G.picks.me)}</em></div>
+    <div class="grid" id="gMe">${ROSTER.map(k => champCard(k, 'me', k === G.picks.me)).join('')}</div>
+    <div class="sel-title">② 상대 챔피언 (AI) <em id="foeLbl">${nm(G.picks.foe)}</em></div>
+    <div class="grid" id="gFoe">${ROSTER.map(k => champCard(k, 'foe', k === G.picks.foe)).join('')}
+      <button class="ch${G.picks.foe === 'random' ? ' on' : ''}" data-g="foe" data-k="random"><b>🎲 랜덤</b>
+        <div class="rl">매 매치 무작위</div><div class="ds">상대 챔피언을 매치 시작 때 무작위로 정합니다.</div></button></div>
+    <p style="margin-top:12px;font-size:12px;opacity:.7">🖱 우클릭: 이동 / 적 우클릭: 공격 · ⌨ Q W E R: 스킬(마우스 방향) · S: 정지 · R은 Lv3 해금</p>
+    <button id="startBtn">게임 시작</button>`;
+  card.querySelectorAll('button.ch').forEach(btn => btn.onclick = () => {
+    const g = btn.dataset.g, k = btn.dataset.k;
+    G.picks[g] = k;
+    card.querySelectorAll(`button.ch[data-g="${g}"]`).forEach(x => x.classList.toggle('on', x.dataset.k === k));
+    $(g === 'me' ? 'meLbl' : 'foeLbl').textContent = nm(k);
+  });
+  $('startBtn').onclick = startMatch;
+  $('overlay').style.display = 'flex';
+}
+showSelect();
+window.__game = { G, mouse, cast, rightClick, step, botThink, startMatch, DEFS, ROSTER };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

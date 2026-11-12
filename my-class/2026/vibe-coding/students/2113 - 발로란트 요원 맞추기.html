@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>발로란트 요원 맞추기</title>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial;
+    background:#0f1923;
+    color:white;
+    text-align:center;
+}
+
+/* 공통 화면 */
+.screen {
+    display:none;
+    padding:40px;
+}
+
+/* 메인 */
+#main {
+    display:block;
+    padding-top:100px;
+}
+
+.title {
+    font-size:40px;
+    margin-bottom:20px;
+}
+
+button {
+    padding:12px 25px;
+    border:none;
+    border-radius:10px;
+    background:#ff4655;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:15px;
+}
+
+.card {
+    background:#1a2733;
+    padding:20px;
+    border-radius:12px;
+    max-width:700px;
+    margin:auto;
+}
+
+input {
+    padding:10px;
+    width:80%;
+    border-radius:8px;
+    border:none;
+    margin-top:10px;
+}
+
+#feedback {
+    margin-top:15px;
+    font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 🏠 메인 화면 -->
+<div id="main" class="screen">
+    <div class="title">🎯 발로란트 요원 맞추기</div>
+    <p>랜덤 능력 설명을 보고 요원을 맞춰라</p>
+    <button onclick="startGame()">게임 시작</button>
+</div>
+
+<!-- 🎮 게임 화면 -->
+<div id="game" class="screen">
+    <div class="card">
+        <h2 id="question"></h2>
+
+        <input id="answer" placeholder="요원 이름 입력">
+        <br>
+        <button onclick="check()">제출</button>
+
+        <p id="feedback"></p>
+        <p id="progress"></p>
+    </div>
+</div>
+
+<!-- 🏁 결과 화면 -->
+<div id="result" class="screen">
+    <h1>🎮 게임 종료</h1>
+    <h2 id="rankText"></h2>
+    <p id="wrongText"></p>
+
+    <button onclick="goMain()">메인으로 돌아가기</button>
+</div>
+
+<script>
+
+// 🔥 요원 데이터 (랜덤 모드)
+const agents = [
+    ["브림스톤","연막과 궤도 폭격을 사용하는 미국 요원"],
+    ["바이퍼","독성 가스를 다루는 요원"],
+    ["오멘","그림자 순간이동 요원"],
+    ["아스트라","우주 기반 컨트롤 요원"],
+    ["하버","물 능력 요원"],
+
+    ["제트","바람을 사용하는 한국 요원"],
+    ["레이나",”시야를가리는스킬, 능력강화 요원"],
+    ["피닉스","불과 회복 요원"],
+    ["레이즈","폭발물 전문가"],
+    ["네온","전기 사용 요원"],
+    ["요루","속임수 차원 이동 요원"],
+
+    ["세이지","회복과 부활 요원"],
+    ["사이퍼","정보 트랩 요원"],
+    ["킬조이","터렛 로봇 요원"],
+    ["체임버","무기 + 텔레포트 요원"],
+
+    ["소바","정찰 화살 요원"],
+    ["브리치","진탕, 삥, 요원"],
+    ["스카이","치유 정찰 요원"],
+    ["케이오","스킬 무력화 요원"],
+    ["게코","생명체 사용 요원"]
+    [“믹스,”음파, 힐 스턴 사용요원”]
+    [“비토”요격기, 스킬무력화 요원”]
+    [“테호”드론,미사일사용 요원”]
+];
+
+let i = 0;
+let wrong = 0;
+
+// 🔀 시작
+function startGame(){
+    agents.sort(() => Math.random() - 0.5);
+    i = 0;
+    wrong = 0;
+
+    showScreen("game");
+    load();
+}
+
+// 📌 문제 로드
+function load(){
+    if(i >= agents.length){
+        finish();
+        return;
+    }
+
+    document.getElementById("question").innerText =
+        `Q${i+1}. ${agents[i][1]}`;
+
+    document.getElementById("progress").innerText =
+        `${i} / ${agents.length}`;
+
+    document.getElementById("feedback").innerText = "";
+}
+
+// ✔️ 정답 체크
+function check(){
+    let user = document.getElementById("answer").value.trim();
+    let correct = agents[i][0];
+
+    if(user === correct){
+        document.getElementById("feedback").innerHTML =
+            "✅ 정답!";
+    } else {
+        wrong++;
+        document.getElementById("feedback").innerHTML =
+            `❌ 오답! 정답: <b>${correct}</b>`;
+    }
+
+    document.getElementById("answer").value = "";
+    i++;
+    load();
+}
+
+// 🏁 종료
+function finish(){
+    let rank = "";
+
+    if(wrong === 0) rank = "레디언트";
+    else if(wrong <= 2) rank = "불멸";
+    else if(wrong <= 4) rank = "초월자";
+    else if(wrong <= 6) rank = "플래티넘";
+    else if(wrong <= 8) rank = "골드";
+    else rank = "아이언";
+
+    document.getElementById("rankText").innerText =
+        `랭크: ${rank}`;
+
+    document.getElementById("wrongText").innerText =
+        `틀린 개수: ${wrong}`;
+
+    showScreen("result");
+}
+
+// 🏠 메인으로
+function goMain(){
+    showScreen("main");
+}
+
+// 🎯 화면 전환
+function showScreen(name){
+    document.getElementById("main").style.display = "none";
+    document.getElementById("game").style.display = "none";
+    document.getElementById("result").style.display = "none";
+
+    document.getElementById(name).style.display = "block";
+}
+
+</script>
+
+</body>
+</html>

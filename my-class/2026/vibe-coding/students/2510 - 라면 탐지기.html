@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나만의 인생 라면 찾기 테스트</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+        }
+
+        body {
+            background-color: #f8f6f0;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Screen States */
+        .screen {
+            display: none;
+            padding: 32px 24px;
+            text-align: center;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Intro Screen */
+        .intro-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 800;
+            color: #d32f2f;
+            margin-bottom: 12px;
+            word-break: keep-all;
+        }
+
+        .intro-desc {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 36px;
+            word-break: keep-all;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 16px;
+            background-color: #d32f2f;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+        }
+
+        .btn-primary:hover {
+            background-color: #b71c1c;
+            transform: translateY(-2px);
+        }
+
+        /* Question Screen */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #eee;
+            border-radius: 4px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #d32f2f;
+            width: 20%;
+            transition: width 0.3s ease;
+        }
+
+        .question-number {
+            font-size: 14px;
+            font-weight: 700;
+            color: #d32f2f;
+            margin-bottom: 8px;
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #222;
+            margin-bottom: 32px;
+            word-break: keep-all;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 100%;
+        }
+
+        .option-btn {
+            width: 100%;
+            padding: 20px 16px;
+            border: 2px solid #f0f0f0;
+            border-radius: 16px;
+            background-color: #fafafa;
+            color: #333;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .option-btn:hover {
+            border-color: #d32f2f;
+            background-color: #fff5f5;
+            color: #d32f2f;
+        }
+
+        /* Result Screen */
+        .result-subtitle {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .result-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #d32f2f;
+            margin-bottom: 20px;
+        }
+
+        .ramen-card {
+            width: 100%;
+            background: #fff8f8;
+            border: 2px dashed #ffcdd2;
+            border-radius: 20px;
+            padding: 24px 16px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .ramen-emoji {
+            font-size: 64px;
+            margin-bottom: 12px;
+        }
+
+        .ramen-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .scores-list {
+            width: 100%;
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
+        .scores-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #555;
+            margin-bottom: 12px;
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .score-bar-bg {
+            flex-grow: 1;
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin: 0 12px;
+            overflow: hidden;
+        }
+
+        .score-bar-fill {
+            height: 100%;
+            background-color: #ff9800;
+            border-radius: 5px;
+        }
+
+        .top-score .score-bar-fill {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. 시작 화면 -->
+    <div id="intro-screen" class="screen active">
+        <div class="intro-icon">🍜</div>
+        <h1>내 취향 라면 찾기</h1>
+        <p class="intro-desc">간단한 5개 질문으로 나에게 꼭 맞는 라면을 추천받아보세요!</p>
+        <button class="btn-primary" onclick="startQuiz()">테스트 시작하기</button>
+    </div>
+
+    <!-- 2. 질문 화면 -->
+    <div id="question-screen" class="screen">
+        <div class="progress-bar">
+            <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div id="question-number" class="question-number">Q1</div>
+        <div id="question-text" class="question-text">질문 내용</div>
+        <div class="options-container">
+            <button id="opt1" class="option-btn" onclick="selectAnswer(0)"></button>
+            <button id="opt2" class="option-btn" onclick="selectAnswer(1)"></button>
+        </div>
+    </div>
+
+    <!-- 3. 결과 화면 -->
+    <div id="result-screen" class="screen">
+        <div class="result-subtitle">당신의 운명 라면은?</div>
+        <div id="result-ramen" class="result-title">라면 이름</div>
+        <div class="ramen-card">
+            <div id="ramen-emoji" class="ramen-emoji">🍜</div>
+            <div id="ramen-card-name" class="ramen-name">라면 이름</div>
+        </div>
+
+        <div class="scores-list">
+            <div class="scores-title">📊 라면별 점수 순위</div>
+            <div id="score-bars"></div>
+        </div>
+
+        <button class="btn-primary" onclick="restartQuiz()">다시 테스트하기</button>
+    </div>
+</div>
+
+<script>
+    // 라면 스코어 데이터
+    let score = {};
+    let currentStep = 0;
+    let answer = [];
+
+    // 질문 및 선택지
+    const questions = [
+        {
+            num: "Q1",
+            text: "1. 매운맛과 순한맛 중 무엇을 좋아하나요?",
+            options: ["매운맛", "순한맛"]
+        },
+        {
+            num: "Q2",
+            text: "2. 얇은 면과 두꺼운 면 중 무엇을 좋아하나요?",
+            options: ["얇은 면", "두꺼운 면"]
+        },
+        {
+            num: "Q3",
+            text: "3. 진한 맛과 담백한 맛 중 무엇을 좋아하나요?",
+            options: ["진한 맛", "담백한 맛"]
+        },
+        {
+            num: "Q4",
+            text: "4. 얼큰한 국물과 구수한 국물 중 무엇을 좋아하나요?",
+            options: ["얼큰한 국물", "구수한 국물"]
+        },
+        {
+            num: "Q5",
+            text: "5. 비빔라면과 국물라면 중 무엇을 좋아하나요?",
+            options: ["비빔라면", "국물라면"]
+        }
+    ];
+
+    // 라면 이모지 매핑
+    const ramenEmojis = {
+        "신라면": "🌶️",
+        "진라면": "🍲",
+        "너구리": "🦝",
+        "불닭볶음면": "🔥",
+        "짜파게티": "🥢",
+        "육개장": "🍥",
+        "사리곰탕면": "🥣",
+        "오징어짬뽕": "🦑",
+        "팔도비빔면": "❄️"
+    };
+
+    function resetScore() {
+        score = {
+            신라면: 0,
+            진라면: 0,
+            너구리: 0,
+            불닭볶음면: 0,
+            짜파게티: 0,
+            육개장: 0,
+            사리곰탕면: 0,
+            오징어짬뽕: 0,
+            팔도비빔면: 0
+        };
+        answer = [];
+        currentStep = 0;
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function startQuiz() {
+        resetScore();
+        showQuestion();
+        showScreen('question-screen');
+    }
+
+    function showQuestion() {
+        const q = questions[currentStep];
+        document.getElementById('question-number').innerText = q.num;
+        document.getElementById('question-text').innerText = q.text;
+        document.getElementById('opt1').innerText = q.options[0];
+        document.getElementById('opt2').innerText = q.options[1];
+        
+        // 프로그레스 바 업데이트
+        const progressPercent = ((currentStep + 1) / questions.length) * 100;
+        document.getElementById('progress-fill').style.width = progressPercent + '%';
+    }
+
+    function selectAnswer(optionIndex) {
+        const selectedValue = questions[currentStep].options[optionIndex];
+        answer.push(selectedValue);
+
+        currentStep++;
+        if (currentStep < questions.length) {
+            showQuestion();
+        } else {
+            calculateResult();
+        }
+    }
+
+    function calculateResult() {
+        // 기존 작성 로직
+        if (answer[0] == "매운맛") {
+            score["신라면"] += 2;
+            score["불닭볶음면"] += 3;
+            score["오징어짬뽕"] += 2;
+        } else {
+            score["진라면"] += 3;
+            score["사리곰탕면"] += 3;
+        }
+
+        if (answer[1] == "얇은 면") {
+            score["육개장"] += 3;
+            score["불닭볶음면"] += 2;
+        } else {
+            score["너구리"] += 3;
+            score["짜파게티"] += 2;
+        }
+
+        if (answer[2] == "진한 맛") {
+            score["불닭볶음면"] += 2;
+            score["짜파게티"] += 2;
+            score["신라면"] += 2;
+        } else {
+            score["진라면"] += 2;
+            score["사리곰탕면"] += 2;
+        }
+
+        if (answer[3] == "얼큰한 국물") {
+            score["신라면"] += 2;
+            score["오징어짬뽕"] += 3;
+        } else {
+            score["너구리"] += 2;
+            score["사리곰탕면"] += 2;
+        }
+
+        if (answer[4] == "비빔라면") {
+            score["짜파게티"] += 3;
+            score["불닭볶음면"] += 3;
+            score["팔도비빔면"] += 3;
+        } else {
+            score["신라면"] += 2;
+            score["너구리"] += 2;
+            score["진라면"] += 2;
+        }
+
+        // 최다 득점 라면 찾기
+        let resultRamen = Object.keys(score).reduce(
+            (a, b) => score[a] > score[b] ? a : b
+        );
+
+        renderResult(resultRamen);
+    }
+
+    function renderResult(winner) {
+        document.getElementById('result-ramen').innerText = winner;
+        document.getElementById('ramen-card-name').innerText = winner;
+        document.getElementById('ramen-emoji').innerText = ramenEmojis[winner] || "🍜";
+
+        // 라면별 점수 순위 정렬
+        const sortedScores = Object.entries(score).sort((a, b) => b[1] - a[1]);
+        const maxScore = sortedScores[0][1] || 1;
+
+        const scoreBarsContainer = document.getElementById('score-bars');
+        scoreBarsContainer.innerHTML = '';
+
+        sortedScores.forEach(([ramenName, ramenScore], index) => {
+            const isTop = index === 0;
+            const barWidth = Math.max((ramenScore / maxScore) * 100, 5);
+
+            const scoreRow = document.createElement('div');
+            scoreRow.className = `score-item ${isTop ? 'top-score' : ''}`;
+            scoreRow.innerHTML = `
+                <span style="width: 80px; font-weight: 
+isTop?'700':'400'">{ramenName}</span>
+                <div class="score-bar-bg">
+                    <div class="score-bar-fill" style="width: ${barWidth}%"></div>
+                </div>
+                <span style="width: 30px; text-align: right; color: #777;">${ramenScore}점</span>
+            `;
+            scoreBarsContainer.appendChild(scoreRow);
+        });
+
+        showScreen('result-screen');
+    }
+
+    function restartQuiz() {
+        showScreen('intro-screen');
+    }
+</script>
+
+</body>
+</html>

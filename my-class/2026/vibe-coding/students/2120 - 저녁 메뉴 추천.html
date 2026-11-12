@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>저녁메뉴추천</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+      background: #fff5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 500px;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1 {
+      color: #ff4d4d;
+      margin-bottom: 20px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 30px;
+    }
+
+    .tag {
+      padding: 10px 15px;
+      border-radius: 30px;
+      border: none;
+      background: #ffe0e0;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 15px;
+    }
+
+    .tag.active {
+      background: #ff4d4d;
+      color: white;
+    }
+
+    .result-box {
+      margin-top: 20px;
+      padding: 30px;
+      border-radius: 15px;
+      background: #fff0f0;
+    }
+
+    .food-name {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: 0.2s;
+    }
+
+    .recommend-btn {
+      background: #ff4d4d;
+      color: white;
+    }
+
+    .retry-btn {
+      background: #333;
+      color: white;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+    }
+
+    .emoji {
+      font-size: 50px;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🍽 저녁메뉴추천</h1>
+
+  <div class="tags">
+    <button class="tag" data-tag="매운맛">🌶 매운맛</button>
+    <button class="tag" data-tag="단맛">🍯 단맛</button>
+    <button class="tag" data-tag="느끼한맛">🧀 느끼한맛</button>
+    <button class="tag" data-tag="국물">🍜 국물</button>
+    <button class="tag" data-tag="한식">🍚 한식</button>
+    <button class="tag" data-tag="양식">🍕 양식</button>
+    <button class="tag" data-tag="고기">🍖 고기</button>
+  </div>
+
+  <button class="btn recommend-btn" onclick="recommendFood()">
+    메뉴 추천받기
+  </button>
+
+  <div class="result-box">
+    <div class="emoji">🤔</div>
+    <div class="food-name" id="foodName">
+      원하는 맛을 선택해주세요!
+    </div>
+
+    <div class="buttons">
+      <button class="btn retry-btn" onclick="recommendFood()">
+        🔄 다시 추천
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const foods = [
+    {
+      name: "마라탕",
+      emoji: "🌶",
+      tags: ["매운맛", "국물"]
+    },
+    {
+      name: "떡볶이",
+      emoji: "🍢",
+      tags: ["매운맛"]
+    },
+    {
+      name: "제육볶음",
+      emoji: "🍖",
+      tags: ["매운맛", "한식", "고기"]
+    },
+    {
+      name: "부대찌개",
+      emoji: "🍲",
+      tags: ["매운맛", "국물", "한식"]
+    },
+    {
+      name: "크림파스타",
+      emoji: "🍝",
+      tags: ["느끼한맛", "양식"]
+    },
+    {
+      name: "피자",
+      emoji: "🍕",
+      tags: ["느끼한맛", "양식"]
+    },
+    {
+      name: "삼겹살",
+      emoji: "🥓",
+      tags: ["고기"]
+    },
+    {
+      name: "갈비찜",
+      emoji: "🍖",
+      tags: ["단맛", "한식", "고기"]
+    },
+    {
+      name: "라멘",
+      emoji: "🍜",
+      tags: ["국물"]
+    },
+    {
+      name: "햄버거",
+      emoji: "🍔",
+      tags: ["느끼한맛"]
+    }
+  ];
+
+  const tagButtons = document.querySelectorAll(".tag");
+  let selectedTags = [];
+
+  tagButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const tag = button.dataset.tag;
+
+      if (selectedTags.includes(tag)) {
+        selectedTags = selectedTags.filter(t => t !== tag);
+        button.classList.remove("active");
+      } else {
+        selectedTags.push(tag);
+        button.classList.add("active");
+      }
+    });
+  });
+
+  function recommendFood() {
+
+    let filteredFoods = foods;
+
+    if (selectedTags.length > 0) {
+      filteredFoods = foods.filter(food =>
+        selectedTags.some(tag => food.tags.includes(tag))
+      );
+    }
+
+    if (filteredFoods.length === 0) {
+      document.getElementById("foodName").innerText =
+        "조건에 맞는 음식이 없어요 😥";
+      return;
+    }
+
+    const randomFood =
+      filteredFoods[Math.floor(Math.random() * filteredFoods.length)];
+
+    document.getElementById("foodName").innerText =
+      randomFood.name;
+
+    document.querySelector(".emoji").innerText =
+      randomFood.emoji;
+  }
+</script>
+
+</body>
+</html>

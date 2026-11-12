@@ -1,0 +1,114 @@
+ <!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나와 맞는 노래 찾기</title>
+    <style>
+        :root {
+            --primary-color: #6c5ce7;
+            --bg-color: #f9f9fb;
+            --card-bg: #ffffff;
+        }
+        body { font-family: 'Pretendard', sans-serif; background-color: var(--bg-color); display: flex; justify-content: center; padding: 20px; }
+        .container { background: var(--card-bg); padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: var(--primary-color); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-submit { background: var(--primary-color); color: white; }
+        .btn-reset { background: #e0e0e0; color: #333; }
+        button:hover { opacity: 0.8; }
+        #result { margin-top: 25px; border-top: 2px dashed #eee; padding-top: 20px; display: none; }
+        .song-card { background: #f1f2f6; padding: 15px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid var(--primary-color); }
+        .song-title { font-weight: bold; color: #2d3436; }
+        .song-info { font-size: 0.85em; color: #636e72; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎧 Music For You</h2>
+    <form id="musicForm">
+        <div class="form-group">
+            <label>선호 장르</label>
+            <select id="genre">
+                <option value="K-POP">K-POP</option>
+                <option value="J-POP">J-POP</option>
+                <option value="City Pop">City Pop / Jazz</option>
+                <option value="Rock">Rock / Band</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>원하는 분위기 & 감정</label>
+            <input type="text" id="mood" placeholder="예: 청량한, 우울한, 에너제틱한">
+        </div>
+        <div class="form-group">
+            <label>보컬 스타일</label>
+            <input type="text" id="vocal" placeholder="예: 미성, 허스키, 파워풀">
+        </div>
+        <div class="form-group">
+            <label>현재 내 상황</label>
+            <textarea id="situation" rows="2" placeholder="예: 퇴근길 지하철 안에서, 공부할 때"></textarea>
+        </div>
+        
+        <div class="btn-group">
+            <button type="button" class="btn-reset" onclick="resetForm()">초기화</button>
+            <button type="button" class="btn-submit" onclick="recommendMusic()">노래 추천받기</button>
+        </div>
+    </form>
+
+    <div id="result">
+        <h3 style="font-size: 1.1em;">✨ 당신을 위한 추천 리스트</h3>
+        <div id="recommendationList"></div>
+    </div>
+</div>
+
+<script>
+    // 예시 데이터베이스 (실제 서비스에서는 API를 연결할 수 있습니다)
+    const musicData = [
+        { title: "Ditto", artist: "NewJeans", genre: "K-POP", mood: "몽환적인", vocal: "미성", situ: "저녁" },
+        { title: "Lemon", artist: "Yonezu Kenshi", genre: "J-POP", mood: "애절한", vocal: "허스키", situ: "비오는 날" },
+        { title: "Hype Boy", artist: "NewJeans", genre: "K-POP", mood: "청량한", vocal: "깔끔한", situ: "드라이브" },
+        { title: "Sparkle", artist: "Radwimps", genre: "J-POP", mood: "웅장한", vocal: "미성", situ: "밤하늘" },
+        { title: "건물 사이에 피어난 장미", artist: "H1-KEY", genre: "K-POP", mood: "벅찬", vocal: "단단한", situ: "위로" },
+        { title: "NIGHT DANCER", artist: "imase", genre: "J-POP", mood: "그루비한", vocal: "가성", situ: "새벽" }
+    ];
+
+    function recommendMusic() {
+        const genre = document.getElementById('genre').value;
+        const mood = document.getElementById('mood').value;
+        const resultDiv = document.getElementById('result');
+        const listDiv = document.getElementById('recommendationList');
+
+        // 필터링 로직 (단순화)
+        const filtered = musicData.filter(m => m.genre === genre || mood.includes(m.mood));
+        
+        listDiv.innerHTML = '';
+        if(filtered.length > 0) {
+            filtered.forEach(song => {
+                const card = `
+                    <div class="song-card">
+                        <div class="song-title">${song.title}</div>
+                        <div class="song-info">${song.artist} | #${song.mood} #${song.vocal}</div>
+                    </div>
+                `;
+                listDiv.innerHTML += card;
+            });
+        } else {
+            listDiv.innerHTML = '<p style="font-size:0.9em;">조건에 맞는 노래를 찾고 있어요! 조금 더 일반적인 키워드를 입력해보세요.</p>';
+        }
+
+        resultDiv.style.display = 'block';
+    }
+
+    function resetForm() {
+        document.getElementById('musicForm').reset();
+        document.getElementById('result').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1인칭 3D 경찰관 시뮬레이터</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Noto Sans KR', sans-serif; background-color: #000; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
+        #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(0, 229, 255, 0.9); box-shadow: 0 0 6px rgba(0,229,255,0.8); }
+        #crosshair::before { top: 8px; left: 0; width: 18px; height: 2px; }
+        #crosshair::after { top: 0; left: 8px; width: 2px; height: 18px; }
+
+        #hud { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); pointer-events: none; z-index: 10; }
+        .hud-panel { background: rgba(0, 20, 40, 0.85); border: 1px solid rgba(0, 200, 255, 0.4); padding: 15px 20px; border-radius: 10px; backdrop-filter: blur(4px); min-width: 260px; }
+        .hud-panel h2 { font-size: 17px; color: #00e5ff; margin-bottom: 6px; }
+        .hud-panel p { font-size: 14px; margin: 4px 0; }
+
+        #weapon-selector { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2); }
+        .weapon-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-right: 4px; background: #334155; color: #94a3b8; }
+        .weapon-badge.active { background: #0284c7; color: #fff; box-shadow: 0 0 8px #0284c7; }
+
+        #hp-bar-container, #boss-hp-bar-container { width: 100%; height: 12px; background: #222; border-radius: 6px; overflow: hidden; margin-top: 4px; border: 1px solid #444; }
+        #hp-bar { width: 100%; height: 100%; background: #22c55e; transition: width 0.2s; }
+        
+        #boss-hp-panel { display: none; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(239,68,68,0.5); }
+        #boss-hp-bar { width: 100%; height: 100%; background: #ef4444; transition: width 0.2s; }
+
+        #overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; z-index: 20; cursor: pointer;
+        }
+        #overlay-screen h1 { font-size: 36px; color: #00e5ff; margin-bottom: 12px; text-shadow: 0 0 12px rgba(0,229,255,0.6); }
+        #overlay-screen p { font-size: 15px; color: #ccc; margin-bottom: 6px; }
+        #start-btn { margin-top: 20px; padding: 12px 30px; font-size: 18px; font-weight: bold; color: #000; background-color: #00e5ff; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 0 18px rgba(0, 229, 255, 0.7); }
+
+        #action-msg {
+            position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+            color: #ffd700; font-size: 19px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+            pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 10;
+            background: rgba(0,0,0,0.85); padding: 8px 22px; border-radius: 25px; border: 1px solid #ffd700;
+        }
+        #damage-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 0, 0, 0.4); pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 15; }
+    </style>
+</head>
+<body>
+
+    <div id="crosshair"></div>
+    <div id="damage-flash"></div>
+
+    <div id="hud">
+        <div class="hud-panel">
+            <h2>🚨 도심 순찰 본부 (<span id="stage-text" style="color:#facc15;">STAGE 1</span>)</h2>
+            <p>경찰 체력: <span id="hp-text">100</span> / 100</p>
+            <div id="hp-bar-container"><div id="hp-bar"></div></div>
+            <p style="margin-top:8px;">체포 실적: <span id="score" style="color:#00ff88; font-weight:bold;">0</span> / <span id="target-score">20</span> 명</p>
+            <p>테이저 탄약: <span id="ammo" style="color:#00e5ff; font-weight:bold;">10</span> 발</p>
+            
+            <div id="boss-hp-panel">
+                <p style="color:#ef4444; font-weight:bold;">⚠️ 도끼 보스 체력: <span id="boss-hp-text">500</span> / 500</p>
+                <div id="boss-hp-bar-container"><div id="boss-hp-bar"></div></div>
+            </div>
+
+            <div id="weapon-selector">
+                무기 조작: 
+                <span id="badge-taser" class="weapon-badge active">[1] 테이저건</span>
+                <span id="badge-baton" class="weapon-badge">[2] 진압봉</span>
+                <span id="badge-shotgun" class="weapon-badge" style="display:none; background:#dc2626; color:#fff;">[3] 무제한 샷건</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="action-msg">범인 제압 완료! 접근하여 체포하세요!</div>
+
+    <div id="overlay-screen">
+        <h1 id="overlay-title">🚨 3D 도심 경찰관 시뮬레이터</h1>
+        <p id="overlay-desc1">목표: 범죄자들을 소탕하세요! 목표 달성 시 도끼 보스가 소환됩니다.</p>
+        <p id="overlay-desc2">보스 등장 시 무제한 샷건이 지급됩니다. 보스의 도끼는 한 방(일격사)이니 무빙으로 피하세요!</p>
+        <p style="margin-top: 10px; color: #aaa;">조작법: W/A/S/D (이동), 마우스 (시야 조작 및 발사/타격/체포), [1]/[2]/[3] 무기교체</p>
+        <button id="start-btn">작전 개시 (시작하기)</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        let audioCtx = null;
+        let isBgmPlaying = false;
+        let bgmTimer = null;
+
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+        function startPoliceBgm() {
+            if (!audioCtx || isBgmPlaying) return;
+            isBgmPlaying = true;
+
+            const baseNotes = [110, 110, 130.81, 146.83, 110, 110, 155.56, 146.83];
+            let noteIdx = 0;
+
+            function playBgmBeat() {
+                if (!isBgmPlaying || gameOver) return;
+                const now = audioCtx.currentTime;
+
+                const bassOsc = audioCtx.createOscillator();
+                const bassGain = audioCtx.createGain();
+                bassOsc.type = 'sawtooth';
+                bassOsc.frequency.setValueAtTime(baseNotes[noteIdx % baseNotes.length], now);
+                bassGain.gain.setValueAtTime(0.12, now);
+                bassGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                bassOsc.connect(bassGain);
+                bassGain.connect(audioCtx.destination);
+                bassOsc.start(now);
+                bassOsc.stop(now + 0.2);
+
+                if (noteIdx % 8 === 0) {
+                    const sirenOsc = audioCtx.createOscillator();
+                    const sirenGain = audioCtx.createGain();
+                    sirenOsc.type = 'sine';
+                    sirenOsc.frequency.setValueAtTime(600, now);
+                    sirenOsc.frequency.linearRampToValueAtTime(900, now + 0.4);
+                    sirenOsc.frequency.linearRampToValueAtTime(600, now + 0.8);
+                    sirenGain.gain.setValueAtTime(0.05, now);
+                    sirenGain.gain.exponentialRampToValueAtTime(0.005, now + 0.8);
+                    sirenOsc.connect(sirenGain);
+                    sirenGain.connect(audioCtx.destination);
+                    sirenOsc.start(now);
+                    sirenOsc.stop(now + 0.8);
+                }
+
+                noteIdx++;
+                bgmTimer = setTimeout(playBgmBeat, 220);
+            }
+
+            playBgmBeat();
+        }
+
+        function stopPoliceBgm() {
+            isBgmPlaying = false;
+            if (bgmTimer) clearTimeout(bgmTimer);
+        }
+
+        function playTaserSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'sawtooth'; osc.frequency.setValueAtTime(900, now); osc.frequency.exponentialRampToValueAtTime(100, now + 0.18);
+            gain.gain.setValueAtTime(0.3, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.18);
+        }
+
+        function playShotgunSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const bufferSize = audioCtx.sampleRate * 0.3;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.15));
+            const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000;
+            const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.8, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(now);
+        }
+
+        function playBatonSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'triangle'; osc.frequency.setValueAtTime(300, now); osc.frequency.exponentialRampToValueAtTime(80, now + 0.15);
+            gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.15);
+        }
+
+        function playCuffSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            for (let i = 0; i < 2; i++) {
+                const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(2400 - i * 500, now + i * 0.08); osc.frequency.exponentialRampToValueAtTime(300, now + i * 0.08 + 0.06);
+                gain.gain.setValueAtTime(0.4, now + i * 0.08); gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.06);
+                osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.06);
+            }
+        }
+
+        function playFootstepSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const bufferSize = audioCtx.sampleRate * 0.04;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource(); noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500;
+            const gain = audioCtx.createGain(); gain.gain.setValueAtTime(0.12, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+            noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(now);
+        }
+
+        function playHitSound() {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+            gain.gain.setValueAtTime(0.6, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+            osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.18);
+        }
+
+        let currentStage = 1;
+        let score = 0;
+        let stageTargetScores = [20, 30, 40];
+        let targetScore = stageTargetScores[0];
+        let ammo = 10;
+        let health = 100;
+        let gameOver = false;
+        let gameStarted = false;
+        let baseSuspectSpeed = 0.042;
+        let currentWeapon = 'TASER';
+
+        // 보스 관련 정보
+        let bossActive = false;
+        let bossHp = 500;
+        let maxBossHp = 500;
+        let bossObj = null;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a101d);
+        scene.fog = new THREE.FogExp2(0x0a101d, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfff5ea, 0.9);
+        dirLight.position.set(40, 60, 30);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const citySize = 220;
+        const buildingColliders = [];
+
+        const floorGeo = new THREE.PlaneGeometry(citySize, citySize);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a202c, roughness: 0.85 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const storeNames = [
+            "🍲 원조 국밥집", "🍝 스파게티 전문점", "🏪 24시 편의점", "🥩 한우 고깃집",
+            "🍖 소문난 족발집", "🍔 수제 버거하우스", "🥐 명품 베이커리", "🍗 바삭 통닭집",
+            "☕ 도심 카페", "🍣 싱싱 초밥집", "🍜 얼큰 짬뽕관", "🍕 화덕 피자몰"
+        ];
+        let storeIdx = 0;
+
+        function createCityWithStores() {
+            const roadLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+            const crosswalkMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+            for (let r = -90; r <= 90; r += 10) {
+                const line = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 4), roadLineMat);
+                line.rotation.x = -Math.PI / 2; line.position.set(0, 0.02, r);
+                scene.add(line);
+            }
+
+            for (let cw = -3; cw <= 3; cw += 1.2) {
+                const cwStrip = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 8), crosswalkMat);
+                cwStrip.rotation.x = -Math.PI / 2; cwStrip.position.set(cw, 0.02, -12);
+                scene.add(cwStrip);
+            }
+
+            function makeStore(x, z, w, d, h, color, titleText) {
+                const bMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+                const store = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), bMat);
+                store.position.set(x, h / 2, z);
+                store.castShadow = true; store.receiveShadow = true;
+                scene.add(store);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = 512; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 512, 128);
+                ctx.fillStyle = '#facc15'; ctx.font = 'bold 40px sans-serif';
+                ctx.textAlign = 'center'; ctx.fillText(titleText, 256, 80);
+                const signTex = new THREE.CanvasTexture(canvas);
+
+                const signMesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(w * 0.8, 2.5),
+                    new THREE.MeshBasicMaterial({ map: signTex })
+                );
+                signMesh.position.set(x, 4.2, z + d / 2 + 0.05);
+                scene.add(signMesh);
+
+                buildingColliders.push({ minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6, minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6 });
+            }
+
+            const storeColors = [0x475569, 0x7c2d12, 0x065f46, 0x1e3a8a, 0x581c87, 0x701a75, 0x831843, 0x365314];
+
+            const gridSize = 5; const spacing = 32;
+            for (let i = -gridSize; i <= gridSize; i++) {
+                for (let j = -gridSize; j <= gridSize; j++) {
+                    if (Math.abs(i) <= 1 && Math.abs(j) <= 1) continue;
+
+                    const width = 14 + Math.random() * 6; const depth = 14 + Math.random() * 6; const height = 18 + Math.random() * 30;
+                    const x = i * spacing; const z = j * spacing;
+
+                    const name = storeNames[storeIdx % storeNames.length];
+                    const col = storeColors[storeIdx % storeColors.length];
+                    storeIdx++;
+
+                    makeStore(x, z, width, depth, height, col, name);
+                }
+            }
+        }
+        createCityWithStores();
+
+        const player = { position: new THREE.Vector3(0, 1.65, 0) };
+        camera.position.copy(player.position);
+
+        const fpvGroup = new THREE.Group();
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xfda4af, roughness: 0.6 });
+        const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.4 });
+
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 0.4), sleeveMat);
+        arm.rotation.x = Math.PI / 3; arm.position.set(0.26, -0.25, -0.4);
+        fpvGroup.add(arm);
+
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 16, 16), skinMat);
+        hand.position.set(0.26, -0.18, -0.48);
+        fpvGroup.add(hand);
+
+        const taserGroup = new THREE.Group();
+        const taserYellowBody = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.2), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+        taserYellowBody.position.set(0, 0, 0); taserGroup.add(taserYellowBody);
+        const taserBlackFront = new THREE.Mesh(new THREE.BoxGeometry(0.081, 0.121, 0.08), new THREE.MeshStandardMaterial({ color: 0x111827 }));
+        taserBlackFront.position.set(0, 0, -0.12); taserGroup.add(taserBlackFront);
+        taserGroup.position.set(0.26, -0.16, -0.52);
+        fpvGroup.add(taserGroup);
+
+        const batonGroup = new THREE.Group();
+        const batonHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.18), new THREE.MeshStandardMaterial({ color: 0x111827 }));
+        batonGroup.add(batonHandle);
+        const batonShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.018, 0.55), new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 }));
+        batonShaft.position.set(0, 0.28, -0.1); batonShaft.rotation.x = -Math.PI / 4;
+        batonGroup.add(batonShaft);
+        batonGroup.position.set(0.26, -0.18, -0.5); batonGroup.visible = false;
+        fpvGroup.add(batonGroup);
+
+        // 샷건 3D 모델
+        const shotgunGroup = new THREE.Group();
+        const shotgunBody = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.1, 0.55), new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.7 }));
+        shotgunGroup.add(shotgunBody);
+        const shotgunBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.45), new THREE.MeshStandardMaterial({ color: 0x09090b, metalness: 0.9 }));
+        shotgunBarrel.rotation.x = Math.PI / 2; shotgunBarrel.position.set(0, 0.02, -0.35);
+        shotgunGroup.add(shotgunBarrel);
+        shotgunGroup.position.set(0.26, -0.16, -0.52); shotgunGroup.visible = false;
+        fpvGroup.add(shotgunGroup);
+
+        camera.add(fpvGroup);
+        scene.add(camera);
+
+        function switchWeapon(type) {
+            currentWeapon = type;
+            taserGroup.visible = false; batonGroup.visible = false; shotgunGroup.visible = false;
+            document.getElementById('badge-taser').classList.remove('active');
+            document.getElementById('badge-baton').classList.remove('active');
+            document.getElementById('badge-shotgun').classList.remove('active');
+
+            if (type === 'TASER') {
+                taserGroup.visible = true;
+                document.getElementById('badge-taser').classList.add('active');
+            } else if (type === 'BATON') {
+                batonGroup.visible = true;
+                document.getElementById('badge-baton').classList.add('active');
+            } else if (type === 'SHOTGUN') {
+                shotgunGroup.visible = true;
+                document.getElementById('badge-shotgun').classList.add('active');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '1') switchWeapon('TASER');
+            if (e.key === '2') switchWeapon('BATON');
+            if (e.key === '3' && bossActive) switchWeapon('SHOTGUN');
+        });
+
+        const suspects = [];
+        function createSuspect(spawnZ) {
+            const group = new THREE.Group();
+            const jacketMat = new THREE.MeshStandardMaterial({ color: 0xe11d48 });
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.25, 0.9), jacketMat);
+            body.position.y = 0.85; body.castShadow = true; group.add(body);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), skinMat);
+            head.position.y = 1.45; head.castShadow = true; group.add(head);
+
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x172554 }));
+            hair.position.y = 1.48; group.add(hair);
+
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.7), limbMat);
+            legL.position.set(-0.12, 0.35, 0); group.add(legL);
+            const legR = legL.clone(); legR.position.x = 0.12; group.add(legR);
+
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.65), jacketMat);
+            armL.position.set(-0.35, 0.85, 0); group.add(armL);
+            const armR = armL.clone(); armR.position.x = 0.35; group.add(armR);
+
+            const spawnX = (Math.random() - 0.5) * 8;
+            group.position.set(spawnX, 0, spawnZ);
+            scene.add(group);
+
+            suspects.push({ mesh: group, legL: legL, legR: legR, armL: armL, armR: armR, isDown: false, animTime: Math.random() * 10, lastAttackTime: 0, lastFootstepTime: 0 });
+        }
+
+        const civilians = [];
+        function createCivilian(spawnX, spawnZ) {
+            const group = new THREE.Group();
+            const shirtColors = [0x0284c7, 0x16a34a, 0xca8a04, 0x9333ea, 0x2563eb];
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColors[Math.floor(Math.random() * shirtColors.length)] });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.22, 0.9), shirtMat);
+            body.position.y = 0.85; body.castShadow = true; group.add(body);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.21, 16, 16), skinMat);
+            head.position.y = 1.42; group.add(head);
+
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.7), limbMat);
+            legL.position.set(-0.11, 0.35, 0); group.add(legL);
+            const legR = legL.clone(); legR.position.x = 0.11; group.add(legR);
+
+            group.position.set(spawnX, 0, spawnZ);
+            scene.add(group);
+
+            civilians.push({ mesh: group, legL: legL, legR: legR, dir: new THREE.Vector3((Math.random() - 0.5), 0, (Math.random() - 0.5)).normalize(), animTime: Math.random() * 10 });
+        }
+
+        for (let i = 0; i < 5; i++) createSuspect(-8 - i * 4);
+        for (let i = 0; i < 8; i++) createCivilian((Math.random() - 0.5) * 20, -10 - Math.random() * 30);
+
+        // 거대한 도끼 보스 스폰 함수
+        function spawnAxeBoss() {
+            bossActive = true;
+            document.getElementById('boss-hp-panel').style.display = 'block';
+            document.getElementById('badge-shotgun').style.display = 'inline-block';
+            switchWeapon('SHOTGUN');
+
+            const group = new THREE.Group();
+            const bossMat = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.3 }); // 핏빛 상체
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.5, 1.8), bossMat);
+            body.position.y = 1.7; body.castShadow = true; group.add(body);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.45, 16, 16), new THREE.MeshStandardMaterial({ color: 0x450a0a }));
+            head.position.y = 2.9; group.add(head);
+
+            const limbMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1.4), limbMat);
+            legL.position.set(-0.25, 0.7, 0); group.add(legL);
+            const legR = legL.clone(); legR.position.x = 0.25; group.add(legR);
+
+            // 보스 거대한 도끼
+            const axeGroup = new THREE.Group();
+            const axeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.2), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+            axeGroup.add(axeHandle);
+            const axeBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.8), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 }));
+            axeBlade.position.set(0, 0.8, 0.3); axeGroup.add(axeBlade);
+            axeGroup.position.set(0.6, 1.8, 0.4); axeGroup.rotation.x = -Math.PI / 4;
+            group.add(axeGroup);
+
+            group.position.set(0, 0, -25);
+            scene.add(group);
+
+            bossObj = {
+                mesh: group,
+                legL: legL,
+                legR: legR,
+                axeGroup: axeGroup,
+                animTime: 0,
+                lastAttackTime: 0
+            };
+
+            showActionMsg("🚨 [경보] 도끼를 든 거대 보스가 나타났습니다! 샷건[3]으로 대응하세요!");
+        }
+
+        let isLocked = false; let yaw = 0; let pitch = 0;
+        const overlayScreen = document.getElementById('overlay-screen');
+        const startBtn = document.getElementById('start-btn');
+
+        function startGame() {
+            if (gameOver) { location.reload(); return; }
+            initAudio(); 
+            startPoliceBgm();
+            document.body.requestPointerLock(); 
+            gameStarted = true;
+        }
+
+        overlayScreen.addEventListener('click', startGame);
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement === document.body) { isLocked = true; overlayScreen.style.display = 'none'; }
+            else { isLocked = false; if (!gameOver) overlayScreen.style.display = 'flex'; }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked || gameOver) return;
+            yaw -= e.movementX * 0.0022; pitch -= e.movementY * 0.0022;
+            pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+            camera.rotation.order = 'YXZ'; camera.rotation.y = yaw; camera.rotation.x = pitch;
+        });
+
+        const keys = { w: false, a: false, s: false, d: false };
+        window.addEventListener('keydown', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const k = e.key.toLowerCase();
+            if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+            if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+            if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+            if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+        });
+
+        function moveWithCollision(currentPos, deltaX, deltaZ) {
+            let newX = currentPos.x + deltaX; let newZ = currentPos.z + deltaZ;
+            for (const col of buildingColliders) {
+                if (newX > col.minX && newX < col.maxX && newZ > col.minZ && newZ < col.maxZ) {
+                    if (currentPos.x <= col.minX || currentPos.x >= col.maxX) newX = currentPos.x;
+                    if (currentPos.z <= col.minZ || currentPos.z >= col.maxZ) newZ = currentPos.z;
+                }
+            }
+            const boundary = citySize / 2 - 3;
+            newX = Math.max(-boundary, Math.min(boundary, newX));
+            newZ = Math.max(-boundary, Math.min(boundary, newZ));
+            currentPos.x = newX; currentPos.z = newZ;
+        }
+
+        const raycaster = new THREE.Raycaster();
+        let canShoot = true;
+
+        window.addEventListener('mousedown', (e) => {
+            if (!isLocked || e.button !== 0 || !canShoot || gameOver) return;
+
+            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+            let hitFound = false;
+
+            if (currentWeapon === 'SHOTGUN') {
+                playShotgunSound();
+                fpvGroup.position.z = 0.15; setTimeout(() => fpvGroup.position.z = 0, 120);
+
+                // 샷건 산탄 펠릿 발사 효과
+                for (let s = 0; s < 5; s++) {
+                    const spreadVec = new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 15);
+                    spreadVec.applyMatrix4(camera.matrixWorld);
+                    fireTaserVisual(spreadVec);
+                }
+
+                // 보스 명중 검사
+                if (bossActive && bossObj) {
+                    const intersectsBoss = raycaster.intersectObject(bossObj.mesh, true);
+                    if (intersectsBoss.length > 0) {
+                        hitFound = true;
+                        bossHp -= 45; // 샷건 강한 데미지
+                        if (bossHp < 0) bossHp = 0;
+                        document.getElementById('boss-hp-text').innerText = bossHp;
+                        document.getElementById('boss-hp-bar').style.width = (bossHp / maxBossHp * 100) + '%';
+
+                        if (bossHp <= 0) {
+                            scene.remove(bossObj.mesh);
+                            bossActive = false;
+                            endGame(true, "🏆 도끼 보스를 저지했습니다! 도심의 완벽한 평화를 되찾았습니다!");
+                            return;
+                        } else {
+                            showActionMsg("💥 샷건 명중! 보스 타격 성공!");
+                        }
+                    }
+                }
+
+            } else if (currentWeapon === 'TASER') {
+                if (ammo <= 0) {
+                    showActionMsg("❌ 테이저 탄약 소진! 진압봉[2]으로 교체됩니다.");
+                    switchWeapon('BATON');
+                    return;
+                }
+
+                ammo--;
+                document.getElementById('ammo').innerText = ammo;
+                playTaserSound();
+
+                fpvGroup.position.z = 0.08; setTimeout(() => fpvGroup.position.z = 0, 90);
+
+                civilians.forEach((civ) => {
+                    if (hitFound) return;
+                    const intersectsCiv = raycaster.intersectObject(civ.mesh, true);
+                    if (intersectsCiv.length > 0 && player.position.distanceTo(civ.mesh.position) < 25) {
+                        hitFound = true;
+                        fireTaserVisual(civ.mesh.position);
+                        takeDamage(20);
+                        showActionMsg("⚠️ 경고! 일반 시민을 오격했습니다! (-20 HP)");
+                    }
+                });
+
+                suspects.forEach((suspect, idx) => {
+                    if (hitFound) return;
+                    const intersects = raycaster.intersectObject(suspect.mesh, true);
+                    const dist = player.position.distanceTo(suspect.mesh.position);
+
+                    if (intersects.length > 0 && dist < 25) {
+                        hitFound = true;
+                        if (!suspect.isDown) {
+                            fireTaserVisual(suspect.mesh.position);
+                            suspect.isDown = true;
+                            suspect.mesh.rotation.x = -Math.PI / 2;
+                            suspect.mesh.position.y = 0.2;
+                            showActionMsg("⚡ 범인 제압 완료! 접근하여 체포하세요!");
+                        } else if (dist < 3.8) {
+                            arrestSuspect(idx, suspect);
+                        }
+                    }
+                });
+
+                if (!hitFound) {
+                    const targetPos = new THREE.Vector3(); raycaster.ray.at(15, targetPos);
+                    fireTaserVisual(targetPos);
+                }
+
+                if (ammo === 0) switchWeapon('BATON');
+
+            } else if (currentWeapon === 'BATON') {
+                playBatonSound();
+                batonGroup.rotation.z = -0.5;
+                setTimeout(() => batonGroup.rotation.z = 0, 150);
+
+                civilians.forEach((civ) => {
+                    if (hitFound) return;
+                    if (player.position.distanceTo(civ.mesh.position) < 3.5) {
+                        hitFound = true;
+                        takeDamage(20);
+                        showActionMsg("⚠️ 경고! 진압봉으로 시민을 폭행했습니다! (-20 HP)");
+                    }
+                });
+
+                suspects.forEach((suspect, idx) => {
+                    if (hitFound) return;
+                    const dist = player.position.distanceTo(suspect.mesh.position);
+
+                    if (dist < 3.5) {
+                        hitFound = true;
+                        if (!suspect.isDown) {
+                            suspect.isDown = true;
+                            suspect.mesh.rotation.x = -Math.PI / 2;
+                            suspect.mesh.position.y = 0.2;
+                            showActionMsg("🏏 진압봉 타격 제압! 접근하여 체포하세요!");
+                        } else {
+                            arrestSuspect(idx, suspect);
+                        }
+                    }
+                });
+            }
+
+            canShoot = false;
+            setTimeout(() => canShoot = true, 350);
+        });
+
+        function arrestSuspect(idx, suspect) {
+            playCuffSound();
+            scene.remove(suspect.mesh);
+            suspects.splice(idx, 1);
+            score++;
+            document.getElementById('score').innerText = score;
+            baseSuspectSpeed += 0.005;
+
+            // 일반 범인 목표 수량 달성 시 보스 출현!
+            if (score >= targetScore) {
+                if (!bossActive) {
+                    spawnAxeBoss();
+                }
+            } else {
+                showActionMsg("🚨 체포 완료! 새 범인이 출현합니다!");
+                setTimeout(() => createSuspect(-20 - Math.random() * 20), 2000);
+            }
+        }
+
+        function fireTaserVisual(targetVec) {
+            const muzzlePos = new THREE.Vector3(0.26, -0.16, -0.5);
+            muzzlePos.applyMatrix4(camera.matrixWorld);
+            const points = [muzzlePos]; const segs = 6;
+            for (let i = 1; i < segs; i++) {
+                const p = muzzlePos.clone().lerp(targetVec, i / segs);
+                p.x += (Math.random() - 0.5) * 0.3; p.y += (Math.random() - 0.5) * 0.3; p.z += (Math.random() - 0.5) * 0.3;
+                points.push(p);
+            }
+            points.push(targetVec.clone());
+            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 }));
+            scene.add(line);
+            setTimeout(() => scene.remove(line), 120);
+        }
+
+        function takeDamage(amount) {
+            if (gameOver) return;
+            health -= amount; if (health < 0) health = 0;
+            playHitSound();
+            document.getElementById('hp-text').innerText = health;
+            const hpBar = document.getElementById('hp-bar'); hpBar.style.width = health + '%';
+            if (health < 30) hpBar.style.backgroundColor = '#ef4444';
+            const flash = document.getElementById('damage-flash'); flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 150);
+
+            if (health <= 0) {
+                endGame(false, "☠️ 사망하셨습니다! 작전 실패!");
+            }
+        }
+
+        function showActionMsg(text) {
+            const msg = document.getElementById('action-msg');
+            msg.innerText = text; msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2500);
+        }
+
+        function endGame(isWin, message) {
+            gameOver = true; 
+            stopPoliceBgm();
+            document.exitPointerLock();
+            overlayScreen.style.display = 'flex';
+            document.getElementById('overlay-title').innerText = isWin ? "MISSION COMPLETE" : "GAME OVER";
+            document.getElementById('overlay-title').style.color = isWin ? "#00ff88" : "#ff4444";
+            document.getElementById('overlay-desc1').innerText = message;
+            document.getElementById('overlay-desc2').innerText = "클릭하여 게임을 다시 시작합니다.";
+            startBtn.innerText = "다시 도전하기";
+        }
+
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta(); const now = clock.getElapsedTime();
+
+            if (isLocked && !gameOver) {
+                const moveSpeed = 8.8 * delta;
+                let dx = 0; let dz = 0;
+                if (keys.w) dz -= 1; if (keys.s) dz += 1; if (keys.a) dx -= 1; if (keys.d) dx += 1;
+                if (dx !== 0 || dz !== 0) {
+                    const moveVec = new THREE.Vector3(dx, 0, dz).normalize();
+                    moveVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+                    moveWithCollision(player.position, moveVec.x * moveSpeed, moveVec.z * moveSpeed);
+                    camera.position.copy(player.position);
+                }
+            }
+
+            // 일반 시민 우왕좌왕 배회
+            civilians.forEach((civ) => {
+                civ.animTime += delta * 8;
+                civ.legL.rotation.x = Math.sin(civ.animTime) * 0.4;
+                civ.legR.rotation.x = -Math.sin(civ.animTime) * 0.4;
+                moveWithCollision(civ.mesh.position, civ.dir.x * 0.018, civ.dir.z * 0.018);
+                civ.mesh.rotation.y = Math.atan2(civ.dir.x, civ.dir.z);
+                if (Math.random() < 0.01) civ.dir.set((Math.random() - 0.5), 0, (Math.random() - 0.5)).normalize();
+            });
+
+            // 일반 범인 추적
+            suspects.forEach((suspect) => {
+                if (suspect.isDown || gameOver) return;
+                const dist = player.position.distanceTo(suspect.mesh.position);
+
+                const dir = new THREE.Vector3().subVectors(player.position, suspect.mesh.position).setY(0).normalize();
+                moveWithCollision(suspect.mesh.position, dir.x * baseSuspectSpeed, dir.z * baseSuspectSpeed);
+                suspect.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+
+                suspect.animTime += delta * 12;
+                suspect.legL.rotation.x = Math.sin(suspect.animTime) * 0.65;
+                suspect.legR.rotation.x = -Math.sin(suspect.animTime) * 0.65;
+                suspect.armL.rotation.x = -Math.sin(suspect.animTime) * 0.65;
+                suspect.armR.rotation.x = Math.sin(suspect.animTime) * 0.65;
+
+                if (now - suspect.lastFootstepTime > 0.35) { playFootstepSound(); suspect.lastFootstepTime = now; }
+
+                if (dist < 1.8 && now - suspect.lastAttackTime > 0.9) {
+                    takeDamage(15);
+                    showActionMsg("💥 범인의 피격 공격을 받았습니다! (-15 HP)");
+                    suspect.lastAttackTime = now;
+                }
+            });
+
+            // 보스 AI 동작 (돌진 및 도끼 한 방/일격사 타격)
+            if (bossActive && bossObj && !gameOver) {
+                const distToBoss = player.position.distanceTo(bossObj.mesh.position);
+                const bossDir = new THREE.Vector3().subVectors(player.position, bossObj.mesh.position).setY(0).normalize();
+                
+                // 보스 이동 속도 (약간 묵직함)
+                const bossSpeed = 0.055;
+                moveWithCollision(bossObj.mesh.position, bossDir.x * bossSpeed, bossDir.z * bossSpeed);
+                bossObj.mesh.rotation.y = Math.atan2(bossDir.x, bossDir.z);
+
+                bossObj.animTime += delta * 10;
+                bossObj.legL.rotation.x = Math.sin(bossObj.animTime) * 0.5;
+                bossObj.legR.rotation.x = -Math.sin(bossObj.animTime) * 0.5;
+
+                // 근접 시 보스 도끼 내려치기 일격사
+                if (distToBoss < 2.5 && now - bossObj.lastAttackTime > 1.2) {
+                    bossObj.axeGroup.rotation.x = Math.PI / 3; // 도끼 내려치는 모션
+                    setTimeout(() => bossObj.axeGroup.rotation.x = -Math.PI / 4, 300);
+
+                    takeDamage(100); // 일격사 (100 HP 즉시 차감 사망)
+                    showActionMsg("🪓 보스의 거대한 도끼에 직격당해 사망하셨습니다!");
+                    bossObj.lastAttackTime = now;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
+

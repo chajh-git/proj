@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>수업 시간 몰래 과자 먹기!</title>
+   <!-- Tailwind CSS -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <!-- FontAwesome Icons -->
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <!-- Tone.js for Web Audio SFX & Music -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+   <style>
+       @import url('https://fonts.googleapis.com/css2?family=Jua&family=Gamja+Flower&display=swap');
+      
+       body {
+           font-family: 'Jua', sans-serif;
+           user-select: none;
+           -webkit-user-select: none;
+           touch-action: manipulation;
+       }
+
+
+       /* Chalkboard blackboard background */
+       .blackboard-bg {
+           background-color: #1e3a2b;
+           box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+       }
+
+
+       /* Eating animation effect */
+       @keyframes floatUp {
+           0% { transform: translateY(0) scale(0.8); opacity: 1; }
+           100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+       }
+
+
+       .floating-score {
+           animation: floatUp 0.8s ease-out forwards;
+           pointer-events: none;
+       }
+
+
+       @keyframes pulseWarning {
+           0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+           50% { box-shadow: 0 0 20px 8px rgba(239, 68, 68, 0.9); }
+       }
+
+
+       .danger-pulse {
+           animation: pulseWarning 1s infinite;
+       }
+
+
+       /* Desk texture */
+       .desk-wood {
+           background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+           border-top: 6px solid #f59e0b;
+       }
+
+
+       .snack-btn {
+           transition: transform 0.1s ease, filter 0.1s ease;
+       }
+       .snack-btn:active {
+           transform: scale(0.92);
+       }
+
+
+       /* Chalk writing visual effect */
+       .chalk-text {
+           color: #fef08a;
+           text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+           font-family: 'Gamja Flower', cursive;
+       }
+   </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col justify-center items-center p-2 sm:p-4">
+
+
+   <!-- Game Main Container -->
+   <div id="gameContainer" class="relative w-full max-w-4xl bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border-4 border-amber-800 flex flex-col aspect-[4/3] sm:aspect-[16/10] max-h-[90vh]">
+
+
+       <!-- TOP BAR: Status & Meters -->
+       <div class="bg-slate-950/90 p-3 flex flex-wrap items-center justify-between gap-2 z-20 border-b-2 border-slate-700 text-xs sm:text-base">
+           <!-- Timer -->
+           <div class="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
+               <i class="fa-solid fa-clock text-amber-400 text-lg sm:text-xl"></i>
+               <div>
+                   <span class="text-slate-400 text-xs block leading-none">남은 시간</span>
+                   <span id="timerText" class="font-bold text-amber-300 text-base sm:text-xl">30.0s</span>
+               </div>
+           </div>
+
+
+           <!-- Suspicion Meter (의심도) -->
+           <div class="flex-1 max-w-xs mx-1">
+               <div class="flex justify-between text-xs mb-1">
+                   <span class="text-rose-400 font-bold"><i class="fa-solid fa-eye mr-1"></i>선생님 의심도</span>
+                   <span id="suspicionPercent" class="text-rose-300 font-bold">0%</span>
+               </div>
+               <div id="suspicionMeterBox" class="w-full bg-slate-700 h-4 rounded-full overflow-hidden p-0.5 border border-slate-600 transition-all">
+                   <div id="suspicionBar" class="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 h-full rounded-full transition-all duration-200" style="width: 0%;"></div>
+               </div>
+           </div>
+
+
+           <!-- Target Score Meter (목표 점수 200점) -->
+           <div class="flex-1 max-w-xs mx-1">
+               <div class="flex justify-between text-xs mb-1">
+                   <span class="text-emerald-400 font-bold"><i class="fa-solid fa-cookie-bite mr-1"></i>포만감 (목표: 200점)</span>
+                   <span id="scoreText" class="text-emerald-300 font-bold">0 / 200</span>
+               </div>
+               <div class="w-full bg-slate-700 h-4 rounded-full overflow-hidden p-0.5 border border-slate-600">
+                   <div id="scoreBar" class="bg-gradient-to-r from-emerald-500 to-teal-300 h-full rounded-full transition-all duration-200" style="width: 0%;"></div>
+               </div>
+           </div>
+       </div>
+
+
+       <!-- PLAY AREA: Blackboard & Teacher Scene -->
+       <div class="relative flex-1 blackboard-bg flex flex-col justify-between items-center p-4 overflow-hidden">
+          
+           <!-- Chalkboard Content (Decorations) -->
+           <div class="absolute inset-x-8 top-4 flex justify-between opacity-40 text-sm sm:text-xl chalk-text pointer-events-none">
+               <div>
+                   <p class="text-2xl font-bold">수학 3단원: 방정식</p>
+                   <p>x + 5 = 20 (x=?)</p>
+                   <p>3x - 7 = 14</p>
+               </div>
+               <div class="text-right">
+                   <p>★ 오늘 과제</p>
+                   <p>익힘책 45p~50p</p>
+                   <p>숙제 안 해오면 남는다!</p>
+               </div>
+           </div>
+
+
+           <!-- Alert Indicator / Notice -->
+           <div id="teacherStateBadge" class="z-10 mt-2 px-4 py-1 rounded-full bg-slate-900/80 border border-slate-600 text-amber-300 text-sm sm:text-base font-bold transition-all transform duration-300">
+               <i class="fa-solid fa-chalkboard-user mr-2"></i>선생님이 칠판에 열심히 설명 쓰는 중...
+           </div>
+
+
+           <!-- Teacher Character & Animation Area -->
+           <div id="teacherWrapper" class="relative z-10 my-auto flex flex-col items-center transition-all duration-300 transform">
+              
+               <!-- Exclamation / Question Mark Popup -->
+               <div id="alertIcon" class="hidden absolute -top-16 bg-red-600 text-white font-black text-2xl sm:text-3xl w-12 h-12 rounded-full flex items-center justify-center border-4 border-white shadow-lg animate-bounce z-30">
+                   !
+               </div>
+
+
+               <!-- Teacher Canvas / SVG Character -->
+               <div id="teacherAvatar" class="relative w-36 h-36 sm:w-48 sm:h-48 transition-transform duration-200">
+                   <!-- BACK VIEW (Writing on board) -->
+                   <div id="teacherBack" class="w-full h-full flex flex-col items-center justify-center">
+                       <!-- Head back -->
+                       <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-900 rounded-full relative border-4 border-slate-900">
+                           <!-- Short Hair Back -->
+                           <div class="absolute inset-0 bg-slate-900 rounded-t-full"></div>
+                       </div>
+                       <!-- Suit / Clothes back -->
+                       <div class="w-24 h-24 sm:w-32 sm:h-32 bg-indigo-700 rounded-t-3xl border-4 border-slate-900 flex justify-center items-start pt-2">
+                           <div class="w-4 h-full bg-indigo-900"></div>
+                       </div>
+                       <!-- Arm writing on board -->
+                       <div class="absolute right-2 top-10 w-12 h-4 bg-indigo-700 border-2 border-slate-900 origin-left transform -rotate-45 animate-pulse"></div>
+                   </div>
+
+
+                   <!-- GLANCING VIEW (Turning sideways) -->
+                   <div id="teacherGlance" class="hidden w-full h-full flex flex-col items-center justify-center">
+                       <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-200 rounded-full relative border-4 border-slate-900 flex items-center justify-start pl-2">
+                           <!-- Side Hair & Glasses profile -->
+                           <div class="w-6 h-6 border-2 border-black rounded-full bg-cyan-100/40"></div>
+                           <div class="w-3 h-3 bg-red-500 rounded-full ml-auto mr-1"></div> <!-- Suspicious eye -->
+                       </div>
+                       <div class="w-24 h-24 sm:w-32 sm:h-32 bg-indigo-700 rounded-t-3xl border-4 border-slate-900"></div>
+                   </div>
+
+
+                   <!-- FRONT VIEW (Facing class - DANGER!) -->
+                   <div id="teacherFront" class="hidden w-full h-full flex flex-col items-center justify-center">
+                       <div class="w-16 h-16 sm:w-20 sm:h-20 bg-amber-200 rounded-full relative border-4 border-slate-900 flex flex-col items-center justify-center">
+                           <!-- Glasses -->
+                           <div class="flex gap-2">
+                               <div class="w-5 h-5 border-2 border-black rounded-full bg-cyan-100/50 flex items-center justify-center">
+                                   <div id="eyeLeft" class="w-2 h-2 bg-red-600 rounded-full"></div>
+                               </div>
+                               <div class="w-5 h-5 border-2 border-black rounded-full bg-cyan-100/50 flex items-center justify-center">
+                                   <div id="eyeRight" class="w-2 h-2 bg-red-600 rounded-full"></div>
+                               </div>
+                           </div>
+                           <!-- Angry Mouth -->
+                           <div id="teacherMouth" class="w-6 h-2 bg-red-600 rounded-full mt-2"></div>
+                       </div>
+                       <div class="w-24 h-24 sm:w-32 sm:h-32 bg-indigo-700 rounded-t-3xl border-4 border-slate-900 flex flex-col items-center pt-2">
+                           <div class="w-6 h-12 bg-white flex flex-col items-center justify-start pt-1">
+                               <div class="w-3 h-6 bg-red-600 clip-tie"></div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+           </div>
+
+
+           <!-- Floating score popups anchor -->
+           <div id="effectContainer" class="absolute inset-0 pointer-events-none z-40"></div>
+
+
+       </div>
+
+
+       <!-- BOTTOM AREA: Desk with upright book hiding snacks -->
+       <div class="relative z-30 desk-wood p-3 sm:p-5 flex flex-col justify-end items-center">
+          
+           <!-- Upright Book (Shielding snacks) -->
+           <div class="absolute -top-10 sm:-top-14 inset-x-4 sm:inset-x-12 h-12 sm:h-16 bg-amber-800 rounded-t-xl border-t-4 border-x-4 border-amber-950 shadow-2xl flex items-center justify-between px-6 z-10">
+               <div class="flex items-center gap-2 text-amber-200 text-xs sm:text-base font-bold">
+                   <i class="fa-solid fa-book-open"></i> 국어 교과서 (선생님의 눈을 가리는 중)
+               </div>
+               <div class="text-amber-300 text-xs bg-amber-950/70 px-3 py-0.5 rounded-full border border-amber-700">
+                   <i class="fa-solid fa-hand-pointer mr-1"></i> 몰래 과자 클릭!
+               </div>
+           </div>
+
+
+           <!-- Snack Tray behind the book -->
+           <div class="w-full bg-amber-950/40 p-2 sm:p-3 rounded-2xl border-2 border-amber-900/50 flex justify-around items-center gap-1 sm:gap-3 z-20">
+              
+               <!-- 1. 마이쮸 (+1점) -->
+               <button onclick="eatSnack('mychew')" class="snack-btn flex-1 bg-gradient-to-b from-pink-400 to-pink-600 hover:from-pink-300 hover:to-pink-500 rounded-xl p-1.5 sm:p-3 flex flex-col items-center border-2 border-pink-200 shadow-md group">
+                   <span class="text-2xl sm:text-3xl filter drop-shadow">🍬</span>
+                   <span class="text-xs sm:text-sm font-bold text-white mt-1">마이쮸</span>
+                   <span class="text-[10px] sm:text-xs bg-pink-800/80 text-pink-100 px-1.5 py-0.5 rounded-md mt-0.5">+1점</span>
+               </button>
+
+
+               <!-- 2. 칸쵸 (+3점) -->
+               <button onclick="eatSnack('kancho')" class="snack-btn flex-1 bg-gradient-to-b from-amber-400 to-amber-700 hover:from-amber-300 hover:to-amber-600 rounded-xl p-1.5 sm:p-3 flex flex-col items-center border-2 border-amber-200 shadow-md group">
+                   <span class="text-2xl sm:text-3xl filter drop-shadow">🟤</span>
+                   <span class="text-xs sm:text-sm font-bold text-white mt-1">칸쵸</span>
+                   <span class="text-[10px] sm:text-xs bg-amber-900/80 text-amber-100 px-1.5 py-0.5 rounded-md mt-0.5">+3점</span>
+               </button>
+
+
+               <!-- 3. 오레오 (+5점) -->
+               <button onclick="eatSnack('oreo')" class="snack-btn flex-1 bg-gradient-to-b from-slate-700 to-slate-900 hover:from-slate-600 hover:to-slate-800 rounded-xl p-1.5 sm:p-3 flex flex-col items-center border-2 border-slate-400 shadow-md group">
+                   <span class="text-2xl sm:text-3xl filter drop-shadow">🍪</span>
+                   <span class="text-xs sm:text-sm font-bold text-white mt-1">오레오</span>
+                   <span class="text-[10px] sm:text-xs bg-slate-950 text-slate-200 px-1.5 py-0.5 rounded-md mt-0.5">+5점</span>
+               </button>
+
+
+               <!-- 4. 새우깡 (+10점) -->
+               <button onclick="eatSnack('shrimp')" class="snack-btn flex-1 bg-gradient-to-b from-red-500 to-red-700 hover:from-red-400 hover:to-red-600 rounded-xl p-1.5 sm:p-3 flex flex-col items-center border-2 border-red-200 shadow-md group">
+                   <span class="text-2xl sm:text-3xl filter drop-shadow">🦐</span>
+                   <span class="text-xs sm:text-sm font-bold text-white mt-1">새우깡</span>
+                   <span class="text-[10px] sm:text-xs bg-red-900/80 text-red-100 px-1.5 py-0.5 rounded-md mt-0.5">+10점</span>
+               </button>
+
+
+               <!-- 5. 초코파이 (+20점) -->
+               <button onclick="eatSnack('chocopie')" class="snack-btn flex-1 bg-gradient-to-b from-yellow-700 to-amber-950 hover:from-yellow-600 hover:to-amber-900 rounded-xl p-1.5 sm:p-3 flex flex-col items-center border-2 border-amber-400 shadow-md group">
+                   <span class="text-2xl sm:text-3xl filter drop-shadow">🥧</span>
+                   <span class="text-xs sm:text-sm font-bold text-amber-200 mt-1">초코파이</span>
+                   <span class="text-[10px] sm:text-xs bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded-md mt-0.5">+20점</span>
+               </button>
+
+
+           </div>
+       </div>
+
+
+       <!-- START / OVERLAY SCREEN -->
+       <div id="startModal" class="absolute inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center">
+           <div class="text-5xl sm:text-6xl mb-4 animate-bounce">🏫🍪</div>
+           <h1 class="text-3xl sm:text-5xl font-extrabold text-amber-400 mb-2 tracking-wide">수업 시간 몰래 과자 먹기!</h1>
+           <p class="text-slate-300 text-sm sm:text-base max-w-md mb-6 leading-relaxed">
+               선생님이 칠판을 보고 계실 때 몰래 과자를 먹어 포만감 <span class="text-emerald-400 font-bold">200점</span>을 달성하세요!<br>
+               점수가 높을수록 <span class="text-rose-400 font-bold">의심도</span>가 급격히 오르며, 선생님이 돌아볼 때 먹다 걸리면 <span class="text-red-500 font-bold">퇴출</span>당합니다!
+           </p>
+
+
+           <div class="grid grid-cols-5 gap-2 bg-slate-900 p-4 rounded-xl border border-slate-700 mb-6 w-full max-w-md text-xs sm:text-sm">
+               <div class="flex flex-col items-center"><span class="text-2xl">🍬</span><span>마이쮸</span><span class="text-emerald-400">+1점</span></div>
+               <div class="flex flex-col items-center"><span class="text-2xl">🟤</span><span>칸쵸</span><span class="text-emerald-400">+3점</span></div>
+               <div class="flex flex-col items-center"><span class="text-2xl">🍪</span><span>오레오</span><span class="text-emerald-400">+5점</span></div>
+               <div class="flex flex-col items-center"><span class="text-2xl">🦐</span><span>새우깡</span><span class="text-emerald-400">+10점</span></div>
+               <div class="flex flex-col items-center"><span class="text-2xl">🥧</span><span>초코파이</span><span class="text-emerald-400">+20점</span></div>
+           </div>
+
+
+           <button onclick="startGame()" class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xl rounded-2xl shadow-lg transform hover:scale-105 transition-all border-2 border-emerald-300">
+               <i class="fa-solid fa-play mr-2"></i>게임 시작하기!
+           </button>
+       </div>
+
+
+       <!-- GAME OVER / RESULT OVERLAY SCREEN -->
+       <div id="resultModal" class="hidden absolute inset-0 z-50 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center">
+           <div id="resultEmoji" class="text-6xl sm:text-7xl mb-3">🚨</div>
+           <h2 id="resultTitle" class="text-3xl sm:text-5xl font-black text-rose-500 mb-2">선생님에게 들켰다!</h2>
+           <p id="resultDesc" class="text-slate-300 text-base sm:text-lg max-w-md mb-6">
+               "거기 너! 수업 시간에 뭘 먹고 있는 거야?!"
+           </p>
+
+
+           <div class="bg-slate-900/90 border border-slate-700 px-6 py-4 rounded-xl mb-6 flex gap-6 text-center">
+               <div>
+                   <span class="text-slate-400 text-xs block">최종 점수</span>
+                   <span id="finalScore" class="text-2xl font-bold text-emerald-400">0점</span>
+               </div>
+               <div class="border-r border-slate-700"></div>
+               <div>
+                   <span class="text-slate-400 text-xs block">남은 시간</span>
+                   <span id="finalTime" class="text-2xl font-bold text-amber-400">0초</span>
+               </div>
+           </div>
+
+
+           <button onclick="startGame()" class="px-8 py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-extrabold text-xl rounded-2xl shadow-lg transform hover:scale-105 transition-all border-2 border-amber-300">
+               <i class="fa-solid fa-rotate-right mr-2"></i>다시 도전하기
+           </button>
+       </div>
+
+
+   </div>
+
+
+   <!-- AUDIO & SFX CODE -->
+   <script>
+       // Game States & Variables
+       const GOAL_SCORE = 200;
+       const TIME_LIMIT = 30; // seconds
+
+
+       let currentScore = 0;
+       let suspicion = 0;
+       let timeLeft = TIME_LIMIT;
+       let isPlaying = false;
+       let gameTimer = null;
+       let teacherCycleTimer = null;
+       let suspicionDecayTimer = null;
+
+
+       // Teacher States: 'WRITING' (Safe), 'GLANCING' (Warning), 'LOOKING' (Danger!)
+       let teacherState = 'WRITING';
+
+
+       // Snack Properties Configuration
+       const SNACKS = {
+           mychew:   { name: '마이쮸', score: 1,  suspicion: 2.5, emoji: '🍬' },
+           kancho:   { name: '칸쵸',   score: 3,  suspicion: 6.0, emoji: '🟤' },
+           oreo:     { name: '오레오', score: 5,  suspicion: 11.0, emoji: '🍪' },
+           shrimp:   { name: '새우깡', score: 10, suspicion: 18.0, emoji: '🦐' },
+           chocopie: { name: '초코파이', score: 20, suspicion: 32.0, emoji: '🥧' }
+       };
+
+
+       // DOM Element References
+       const startModal = document.getElementById('startModal');
+       const resultModal = document.getElementById('resultModal');
+       const resultTitle = document.getElementById('resultTitle');
+       const resultDesc = document.getElementById('resultDesc');
+       const resultEmoji = document.getElementById('resultEmoji');
+       const finalScore = document.getElementById('finalScore');
+       const finalTime = document.getElementById('finalTime');
+
+
+       const scoreText = document.getElementById('scoreText');
+       const scoreBar = document.getElementById('scoreBar');
+       const suspicionBar = document.getElementById('suspicionBar');
+       const suspicionPercent = document.getElementById('suspicionPercent');
+       const suspicionMeterBox = document.getElementById('suspicionMeterBox');
+       const timerText = document.getElementById('timerText');
+
+
+       const teacherStateBadge = document.getElementById('teacherStateBadge');
+       const teacherBack = document.getElementById('teacherBack');
+       const teacherGlance = document.getElementById('teacherGlance');
+       const teacherFront = document.getElementById('teacherFront');
+       const alertIcon = document.getElementById('alertIcon');
+       const effectContainer = document.getElementById('effectContainer');
+
+
+       // Sound Synthesis setup via Tone.js
+       let synth, noiseSynth;
+       function initAudio() {
+           try {
+               if (!synth) {
+                   synth = new Tone.Synth().toDestination();
+                   noiseSynth = new Tone.NoiseSynth({
+                       noise: { type: 'white' },
+                       envelope: { attack: 0.005, decay: 0.05, sustain: 0 }
+                   }).toDestination();
+               }
+           } catch(e) {
+               console.log("Audio Init Warning:", e);
+           }
+       }
+
+
+       function playEatSound(snackKey) {
+           try {
+               if (Tone.context.state !== 'running') {
+                   Tone.start();
+               }
+               initAudio();
+               // Play crunch sound
+               const freq = 300 + Math.random() * 200;
+               synth.triggerAttackRelease(freq, "16n");
+               noiseSynth.triggerAttackRelease("16n");
+           } catch(e){}
+       }
+
+
+       function playAlertSound() {
+           try {
+               initAudio();
+               synth.triggerAttackRelease("C5", "8n");
+           } catch(e){}
+       }
+
+
+       function playWinSound() {
+           try {
+               initAudio();
+               const now = Tone.now();
+               synth.triggerAttackRelease("C4", "8n", now);
+               synth.triggerAttackRelease("E4", "8n", now + 0.15);
+               synth.triggerAttackRelease("G4", "8n", now + 0.3);
+               synth.triggerAttackRelease("C5", "4n", now + 0.45);
+           } catch(e){}
+       }
+
+
+       function playLoseSound() {
+           try {
+               initAudio();
+               const now = Tone.now();
+               synth.triggerAttackRelease("G3", "8n", now);
+               synth.triggerAttackRelease("Eb3", "8n", now + 0.2);
+               synth.triggerAttackRelease("C3", "4n", now + 0.4);
+           } catch(e){}
+       }
+
+
+       // Start Game Reset Routine
+       function startGame() {
+           if (Tone.context.state !== 'running') {
+               Tone.start();
+           }
+           initAudio();
+
+
+           currentScore = 0;
+           suspicion = 0;
+           timeLeft = TIME_LIMIT;
+           isPlaying = true;
+           teacherState = 'WRITING';
+
+
+           startModal.classList.add('hidden');
+           resultModal.classList.add('hidden');
+
+
+           updateUI();
+           setTeacherState('WRITING');
+
+
+           // Clear old timers
+           clearInterval(gameTimer);
+           clearTimeout(teacherCycleTimer);
+           clearInterval(suspicionDecayTimer);
+
+
+           // Start Game Main Loop (100ms interval for smooth timer update)
+           let lastTimestamp = Date.now();
+           gameTimer = setInterval(() => {
+               const now = Date.now();
+               const delta = (now - lastTimestamp) / 1000;
+               lastTimestamp = now;
+
+
+               timeLeft -= delta;
+               if (timeLeft <= 0) {
+                   timeLeft = 0;
+                   endGame(false, "제한시간 30초가 지났습니다! 목표 달성 실패!");
+               }
+               updateUI();
+           }, 100);
+
+
+           // Suspicion Decay Loop (Gradually cools down when not eating)
+           suspicionDecayTimer = setInterval(() => {
+               if (!isPlaying) return;
+               if (suspicion > 0) {
+                   suspicion = Math.max(0, suspicion - 1.5);
+                   updateUI();
+               }
+           }, 200);
+
+
+           // Schedule Teacher Behavior Cycle
+           scheduleTeacherBehavior();
+       }
+
+
+       // Teacher State Machine & Behavior Loops
+       function scheduleTeacherBehavior() {
+           if (!isPlaying) return;
+
+
+           // Random duration for writing on board (1.5s ~ 3.5s)
+           const writingDuration = 1500 + Math.random() * 2000;
+
+
+           setTeacherState('WRITING');
+
+
+           teacherCycleTimer = setTimeout(() => {
+               if (!isPlaying) return;
+
+
+               // 1. Warning Glance Stage (0.5s ~ 0.8s)
+               setTeacherState('GLANCING');
+               playAlertSound();
+
+
+               teacherCycleTimer = setTimeout(() => {
+                   if (!isPlaying) return;
+
+
+                   // 2. Full Turn Around Stage (Facing Students: 1.0s ~ 2.2s)
+                   setTeacherState('LOOKING');
+
+
+                   teacherCycleTimer = setTimeout(() => {
+                       if (!isPlaying) return;
+                       // Return to writing state
+                       scheduleTeacherBehavior();
+                   }, 1000 + Math.random() * 1200);
+
+
+               }, 500 + Math.random() * 300);
+
+
+           }, writingDuration);
+       }
+
+
+       // Change Teacher State Visuals
+       function setTeacherState(state) {
+           teacherState = state;
+
+
+           teacherBack.classList.add('hidden');
+           teacherGlance.classList.add('hidden');
+           teacherFront.classList.add('hidden');
+           alertIcon.classList.add('hidden');
+
+
+           if (state === 'WRITING') {
+               teacherBack.classList.remove('hidden');
+               teacherStateBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user mr-2 text-emerald-400"></i>선생님이 칠판에 필기 중... (안전!)`;
+               teacherStateBadge.className = "z-10 mt-2 px-4 py-1 rounded-full bg-slate-900/80 border border-emerald-500/50 text-emerald-300 text-xs sm:text-base font-bold";
+           } else if (state === 'GLANCING') {
+               teacherGlance.classList.remove('hidden');
+               teacherStateBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-2 text-yellow-400"></i>선생님이 힐끔 뒤돌아보려고 합니다!`;
+               teacherStateBadge.className = "z-10 mt-2 px-4 py-1 rounded-full bg-amber-950 border border-amber-500 text-amber-300 text-xs sm:text-base font-bold animate-pulse";
+           } else if (state === 'LOOKING') {
+               teacherFront.classList.remove('hidden');
+               alertIcon.classList.remove('hidden');
+               teacherStateBadge.innerHTML = `<i class="fa-solid fa-eye mr-2 text-red-400"></i>선생님이 학생들을 주시하는 중! (위험!)`;
+               teacherStateBadge.className = "z-10 mt-2 px-4 py-1 rounded-full bg-red-950 border border-red-500 text-red-300 text-xs sm:text-base font-bold danger-pulse";
+           }
+       }
+
+
+       // Action: Eat Snack Click Handler
+       function eatSnack(snackKey) {
+           if (!isPlaying) return;
+
+
+           const snack = SNACKS[snackKey];
+           if (!snack) return;
+
+
+           // CHECK: Caught while teacher is looking?
+           if (teacherState === 'LOOKING') {
+               // Immediate Game Over!
+               triggerCaught();
+               return;
+           }
+
+
+           // Play Sound
+           playEatSound(snackKey);
+
+
+           // Add Score & Suspicion
+           currentScore += snack.score;
+           suspicion += snack.suspicion;
+
+
+           // Floating Score Visual Effect
+           createScoreEffect(snack.emoji, `+${snack.score}`);
+
+
+           // CHECK: Suspicion Maxed out to 100%?
+           if (suspicion >= 100) {
+               suspicion = 100;
+               updateUI();
+               // Teacher turns immediately due to extreme suspicion!
+               clearTimeout(teacherCycleTimer);
+               setTeacherState('LOOKING');
+               setTimeout(() => {
+                   if (isPlaying) {
+                       triggerCaught("과자를 너무 요란하게 먹어서 선생님이 바로 뒤돌아봤습니다!");
+                   }
+               }, 150);
+               return;
+           }
+
+
+           // CHECK: Goal Reached (200 points)?
+           if (currentScore >= GOAL_SCORE) {
+               currentScore = GOAL_SCORE;
+               updateUI();
+               endGame(true, "축하합니다! 선생님 몰래 목표 포만감 200점을 달성했습니다!");
+               return;
+           }
+
+
+           updateUI();
+       }
+
+
+       function triggerCaught(customReason) {
+           endGame(false, customReason || "선생님과 눈이 딱 마주쳤습니다! 걸렸습니다!");
+       }
+
+
+       // Spawn visual text floater for eating (+점수)
+       function createScoreEffect(emoji, text) {
+           const effectContainer = document.getElementById('effectContainer');
+           const el = document.createElement('div');
+           el.className = 'floating-score absolute text-amber-300 font-extrabold text-lg sm:text-2xl drop-shadow-md flex items-center gap-1';
+          
+           // Random horizontal offset near desk center
+           const randomX = 40 + Math.random() * 20;
+           const randomY = 65 + Math.random() * 10;
+          
+           el.style.left = `${randomX}%`;
+           el.style.top = `${randomY}%`;
+           el.innerHTML = `<span>${emoji}</span> <span>${text}</span>`;
+
+
+           effectContainer.appendChild(el);
+
+
+           setTimeout(() => {
+               el.remove();
+           }, 800);
+       }
+
+
+       // Update Gauges & UI Elements
+       function updateUI() {
+           // Score Bar Update
+           const scorePct = Math.min(100, (currentScore / GOAL_SCORE) * 100);
+           scoreBar.style.width = `${scorePct}%`;
+           scoreText.innerText = `${currentScore} / ${GOAL_SCORE}`;
+
+
+           // Suspicion Meter Update
+           const suspicionPct = Math.min(100, suspicion);
+           suspicionBar.style.width = `${suspicionPct}%`;
+           suspicionPercent.innerText = `${Math.round(suspicionPct)}%`;
+
+
+           if (suspicionPct > 75) {
+               suspicionMeterBox.classList.add('danger-pulse');
+           } else {
+               suspicionMeterBox.classList.remove('danger-pulse');
+           }
+
+
+           // Timer Text Update
+           timerText.innerText = `${timeLeft.toFixed(1)}s`;
+       }
+
+
+       // Game Over / Win Logic Handler
+       function endGame(isWin, message) {
+           isPlaying = false;
+           clearInterval(gameTimer);
+           clearTimeout(teacherCycleTimer);
+           clearInterval(suspicionDecayTimer);
+
+
+           finalScore.innerText = `${currentScore}점`;
+           finalTime.innerText = `${timeLeft.toFixed(1)}초`;
+           resultDesc.innerText = message;
+
+
+           if (isWin) {
+               playWinSound();
+               resultTitle.innerText = "MISSION SUCCESS!";
+               resultTitle.className = "text-3xl sm:text-5xl font-black text-emerald-400 mb-2";
+               resultEmoji.innerText = "🎉";
+           } else {
+               playLoseSound();
+               resultTitle.innerText = "MISSION FAILED!";
+               resultTitle.className = "text-3xl sm:text-5xl font-black text-rose-500 mb-2";
+               resultEmoji.innerText = "🚨";
+               // Show Angry Teacher Pose
+               setTeacherState('LOOKING');
+           }
+
+
+           resultModal.classList.remove('hidden');
+       }
+   </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>라면 맞추기 게임</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF);
+    background-size: 600% 600%;
+    animation: bgMove 20s ease infinite;
+    margin: 0; padding: 0;
+    display: flex;
+    justify-content: center; align-items: center;
+    height: 100vh;
+    color: #fff;
+  }
+
+  @keyframes bgMove {
+    0%{background-position:0% 50%;}
+    50%{background-position:100% 50%;}
+    100%{background-position:0% 50%;}
+  }
+
+  .page {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    border-radius: 15px;
+    background: rgba(0,0,0,0.3);
+    width: 320px;
+  }
+
+  .active {
+    display: block;
+  }
+
+  button {
+    background-color: #FF6B6B;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 10px;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+  }
+
+  button:hover {
+    background-color: #FFD93D;
+    color: black;
+  }
+</style>
+</head>
+<body>
+
+<div id="mainPage" class="page active">
+  <h1>라면 맞추기 게임</h1>
+  <p>라면 종류를 맞춰보세요! (예시 게임)</p>
+  <button onclick="goPage('gamePage')">게임 시작</button>
+</div>
+
+<div id="gamePage" class="page">
+  <h2>라면을 선택하세요!</h2>
+  <div>
+    <button onclick="checkAnswer('신라면')">신라면</button>
+    <button onclick="checkAnswer('진라면')">진라면</button>
+    <button onclick="checkAnswer('짜파게티')">짜파게티</button>
+    <button onclick="checkAnswer('불닭볶음면')">불닭볶음면</button>
+  </div>
+  <button onclick="goPage('resultPage')" style="margin-top:40px; background:#4D96FF;">결과 보기</button>
+</div>
+
+<div id="resultPage" class="page">
+  <h2>결과</h2>
+  <p id="resultText">아직 게임을 안 했어요! </p>
+  <button onclick="goPage('mainPage')" style="background:#6BCB77;">처음으로</button>
+</div>
+
+<script>
+  let correctRamen = '불닭볶음면';
+  let resultText = document.getElementById('resultText');
+  let userAnswer = '';
+
+  function goPage(pageId) {
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+  }
+
+  function checkAnswer(answer) {
+    userAnswer = answer;
+    if(userAnswer === correctRamen) {
+      alert("정답입니다! 대박!");
+    } else {
+      alert("아쉽지만 틀렸어요! 다시 도전!");
+    }
+  }
+
+  document.querySelector('#gamePage button[onclick*="goPage(\'resultPage\')"]').onclick = function() {
+    if (!userAnswer) {
+      alert("먼저 라면을 선택하세요!");
+      return false;
+    }
+    resultText.textContent = `당신이 고른 라면은 ${userAnswer} 입니다. 정답은 ${correctRamen} 였어요!`;
+    goPage('resultPage');
+  }
+</script>
+
+</body>
+</html>

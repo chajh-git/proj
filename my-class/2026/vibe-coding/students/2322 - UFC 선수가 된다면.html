@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내가 만약 UFC 선수가 된다면</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#080808,#202020);color:white}
+.container{width:90%;max-width:850px;margin:40px auto}
+.start-screen{text-align:center;padding:60px 25px;background:linear-gradient(145deg,#171717,#292929);border-radius:25px;border:2px solid #e53935;box-shadow:0 0 30px rgba(255,60,60,.25)}
+.logo{font-size:70px}h1{font-size:38px;color:#ff3b30}.subtitle{color:#ccc;font-size:17px;line-height:1.7}
+button{border:0;border-radius:12px;padding:15px 30px;font-size:17px;font-weight:bold;cursor:pointer;transition:.2s}button:hover{transform:scale(1.04)}
+.start-btn{background:#e53935;color:#fff;font-size:20px;padding:17px 50px}
+.card{background:#181818;padding:30px;border-radius:20px;border:1px solid #444;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.hidden{display:none}.input-box{margin:20px 0}input{width:100%;padding:14px;margin-top:8px;border-radius:10px;border:2px solid #444;background:#292929;color:white;font-size:16px}input:focus{outline:none;border-color:#e53935}
+.next-btn{width:100%;margin-top:20px;background:#e53935;color:white}
+.progress-box{width:100%;height:10px;background:#333;border-radius:10px;margin:15px 0 25px}.progress{height:100%;width:0;background:#e53935;border-radius:10px;transition:.3s}
+.question-number{color:#ff5252;font-weight:bold}.question{font-size:24px;margin:15px 0 10px}.question-help{color:#999;font-size:14px;margin-bottom:20px}
+.option{display:block;background:#292929;border:2px solid #444;padding:16px;margin:12px 0;border-radius:12px;cursor:pointer;transition:.2s}.option:hover{border-color:#e53935;background:#333}.option.selected{border-color:#ff3b30;background:#4a1c1c}
+.result-card{text-align:center}.fighter-icon{font-size:75px}.result-title{font-size:34px;color:#ff3b30}.result-description{color:#ddd;line-height:1.7}
+.fighter-info{display:grid;grid-template-columns:repeat(2,1fr);gap:15px;margin:25px 0}.info-box{background:#292929;padding:18px;border-radius:12px}.info-title{color:#999;font-size:14px}.info-value{font-size:19px;font-weight:bold;margin-top:5px}
+.stats{text-align:left;margin-top:30px}.stat{margin:18px 0}.stat-name{display:flex;justify-content:space-between;margin-bottom:7px}.stat-bar{height:13px;background:#333;border-radius:10px;overflow:hidden}.stat-fill{height:100%;width:0;background:linear-gradient(90deg,#e53935,#ff8a65);border-radius:10px;transition:1s}
+.restart-btn{margin-top:30px;background:#333;color:white;border:1px solid #666}.notice{margin-top:25px;font-size:13px;color:#888;line-height:1.6}
+@media(max-width:600px){h1{font-size:28px}.fighter-info{grid-template-columns:1fr}.question{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div id="startScreen" class="start-screen">
+<div class="logo">🥊</div>
+<h1>내가 만약 UFC 선수가 된다면?</h1>
+<p class="subtitle">일상생활 속 나의 행동과 성향을 분석해서<br>나에게 어울리는 파이터 스타일을 찾아보자!</p>
+<button class="start-btn" onclick="startProgram()">🔥 테스트 시작</button>
+<p class="notice">※ 재미를 위한 가상 테스트입니다.</p>
+</div>
+
+<div id="infoScreen" class="card hidden">
+<h2>🥊 나의 기본 정보</h2><p>나의 정보를 입력해 주세요.</p>
+<div class="input-box"><label>파이터 이름</label><input type="text" id="fighterName"></div>
+<div class="input-box"><label>키(cm)</label><input type="number" id="height"></div>
+<div class="input-box"><label>몸무게(kg)</label><input type="number" id="weight"></div>
+<button class="next-btn" onclick="startQuiz()">다음 → 질문 시작</button>
+</div>
+
+<div id="quizScreen" class="card hidden">
+<div class="question-number" id="questionNumber">QUESTION 1 / 15</div>
+<div class="progress-box"><div class="progress" id="progress"></div></div>
+<div class="question" id="question"></div>
+<div class="question-help">💡 해당되는 것을 <b>2개 이상 선택해도 됩니다.</b></div>
+<div id="options"></div>
+<button class="next-btn" onclick="nextQuestion()">다음 질문 →</button>
+</div>
+
+<div id="resultScreen" class="card result-card hidden">
+<div class="fighter-icon" id="resultIcon">🥊</div>
+<h2 id="resultTitle" class="result-title">결과</h2>
+<p id="resultDescription" class="result-description"></p>
+<div class="fighter-info">
+<div class="info-box"><div class="info-title">FIGHTER</div><div class="info-value" id="resultName">-</div></div>
+<div class="info-box"><div class="info-title">예상 체급</div><div class="info-value" id="resultWeight">-</div></div>
+<div class="info-box"><div class="info-title">추천 종목</div><div class="info-value" id="resultSport">-</div></div>
+<div class="info-box"><div class="info-title">파이터 성향</div><div class="info-value" id="resultStyle">-</div></div>
+</div>
+<div class="stats"><h3>📊 나의 파이터 능력치</h3>
+<div class="stat"><div class="stat-name"><span>🥊 타격</span><span id="strikingNumber">0</span></div><div class="stat-bar"><div class="stat-fill" id="strikingBar"></div></div></div>
+<div class="stat"><div class="stat-name"><span>🥋 그래플링</span><span id="grapplingNumber">0</span></div><div class="stat-bar"><div class="stat-fill" id="grapplingBar"></div></div></div>
+<div class="stat"><div class="stat-name"><span>⚡ 스피드</span><span id="speedNumber">0</span></div><div class="stat-bar"><div class="stat-fill" id="speedBar"></div></div></div>
+<div class="stat"><div class="stat-name"><span>💪 파워</span><span id="powerNumber">0</span></div><div class="stat-bar"><div class="stat-fill" id="powerBar"></div></div></div>
+<div class="stat"><div class="stat-name"><span>🫀 체력</span><span id="staminaNumber">0</span></div><div class="stat-bar"><div class="stat-fill" id="staminaBar"></div></div></div>
+</div>
+<button class="restart-btn" onclick="restart()">🔄 다시 테스트하기</button>
+</div>
+</div>
+
+<script>
+const questions=[
+{question:"체육 시간에 새로운 운동을 배우게 되었다. 나는?",options:[["일단 빠르게 해본다","speed"],["힘을 많이 사용해서 해본다","power"],["동작을 하나씩 정확하게 따라 한다","grappling"],["잘 안돼도 계속 연습한다","stamina"]]},
+{question:"친구들과 운동장에서 놀 때 나는?",options:[["친구들보다 빠르게 움직이는 편이다","speed"],["공을 세게 차거나 던지는 편이다","power"],["몸의 움직임을 잘 조절하는 편이다","grappling"],["오래 놀아도 잘 지치지 않는다","stamina"]]},
+{question:"갑자기 친구가 공을 나에게 던진다면?",options:[["빠르게 피하거나 잡는다","speed"],["힘 있게 받아낸다","power"],["몸의 균형을 잡는다","grappling"],["당황하지 않고 침착하게 대처한다","stamina"]]},
+{question:"게임을 할 때 나와 가장 가까운 모습은?",options:[["빠른 판단으로 바로 행동한다","speed"],["강하게 밀어붙이는 편이다","power"],["상대의 행동을 보고 전략을 세운다","grappling"],["끝까지 포기하지 않는다","stamina"]]},
+{question:"학교 체육대회에서 하고 싶은 종목은?",options:[["달리기","speed"],["공 던지기 같은 힘을 사용하는 종목","power"],["팀워크가 필요한 종목","grappling"],["오래 달리는 종목","stamina"]]},
+{question:"친구와 놀이를 할 때 나는?",options:[["먼저 빠르게 움직이는 편이다","speed"],["힘을 사용하는 활동을 좋아한다","power"],["상황을 보면서 움직인다","grappling"],["오래 놀아도 괜찮다","stamina"]]},
+{question:"어려운 문제를 만났을 때 나는?",options:[["일단 빠르게 여러 방법을 시도한다","speed"],["어려워도 직접 해결하려고 한다","power"],["방법을 분석하고 계획을 세운다","grappling"],["시간이 걸려도 끝까지 해결한다","stamina"]]},
+{question:"친구들과 여행을 간다면 나는?",options:[["여러 곳을 빠르게 돌아다닌다","speed"],["힘든 활동도 적극적으로 한다","power"],["일정을 계획하는 것을 좋아한다","grappling"],["하루 종일 돌아다녀도 괜찮다","stamina"]]},
+{question:"체육 시간에 선생님이 갑자기 팀을 만든다면?",options:[["빠르게 팀에 적응한다","speed"],["팀을 적극적으로 이끈다","power"],["친구들과 역할을 나눈다","grappling"],["끝까지 팀을 도와준다","stamina"]]},
+{question:"친구와 경쟁하는 상황이 생긴다면?",options:[["빠르게 승부를 본다","speed"],["강한 자신감으로 도전한다","power"],["상대의 방법을 먼저 파악한다","grappling"],["끝까지 포기하지 않는다","stamina"]]},
+{question:"새로운 운동기구를 처음 사용한다면?",options:[["바로 사용해본다","speed"],["힘을 많이 써본다","power"],["사용법을 먼저 확인한다","grappling"],["익숙해질 때까지 반복한다","stamina"]]},
+{question:"친구와 팔씨름을 한다면?",options:[["빠르게 승부를 본다","speed"],["힘으로 이기려고 한다","power"],["자세와 균형을 신경 쓴다","grappling"],["오래 버티려고 한다","stamina"]]},
+{question:"단체 활동에서 내가 가장 잘하는 것은?",options:[["빠르게 움직이기","speed"],["팀을 이끌기","power"],["친구들과 작전을 짜기","grappling"],["끝까지 참여하기","stamina"]]},
+{question:"시험이나 수행평가를 준비할 때 나는?",options:[["짧은 시간에 집중해서 한다","speed"],["어려운 부분도 자신 있게 도전한다","power"],["순서를 정해서 계획적으로 한다","grappling"],["매일 조금씩 꾸준히 한다","stamina"]]},
+{question:"나의 성격과 가장 가까운 것은?",options:[["빠르고 민첩하다","speed"],["자신감 있고 적극적이다","power"],["침착하고 생각을 많이 한다","grappling"],["끈기 있고 포기하지 않는다","stamina"]]}
+];
+
+let currentQuestion=0;
+let scores={striking:0,grappling:0,speed:0,power:0,stamina:0};
+let selectedAnswers=[];
+let fighterName="",height=0,weight=0;
+
+function startProgram(){
+document.getElementById("startScreen").classList.add("hidden");
+document.getElementById("infoScreen").classList.remove("hidden");
+}
+
+function startQuiz(){
+fighterName=document.getElementById("fighterName").value||"파이터";
+height=Number(document.getElementById("height").value);
+weight=Number(document.getElementById("weight").value);
+if(height<=0||weight<=0){alert("키와 몸무게를 입력해주세요.");return;}
+document.getElementById("infoScreen").classList.add("hidden");
+document.getElementById("quizScreen").classList.remove("hidden");
+showQuestion();
+}
+
+function showQuestion(){
+selectedAnswers=[];
+const q=questions[currentQuestion];
+document.getElementById("questionNumber").innerText="QUESTION "+(currentQuestion+1)+" / "+questions.length;
+document.getElementById("question").innerText=q.question;
+document.getElementById("progress").style.width=((currentQuestion)/questions.length*100)+"%";
+const box=document.getElementById("options");box.innerHTML="";
+q.options.forEach(function(option){
+const div=document.createElement("div");div.className="option";div.innerText=option[0];
+div.onclick=function(){
+if(selectedAnswers.includes(option[1])){
+selectedAnswers=selectedAnswers.filter(item=>item!==option[1]);div.classList.remove("selected");
+}else{selectedAnswers.push(option[1]);div.classList.add("selected");}
+};box.appendChild(div);
+});
+}
+
+function nextQuestion(){
+if(selectedAnswers.length===0){alert("최소 1개 이상의 답을 선택해주세요!");return;}
+selectedAnswers.forEach(answer=>scores[answer]++);
+currentQuestion++;
+if(currentQuestion<questions.length)showQuestion();else showResult();
+}
+
+function getWeightClass(w){
+if(w<57)return"플라이급";if(w<61)return"밴텀급";if(w<66)return"페더급";if(w<71)return"라이트급";if(w<77)return"웰터급";if(w<84)return"미들급";return"헤비급 계열";
+}
+
+function showResult(){
+document.getElementById("quizScreen").classList.add("hidden");
+document.getElementById("resultScreen").classList.remove("hidden");
+document.getElementById("resultName").innerText=fighterName;
+document.getElementById("resultWeight").innerText=getWeightClass(weight);
+let maxScore=Math.max(scores.grappling,scores.power,scores.speed,scores.stamina);
+let icon,title,sport,style,description;
+if(scores.grappling===maxScore){icon="🥋";title="그래플러형 파이터";style="전략형";sport="레슬링 + 주짓수";description="상황을 분석하고 전략적으로 행동하는 성향이 강합니다. 상대의 움직임을 파악하고 기술적으로 경기를 풀어가는 스타일입니다."}
+else if(scores.power===maxScore){icon="💪";title="파워형 파이터";style="공격형";sport="복싱 + 킥복싱";description="자신감과 적극성이 강하고 어려운 상황에서도 직접 도전하는 스타일입니다. 강한 공격력을 가진 파이터가 될 가능성이 있습니다."}
+else if(scores.speed===maxScore){icon="⚡";title="스피드형 파이터";style="민첩형";sport="복싱 + 킥복싱";description="빠르게 판단하고 움직이는 능력이 강합니다. 상대보다 먼저 움직이며 빠른 공격을 사용하는 스타일입니다."}
+else{icon="🫀";title="체력형 파이터";style="끈기형";sport="레슬링 + 킥복싱";description="꾸준함과 끈기가 강점입니다. 힘든 상황에서도 포기하지 않고 끝까지 노력하는 스타일입니다."}
+document.getElementById("resultIcon").innerText=icon;
+document.getElementById("resultTitle").innerText=title;
+document.getElementById("resultStyle").innerText=style;
+document.getElementById("resultSport").innerText=sport;
+document.getElementById("resultDescription").innerText=description;
+setStat("striking",Math.min(100,40+scores.power*7));
+setStat("grappling",Math.min(100,40+scores.grappling*8));
+setStat("speed",Math.min(100,40+scores.speed*8));
+setStat("power",Math.min(100,40+scores.power*8));
+setStat("stamina",Math.min(100,40+scores.stamina*8));
+}
+
+function setStat(name,value){
+document.getElementById(name+"Number").innerText=value;
+document.getElementById(name+"Bar").style.width=value+"%";
+}
+
+function restart(){
+currentQuestion=0;
+scores={striking:0,grappling:0,speed:0,power:0,stamina:0};
+selectedAnswers=[];
+document.getElementById("resultScreen").classList.add("hidden");
+document.getElementById("startScreen").classList.remove("hidden");
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Monster Escape 3D</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    overflow:hidden;
+    background:#8fa9b5;
+    font-family:Arial,sans-serif;
+}
+
+#game{
+    width:100vw;
+    height:100vh;
+}
+
+#ui{
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    color:white;
+    z-index:10;
+}
+
+#top{
+    display:flex;
+    justify-content:space-between;
+    padding:18px;
+}
+
+.panel{
+    background:rgba(10,20,25,.75);
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;
+    padding:12px 16px;
+    backdrop-filter:blur(5px);
+}
+
+.bar{
+    width:180px;
+    height:9px;
+    margin-top:5px;
+    background:#263238;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+.fill{
+    height:100%;
+    width:100%;
+    background:#77d58a;
+}
+
+#stamina{
+    background:#78a9ff;
+}
+
+#items{
+    margin-top:8px;
+}
+
+#message{
+    position:absolute;
+    left:50%;
+    top:45%;
+    transform:translate(-50%,-50%);
+    font-size:30px;
+    font-weight:bold;
+    text-shadow:0 3px 10px black;
+}
+
+#controls{
+    position:absolute;
+    left:18px;
+    bottom:18px;
+    padding:10px 14px;
+    background:rgba(10,20,25,.7);
+    border-radius:10px;
+    font-size:14px;
+}
+
+#start{
+    position:fixed;
+    inset:0;
+    background:rgba(20,35,40,.55);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:20;
+}
+
+.menu{
+    width:430px;
+    padding:35px;
+    text-align:center;
+    border-radius:20px;
+    background:rgba(235,242,240,.96);
+    color:#152126;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+
+.menu h1{
+    margin-top:0;
+    font-size:40px;
+}
+
+.menu button{
+    margin-top:20px;
+    border:0;
+    padding:14px 30px;
+    border-radius:12px;
+    background:#253d42;
+    color:white;
+    font-size:17px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+#damage{
+    position:absolute;
+    inset:0;
+    border:0 solid rgba(220,30,30,.25);
+}
+</style>
+</head>
+
+<body>
+
+<div id="game"></div>
+
+<div id="ui">
+
+    <div id="top">
+
+        <div class="panel">
+            <b>🌲 BLACKWOOD RESEARCH AREA</b>
+            <div style="margin-top:6px">
+                탈출구까지
+                <span id="distance">120</span>m
+            </div>
+        </div>
+
+        <div class="panel">
+
+            <div>❤️ 체력</div>
+
+            <div class="bar">
+                <div id="health" class="fill"></div>
+            </div>
+
+            <div style="margin-top:8px">
+                ⚡ 스태미나
+            </div>
+
+            <div class="bar">
+                <div id="stamina" class="fill"></div>
+            </div>
+
+            <div id="items">
+                🛡️ 보호막:
+                <span id="shield">0</span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div id="damage"></div>
+
+    <div id="message"></div>
+
+    <div id="controls">
+        ↑ ↓ ← → 이동　
+        Shift 달리기　
+        E 보호막 사용
+    </div>
+
+</div>
+
+<div id="start">
+
+    <div class="menu">
+
+        <h1>MONSTER ESCAPE</h1>
+
+        <p>
+            버려진 연구시설에서 탈출해야 한다.
+            <br><br>
+            숲속에 있는 방어 아이템을 찾아
+            괴물의 추격을 버텨라.
+        </p>
+
+        <button id="startButton">
+            게임 시작
+        </button>
+
+    </div>
+
+</div>
+
+<script type="module">
+
+import * as THREE from
+"https://cdn.jsdelivr.net/npm/three@0.179.1/build/three.module.js";
+
+
+/* =========================
+   기본 설정
+========================= */
+
+const scene =
+new THREE.Scene();
+
+scene.background =
+new THREE.Color(0x9bb8c5);
+
+scene.fog =
+new THREE.Fog(
+    0x9bb8c5,
+    35,
+    150
+);
+
+
+const camera =
+new THREE.PerspectiveCamera(
+    65,
+    innerWidth / innerHeight,
+    0.1,
+    250
+);
+
+
+const renderer =
+new THREE.WebGLRenderer({
+    antialias:true
+});
+
+renderer.setSize(
+    innerWidth,
+    innerHeight
+);
+
+renderer.shadowMap.enabled=true;
+
+renderer.shadowMap.type=
+THREE.PCFSoftShadowMap;
+
+document
+.getElementById("game")
+.appendChild(renderer.domElement);
+
+
+/* =========================
+   조명
+========================= */
+
+const ambient =
+new THREE.HemisphereLight(
+    0xdceeff,
+    0x40503e,
+    2
+);
+
+scene.add(ambient);
+
+
+const sun =
+new THREE.DirectionalLight(
+    0xfff3d2,
+    3
+);
+
+sun.position.set(
+    -30,
+    50,
+    20
+);
+
+sun.castShadow=true;
+
+sun.shadow.mapSize.width=2048;
+sun.shadow.mapSize.height=2048;
+
+scene.add(sun);
+
+
+/* =========================
+   바닥
+========================= */
+
+const ground =
+new THREE.Mesh(
+    new THREE.PlaneGeometry(
+        180,
+        180
+    ),
+    new THREE.MeshStandardMaterial({
+        color:0x68855f,
+        roughness:1
+    })
+);
+
+ground.rotation.x=
+-Math.PI/2;
+
+ground.receiveShadow=true;
+
+scene.add(ground);
+
+
+/* =========================
+   유틸리티
+========================= */
+
+function box(
+    x,y,z,
+    w,h,d,
+    color
+){
+
+    const mesh =
+    new THREE.Mesh(
+        new THREE.BoxGeometry(
+            w,h,d
+        ),
+        new THREE.MeshStandardMaterial({
+            color,
+            roughness:.85
+        })
+    );
+
+    mesh.position.set(
+        x,y,z
+    );
+
+    mesh.castShadow=true;
+    mesh.receiveShadow=true;
+
+    scene.add(mesh);
+
+    return mesh;
+}
+
+
+function cylinder(
+    x,y,z,
+    radius,
+    height,
+    color
+){
+
+    const mesh =
+    new THREE.Mesh(
+        new THREE.CylinderGeometry(
+            radius,
+            radius*1.15,
+            height,
+            8
+        ),
+        new THREE.MeshStandardMaterial({
+            color,
+            roughness:1
+        })
+    );
+
+    mesh.position.set(
+        x,y,z
+    );
+
+    mesh.castShadow=true;
+
+    scene.add(mesh);
+
+    return mesh;
+}
+
+
+/* =========================
+   연구시설
+========================= */
+
+box(
+    0,3,-112,
+    32,6,18,
+    0x777f7e
+);
+
+box(
+    -18,2,-92,
+    10,4,28,
+    0x808986
+);
+
+box(
+    18,2,-92,
+    10,4,28,
+    0x737e7b
+);
+
+
+/* 도로 */
+
+box(
+    0,.03,-58,
+    9,.08,110,
+    0x4c514d
+);
+
+
+/* 건물 창문 */
+
+for(
+    let z=-105;
+    z<-30;
+    z+=9
+){
+
+    box(
+        -4.8,
+        3,
+        z,
+        2.2,
+        1.4,
+        .12,
+        0x20343b
+    );
+
+    box(
+        4.8,
+        3,
+        z,
+        2.2,
+        1.4,
+        .12,
+        0x20343b
+    );
+}
+
+
+/* =========================
+   나무
+========================= */
+
+for(
+    let i=0;
+    i<100;
+    i++
+){
+
+    const z =
+    -5 -
+    Math.random()*110;
+
+    const side =
+    Math.random()<.5
+    ? -1
+    : 1;
+
+    const x =
+    side*(7+Math.random()*18);
+
+
+    cylinder(
+        x,
+        2,
+        z,
+        .25,
+        4,
+        0x594a3c
+    );
+
+
+    const crown =
+    new THREE.Mesh(
+        new THREE.ConeGeometry(
+            1.4+Math.random()*1.5,
+            4+Math.random()*2,
+            8
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x315d3d,
+            roughness:1
+        })
+    );
+
+    crown.position.set(
+        x,
+        5,
+        z
+    );
+
+    crown.castShadow=true;
+
+    scene.add(crown);
+}
+
+
+/* =========================
+   가로등
+========================= */
+
+for(
+    let z=-20;
+    z>-115;
+    z-=18
+){
+
+    cylinder(
+        -5,
+        2,
+        z,
+        .08,
+        4,
+        0x414747
+    );
+
+    const light =
+    new THREE.PointLight(
+        0xffe8ad,
+        3,
+        15
+    );
+
+    light.position.set(
+        -5,
+        4.3,
+        z
+    );
+
+    scene.add(light);
+}
+
+
+/* =========================
+   플레이어
+========================= */
+
+const player =
+new THREE.Group();
+
+scene.add(player);
+
+
+/* 몸 */
+
+const body =
+new THREE.Mesh(
+    new THREE.BoxGeometry(
+        .65,
+        1,
+        .4
+    ),
+    new THREE.MeshStandardMaterial({
+        color:0x2e5367
+    })
+);
+
+body.position.y=1.1;
+
+body.castShadow=true;
+
+player.add(body);
+
+
+/* 머리 */
+
+const head =
+new THREE.Mesh(
+    new THREE.SphereGeometry(
+        .32,
+        16,
+        16
+    ),
+    new THREE.MeshStandardMaterial({
+        color:0xe1b38f
+    })
+);
+
+head.position.y=1.85;
+
+head.castShadow=true;
+
+player.add(head);
+
+
+/* 머리 */
+
+const hair =
+new THREE.Mesh(
+    new THREE.SphereGeometry(
+        .34,
+        16,
+        10
+    ),
+    new THREE.MeshStandardMaterial({
+        color:0x22252a
+    })
+);
+
+hair.position.y=2.03;
+
+hair.scale.y=.6;
+
+player.add(hair);
+
+
+/* 다리 */
+
+for(
+    const side of [-1,1]
+){
+
+    const leg =
+    new THREE.Mesh(
+        new THREE.BoxGeometry(
+            .2,
+            .8,
+            .25
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x202d35
+        })
+    );
+
+    leg.position.set(
+        side*.18,
+        .4,
+        0
+    );
+
+    leg.castShadow=true;
+
+    player.add(leg);
+}
+
+
+/* =========================
+   괴물
+========================= */
+
+const monster =
+new THREE.Group();
+
+monster.position.set(
+    0,
+    0,
+    -20
+);
+
+scene.add(monster);
+
+
+const monsterBodyMat =
+new THREE.MeshStandardMaterial({
+    color:0x202629,
+    roughness:.95
+});
+
+
+const monsterSkinMat =
+new THREE.MeshStandardMaterial({
+    color:0x56635d,
+    roughness:1
+});
+
+
+const boneMat =
+new THREE.MeshStandardMaterial({
+    color:0xc2bca9
+});
+
+
+/* 몸통 */
+
+const monsterBody =
+new THREE.Mesh(
+    new THREE.CapsuleGeometry(
+        .7,
+        1.5,
+        8,
+        16
+    ),
+    monsterBodyMat
+);
+
+monsterBody.position.y=2;
+
+monsterBody.scale.set(
+    1.1,
+    1.4,
+    .75
+);
+
+monsterBody.castShadow=true;
+
+monster.add(monsterBody);
+
+
+/* 머리 */
+
+const monsterHead =
+new THREE.Mesh(
+    new THREE.SphereGeometry(
+        .72,
+        20,
+        16
+    ),
+    monsterSkinMat
+);
+
+monsterHead.position.y=3.55;
+
+monsterHead.scale.set(
+    .9,
+    1.2,
+    .8
+);
+
+monsterHead.castShadow=true;
+
+monster.add(monsterHead);
+
+
+/* 입 */
+
+const mouth =
+new THREE.Mesh(
+    new THREE.BoxGeometry(
+        .85,
+        .3,
+        .65
+    ),
+    monsterBodyMat
+);
+
+mouth.position.set(
+    0,
+    3.2,
+    -.52
+);
+
+monster.add(mouth);
+
+
+/* 눈 */
+
+for(
+    const side of [-1,1]
+){
+
+    const eye =
+    new THREE.Mesh(
+        new THREE.SphereGeometry(
+            .11,
+            12,
+            12
+        ),
+        new THREE.MeshBasicMaterial({
+            color:0xf0f5d6
+        })
+    );
+
+    eye.position.set(
+        side*.23,
+        3.65,
+        -.62
+    );
+
+    monster.add(eye);
+}
+
+
+/* 뿔 */
+
+for(
+    const side of [-1,1]
+){
+
+    const horn =
+    new THREE.Mesh(
+        new THREE.ConeGeometry(
+            .15,
+            .85,
+            8
+        ),
+        boneMat
+    );
+
+    horn.position.set(
+        side*.4,
+        4.35,
+        0
+    );
+
+    horn.rotation.z=
+    side*.35;
+
+    monster.add(horn);
+}
+
+
+/* 팔 + 손 */
+
+for(
+    const side of [-1,1]
+){
+
+    const arm =
+    new THREE.Mesh(
+        new THREE.CapsuleGeometry(
+            .18,
+            1.5,
+            6,
+            10
+        ),
+        monsterBodyMat
+    );
+
+    arm.position.set(
+        side*.85,
+        2,
+        0
+    );
+
+    arm.rotation.z=
+    side*.4;
+
+    monster.add(arm);
+
+
+    for(
+        let i=0;
+        i<3;
+        i++
+    ){
+
+        const claw =
+        new THREE.Mesh(
+            new THREE.ConeGeometry(
+                .055,
+                .4,
+                7
+            ),
+            boneMat
+        );
+
+        claw.position.set(
+            side*(1.05+i*.1),
+            1.25,
+            -.35+i*.12
+        );
+
+        claw.rotation.z=
+        side*1.4;
+
+        monster.add(claw);
+    }
+}
+
+
+/* 다리 */
+
+for(
+    const side of [-1,1]
+){
+
+    const leg =
+    new THREE.Mesh(
+        new THREE.CapsuleGeometry(
+            .25,
+            1.45,
+            6,
+            9
+        ),
+        monsterBodyMat
+    );
+
+    leg.position.set(
+        side*.38,
+        .7,
+        0
+    );
+
+    monster.add(leg);
+}
+
+
+/* =========================
+   방어 아이템
+========================= */
+
+let shields=[];
+
+
+function createShield(
+    x,
+    z
+){
+
+    const group =
+    new THREE.Group();
+
+    group.position.set(
+        x,
+        .8,
+        z
+    );
+
+
+    const core =
+    new THREE.Mesh(
+        new THREE.CylinderGeometry(
+            .32,
+            .32,
+            .5,
+            16
+        ),
+        new THREE.MeshStandardMaterial({
+            color:0x55b8e8,
+            emissive:0x17445c
+        })
+    );
+
+    group.add(core);
+
+
+    const ring =
+    new THREE.Mesh(
+        new THREE.TorusGeometry(
+            .48,
+            .045,
+            10,
+            24
+        ),
+        new THREE.MeshBasicMaterial({
+            color:0x9ce7ff
+        })
+    );
+
+    ring.rotation.x=
+    Math.PI/2;
+
+    group.add(ring);
+
+
+    scene.add(group);
+
+    shields.push({
+        mesh:group,
+        collected:false
+    });
+}
+
+
+createShield(
+    3,
+    -32
+);
+
+createShield(
+    -3,
+    -58
+);
+
+createShield(
+    3,
+    -82
+);
+
+
+/* =========================
+   게임 상태
+========================= */
+
+let health=100;
+
+let stamina=100;
+
+let shield=0;
+
+let running=false;
+
+let keys={};
+
+let yaw=0;
+
+let cameraDistance=6;
+
+let playerSpeed=.11;
+
+let monsterSpeed=.055;
+
+
+/* 플레이어 위치 */
+
+player.position.set(
+    0,
+    0,
+    8
+);
+
+
+/* =========================
+   키보드
+========================= */
+
+addEventListener(
+    "keydown",
+    e=>{
+
+        keys[
+            e.key.toLowerCase()
+        ]=true;
+
+        if(
+            e.key.toLowerCase()==="e"
+        ){
+
+            if(
+                shield>0
+            ){
+
+                shield--;
+
+                document
+                .getElementById("shield")
+                .textContent=shield;
+
+                monster.position.z+=5;
+            }
+        }
+
+    }
+);
+
+
+addEventListener(
+    "keyup",
+    e=>{
+
+        keys[
+            e.key.toLowerCase()
+        ]=false;
+
+    }
+);
+
+
+/* =========================
+   게임 시작
+========================= */
+
+document
+.getElementById("startButton")
+.onclick=()=>{
+
+    document
+    .getElementById("start")
+    .style.display="none";
+
+    running=true;
+
+    requestAnimationFrame(
+        gameLoop
+    );
+};
+
+
+/* =========================
+   업데이트
+========================= */
+
+let previous=
+performance.now();
+
+
+function update(){
+
+    const now=
+    performance.now();
+
+    const dt=
+    Math.min(
+        .05,
+        (now-previous)/1000
+    );
+
+    previous=now;
+
+
+    /* 이동 방향 */
+
+    let dx=0;
+    let dz=0;
+
+
+    if(
+        keys["arrowleft"] ||
+        keys["a"]
+    ){
+
+        dx-=1;
+
+    }
+
+
+    if(
+        keys["arrowright"] ||
+        keys["d"]
+    ){
+
+        dx+=1;
+
+    }
+
+
+    if(
+        keys["arrowup"] ||
+        keys["w"]
+    ){
+
+        dz-=1;
+
+    }
+
+
+    if(
+        keys["arrowdown"] ||
+        keys["s"]
+    ){
+
+        dz+=1;
+
+    }
+
+
+    const sprint=
+    keys["shift"] &&
+    stamina>0;
+
+
+    let speed=
+    sprint
+    ? .20
+    : .11;
+
+
+    if(
+        dx!==0 ||
+        dz!==0
+    ){
+
+        const length=
+        Math.sqrt(
+            dx*dx+
+            dz*dz
+        );
+
+        dx/=length;
+        dz/=length;
+
+
+        player.position.x+=
+        dx*speed;
+
+        player.position.z+=
+        dz*speed;
+
+
+        if(sprint){
+
+            stamina-=
+            30*dt;
+
+        }else{
+
+            stamina+=
+            10*dt;
+
+        }
+
+    }else{
+
+        stamina+=
+        15*dt;
+
+    }
+
+
+    stamina=
+    Math.max(
+        0,
+        Math.min(
+            100,
+            stamina
+        )
+    );
+
+
+    /* 맵 제한 */
+
+    player.position.x=
+    Math.max(
+        -4.2,
+        Math.min(
+            4.2,
+            player.position.x
+        )
+    );
+
+
+    player.position.z=
+    Math.max(
+        -117,
+        Math.min(
+            8,
+            player.position.z
+        )
+    );
+
+
+    /* =====================
+       3인칭 카메라
+    ===================== */
+
+    const cameraOffset=
+    new THREE.Vector3(
+        0,
+        3.2,
+        6
+    );
+
+    const target=
+    player.position.clone();
+
+    target.y+=1.2;
+
+
+    camera.position.lerp(
+        player.position
+        .clone()
+        .add(cameraOffset),
+        .15
+    );
+
+
+    camera.lookAt(
+        target
+    );
+
+
+    /* =====================
+       괴물 추격
+    ===================== */
+
+    const direction=
+    new THREE.Vector3(
+        player.position.x-
+        monster.position.x,
+
+        0,
+
+        player.position.z-
+        monster.position.z
+    );
+
+
+    const distance=
+    direction.length();
+
+
+    if(
+        distance>2
+    ){
+
+        direction.normalize();
+
+
+        monster.position.addScaledVector(
+            direction,
+            monsterSpeed
+        );
+
+
+        monster.lookAt(
+            player.position.x,
+            2,
+            player.position.z
+        );
+
+    }else{
+
+        if(
+            shield>0
+        ){
+
+            shield--;
+
+            document
+            .getElementById("shield")
+            .textContent=shield;
+
+            monster.position.z-=4;
+
+        }else{
+
+            health-=
+            25*dt;
+
+        }
+
+    }
+
+
+    /* =====================
+       아이템 줍기
+    ===================== */
+
+    shields.forEach(
+        item=>{
+
+            if(
+                !item.collected &&
+                player.position.distanceTo(
+                    item.mesh.position
+                )<1.7
+            ){
+
+                item.collected=true;
+
+                item.mesh.visible=false;
+
+                shield++;
+
+                document
+                .getElementById("shield")
+                .textContent=shield;
+
+            }
+
+        }
+    );
+
+
+    /* =====================
+       승패
+    ===================== */
+
+    if(
+        player.position.z<
+        -117
+    ){
+
+        endGame(
+            true
+        );
+
+    }
+
+
+    if(
+        health<=0
+    ){
+
+        endGame(
+            false
+        );
+
+    }
+
+
+    /* UI */
+
+    document
+    .getElementById("health")
+    .style.width=
+    health+"%";
+
+
+    document
+    .getElementById("stamina")
+    .style.width=
+    stamina+"%";
+
+
+    document
+    .getElementById("distance")
+    .textContent=
+    Math.max(
+        0,
+        Math.round(
+            player.position.z+
+            117
+        )
+    );
+
+
+    const damage=
+    document
+    .getElementById("damage");
+
+
+    if(
+        distance<9
+    ){
+
+        damage.style.borderWidth=
+        Math.round(
+            (9-distance)*3
+        )+"px";
+
+    }else{
+
+        damage.style.borderWidth=
+        "0px";
+
+    }
+
+}
+
+
+/* =========================
+   게임 종료
+========================= */
+
+function endGame(
+    win
+){
+
+    running=false;
+
+
+    const start=
+    document
+    .getElementById("start");
+
+
+    start.style.display=
+    "flex";
+
+
+    start.innerHTML=`
+
+        <div class="menu">
+
+            <h1>
+                ${
+                    win
+                    ?
+                    "🎉 탈출 성공!"
+                    :
+                    "👹 잡혔다!"
+                }
+            </h1>
+
+            <p>
+                ${
+                    win
+                    ?
+                    "연구시설을 무사히 빠져나왔다."
+                    :
+                    "괴물이 너무 가까이 따라왔다."
+                }
+            </p>
+
+            <button
+                onclick="location.reload()"
+            >
+                다시 플레이
+            </button>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================
+   게임 루프
+========================= */
+
+function gameLoop(){
+
+    if(!running)
+        return;
+
+
+    update();
+
+
+    renderer.render(
+        scene,
+        camera
+    );
+
+
+    requestAnimationFrame(
+        gameLoop
+    );
+
+}
+
+
+/* =========================
+   화면 크기
+========================= */
+
+addEventListener(
+    "resize",
+    ()=>{
+
+        camera.aspect=
+        innerWidth/
+        innerHeight;
+
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(
+            innerWidth,
+            innerHeight
+        );
+
+    }
+);
+
+
+renderer.render(
+    scene,
+    camera
+);
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나에게 딱 맞는 여행지 찾기</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, "Noto Sans KR", sans-serif;
+  background: linear-gradient(135deg, #eaf6ff, #fff4e8);
+  min-height: 100vh;
+  padding: 25px;
+  color: #333;
+}
+
+.app {
+  max-width: 760px;
+  margin: auto;
+  background: white;
+  border-radius: 25px;
+  padding: 30px;
+  box-shadow: 0 12px 35px rgba(0,0,0,.12);
+}
+
+h1 {
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #777;
+  margin-bottom: 25px;
+}
+
+.progress {
+  height: 9px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 25px;
+}
+
+.bar {
+  height: 100%;
+  width: 20%;
+  background: #69a8ff;
+  transition: .3s;
+}
+
+.qnum {
+  color: #6689ad;
+  font-weight: bold;
+}
+
+.question {
+  font-size: 23px;
+  font-weight: bold;
+  margin: 10px 0 22px;
+}
+
+.options {
+  display: grid;
+  gap: 12px;
+}
+
+.option {
+  border: 0;
+  border-radius: 15px;
+  padding: 17px;
+  font-size: 16px;
+  background: #f4f7fb;
+  text-align: left;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.option:hover {
+  background: #e4efff;
+  transform: translateY(-2px);
+}
+
+.result {
+  text-align: center;
+}
+
+.result .emoji {
+  font-size: 70px;
+}
+
+.result h2 {
+  font-size: 30px;
+  margin: 5px 0;
+}
+
+.result-card {
+  background: #f7f9fc;
+  border-radius: 18px;
+  padding: 22px;
+  text-align: left;
+  margin: 20px 0;
+  line-height: 1.7;
+}
+
+.result-card h3 {
+  margin-top: 0;
+  font-size: 23px;
+}
+
+.tags {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.tag {
+  background: #e6f1ff;
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+
+.main-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 14px;
+  padding: 15px;
+  background: #69a8ff;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- 질문 화면 -->
+  <div id="quiz">
+
+    <h1>✈️ 나에게 딱 맞는 여행지 찾기</h1>
+
+    <p class="subtitle">
+      여행 취향을 선택하면 가장 잘 어울리는 도시를 찾아드려요!
+    </p>
+
+    <div class="progress">
+      <div class="bar" id="bar"></div>
+    </div>
+
+    <div class="qnum" id="qnum"></div>
+
+    <div class="question" id="question"></div>
+
+    <div class="options" id="options"></div>
+
+  </div>
+
+
+  <!-- 결과 화면 -->
+  <div id="result" class="result hidden">
+
+    <div class="emoji" id="emoji"></div>
+
+    <h2 id="title"></h2>
+
+    <p>당신의 여행 취향을 분석한 결과예요.</p>
+
+    <div class="result-card">
+
+      <h3 id="city"></h3>
+
+      <div class="tags" id="tags"></div>
+
+      <p id="description"></p>
+
+      <p>
+        <b>📍 추천 포인트</b>
+        <br>
+        <span id="points"></span>
+      </p>
+
+    </div>
+
+    <button class="main-btn" onclick="restart()">
+      다시 테스트하기
+    </button>
+
+  </div>
+
+</div>
+
+
+<script>
+
+// 질문 목록
+const questions = [
+
+  {
+    q: "어떤 여행 분위기가 가장 좋아요?",
+    o: [
+      ["🌊 바다를 보며 여유롭게 쉬기", "sea"],
+      ["🏔️ 산과 자연 속에서 힐링하기", "nature"],
+      ["🏙️ 도시의 활기와 볼거리 즐기기", "city"],
+      ["🍜 맛집과 카페를 찾아다니기", "food"]
+    ]
+  },
+
+  {
+    q: "여행에서 가장 하고 싶은 것은?",
+    o: [
+      ["🏖️ 해변에서 놀기", "beach"],
+      ["🥾 자연 속에서 걷거나 체험하기", "activity"],
+      ["🛍️ 쇼핑하고 유명한 곳 구경하기", "shopping"],
+      ["📸 예쁜 곳에서 사진 찍기", "photo"]
+    ]
+  },
+
+  {
+    q: "어떤 날씨를 선호하나요?",
+    o: [
+      ["☀️ 따뜻하고 맑은 날", "warm"],
+      ["🍃 선선한 날", "cool"],
+      ["🌴 따뜻하고 습한 휴양지 날씨", "tropical"],
+      ["❄️ 시원하거나 추운 날", "cold"]
+    ]
+  },
+
+  {
+    q: "어떤 음식을 가장 좋아하나요?",
+    o: [
+      ["🍣 신선한 해산물", "seafood"],
+      ["🍜 다양한 맛집 음식", "food"],
+      ["🥘 전통 음식과 로컬 음식", "local"],
+      ["🍰 카페와 디저트", "cafe"]
+    ]
+  },
+
+  {
+    q: "여행에서 가장 중요한 것은?",
+    o: [
+      ["😌 편안한 휴식", "relax"],
+      ["🌿 아름다운 자연", "nature"],
+      ["🎡 다양한 관광지와 즐길 거리", "tour"],
+      ["✨ 특별하고 새로운 경험", "unique"]
+    ]
+  }
+
+];
+
+
+// 여행지 정보
+const cities = [
+
+  {
+    name: "제주도",
+    emoji: "🌴",
+    tags: ["바다", "자연", "힐링"],
+
+    keys: [
+      "sea",
+      "beach",
+      "warm",
+      "seafood",
+      "relax",
+      "nature"
+    ],
+
+    desc:
+      "푸른 바다와 아름다운 자연을 함께 즐길 수 있는 국내 대표 여행지예요. 해변에서 쉬거나 맛있는 음식과 카페를 즐기기에도 좋아요.",
+
+    points:
+      "성산일출봉, 협재해변, 한라산, 감성 카페 등을 둘러볼 수 있어요."
+  },
+
+
+  {
+    name: "부산",
+    emoji: "🌊",
+    tags: ["바다", "먹거리", "도시"],
+
+    keys: [
+      "sea",
+      "beach",
+      "food",
+      "seafood",
+      "warm",
+      "tour"
+    ],
+
+    desc:
+      "바다와 도시를 동시에 즐길 수 있는 여행지예요. 해운대와 광안리 같은 해변뿐 아니라 다양한 먹거리도 유명해요.",
+
+    points:
+      "해운대, 광안리, 감천문화마을, 자갈치시장 등을 추천해요."
+  },
+
+
+  {
+    name: "강릉",
+    emoji: "☕",
+    tags: ["바다", "카페", "힐링"],
+
+    keys: [
+      "sea",
+      "beach",
+      "cool",
+      "seafood",
+      "cafe",
+      "relax"
+    ],
+
+    desc:
+      "동해의 시원한 바다와 감성적인 카페를 함께 즐기기 좋은 곳이에요. 조용하게 쉬는 여행에도 잘 어울려요.",
+
+    points:
+      "안목해변 카페거리, 경포대, 정동진 등을 방문해 보세요."
+  },
+
+
+  {
+    name: "서울",
+    emoji: "🏙️",
+    tags: ["도시", "쇼핑", "관광"],
+
+    keys: [
+      "city",
+      "shopping",
+      "food",
+      "tour",
+      "cafe"
+    ],
+
+    desc:
+      "맛집, 쇼핑, 문화생활, 관광지를 한 번에 즐길 수 있는 활기찬 도시예요. 볼거리가 많은 여행을 좋아한다면 잘 맞아요.",
+
+    points:
+      "경복궁, 명동, 성수동, 한강, 홍대 등을 둘러볼 수 있어요."
+  },
+
+
+  {
+    name: "경주",
+    emoji: "🏛️",
+    tags: ["역사", "전통", "사진"],
+
+    keys: [
+      "local",
+      "photo",
+      "nature",
+      "tour",
+      "unique"
+    ],
+
+    desc:
+      "우리나라의 역사와 전통을 느낄 수 있는 도시예요. 고즈넉한 분위기와 예쁜 장소가 많아 사진을 찍기에도 좋아요.",
+
+    points:
+      "불국사, 첨성대, 동궁과 월지, 황리단길을 추천해요."
+  },
+
+
+  {
+    name: "전주",
+    emoji: "🍲",
+    tags: ["음식", "전통", "한옥"],
+
+    keys: [
+      "food",
+      "local",
+      "photo",
+      "cafe",
+      "unique"
+    ],
+
+    desc:
+      "전통적인 분위기와 맛있는 음식이 매력적인 도시예요. 한옥마을을 걸으며 다양한 먹거리를 즐길 수 있어요.",
+
+    points:
+      "전주한옥마을, 경기전, 남부시장 등을 방문해 보세요."
+  },
+
+
+  {
+    name: "도쿄",
+    emoji: "🗼",
+    tags: ["도시", "쇼핑", "맛집"],
+
+    keys: [
+      "city",
+      "shopping",
+      "food",
+      "tour",
+      "unique",
+      "cafe"
+    ],
+
+    desc:
+      "현대적인 도시 풍경과 다양한 음식, 쇼핑을 즐길 수 있는 일본의 대표 도시예요.",
+
+    points:
+      "시부야, 신주쿠, 아사쿠사, 도쿄타워 등을 둘러볼 수 있어요."
+  },
+
+
+  {
+    name: "오사카",
+    emoji: "🍜",
+    tags: ["먹거리", "도시", "관광"],
+
+    keys: [
+      "food",
+      "city",
+      "tour",
+      "shopping",
+      "unique"
+    ],
+
+    desc:
+      "맛있는 음식과 활기찬 분위기를 좋아하는 사람에게 잘 맞는 도시예요. 먹거리 여행을 즐기기 좋아요.",
+
+    points:
+      "도톤보리, 오사카성, 신사이바시, 유니버설 스튜디오 등을 추천해요."
+  },
+
+
+  {
+    name: "다낭",
+    emoji: "🏝️",
+    tags: ["휴양", "바다", "따뜻함"],
+
+    keys: [
+      "beach",
+      "tropical",
+      "warm",
+      "sea",
+      "relax",
+      "unique"
+    ],
+
+    desc:
+      "따뜻한 날씨와 아름다운 해변을 즐길 수 있는 휴양지예요. 편안하게 쉬고 싶은 여행에 잘 어울려요.",
+
+    points:
+      "미케비치, 바나힐, 호이안 등을 함께 여행할 수 있어요."
+  },
+
+
+  {
+    name: "삿포로",
+    emoji: "❄️",
+    tags: ["추운 날씨", "자연", "음식"],
+
+    keys: [
+      "cold",
+      "nature",
+      "local",
+      "seafood",
+      "unique",
+      "activity"
+    ],
+
+    desc:
+      "시원하고 추운 날씨와 자연을 좋아하는 사람에게 잘 어울리는 도시예요. 계절에 따라 색다른 풍경을 볼 수 있어요.",
+
+    points:
+      "오도리공원, 삿포로 시계탑, 근교 자연 풍경과 다양한 음식이 매력적이에요."
+  }
+
+];
+
+
+let current = 0;
+let answers = [];
+
+
+// 질문을 화면에 표시
+function showQuestion() {
+
+  const q = questions[current];
+
+  document.getElementById("qnum").textContent =
+    `질문 ${current + 1} / ${questions.length}`;
+
+  document.getElementById("question").textContent =
+    q.q;
+
+  document.getElementById("bar").style.width =
+    ((current + 1) / questions.length * 100) + "%";
+
+
+  const box = document.getElementById("options");
+
+  box.innerHTML = "";
+
+
+  q.o.forEach(([text, key]) => {
+
+    const button = document.createElement("button");
+
+    button.className = "option";
+
+    button.textContent = text;
+
+    button.onclick = function() {
+      choose(key);
+    };
+
+    box.appendChild(button);
+
+  });
+
+}
+
+
+// 사용자의 답변 저장
+function choose(key) {
+
+  answers.push(key);
+
+  current++;
+
+
+  if (current < questions.length) {
+
+    showQuestion();
+
+  } else {
+
+    showResult();
+
+  }
+
+}
+
+
+// 결과 계산
+function showResult() {
+
+  let best = cities[0];
+
+  let bestScore = -1;
+
+
+  cities.forEach(city => {
+
+    let score = 0;
+
+
+    answers.forEach(answer => {
+
+      if (city.keys.includes(answer)) {
+
+        score++;
+
+      }
+
+    });
+
+
+    if (score > bestScore) {
+
+      bestScore = score;
+
+      best = city;
+
+    }
+
+  });
+
+
+  // 질문 화면 숨기기
+  document.getElementById("quiz")
+    .classList.add("hidden");
+
+
+  // 결과 화면 보여주기
+  document.getElementById("result")
+    .classList.remove("hidden");
+
+
+  document.getElementById("emoji").textContent =
+    best.emoji;
+
+  document.getElementById("title").textContent =
+    `추천 여행지: ${best.name}`;
+
+  document.getElementById("city").textContent =
+    `${best.emoji} ${best.name}`;
+
+  document.getElementById("description").textContent =
+    best.desc;
+
+  document.getElementById("points").textContent =
+    best.points;
+
+
+  document.getElementById("tags").innerHTML =
+    best.tags
+      .map(tag => `<span class="tag">${tag}</span>`)
+      .join("");
+
+}
+
+
+// 다시 시작
+function restart() {
+
+  current = 0;
+
+  answers = [];
+
+
+  document.getElementById("result")
+    .classList.add("hidden");
+
+  document.getElementById("quiz")
+    .classList.remove("hidden");
+
+
+  showQuestion();
+
+}
+
+
+// 프로그램 시작
+showQuestion();
+
+</script>
+
+</body>
+</html>

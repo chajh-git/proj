@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <title>Roblox Style 3D Sunset Obby - 10 Stages</title>
+ <style>
+   * {
+     box-sizing: border-box;
+     margin: 0;
+     padding: 0;
+     user-select: none;
+     -webkit-user-select: none;
+     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+   }
+   body, html {
+     width: 100%;
+     height: 100%;
+     overflow: hidden;
+     background-color: #1a0b2e;
+     color: #fff;
+     touch-action: none;
+   }
+   #canvas-container {
+     width: 100%;
+     height: 100%;
+     position: absolute;
+     top: 0;
+     left: 0;
+     z-index: 1;
+   }
+
+
+   /* UI Overlay */
+   #ui-overlay {
+     position: absolute;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     z-index: 10;
+     pointer-events: none;
+     display: flex;
+     flex-direction: column;
+     justify-content: space-between;
+     padding: 16px;
+   }
+   .interactive { pointer-events: auto; }
+
+
+   /* Top HUD */
+   .hud-top {
+     display: flex;
+     justify-content: space-between;
+     align-items: flex-start;
+     width: 100%;
+   }
+   .badge-card {
+     background: rgba(30, 15, 55, 0.75);
+     border: 2px solid rgba(255, 180, 240, 0.3);
+     backdrop-filter: blur(12px);
+     padding: 8px 14px;
+     border-radius: 16px;
+     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+     display: flex;
+     align-items: center;
+     gap: 10px;
+   }
+   .badge-title {
+     font-size: 0.7rem;
+     color: #f472b6;
+     text-transform: uppercase;
+     letter-spacing: 1px;
+     font-weight: 700;
+   }
+   .badge-value {
+     font-size: 1.2rem;
+     font-weight: 800;
+     color: #38bdf8;
+   }
+   .save-tag {
+     font-size: 0.75rem;
+     color: #4ade80;
+     font-weight: 700;
+     margin-left: 4px;
+     opacity: 0;
+     transition: opacity 0.3s;
+   }
+   .save-tag.show { opacity: 1; }
+
+
+   /* Action Buttons Top Right */
+   .btn-group {
+     display: flex;
+     gap: 8px;
+   }
+   .hud-btn {
+     background: rgba(45, 20, 80, 0.85);
+     border: 2px solid #f472b6;
+     color: #fff;
+     padding: 8px 14px;
+     border-radius: 14px;
+     font-weight: 700;
+     cursor: pointer;
+     transition: all 0.2s ease;
+     display: flex;
+     align-items: center;
+     gap: 6px;
+     font-size: 0.9rem;
+     box-shadow: 0 4px 14px rgba(244, 114, 182, 0.3);
+   }
+   .hud-btn:hover {
+     transform: translateY(-2px);
+     background: #f472b6;
+     color: #1a0b2e;
+   }
+
+
+   /* Virtual Joystick Elements */
+   #joystick-base {
+     position: absolute;
+     bottom: 30px;
+     left: 30px;
+     width: 130px;
+     height: 130px;
+     background: rgba(30, 15, 55, 0.6);
+     border: 3px solid rgba(244, 114, 182, 0.6);
+     border-radius: 50%;
+     touch-action: none;
+     z-index: 25;
+     backdrop-filter: blur(8px);
+     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+   }
+   #joystick-thumb {
+     position: absolute;
+     top: 50%;
+     left: 50%;
+     width: 54px;
+     height: 54px;
+     background: radial-gradient(circle, #f472b6 0%, #c084fc 100%);
+     border: 2px solid #ffffff;
+     border-radius: 50%;
+     transform: translate(-50%, -50%);
+     pointer-events: none;
+     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+   }
+
+
+   /* Jump Button */
+   #jump-btn {
+     position: absolute;
+     bottom: 35px;
+     right: 35px;
+     width: 85px;
+     height: 85px;
+     border-radius: 50%;
+     background: linear-gradient(135deg, #f472b6, #c084fc);
+     border: 4px solid #fef08a;
+     color: white;
+     font-size: 1.25rem;
+     font-weight: 900;
+     box-shadow: 0 6px 20px rgba(192, 132, 252, 0.6);
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     z-index: 25;
+     outline: none;
+     touch-action: manipulation;
+   }
+   #jump-btn:active {
+     transform: scale(0.92);
+     box-shadow: 0 2px 10px rgba(192, 132, 252, 0.8);
+   }
+
+
+   /* Guide Box */
+   .guide-box {
+     position: absolute;
+     bottom: 175px;
+     left: 50%;
+     transform: translateX(-50%);
+     background: rgba(30, 15, 55, 0.85);
+     border: 1px solid rgba(244, 114, 182, 0.4);
+     padding: 8px 18px;
+     border-radius: 30px;
+     font-size: 0.85rem;
+     color: #fbcfe8;
+     pointer-events: none;
+     text-align: center;
+     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+     white-space: nowrap;
+   }
+
+
+   /* Customization Modal */
+   .modal-overlay {
+     position: absolute;
+     top: 0; left: 0; width: 100%; height: 100%;
+     background: rgba(15, 5, 30, 0.8);
+     backdrop-filter: blur(8px);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     z-index: 100;
+     opacity: 0;
+     pointer-events: none;
+     transition: opacity 0.3s ease;
+   }
+   .modal-overlay.active {
+     opacity: 1;
+     pointer-events: auto;
+   }
+   .modal-card {
+     background: #24113e;
+     border: 2px solid #f472b6;
+     border-radius: 24px;
+     padding: 20px;
+     width: 92%;
+     max-width: 440px;
+     max-height: 85vh;
+     overflow-y: auto;
+     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+     color: #fff;
+   }
+   .modal-header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 15px;
+   }
+   .modal-title { font-size: 1.3rem; font-weight: 800; color: #f472b6; }
+   .close-btn {
+     background: none; border: none; color: #94a3b8; font-size: 1.6rem; cursor: pointer;
+   }
+   .section-label {
+     font-size: 0.85rem; font-weight: 700; color: #e9d5ff; margin: 10px 0 6px;
+   }
+   .color-picker-group {
+     display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;
+   }
+   .color-opt {
+     width: 34px; height: 34px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.2s;
+   }
+   .color-opt:hover { transform: scale(1.12); }
+   .color-opt.selected { border-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.9); }
+
+
+   .hat-grid {
+     display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;
+   }
+   .hat-btn {
+     background: #3b1c63; border: 2px solid #6b21a8; padding: 8px; border-radius: 12px; color: #fff; font-size: 0.85rem; font-weight: 600; cursor: pointer; text-align: center;
+   }
+   .hat-btn.active {
+     border-color: #f472b6; background: #c084fc; color: #1a0b2e;
+   }
+
+
+   /* Clear Alert */
+   #clear-modal {
+     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.8);
+     background: linear-gradient(135deg, #4c1d95, #831843);
+     border: 3px solid #f59e0b;
+     padding: 30px; border-radius: 28px; text-align: center; color: white;
+     box-shadow: 0 0 60px rgba(244, 114, 182, 0.7);
+     z-index: 90; opacity: 0; pointer-events: none; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+   }
+   #clear-modal.active {
+     opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1);
+   }
+ </style>
+
+
+ <!-- Three.js Engine -->
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+
+ <div id="canvas-container"></div>
+
+
+ <!-- HUD Interface -->
+ <div id="ui-overlay">
+   <div class="hud-top">
+     <div style="display: flex; gap: 8px;">
+       <div class="badge-card">
+         <div>
+           <div class="badge-title">STAGE</div>
+           <div id="stage-val" class="badge-value">1 / 10 <span id="save-tag" class="save-tag">💾Saved</span></div>
+         </div>
+       </div>
+       <div class="badge-card">
+         <div>
+           <div class="badge-title">TIME</div>
+           <div id="timer-val" class="badge-value">00:00</div>
+         </div>
+       </div>
+     </div>
+
+
+     <div class="btn-group interactive">
+       <button class="hud-btn" id="respawn-btn">🔄 리스폰</button>
+       <button class="hud-btn" id="custom-btn">🎨 꾸미기</button>
+     </div>
+   </div>
+
+
+   <div class="guide-box">
+     🎮 <b>WASD / 방향키 / 조이스틱</b> 이동 | <b>화면 드래그</b> 시점회전 🔄 | <b>Space / JUMP</b> 점프
+   </div>
+
+
+   <!-- Virtual Touch Joystick -->
+   <div id="joystick-base" class="interactive">
+     <div id="joystick-thumb"></div>
+   </div>
+
+
+   <button id="jump-btn" class="interactive">JUMP</button>
+ </div>
+
+
+ <!-- Expanded Customization Modal -->
+ <div id="custom-modal" class="modal-overlay">
+   <div class="modal-card">
+     <div class="modal-header">
+       <div class="modal-title">아바타 캐릭터 꾸미기</div>
+       <button class="close-btn" id="close-modal">&times;</button>
+     </div>
+
+
+     <div class="section-label">피부 색상</div>
+     <div class="color-picker-group" id="skin-colors">
+       <div class="color-opt selected" style="background: #fcd34d;" data-color="0xfcd34d"></div>
+       <div class="color-opt" style="background: #ffdbac;" data-color="0xffdbac"></div>
+       <div class="color-opt" style="background: #e0ac69;" data-color="0xe0ac69"></div>
+       <div class="color-opt" style="background: #8d5524;" data-color="0x8d5524"></div>
+       <div class="color-opt" style="background: #38bdf8;" data-color="0x38bdf8"></div>
+       <div class="color-opt" style="background: #a855f7;" data-color="0xa855f7"></div>
+     </div>
+
+
+     <div class="section-label">얼굴 표정</div>
+     <div class="hat-grid" id="face-options">
+       <div class="hat-btn active" data-face="smile">😀 방긋</div>
+       <div class="hat-btn" data-face="glasses">😎 선글라스</div>
+       <div class="hat-btn" data-face="wink">😉 윙크</div>
+       <div class="hat-btn" data-face="playful">😛 낼름</div>
+     </div>
+
+
+     <div class="section-label">의상 스타일</div>
+     <div class="color-picker-group" id="shirt-colors">
+       <div class="color-opt selected" style="background: #2563eb;" data-color="0x2563eb"></div>
+       <div class="color-opt" style="background: #dc2626;" data-color="0xdc2626"></div>
+       <div class="color-opt" style="background: #16a34a;" data-color="0x16a34a"></div>
+       <div class="color-opt" style="background: #9333ea;" data-color="0x9333ea"></div>
+       <div class="color-opt" style="background: #ea580c;" data-color="0xea580c"></div>
+       <div class="color-opt" style="background: #14b8a6;" data-color="0x14b8a6"></div>
+     </div>
+
+
+     <div class="section-label">모자 & 머리 장식</div>
+     <div class="hat-grid" id="hat-options">
+       <div class="hat-btn active" data-hat="none">없음</div>
+       <div class="hat-btn" data-hat="cap">🧢 볼캡</div>
+       <div class="hat-btn" data-hat="crown">👑 황금 왕관</div>
+       <div class="hat-btn" data-hat="catears">🐱 고양이 귀</div>
+       <div class="hat-btn" data-hat="angel">😇 천사 링</div>
+       <div class="hat-btn" data-hat="headphone">🎧 헤드폰</div>
+     </div>
+   </div>
+ </div>
+
+
+ <!-- Clear Modal -->
+ <div id="clear-modal">
+   <h1 style="font-size: 2.2rem; color: #fbbf24; margin-bottom: 10px;">🎉 10 STAGES CLEARED!</h1>
+   <p style="font-size: 1.1rem; color: #cbd5e1; margin-bottom: 20px;">모든 석양 오비 스테이지를 정복하셨습니다!</p>
+   <div style="font-size: 1.5rem; font-weight: 800; color: #f472b6; margin-bottom: 25px;" id="final-time">클리어 타임: 00:00</div>
+   <button class="hud-btn interactive" id="restart-btn" style="margin: 0 auto; padding: 12px 28px; font-size: 1.1rem;">처음부터 다시 도전</button>
+ </div>
+
+
+ <script>
+   // --- LOCALSTORAGE CHECKPOINT SAVE/LOAD ---
+   const SAVED_STAGE_KEY = 'roblox_obby_saved_stage_v10';
+   function getSavedStage() {
+     const saved = localStorage.getItem(SAVED_STAGE_KEY);
+     return saved ? parseInt(saved, 10) : 1;
+   }
+   function saveStageProgress(stageIdx) {
+     localStorage.setItem(SAVED_STAGE_KEY, stageIdx);
+     const tag = document.getElementById('save-tag');
+     if (tag) {
+       tag.classList.add('show');
+       setTimeout(() => tag.classList.remove('show'), 2000);
+     }
+   }
+
+
+   // --- THREE.JS SCENE SETUP ---
+   const container = document.getElementById('canvas-container');
+   const scene = new THREE.Scene();
+   scene.background = new THREE.Color(0xf472b6);
+   scene.fog = new THREE.FogExp2(0xe879f9, 0.007);
+
+
+   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+   renderer.setSize(window.innerWidth, window.innerHeight);
+   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+   renderer.shadowMap.enabled = true;
+   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+   renderer.toneMappingExposure = 1.25;
+   container.appendChild(renderer.domElement);
+
+
+   // --- LIGHTING ---
+   const ambientLight = new THREE.AmbientLight(0xfce7f3, 0.75);
+   scene.add(ambientLight);
+
+
+   const sunLight = new THREE.DirectionalLight(0xfdba74, 1.4);
+   sunLight.position.set(-30, 60, -40);
+   sunLight.castShadow = true;
+   sunLight.shadow.mapSize.width = 2048;
+   sunLight.shadow.mapSize.height = 2048;
+   const sD = 80;
+   sunLight.shadow.camera.left = -sD; sunLight.shadow.camera.right = sD;
+   sunLight.shadow.camera.top = sD; sunLight.shadow.camera.bottom = -sD;
+   scene.add(sunLight);
+
+
+   // --- CAMERA ROTATION CONTROLS ---
+   let cameraYaw = 0;
+   let cameraPitch = 0.35;
+   let cameraDistance = 10.0;
+
+
+   let isDraggingCamera = false;
+   let cameraTouchId = null;
+   let lastMouseX = 0, lastMouseY = 0;
+
+
+   // --- CONTROLS STATE ---
+   const keys = { forward: false, backward: false, left: false, right: false };
+   const joystickVector = { x: 0, y: 0 };
+
+
+   const state = {
+     skinColor: 0xfcd34d,
+     shirtColor: 0x2563eb,
+     activeHat: 'none',
+     activeFace: 'smile',
+     currentStage: getSavedStage(),
+     startTime: Date.now(),
+     gameEnded: false
+   };
+
+
+   // --- ROBLOX CHARACTER MODEL ---
+   const playerGroup = new THREE.Group();
+   const avatarContainer = new THREE.Group();
+   playerGroup.add(avatarContainer);
+   scene.add(playerGroup);
+
+
+   let headMesh, torsoMesh, leftArm, rightArm, leftLeg, rightLeg, facePlane;
+   const hatMeshGroup = new THREE.Group();
+
+
+   const skinMat = new THREE.MeshStandardMaterial({ color: state.skinColor, roughness: 0.4 });
+   const shirtMat = new THREE.MeshStandardMaterial({ color: state.shirtColor, roughness: 0.3 });
+   const pantMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+
+
+   function renderFaceTexture(type) {
+     const faceCanvas = document.createElement('canvas');
+     faceCanvas.width = 128; faceCanvas.height = 128;
+     const ctx = faceCanvas.getContext('2d');
+     ctx.clearRect(0, 0, 128, 128);
+
+
+     if (type === 'glasses') {
+       ctx.fillStyle = '#000000';
+       ctx.fillRect(20, 35, 38, 25); ctx.fillRect(70, 35, 38, 25);
+       ctx.fillRect(55, 42, 18, 6);
+       ctx.beginPath(); ctx.lineWidth = 6; ctx.arc(64, 82, 20, 0, Math.PI, false); ctx.stroke();
+     } else if (type === 'wink') {
+       ctx.fillStyle = '#000000'; ctx.fillRect(28, 38, 16, 24);
+       ctx.beginPath(); ctx.lineWidth = 6; ctx.arc(88, 50, 12, Math.PI, 0, true); ctx.stroke();
+       ctx.beginPath(); ctx.lineWidth = 6; ctx.arc(64, 78, 22, 0.1 * Math.PI, 0.9 * Math.PI, false); ctx.stroke();
+     } else if (type === 'playful') {
+       ctx.fillStyle = '#000000'; ctx.fillRect(28, 38, 16, 24); ctx.fillRect(84, 38, 16, 24);
+       ctx.beginPath(); ctx.lineWidth = 6; ctx.arc(64, 72, 20, 0, Math.PI, false); ctx.stroke();
+       ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(72, 85, 10, 0, Math.PI, false); ctx.fill();
+     } else { // smile
+       ctx.fillStyle = '#000000'; ctx.fillRect(30, 38, 16, 24); ctx.fillRect(82, 38, 16, 24);
+       ctx.beginPath(); ctx.lineWidth = 6; ctx.arc(64, 75, 24, 0.1 * Math.PI, 0.9 * Math.PI, false); ctx.stroke();
+     }
+     return new THREE.CanvasTexture(faceCanvas);
+   }
+
+
+   function buildRobloxCharacter() {
+     torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), shirtMat);
+     torsoMesh.position.y = 0.9; torsoMesh.castShadow = true;
+     avatarContainer.add(torsoMesh);
+
+
+     headMesh = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65), skinMat);
+     headMesh.position.y = 1.75; headMesh.castShadow = true;
+     avatarContainer.add(headMesh);
+
+
+     const faceMat = new THREE.MeshBasicMaterial({ map: renderFaceTexture('smile'), transparent: true });
+     facePlane = new THREE.Mesh(new THREE.PlaneGeometry(0.63, 0.63), faceMat);
+     facePlane.position.set(0, 1.75, 0.331);
+     avatarContainer.add(facePlane);
+
+
+     const armGeo = new THREE.BoxGeometry(0.38, 0.95, 0.45); armGeo.translate(0, -0.4, 0);
+     leftArm = new THREE.Mesh(armGeo, skinMat); leftArm.position.set(-0.68, 1.35, 0); leftArm.castShadow = true;
+     rightArm = new THREE.Mesh(armGeo, skinMat); rightArm.position.set(0.68, 1.35, 0); rightArm.castShadow = true;
+     avatarContainer.add(leftArm, rightArm);
+
+
+     const legGeo = new THREE.BoxGeometry(0.42, 0.9, 0.48); legGeo.translate(0, -0.4, 0);
+     leftLeg = new THREE.Mesh(legGeo, pantMat); leftLeg.position.set(-0.24, 0.85, 0); leftLeg.castShadow = true;
+     rightLeg = new THREE.Mesh(legGeo, pantMat); rightLeg.position.set(0.24, 0.85, 0); rightLeg.castShadow = true;
+     avatarContainer.add(leftLeg, rightLeg);
+
+
+     avatarContainer.add(hatMeshGroup);
+     hatMeshGroup.position.y = 2.1;
+   }
+   buildRobloxCharacter();
+
+
+   function updateHat(hatType) {
+     while (hatMeshGroup.children.length > 0) hatMeshGroup.remove(hatMeshGroup.children[0]);
+     if (hatType === 'cap') {
+       const capMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+       const capBase = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.18, 16), capMat);
+       const visor = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.04, 0.32), capMat);
+       visor.position.set(0, -0.06, 0.28);
+       hatMeshGroup.add(capBase, visor);
+     } else if (hatType === 'crown') {
+       const crownMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.15 });
+       const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.32, 0.28, 6), crownMat);
+       hatMeshGroup.add(crown);
+     } else if (hatType === 'catears') {
+       const earMat = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
+       const earL = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 4), earMat);
+       earL.position.set(-0.25, 0.1, 0);
+       const earR = earL.clone(); earR.position.x = 0.25;
+       hatMeshGroup.add(earL, earR);
+     } else if (hatType === 'angel') {
+       const ringMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 12, 24), ringMat);
+       ring.rotation.x = Math.PI / 2; ring.position.y = 0.25;
+       hatMeshGroup.add(ring);
+     } else if (hatType === 'headphone') {
+       const hpMat = new THREE.MeshStandardMaterial({ color: 0x06b6d4, metalness: 0.5 });
+       const band = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 8, 16, Math.PI), hpMat);
+       band.rotation.x = Math.PI / 2;
+       const cupL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16), hpMat);
+       cupL.rotation.z = Math.PI / 2; cupL.position.set(-0.38, -0.1, 0);
+       const cupR = cupL.clone(); cupR.position.x = 0.38;
+       hatMeshGroup.add(band, cupL, cupR);
+     }
+   }
+
+
+   // --- PHYSICS & CHECKPOINTS ---
+   const physics = {
+     velocity: new THREE.Vector3(),
+     isGrounded: false,
+     gravity: -28.0,
+     jumpForce: 11.8,
+     moveSpeed: 9.5,
+     checkpoint: new THREE.Vector3(0, 16, 0)
+   };
+
+
+   function setStageCheckpoint(stageIdx) {
+     state.currentStage = stageIdx;
+     document.getElementById('stage-val').innerHTML = `${stageIdx} / 10 <span id="save-tag" class="save-tag">💾Saved</span>`;
+     saveStageProgress(stageIdx);
+    
+     const targetPlat = stageCheckpoints[stageIdx];
+     if (targetPlat) {
+       physics.checkpoint.set(targetPlat.x, targetPlat.y + 12, targetPlat.z);
+     }
+   }
+
+
+   function respawnPlayer() {
+     playerGroup.position.copy(physics.checkpoint);
+     physics.velocity.set(0, 0, 0);
+     physics.isGrounded = false;
+     createSpawnEffect(playerGroup.position);
+   }
+
+
+   // --- OBBY LEVEL (10 FULL STAGES) ---
+   const platforms = [];
+   const stageCheckpoints = {};
+   const animatedObjects = [];
+
+
+   function buildTruss(x, y, z, height) {
+     const trussGroup = new THREE.Group();
+     const mat = new THREE.MeshStandardMaterial({ color: 0xc084fc, metalness: 0.8, roughness: 0.2 });
+     const p1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, height), mat);
+     p1.position.set(-0.4, height/2, -0.4);
+     const p2 = p1.clone(); p2.position.set(0.4, height/2, -0.4);
+     const p3 = p1.clone(); p3.position.set(-0.4, height/2, 0.4);
+     const p4 = p1.clone(); p4.position.set(0.4, height/2, 0.4);
+     trussGroup.add(p1, p2, p3, p4);
+     trussGroup.position.set(x, y, z); scene.add(trussGroup);
+   }
+
+
+   function buildLevel() {
+     platforms.forEach(p => scene.remove(p.mesh));
+     platforms.length = 0;
+     animatedObjects.length = 0;
+
+
+     function addPlatform(x, y, z, w, h, d, color = 0x3b82f6, isCheckpoint = false, stageIdx = 1, isGlow = false) {
+       const geo = new THREE.BoxGeometry(w, h, d);
+       const mat = new THREE.MeshStandardMaterial({
+         color: color, roughness: 0.2, metalness: 0.1,
+         emissive: isGlow ? color : 0x000000, emissiveIntensity: isGlow ? 0.6 : 0
+       });
+       const mesh = new THREE.Mesh(geo, mat);
+       mesh.position.set(x, y, z);
+       mesh.receiveShadow = true; mesh.castShadow = true;
+       scene.add(mesh);
+
+
+       const platObj = { mesh: mesh, box: new THREE.Box3(), isCheckpoint: isCheckpoint, stageIdx: stageIdx };
+       platforms.push(platObj);
+
+
+       if (isCheckpoint) {
+         stageCheckpoints[stageIdx] = { x, y, z };
+         const padMat = new THREE.MeshStandardMaterial({ color: 0x4ade80, emissive: 0x22c55e, emissiveIntensity: 0.9 });
+         const pad = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 0.1, d * 0.7), padMat);
+         pad.position.set(x, y + h/2 + 0.05, z);
+         scene.add(pad);
+       }
+       return platObj;
+     }
+
+
+     // Stage 1: Pastel Stepping Stones
+     addPlatform(0, 0, 0, 8, 1, 8, 0x38bdf8, true, 1);
+     const pastelColors = [0xc084fc, 0xfef08a, 0x38bdf8, 0xf472b6, 0x4ade80, 0xfb923c];
+     for (let i = 0; i < 5; i++) {
+       addPlatform(0, 0.4 * i, -6 - (i * 3.5), 5, 0.8, 2.2, pastelColors[i % pastelColors.length], false, 1);
+     }
+
+
+     // Stage 2: Yellow Walls Pass
+     addPlatform(0, 2.5, -25, 6, 1, 6, 0x10b981, true, 2);
+     buildTruss(3, 3.0, -25, 12);
+     for (let i = 0; i < 3; i++) {
+       addPlatform(0, 2.8, -32 - (i * 5.5), 5, 3.5, 0.8, 0xfacc15, false, 2, true);
+     }
+
+
+     // Stage 3: Rainbow Floating Spheres
+     addPlatform(0, 3.5, -50, 6, 1, 6, 0x10b981, true, 3);
+     const ballColors = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x06b6d4, 0x8b5cf6];
+     for (let i = 0; i < 5; i++) {
+       const ballMesh = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), new THREE.MeshStandardMaterial({ color: ballColors[i], roughness: 0.2 }));
+       ballMesh.position.set((i % 2 === 0 ? -2 : 2), 4.5 + (i * 0.4), -56 - (i * 4.5));
+       ballMesh.castShadow = true; scene.add(ballMesh);
+       platforms.push({ mesh: ballMesh, box: new THREE.Box3(), isCheckpoint: false, stageIdx: 3 });
+     }
+
+
+     // Stage 4: High Truss Tower Climb
+     addPlatform(0, 6.5, -80, 6, 1, 6, 0x10b981, true, 4);
+     buildTruss(-3, 7.0, -80, 16);
+     addPlatform(-3, 8.5, -87, 3, 0.8, 3, 0x38bdf8, false, 4);
+     addPlatform(3, 11.0, -93, 3, 0.8, 3, 0x38bdf8, false, 4);
+     addPlatform(-2, 13.5, -99, 3, 0.8, 3, 0x38bdf8, false, 4);
+
+
+     // Stage 5: Narrow Pastel Bridges
+     addPlatform(0, 16.0, -107, 6, 1, 6, 0x10b981, true, 5);
+     for (let i = 0; i < 4; i++) {
+       addPlatform((i % 2 === 0 ? 1.5 : -1.5), 16.5 + (i * 0.3), -113 - (i * 4), 2.2, 0.8, 2.2, pastelColors[i + 1], false, 5);
+     }
+
+
+     // Stage 6: Vanishing Magic Platforms
+     addPlatform(0, 17.5, -131, 6, 1, 6, 0x10b981, true, 6);
+     for (let i = 0; i < 4; i++) {
+       const pObj = addPlatform(0, 18.0 + (i * 0.3), -137 - (i * 4.5), 3.5, 0.8, 2.5, 0xc084fc, false, 6, true);
+       animatedObjects.push({ type: 'disappear', obj: pObj, timer: i * 0.8 });
+     }
+
+
+     // Stage 7: Rotating Laser Windmills
+     addPlatform(0, 19.5, -157, 6, 1, 6, 0x10b981, true, 7);
+     for (let i = 0; i < 3; i++) {
+       const rotGroup = new THREE.Group();
+       const baseMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 0.8 });
+       const bar1 = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.4, 0.4), baseMat);
+       const bar2 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 7.0), baseMat);
+       rotGroup.add(bar1, bar2);
+       rotGroup.position.set(0, 20.8 + (i * 0.5), -164 - (i * 6));
+       scene.add(rotGroup);
+
+
+       const centerPlat = addPlatform(0, 20.2 + (i * 0.5), -164 - (i * 6), 3, 0.8, 3, 0x38bdf8, false, 7);
+       animatedObjects.push({ type: 'rotate', group: rotGroup, speed: (i % 2 === 0 ? 1.5 : -1.5) });
+     }
+
+
+     // Stage 8: Lava Beam Jumpers
+     addPlatform(0, 22.0, -184, 6, 1, 6, 0x10b981, true, 8);
+     for (let i = 0; i < 4; i++) {
+       addPlatform(0, 22.5 + (i * 0.4), -190 - (i * 4.5), 4, 0.8, 3, 0xf97316, false, 8);
+     }
+
+
+     // Stage 9: Celestial Floating Jewels
+     addPlatform(0, 24.5, -210, 6, 1, 6, 0x10b981, true, 9);
+     for (let i = 0; i < 5; i++) {
+       addPlatform((i % 2 === 0 ? -2.2 : 2.2), 25.2 + (i * 0.4), -216 - (i * 4.2), 1.8, 0.8, 1.8, 0x38bdf8, false, 9, true);
+     }
+
+
+     // Stage 10: Victory Golden Tower
+     addPlatform(0, 27.5, -240, 12, 1, 12, 0xf59e0b, true, 10, true);
+   }
+   buildLevel();
+
+
+   // Initial load checkpoint
+   setStageCheckpoint(state.currentStage);
+   respawnPlayer();
+
+
+   function createLandingEffect(pos) {
+     const ringGeo = new THREE.RingGeometry(0.2, 1.0, 16);
+     const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+     const ring = new THREE.Mesh(ringGeo, ringMat);
+     ring.rotation.x = Math.PI / 2; ring.position.set(pos.x, pos.y + 0.05, pos.z); scene.add(ring);
+     let scale = 1;
+     const anim = setInterval(() => {
+       scale += 0.25; ring.scale.set(scale, scale, scale); ringMat.opacity -= 0.1;
+       if (ringMat.opacity <= 0) { clearInterval(anim); scene.remove(ring); }
+     }, 30);
+   }
+
+
+   function createSpawnEffect(pos) {
+     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 14, 16), new THREE.MeshBasicMaterial({ color: 0xf472b6, transparent: true, opacity: 0.45 }));
+     col.position.set(pos.x, pos.y + 7, pos.z); scene.add(col);
+     setTimeout(() => scene.remove(col), 400);
+   }
+
+
+   // --- DUAL TOUCH & MULTI-INPUT CONTROLS ---
+   const joystickBase = document.getElementById('joystick-base');
+   const joystickThumb = document.getElementById('joystick-thumb');
+   let joystickTouchId = null;
+
+
+   function handleJoystickMove(clientX, clientY) {
+     const rect = joystickBase.getBoundingClientRect();
+     const centerX = rect.left + rect.width / 2;
+     const centerY = rect.top + rect.height / 2;
+     let deltaX = clientX - centerX;
+     let deltaY = clientY - centerY;
+     const dist = Math.hypot(deltaX, deltaY);
+     const maxRadius = rect.width / 2;
+
+
+     if (dist > maxRadius) {
+       deltaX = (deltaX / dist) * maxRadius;
+       deltaY = (deltaY / dist) * maxRadius;
+     }
+
+
+     joystickThumb.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+     joystickVector.x = deltaX / maxRadius;
+     joystickVector.y = deltaY / maxRadius;
+   }
+
+
+   function resetJoystick() {
+     joystickTouchId = null;
+     joystickThumb.style.transform = `translate(-50%, -50%)`;
+     joystickVector.x = 0; joystickVector.y = 0;
+   }
+
+
+   // Touch Dispatcher
+   window.addEventListener('touchstart', (e) => {
+     for (let i = 0; i < e.changedTouches.length; i++) {
+       const touch = e.changedTouches[i];
+       const target = touch.target;
+
+
+       if (joystickBase.contains(target) && joystickTouchId === null) {
+         joystickTouchId = touch.identifier;
+         handleJoystickMove(touch.clientX, touch.clientY);
+       } else if (document.getElementById('jump-btn').contains(target)) {
+         triggerJump();
+       } else if (!target.closest('.interactive') && !target.closest('.modal-card') && cameraTouchId === null) {
+         cameraTouchId = touch.identifier;
+         lastMouseX = touch.clientX;
+         lastMouseY = touch.clientY;
+         isDraggingCamera = true;
+       }
+     }
+   }, { passive: false });
+
+
+   window.addEventListener('touchmove', (e) => {
+     for (let i = 0; i < e.changedTouches.length; i++) {
+       const touch = e.changedTouches[i];
+       if (touch.identifier === joystickTouchId) {
+         handleJoystickMove(touch.clientX, touch.clientY);
+       } else if (touch.identifier === cameraTouchId && isDraggingCamera) {
+         const deltaX = touch.clientX - lastMouseX;
+         const deltaY = touch.clientY - lastMouseY;
+         cameraYaw -= deltaX * 0.007;
+         cameraPitch = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, cameraPitch + deltaY * 0.007));
+         lastMouseX = touch.clientX;
+         lastMouseY = touch.clientY;
+       }
+     }
+   }, { passive: false });
+
+
+   window.addEventListener('touchend', (e) => {
+     for (let i = 0; i < e.changedTouches.length; i++) {
+       const touch = e.changedTouches[i];
+       if (touch.identifier === joystickTouchId) resetJoystick();
+       if (touch.identifier === cameraTouchId) { isDraggingCamera = false; cameraTouchId = null; }
+     }
+   });
+
+
+   // Mouse Controls
+   window.addEventListener('mousedown', (e) => {
+     if (e.target.closest('.interactive') || e.target.closest('.modal-card')) return;
+     isDraggingCamera = true;
+     lastMouseX = e.clientX;
+     lastMouseY = e.clientY;
+   });
+
+
+   window.addEventListener('mousemove', (e) => {
+     if (isDraggingCamera) {
+       const deltaX = e.clientX - lastMouseX;
+       const deltaY = e.clientY - lastMouseY;
+       cameraYaw -= deltaX * 0.005;
+       cameraPitch = Math.max(0.05, Math.min(Math.PI / 2 - 0.05, cameraPitch + deltaY * 0.005));
+       lastMouseX = e.clientX;
+       lastMouseY = e.clientY;
+     }
+   });
+
+
+   window.addEventListener('mouseup', () => { isDraggingCamera = false; });
+
+
+   // Keyboard Controls
+   window.addEventListener('keydown', (e) => {
+     if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.forward = true;
+     if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.backward = true;
+     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = true;
+     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = true;
+     if (e.key === ' ' || e.key === 'Spacebar') triggerJump();
+   });
+
+
+   window.addEventListener('keyup', (e) => {
+     if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.forward = false;
+     if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.backward = false;
+     if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.left = false;
+     if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.right = false;
+   });
+
+
+   function triggerJump() {
+     if (physics.isGrounded) {
+       physics.velocity.y = physics.jumpForce;
+       physics.isGrounded = false;
+     }
+   }
+
+
+   document.getElementById('jump-btn').addEventListener('click', triggerJump);
+   document.getElementById('respawn-btn').addEventListener('click', respawnPlayer);
+
+
+   // Customization Modal Handlers
+   const customModal = document.getElementById('custom-modal');
+   document.getElementById('custom-btn').addEventListener('click', () => customModal.classList.add('active'));
+   document.getElementById('close-modal').addEventListener('click', () => customModal.classList.remove('active'));
+
+
+   document.querySelectorAll('#skin-colors .color-opt').forEach(opt => {
+     opt.addEventListener('click', () => {
+       document.querySelectorAll('#skin-colors .color-opt').forEach(o => o.classList.remove('selected'));
+       opt.classList.add('selected');
+       skinMat.color.setHex(parseInt(opt.dataset.color));
+     });
+   });
+
+
+   document.querySelectorAll('#shirt-colors .color-opt').forEach(opt => {
+     opt.addEventListener('click', () => {
+       document.querySelectorAll('#shirt-colors .color-opt').forEach(o => o.classList.remove('selected'));
+       opt.classList.add('selected');
+       shirtMat.color.setHex(parseInt(opt.dataset.color));
+     });
+   });
+
+
+   document.querySelectorAll('#face-options .hat-btn').forEach(btn => {
+     btn.addEventListener('click', () => {
+       document.querySelectorAll('#face-options .hat-btn').forEach(b => b.classList.remove('active'));
+       btn.classList.add('active');
+       facePlane.material.map = renderFaceTexture(btn.dataset.face);
+     });
+   });
+
+
+   document.querySelectorAll('#hat-options .hat-btn').forEach(btn => {
+     btn.addEventListener('click', () => {
+       document.querySelectorAll('#hat-options .hat-btn').forEach(b => b.classList.remove('active'));
+       btn.classList.add('active');
+       updateHat(btn.dataset.hat);
+     });
+   });
+
+
+   function lerpAngle(start, end, amount) {
+     let diff = end - start;
+     while (diff < -Math.PI) diff += Math.PI * 2;
+     while (diff > Math.PI) diff -= Math.PI * 2;
+     return start + diff * amount;
+   }
+
+
+   // --- GAME LOOP ---
+   const clock = new THREE.Clock();
+   let animTime = 0;
+
+
+   function animate() {
+     requestAnimationFrame(animate);
+     const delta = Math.min(clock.getDelta(), 0.1);
+
+
+     if (!state.gameEnded) {
+       const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+       const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+       const secs = String(elapsed % 60).padStart(2, '0');
+       document.getElementById('timer-val').innerText = `${mins}:${secs}`;
+
+
+       // Animate Obstacles (Vanishing Blocks & Windmills)
+       animatedObjects.forEach(item => {
+         if (item.type === 'rotate') {
+           item.group.rotation.y += item.speed * delta;
+         } else if (item.type === 'disappear') {
+           item.timer += delta;
+           const cycle = (item.timer % 3.0);
+           if (cycle > 2.0) {
+             item.obj.mesh.visible = false;
+           } else {
+             item.obj.mesh.visible = true;
+           }
+         }
+       });
+
+
+       // Movement Vector calculation
+       let rawX = joystickVector.x;
+       let rawZ = joystickVector.y;
+       if (keys.left) rawX -= 1;
+       if (keys.right) rawX += 1;
+       if (keys.forward) rawZ -= 1;
+       if (keys.backward) rawZ += 1;
+
+
+       const isMoving = Math.abs(rawX) > 0.05 || Math.abs(rawZ) > 0.05;
+
+
+       if (isMoving) {
+         const moveAngle = Math.atan2(rawX, rawZ) + cameraYaw;
+         physics.velocity.x = Math.sin(moveAngle) * physics.moveSpeed;
+         physics.velocity.z = Math.cos(moveAngle) * physics.moveSpeed;
+
+
+         avatarContainer.rotation.y = lerpAngle(avatarContainer.rotation.y, moveAngle, 15 * delta);
+
+
+         animTime += delta * 12;
+         const swing = Math.sin(animTime) * 0.65;
+         leftLeg.rotation.x = swing; rightLeg.rotation.x = -swing;
+         leftArm.rotation.x = -swing * 0.8; rightArm.rotation.x = swing * 0.8;
+       } else {
+         physics.velocity.x = 0; physics.velocity.z = 0;
+         leftLeg.rotation.x *= 0.8; rightLeg.rotation.x *= 0.8;
+         leftArm.rotation.x *= 0.8; rightArm.rotation.x *= 0.8;
+       }
+
+
+       physics.velocity.y += physics.gravity * delta;
+       playerGroup.position.x += physics.velocity.x * delta;
+       playerGroup.position.y += physics.velocity.y * delta;
+       playerGroup.position.z += physics.velocity.z * delta;
+
+
+       // Collision Check
+       const playerBox = new THREE.Box3().setFromCenterAndSize(
+         new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 0.9, playerGroup.position.z),
+         new THREE.Vector3(0.8, 1.8, 0.8)
+       );
+
+
+       let landed = false;
+       platforms.forEach(plat => {
+         if (!plat.mesh.visible) return;
+         plat.box.setFromObject(plat.mesh);
+         if (playerBox.intersectsBox(plat.box)) {
+           const platTop = plat.box.max.y;
+           if (physics.velocity.y <= 0 && playerGroup.position.y >= platTop - 0.45) {
+             if (!physics.isGrounded) createLandingEffect(playerGroup.position);
+             playerGroup.position.y = platTop;
+             physics.velocity.y = 0;
+             physics.isGrounded = true;
+             landed = true;
+
+
+             if (plat.isCheckpoint && plat.stageIdx !== state.currentStage) {
+               setStageCheckpoint(plat.stageIdx);
+               if (plat.stageIdx === 10 && !state.gameEnded) {
+                 state.gameEnded = true;
+                 document.getElementById('final-time').innerText = `클리어 타임: ${mins}:${secs}`;
+                 document.getElementById('clear-modal').classList.add('active');
+               }
+             }
+           }
+         }
+       });
+
+
+       if (!landed) physics.isGrounded = false;
+       if (playerGroup.position.y < -15) respawnPlayer();
+
+
+       // Third-Person Orbit Camera
+       const camX = playerGroup.position.x + cameraDistance * Math.sin(cameraYaw) * Math.cos(cameraPitch);
+       const camY = playerGroup.position.y + 1.2 + cameraDistance * Math.sin(cameraPitch);
+       const camZ = playerGroup.position.z + cameraDistance * Math.cos(cameraYaw) * Math.cos(cameraPitch);
+
+
+       camera.position.set(camX, camY, camZ);
+       camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.2, playerGroup.position.z);
+     }
+
+
+     renderer.render(scene, camera);
+   }
+
+
+   window.addEventListener('resize', () => {
+     camera.aspect = window.innerWidth / window.innerHeight;
+     camera.updateProjectionMatrix();
+     renderer.setSize(window.innerWidth, window.innerHeight);
+   });
+
+
+   document.getElementById('restart-btn').addEventListener('click', () => {
+     document.getElementById('clear-modal').classList.remove('active');
+     state.gameEnded = false;
+     state.startTime = Date.now();
+     setStageCheckpoint(1);
+     respawnPlayer();
+   });
+
+
+   animate();
+ </script>
+</body>
+</html>

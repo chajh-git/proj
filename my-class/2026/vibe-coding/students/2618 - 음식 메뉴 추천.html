@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘 뭐 먹지? - 맞춤 음식 메뉴 추천</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        .font-gowun {
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Slot Animation */
+        @keyframes slotBlur {
+            0% { filter: blur(0px); transform: translateY(0); }
+            50% { filter: blur(3px); transform: translateY(-10px); }
+            100% { filter: blur(0px); transform: translateY(0); }
+        }
+        .animate-slot {
+            animation: slotBlur 0.15s infinite;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                    <i class="fa-solid font-bold fa-utensils text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold font-gowun tracking-wide">오늘 뭐 먹지?</h1>
+                    <p class="text-xs text-orange-100">맞춤 음식 추천 & 상세 가이드</p>
+                </div>
+            </div>
+            <button onclick="resetAll()" class="text-xs bg-white/20 hover:bg-white/30 text-white font-semibold py-1.5 px-3 rounded-lg transition-all flex items-center space-x-1">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>초기화</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
+
+        <!-- STEP 1: 입력 폼 섹션 -->
+        <section id="inputSection" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 md:p-8 transition-all duration-300">
+            <div class="border-b border-slate-100 pb-4 mb-6">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <span class="bg-orange-100 text-orange-600 text-sm font-extrabold w-6 h-6 rounded-full inline-flex items-center justify-center">1</span>
+                    취향과 조건 선택하기
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">원하시는 조건에 맞춰 맞춤형 메뉴와 가격 정보를 추천해 드립니다.</p>
+            </div>
+
+            <form id="recommendForm" onsubmit="handleRecommend(event)" class="space-y-6">
+                <!-- 1. 조리/주문 방식 (가장 중요) -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">
+                        <i class="fa-solid fa-truck-ramp-box text-orange-500 mr-1.5"></i>식사 방식 선택
+                    </label>
+                    <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="orderType" value="all" checked class="peer sr-only">
+                            <div class="p-3 text-center rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 font-medium text-sm text-slate-600 transition-all shadow-sm">
+                                <i class="fa-solid fa-border-all block text-base mb-1"></i>
+                                상관없음 (전체)
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="orderType" value="delivery" class="peer sr-only">
+                            <div class="p-3 text-center rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 font-medium text-sm text-slate-600 transition-all shadow-sm">
+                                <i class="fa-solid fa-motorcycle block text-base mb-1"></i>
+                                배달 / 외식
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="orderType" value="cook" class="peer sr-only">
+                            <div class="p-3 text-center rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 font-medium text-sm text-slate-600 transition-all shadow-sm">
+                                <i class="fa-solid fa-kitchen-set block text-base mb-1"></i>
+                                집에서 해먹기
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 2. 배고픔 지수 (1~5) -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-bold text-slate-700">
+                            <i class="fa-solid fa-gauge-high text-orange-500 mr-1.5"></i>배고픔 지수
+                        </label>
+                        <span id="hungerBadge" class="text-xs font-semibold px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full">
+                            단계 3: 약간 출출함
+                        </span>
+                    </div>
+                    <input type="range" id="hungerInput" min="1" max="5" value="3" oninput="updateHungerBadge(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                    <div class="flex justify-between text-xs text-slate-400 mt-1 px-1">
+                        <span>1 (살짝 가볍게)</span>
+                        <span>3 (적당함)</span>
+                        <span>5 (매우 배고픔!)</span>
+                    </div>
+                </div>
+
+                <!-- 3. 음식 종류 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">
+                        <i class="fa-solid fa-globe text-orange-500 mr-1.5"></i>음식 종류
+                    </label>
+                    <div class="grid grid-cols-5 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="category" value="상관없음" checked class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition-all">전체</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="category" value="한식" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-all">한식</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="category" value="중식" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-all">중식</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="category" value="일식" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-all">일식</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="category" value="양식" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-orange-500 peer-checked:text-white peer-checked:border-orange-500 transition-all">양식</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 4. 음식 맛 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">
+                        <i class="fa-solid fa-pepper-hot text-orange-500 mr-1.5"></i>원하는 맛
+                    </label>
+                    <div class="grid grid-cols-5 gap-2">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="flavor" value="상관없음" checked class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition-all">전체</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="flavor" value="매운맛" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-red-500 peer-checked:text-white peer-checked:border-red-500 transition-all">매운맛</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="flavor" value="달콤한맛" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-pink-500 peer-checked:text-white peer-checked:border-pink-500 transition-all">달콤함</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="flavor" value="고소한맛" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-amber-600 peer-checked:text-white peer-checked:border-amber-600 transition-all">고소함</div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="flavor" value="담백한맛" class="peer sr-only">
+                            <div class="p-2.5 text-center rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition-all">담백함</div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 5. 예산 선택 -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2" for="budgetInput">
+                        <i class="fa-solid fa-won-sign text-orange-500 mr-1.5"></i>최대 1인 예산
+                    </label>
+                    <div class="relative">
+                        <input type="number" id="budgetInput" placeholder="예: 15000" min="2000" step="1000" value="20000" required class="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 pl-4 pr-12 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">원</span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">입력하신 예산 이하의 메뉴만 선택하여 추천합니다.</p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold py-4 rounded-xl shadow-md hover:shadow-lg transition-all text-base flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-dice text-xl"></i>
+                    <span>추천 메뉴 찾기</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- STEP 2: 슬롯 머신 / 애니메이션 섹션 (기본 숨김) -->
+        <section id="slotSection" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200/80 p-8 text-center my-6">
+            <h3 class="text-lg font-bold text-slate-700 mb-2">맛있는 메뉴를 찾는 중입니다...</h3>
+            <p class="text-xs text-slate-400 mb-6">입력하신 조건을 바탕으로 최적의 선택지를 고르고 있어요!</p>
+            
+            <div class="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-8 max-w-sm mx-auto shadow-inner relative overflow-hidden">
+                <i class="fa-solid fa-quote-left text-3xl text-orange-200 absolute top-3 left-4"></i>
+                <div id="slotDisplay" class="text-3xl font-extrabold text-orange-600 font-gowun py-4 my-2">
+                    라면
+                </div>
+                <i class="fa-solid fa-quote-right text-3xl text-orange-200 absolute bottom-3 right-4"></i>
+            </div>
+        </section>
+
+        <!-- STEP 3: 추천 결과 섹션 (기본 숨김) -->
+        <section id="resultSection" class="hidden space-y-6">
+            
+            <!-- Result Card -->
+            <div class="bg-white rounded-2xl shadow-lg border border-orange-100 overflow-hidden">
+                
+                <!-- Card Header -->
+                <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 relative">
+                    <span id="resBadgeCategory" class="bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider">
+                        한식
+                    </span>
+                    <h2 id="resFoodName" class="text-3xl font-extrabold font-gowun mt-2 text-amber-400">
+                        김치찌개
+                    </h2>
+                    <p id="resTagline" class="text-slate-300 text-xs mt-1">
+                        얼큰하고 깊은 맛이 매력적인 국민 대표 메뉴
+                    </p>
+                    
+                    <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                        <span id="resBadgeFlavor" class="bg-white/10 text-slate-200 px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                            🌶️ 매운맛
+                        </span>
+                        <span id="resBadgeHunger" class="bg-white/10 text-slate-200 px-2.5 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                            🍗 든든함 (배고픔 4-5추천)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Dynamic Content Container -->
+                <div class="p-6">
+
+                    <!-- Tab Buttons (Only visible when user selected 'ALL') -->
+                    <div id="typeTabGroup" class="hidden mb-6 flex border-b border-slate-200">
+                        <button onclick="switchTab('delivery')" id="tabBtnDelivery" class="flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-orange-500 text-orange-600 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-motorcycle"></i> 배달/외식 정보
+                        </button>
+                        <button onclick="switchTab('cook')" id="tabBtnCook" class="flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-kitchen-set"></i> 집에서 해먹기 레시피
+                        </button>
+                    </div>
+
+                    <!-- 1. 배달/외식 정보 카드 -->
+                    <div id="deliveryInfoCard" class="space-y-4">
+                        <div class="bg-orange-50 border border-orange-100 rounded-xl p-4 flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-orange-600 font-bold block mb-0.5">외식/배달 평균 가격</span>
+                                <span id="resAvgDeliveryPrice" class="text-2xl font-extrabold text-orange-700">9,500원</span>
+                                <span class="text-xs text-slate-400 ml-1">(1인분 기준)</span>
+                            </div>
+                            <div class="text-right border-l border-orange-200 pl-4">
+                                <span class="text-xs text-slate-500 block">기본 배달비</span>
+                                <span id="resDeliveryFee" class="text-sm font-bold text-slate-700">약 3,000원</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-info text-orange-500"></i> 배달 & 주문 팁
+                            </h4>
+                            <p id="resDeliveryTip" class="text-sm text-slate-700 leading-relaxed font-medium">
+                                한국소비자원 평균 가격 기준 약 9,000원 내외로 형성되어 있습니다. 계란말이나 라면사리를 추가하시면 더욱 푸짐하게 드실 수 있습니다.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 2. 집에서 해먹기 레시피 카드 -->
+                    <div id="cookInfoCard" class="space-y-4">
+                        <!-- 평균 재료비 -->
+                        <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex justify-between items-center">
+                            <div>
+                                <span class="text-xs text-emerald-600 font-bold block mb-0.5">1인분 직접 조리 시 평균 재료비</span>
+                                <span id="resAvgCookPrice" class="text-2xl font-extrabold text-emerald-700">3,500원</span>
+                                <span class="text-xs text-slate-400 ml-1">(기존 양념류 제외)</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-1 rounded font-bold">가성비 추천</span>
+                            </div>
+                        </div>
+
+                        <!-- 필요 재료 -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-basket-shopping text-emerald-600"></i> 필요 재료 (1인분)
+                            </h4>
+                            <p id="resIngredients" class="text-sm text-slate-700 font-semibold">
+                                신김치 150g, 돼지고기 80g, 두부 1/4모, 파 약간, 마늘, 고춧가루
+                            </p>
+                        </div>
+
+                        <!-- 간단 조리법 -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <i class="fa-solid fa-fire text-amber-500"></i> 조리 순서 (레시피)
+                            </h4>
+                            <ol id="resRecipeSteps" class="text-sm text-slate-700 space-y-2 list-decimal list-inside font-medium leading-relaxed">
+                                <li>냄비에 썰어둔 돼지고기와 신김치를 넣고 중불에서 볶아줍니다.</li>
+                                <li>고기 겉면이 익으면 물(또는 쌀뜸물) 400ml를 붓고 강불로 끓입니다.</li>
+                                <li>끓어오르면 두부와 파를 넣고 약불로 줄여 10분간 더 끓여 완성합니다.</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Action Buttons -->
+                <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+                    <button onclick="acceptMenu()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow transition-all flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-circle-check text-lg"></i>
+                        <span>이 메뉴로 결정하기!</span>
+                    </button>
+                    <button onclick="retryRecommend()" class="flex-1 bg-white hover:bg-slate-100 text-slate-700 font-bold border border-slate-300 py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-rotate text-orange-500"></i>
+                        <span>다른 추천 보기</span>
+                    </button>
+                    <button onclick="reFilter()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>조건 변경</span>
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- STEP 4: 최종 결정 축하 화면 (기본 숨김) -->
+        <section id="finalSection" class="hidden bg-white rounded-2xl shadow-xl border border-emerald-100 p-8 text-center my-6">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                <i class="fa-solid fa-champagne-glasses"></i>
+            </div>
+            <h2 class="text-2xl font-bold font-gowun text-slate-800">식사 메뉴가 결정되었습니다!</h2>
+            <p class="text-sm text-slate-500 mt-1">선택하신 메뉴로 맛있고 즐거운 식사 되세요!</p>
+
+            <div class="my-6 p-6 bg-slate-50 rounded-2xl border border-slate-200 inline-block max-w-sm w-full">
+                <span class="text-xs text-orange-500 font-bold block mb-1">오늘의 메뉴</span>
+                <span id="finalFoodName" class="text-3xl font-extrabold font-gowun text-slate-800">김치찌개</span>
+                <div id="finalDetailBadge" class="mt-3 text-xs text-slate-500 bg-white py-1.5 px-3 rounded-lg border border-slate-200">
+                    배달/외식 선택됨
+                </div>
+            </div>
+
+            <div>
+                <button onclick="resetAll()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-8 rounded-xl shadow transition-all text-sm">
+                    처음으로 돌아가기
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-100 border-t border-slate-200 text-center py-4 text-xs text-slate-400">
+        <p>오늘 뭐 먹지? | 한국소비자원(참가격) 외식 물가 정보 데이터 반영</p>
+    </footer>
+
+    <!-- JavaScript LOGIC -->
+    <script>
+        // 1. 데이터베이스 구축 (실제 한국 외식/배달 평균 물가 및 재료비 데이터 반영)
+        const FOOD_DATABASE = [
+            {
+                id: 1,
+                name: "김치찌개",
+                category: "한식",
+                flavor: "매운맛",
+                minHunger: 3,
+                type: "both",
+                tagline: "얼큰하고 깊은 맛이 매력적인 국민 대표 찌개",
+                delivery: {
+                    avgPrice: 9000,
+                    fee: 3000,
+                    tip: "한국소비자원 전국 평균 약 9,000원 선입니다. 배달 시 사리나 계란말이를 함께 주문하면 푸짐합니다."
+                },
+                cook: {
+                    avgPrice: 3500,
+                    ingredients: "신김치 150g, 돼지고기(찌개용) 80g, 두부 1/4모, 파, 고춧가루, 국간장",
+                    steps: [
+                        "냄비에 돼지고기와 신김치를 넣고 참기름에 달달 볶아줍니다.",
+                        "고기가 익으면 물 400ml를 붓고 강불로 팔팔 끓입니다.",
+                        "두부와 파를 넣고 약불에서 10분 정도 푹 끓여 완성합니다."
+                    ]
+                }
+            },
+            {
+                id: 2,
+                name: "자장면",
+                category: "중식",
+                flavor: "달콤한맛",
+                minHunger: 2,
+                type: "delivery",
+                tagline: "달콤 짭조름한 춘장 소스의 영원한 국민 중식 메뉴",
+                delivery: {
+                    avgPrice: 7500,
+                    fee: 2500,
+                    tip: "전국 평균 단품 가격 약 7,500원입니다. 탕수육 세트로 주문 시 가성비가 가장 좋습니다."
+                },
+                cook: {
+                    avgPrice: 3000,
+                    ingredients: "중화면, 춘장, 돼지고기, 양파 1개, 양배추 약간, 전분물",
+                    steps: [
+                        "식용유에 춘장을 볶아 두고, 썰어둔 돼지고기와 양파를 볶습니다.",
+                        "볶은 춘장을 섞어 물과 함께 끓인 후 전분물로 농도를 맞춥니다.",
+                        "삶은 면 위에 고소한 짜장 소스를 뿌려 비벼 먹습니다."
+                    ]
+                }
+            },
+            {
+                id: 3,
+                name: "비빔밥",
+                category: "한식",
+                flavor: "고소한맛",
+                minHunger: 2,
+                type: "both",
+                tagline: "각종 신선한 나물과 고추장의 완벽한 영양 균형",
+                delivery: {
+                    avgPrice: 10000,
+                    fee: 3000,
+                    tip: "외식 전문점 평균 약 10,000원입니다. 계란후라이 추가와 참기름을 듬뿍 치면 맛있습니다."
+                },
+                cook: {
+                    avgPrice: 3000,
+                    ingredients: "밥 1공기, 콩나물, 애호박, 시금치, 계란 1개, 고추장 1T, 참기름 1T",
+                    steps: [
+                        "집에 있는 기본 나물이나 애호박, 당근을 살짝 볶아 준비합니다.",
+                        "밥 위에 나물과 반숙 계란후라이를 정갈하게 올려줍니다.",
+                        "고추장 1스푼과 고소한 참기름을 둘러 쓱쓱 비벼줍니다."
+                    ]
+                }
+            },
+            {
+                id: 4,
+                name: "돈까스",
+                category: "일식",
+                flavor: "고소한맛",
+                minHunger: 3,
+                type: "delivery",
+                tagline: "바삭한 튀김옷과 촉촉한 육즙의 최고 조합",
+                delivery: {
+                    avgPrice: 11500,
+                    fee: 3000,
+                    tip: "등심/안심 돈까스 기준 평균 11,000~12,000원 선입니다. 리뷰 이벤트 소스 추가를 활용해보세요."
+                },
+                cook: {
+                    avgPrice: 4500,
+                    ingredients: "돈까스용 돼지 등심 150g, 밀가루, 계란, 빵가루, 돈까스 소스",
+                    steps: [
+                        "돼지고기에 소금, 후추로 밑간을 해둡니다.",
+                        "밀가루 -> 계란물 -> 빵가루 순으로 튀김옷을 꼼꼼히 입힙니다.",
+                        "170도 기름에 노릇하게 튀겨내어 소스에 찍어 먹습니다."
+                    ]
+                }
+            },
+            {
+                id: 5,
+                name: "마라탕",
+                category: "중식",
+                flavor: "매운맛",
+                minHunger: 3,
+                type: "delivery",
+                tagline: "중독성 강한 얼얼하고 매콤한 국물 요리",
+                delivery: {
+                    avgPrice: 14000,
+                    fee: 3000,
+                    tip: "기본 담기 배달 기준 12,000~15,000원 선입니다. 꿔바로우 소자와 함께 먹으면 조화롭습니다."
+                },
+                cook: {
+                    avgPrice: 6000,
+                    ingredients: "마라탕 소스, 숙주, 푸주, 당면, 차돌박이 100g, 청경채",
+                    steps: [
+                        "시판 마라 소스를 물 또는 사골육수 500ml에 풀어 끓입니다.",
+                        "불린 푸주, 중국당면과 야채를 넣고 먼저 익혀줍니다.",
+                        "마지막에 차돌박이를 넣고 살짝 익혀 얼얼하게 즐깁니다."
+                    ]
+                }
+            },
+            {
+                id: 6,
+                name: "크림 파스타",
+                category: "양식",
+                flavor: "고소한맛",
+                minHunger: 3,
+                type: "both",
+                tagline: "부드럽고 고소한 크림 소스가 가득한 양식 베스트",
+                delivery: {
+                    avgPrice: 13000,
+                    fee: 3000,
+                    tip: "파스타 전문점 기준 12,000~14,000원 선입니다. 마늘빵이나 피클을 넉넉히 요청하세요."
+                },
+                cook: {
+                    avgPrice: 4000,
+                    ingredients: "파스타면 100g, 생크림(또는 우유) 200ml, 베이컨 2줄, 마늘 3알, 체다치즈 1장",
+                    steps: [
+                        "파스타면을 소금물에 7~8분간 삶아 건져둡니다.",
+                        "팬에 편마늘과 베이컨을 볶다가 생크림과 우유를 붓습니다.",
+                        "끓어오르면 면과 치즈를 넣고 농도가 감돌 때까지 조려줍니다."
+                    ]
+                }
+            },
+            {
+                id: 7,
+                name: "라면",
+                category: "한식",
+                flavor: "매운맛",
+                minHunger: 1,
+                type: "cook",
+                tagline: "5분 만에 완성되는 출출할 때 최고의 간단 국물 요리",
+                delivery: {
+                    avgPrice: 5000,
+                    fee: 3000,
+                    tip: "분식집 배달 기준 약 4,500~5,000원 수준입니다."
+                },
+                cook: {
+                    avgPrice: 1200,
+                    ingredients: "봉지라면 1개, 계란 1개, 대파 약간, 물 550ml",
+                    steps: [
+                        "냄비에 물 550ml를 정확히 계량하여 끓입니다.",
+                        "물이 끓으면 면, 분말스프, 건더기스프를 한꺼번에 넣습니다.",
+                        "4분간 더 끓이고 마지막에 계란과 파를 넣어 마무리합니다."
+                    ]
+                }
+            },
+            {
+                id: 8,
+                name: "초밥 (모둠)",
+                category: "일식",
+                flavor: "담백한맛",
+                minHunger: 2,
+                type: "delivery",
+                tagline: "신선한 회와 깔끔한 밥의 신선한 조화",
+                delivery: {
+                    avgPrice: 16000,
+                    fee: 3000,
+                    tip: "모둠초밥 10~12p 기준 약 15,000~18,000원선입니다. 우동 세트로 즐기기 좋습니다."
+                },
+                cook: {
+                    avgPrice: 8000,
+                    ingredients: "초밥용 횟감, 단초밥(식초, 설탕, 소금), 와사비, 간장",
+                    steps: [
+                        "따뜻한 밥에 식초, 설탕, 소금을 섞은 배합초를 넣어 식힙니다.",
+                        "밥을 한 입 크기로 뭉친 뒤 와사비를 살짝 올립니다.",
+                        "준비된 신선한 횟감을 위에 얹어 간장에 찍어 먹습니다."
+                    ]
+                }
+            },
+            {
+                id: 9,
+                name: "샌드위치",
+                category: "양식",
+                flavor: "담백한맛",
+                minHunger: 1,
+                type: "both",
+                tagline: "신선한 야채와 햄, 치즈가 들어간 가볍고 알찬 한 끼",
+                delivery: {
+                    avgPrice: 7500,
+                    fee: 2500,
+                    tip: "프랜차이즈/베이커리 평균 7,000~8,000원 내외입니다."
+                },
+                cook: {
+                    avgPrice: 2500,
+                    ingredients: "식빵 2장, 슬라이스 햄 2장, 치즈 1장, 양상추, 토마토, 머스터드",
+                    steps: [
+                        "식빵 구석구석에 머스터드나 마요네즈를 살짝 바릅니다.",
+                        "양상추, 토마토, 햄, 치즈를 순서대로 곡곡히 차곡차곡 쌓습니다.",
+                        "식빵으로 덮은 후 반으로 잘라 맛있게 먹습니다."
+                    ]
+                }
+            },
+            {
+                id: 10,
+                name: "치킨",
+                category: "양식",
+                flavor: "고소한맛",
+                minHunger: 4,
+                type: "delivery",
+                tagline: "남녀노소 누구나 사랑하는 불패의 바삭한 야식 메뉴",
+                delivery: {
+                    avgPrice: 21000,
+                    fee: 3500,
+                    tip: "주요 브랜드 후라이드 기준 평균 20,000원~22,000원입니다. 사이드 감자튀김을 곁들여보세요."
+                },
+                cook: {
+                    avgPrice: 7000,
+                    ingredients: "닭볶음탕용 닭 1마리, 튀김가루, 식용유, 허브솔트",
+                    steps: [
+                        "손질된 닭을 우유에 20분간 담가 잡내를 제거하고 씻어냅니다.",
+                        "튀김가루와 물을 섞어 반죽을 만들고 닭에 묻혀줍니다.",
+                        "170도 기름에서 2번 바삭하게 튀겨냅니다."
+                    ]
+                }
+            }
+        ];
+
+        // 상태 변수
+        let currentFilteredList = [];
+        let recommendedHistory = [];
+        let currentFood = null;
+        let selectedOrderType = 'all';
+
+        // 배고픔 지수 텍스트 업데이트
+        function updateHungerBadge(val) {
+            const badge = document.getElementById('hungerBadge');
+            const map = {
+                '1': '단계 1: 살짝 출출함',
+                '2': '단계 2: 가벼운 허기',
+                '3': '단계 3: 적당히 배고픔',
+                '4': '단계 4: 든든한 식사 필요',
+                '5': '단계 5: 매우 배고픔!'
+            };
+            badge.innerText = map[val] || '단계 3';
+        }
+
+        // 추천 실행 핸들러
+        function handleRecommend(e) {
+            e.preventDefault();
+
+            // 1. 값 추출
+            selectedOrderType = document.querySelector('input[name="orderType"]:checked').value;
+            const hunger = parseInt(document.getElementById('hungerInput').value);
+            const category = document.querySelector('input[name="category"]:checked').value;
+            const flavor = document.querySelector('input[name="flavor"]:checked').value;
+            const budget = parseInt(document.getElementById('budgetInput').value) || 30000;
+
+            // 2. 필터링 로직
+            currentFilteredList = FOOD_DATABASE.filter(item => {
+                // 예산 체크 (배달 가격 기준 또는 해먹기 재료비 기준)
+                const targetPrice = (selectedOrderType === 'cook') ? item.cook.avgPrice : item.delivery.avgPrice;
+                if (targetPrice > budget) return false;
+
+                // 카테고리 체크
+                if (category !== '상관없음' && item.category !== category) return false;
+
+                // 맛 체크
+                if (flavor !== '상관없음' && item.flavor !== flavor) return false;
+
+                // 조리/주문 방식 체크
+                if (selectedOrderType === 'delivery' && item.type === 'cook') return false;
+                if (selectedOrderType === 'cook' && item.type === 'delivery') return false;
+
+                return true;
+            });
+
+            // 예산 등 조건이 너무 깐깐할 때 예외처리
+            if (currentFilteredList.length === 0) {
+                alert("입력하신 예산이나 조건에 맞는 메뉴가 없습니다. 예산을 높이거나 조건을 조금 완화해 주세요!");
+                return;
+            }
+
+            recommendedHistory = [];
+            startSlotAnimation();
+        }
+
+        // 슬롯머신 연출 애니메이션
+        function startSlotAnimation() {
+            document.getElementById('inputSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('finalSection').classList.add('hidden');
+            
+            const slotSection = document.getElementById('slotSection');
+            const slotDisplay = document.getElementById('slotDisplay');
+            slotSection.classList.remove('hidden');
+            slotDisplay.classList.add('animate-slot');
+
+            let counter = 0;
+            const interval = setInterval(() => {
+                const randomSample = FOOD_DATABASE[Math.floor(Math.random() * FOOD_DATABASE.length)];
+                slotDisplay.innerText = randomSample.name;
+                counter++;
+
+                if (counter > 15) {
+                    clearInterval(interval);
+                    slotDisplay.classList.remove('animate-slot');
+                    pickMenu();
+                }
+            }, 100);
+        }
+
+        // 실제 메뉴 선택 Logic
+        function pickMenu() {
+            // 히스토리에 없는 남은 메뉴들
+            const remaining = currentFilteredList.filter(item => !recommendedHistory.includes(item.id));
+
+            if (remaining.length === 0) {
+                alert("조건에 맞는 모든 추천 메뉴를 이미 보셨습니다! 처음부터 다시 검색하거나 조건 변경을 눌러주세요.");
+                recommendedHistory = [];
+                currentFood = currentFilteredList[Math.floor(Math.random() * currentFilteredList.length)];
+            } else {
+                currentFood = remaining[Math.floor(Math.random() * remaining.length)];
+            }
+
+            recommendedHistory.push(currentFood.id);
+            renderResultCard(currentFood);
+        }
+
+        // UI 렌더링
+        function renderResultCard(food) {
+            document.getElementById('slotSection').classList.add('hidden');
+            document.getElementById('resultSection').classList.remove('hidden');
+
+            // 기본 데이터
+            document.getElementById('resFoodName').innerText = food.name;
+            document.getElementById('resTagline').innerText = food.tagline;
+            document.getElementById('resBadgeCategory').innerText = food.category;
+            document.getElementById('resBadgeFlavor').innerText = `🌶️ ${food.flavor}`;
+            document.getElementById('resBadgeHunger').innerText = `🍗 권장 배고픔 ${food.minHunger}단계 이상`;
+
+            // 배달 정보
+            document.getElementById('resAvgDeliveryPrice').innerText = food.delivery.avgPrice.toLocaleString() + '원';
+            document.getElementById('resDeliveryFee').innerText = `약 ${food.delivery.fee.toLocaleString()}원`;
+            document.getElementById('resDeliveryTip').innerText = food.delivery.tip;
+
+            // 해먹기 정보
+            document.getElementById('resAvgCookPrice').innerText = food.cook.avgPrice.toLocaleString() + '원';
+            document.getElementById('resIngredients').innerText = food.cook.ingredients;
+            
+            const recipeListElem = document.getElementById('resRecipeSteps');
+            recipeListElem.innerHTML = '';
+            food.cook.steps.forEach(step => {
+                const li = document.createElement('li');
+                li.innerText = step;
+                recipeListElem.appendChild(li);
+            });
+
+            // 선택한 조리/주문 방식에 따른 UI 노출 제어
+            const deliveryCard = document.getElementById('deliveryInfoCard');
+            const cookCard = document.getElementById('cookInfoCard');
+            const tabGroup = document.getElementById('typeTabGroup');
+
+            if (selectedOrderType === 'delivery') {
+                tabGroup.classList.add('hidden');
+                deliveryCard.classList.remove('hidden');
+                cookCard.classList.add('hidden');
+            } else if (selectedOrderType === 'cook') {
+                tabGroup.classList.add('hidden');
+                deliveryCard.classList.add('hidden');
+                cookCard.classList.remove('hidden');
+            } else { // 'all' (상관없음)
+                tabGroup.classList.remove('hidden');
+                // 기본으로 배달 탭 활성화
+                switchTab('delivery');
+            }
+
+            // Scroll to Top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 탭 전환 핸들러 (상관없음 선택 시)
+        function switchTab(tab) {
+            const deliveryCard = document.getElementById('deliveryInfoCard');
+            const cookCard = document.getElementById('cookInfoCard');
+            const tabBtnDelivery = document.getElementById('tabBtnDelivery');
+            const tabBtnCook = document.getElementById('tabBtnCook');
+
+            if (tab === 'delivery') {
+                deliveryCard.classList.remove('hidden');
+                cookCard.classList.add('hidden');
+
+                tabBtnDelivery.className = "flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-orange-500 text-orange-600 flex items-center justify-center gap-2";
+                tabBtnCook.className = "flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2";
+            } else {
+                deliveryCard.classList.add('hidden');
+                cookCard.classList.remove('hidden');
+
+                tabBtnCook.className = "flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-emerald-500 text-emerald-600 flex items-center justify-center gap-2";
+                tabBtnDelivery.className = "flex-1 py-2.5 font-bold text-sm text-center border-b-2 border-transparent text-slate-400 hover:text-slate-600 flex items-center justify-center gap-2";
+            }
+        }
+
+        // 재추천 버튼
+        function retryRecommend() {
+            startSlotAnimation();
+        }
+
+        // 조건 변경 버튼
+        function reFilter() {
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('inputSection').classList.remove('hidden');
+        }
+
+        // 최종 결정 핸들러
+        function acceptMenu() {
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('finalSection').classList.remove('hidden');
+            document.getElementById('finalFoodName').innerText = currentFood.name;
+
+            const badgeElem = document.getElementById('finalDetailBadge');
+            if (selectedOrderType === 'delivery') {
+                badgeElem.innerText = `🛵 배달/외식 주문 (예상 ${currentFood.delivery.avgPrice.toLocaleString()}원)`;
+            } else if (selectedOrderType === 'cook') {
+                badgeElem.innerText = `🍳 직접 요리하기 (예상 재료비 ${currentFood.cook.avgPrice.toLocaleString()}원)`;
+            } else {
+                badgeElem.innerText = `✨ 오늘 선택된 메뉴 (${currentFood.category} / ${currentFood.flavor})`;
+            }
+
+            // Confetti 폭죽 효과
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        // 전체 초기화
+        function resetAll() {
+            document.getElementById('recommendForm').reset();
+            updateHungerBadge(3);
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('finalSection').classList.add('hidden');
+            document.getElementById('slotSection').classList.add('hidden');
+            document.getElementById('inputSection').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

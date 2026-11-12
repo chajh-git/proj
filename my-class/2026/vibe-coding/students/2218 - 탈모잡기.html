@@ -1,0 +1,2783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>탈모 잡기</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    user-select: none;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, "Malgun Gothic", sans-serif;
+    background: #111;
+    color: white;
+}
+
+button {
+    border: 0;
+    border-radius: 12px;
+    padding: 13px 22px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* =========================
+   시작 화면
+========================= */
+
+#menu {
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background:
+        radial-gradient(circle at center, #5a2020 0%, #171717 55%, #050505 100%);
+}
+
+.title {
+    font-size: clamp(55px, 9vw, 120px);
+    font-weight: 900;
+    margin-bottom: 40px;
+    text-shadow: 0 5px 0 #000, 0 0 25px #ff4444;
+}
+
+.menuBox {
+    width: min(600px, 90vw);
+    background: rgba(0,0,0,.55);
+    border: 2px solid rgba(255,255,255,.25);
+    padding: 25px;
+    border-radius: 20px;
+    text-align: center;
+}
+
+.menuBox button {
+    margin: 7px;
+}
+
+#characterButton {
+    background: #ffd54a;
+}
+
+.diffBtn {
+    background: #444;
+    color: white;
+}
+
+.diffBtn.selected {
+    outline: 4px solid white;
+    background: #b83232;
+}
+
+#startSelect {
+    background: #4caf50;
+    color: white;
+    margin-top: 18px;
+}
+
+/* =========================
+   캐릭터 선택 화면
+========================= */
+
+#selectScreen {
+    background: linear-gradient(135deg, #172338, #111);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.characterGrid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.characterCard {
+    width: 220px;
+    background: rgba(255,255,255,.1);
+    border: 3px solid transparent;
+    padding: 16px;
+    border-radius: 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: .2s;
+}
+
+.characterCard:hover {
+    transform: translateY(-5px);
+}
+
+.characterCard.selected {
+    border-color: #ffe35b;
+    box-shadow: 0 0 20px #ffe35b;
+}
+
+.portrait {
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 95px;
+    background: rgba(0,0,0,.35);
+    border-radius: 15px;
+}
+
+#confirmCharacter {
+    margin-top: 25px;
+    background: #4caf50;
+    color: white;
+}
+
+/* =========================
+   캐릭터 설명 화면
+========================= */
+
+#infoScreen {
+    background: radial-gradient(circle, #27344a, #080b10);
+    align-items: center;
+    justify-content: center;
+}
+
+.infoPanel {
+    width: min(700px, 92vw);
+    padding: 30px;
+    border-radius: 20px;
+    background: rgba(0,0,0,.72);
+    text-align: center;
+}
+
+.infoPanel h1 {
+    font-size: 40px;
+}
+
+.controls {
+    line-height: 1.8;
+    text-align: left;
+    margin: 20px auto;
+    max-width: 570px;
+}
+
+#realStart {
+    background: #ff5252;
+    color: white;
+}
+
+/* =========================
+   게임 화면
+========================= */
+
+#game {
+    display: none;
+    background:
+        radial-gradient(circle at center, #263344 0%, #111a23 55%, #05080c 100%);
+}
+
+#game.active {
+    display: block;
+}
+
+#arena {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+/* =========================
+   보스 UI
+========================= */
+
+#bossUI {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(700px, 65vw);
+    z-index: 20;
+    text-align: center;
+}
+
+#bossName {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.hpOuter {
+    height: 28px;
+    border: 3px solid white;
+    border-radius: 10px;
+    background: #222;
+    overflow: hidden;
+}
+
+.hpInner {
+    height: 100%;
+    width: 100%;
+    background: #e53935;
+    transition: width .15s;
+}
+
+#bossHPText {
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+/* =========================
+   플레이어 UI
+========================= */
+
+#playerUI {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    width: 220px;
+    z-index: 20;
+}
+
+#playerHPBar {
+    background: #43a047;
+}
+
+#playerHPText {
+    margin-top: 5px;
+}
+
+#shieldText {
+    color: #64d8ff;
+    font-weight: bold;
+    height: 25px;
+}
+
+/* =========================
+   캐릭터
+========================= */
+
+.entity {
+    position: absolute;
+    width: 85px;
+    height: 85px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    z-index: 8;
+}
+
+.entityName {
+    position: absolute;
+    top: 82px;
+    white-space: nowrap;
+    font-size: 15px;
+    background: rgba(0,0,0,.65);
+    padding: 3px 7px;
+    border-radius: 6px;
+}
+
+#player {
+    left: 20%;
+    top: 70%;
+}
+
+#boss {
+    left: 75%;
+    top: 45%;
+    font-size: 70px;
+}
+
+/* =========================
+   스킬 UI
+========================= */
+
+#skills {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 7px;
+    z-index: 25;
+}
+
+.skillBox {
+    width: 82px;
+    height: 82px;
+    background: rgba(0,0,0,.82);
+    border: 2px solid #777;
+    border-radius: 12px;
+    text-align: center;
+    padding-top: 8px;
+    position: relative;
+}
+
+.skillKey {
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.skillBox small {
+    display: block;
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+.cooldown {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.78);
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.skillBox.cooling .cooldown {
+    display: flex;
+}
+
+/* D 순간이동 */
+
+#skill-d {
+    border: 2px solid #55aaff;
+}
+
+#skill-d .skillKey {
+    color: #79bdff;
+}
+
+/* F 회복 */
+
+#skill-f {
+    border: 2px solid #55ff88;
+}
+
+#skill-f .skillKey {
+    color: #75ff9d;
+}
+
+/* =========================
+   투사체
+========================= */
+
+.projectile {
+    position: absolute;
+    width: 58px;
+    height: 58px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 45px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.laser {
+    font-size: 50px;
+    filter: drop-shadow(0 0 12px #ff3333);
+}
+
+/* =========================
+   야구 이벤트
+========================= */
+
+#eventText {
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    transform: translate(-50%, -50%);
+    font-weight: 900;
+    font-size: clamp(45px, 9vw, 120px);
+    text-align: center;
+    z-index: 100;
+    display: none;
+    text-shadow:
+        0 4px 0 #000,
+        0 0 15px #ff8c00,
+        0 0 35px #ff3d00;
+}
+
+.fireEdge {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 90;
+    display: none;
+    box-shadow:
+        inset 0 0 40px #ffeb3b,
+        inset 0 0 100px #ff5722,
+        inset 0 0 160px #d50000;
+    animation: firePulse .2s infinite alternate;
+}
+
+@keyframes firePulse {
+    from { opacity: .65; }
+    to { opacity: 1; }
+}
+
+.firework {
+    position: absolute;
+    font-size: 45px;
+    z-index: 95;
+    animation: boom 1s forwards;
+}
+
+@keyframes boom {
+    0% {
+        transform: scale(.1);
+        opacity: 0;
+    }
+
+    35% {
+        transform: scale(1.8);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(2.7);
+        opacity: 0;
+    }
+}
+
+/* =========================
+   데미지 숫자
+========================= */
+
+.damageNumber {
+    position: absolute;
+    z-index: 60;
+    font-size: 25px;
+    font-weight: bold;
+    pointer-events: none;
+    animation: damageFloat .8s forwards;
+}
+
+@keyframes damageFloat {
+    from {
+        transform: translate(-50%,0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translate(-50%,-70px);
+        opacity: 0;
+    }
+}
+
+.stunned {
+    filter: grayscale(1);
+}
+
+/* =========================
+   결과창
+========================= */
+
+#result {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.8);
+    z-index: 200;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.resultPanel {
+    padding: 45px;
+    min-width: 320px;
+    border-radius: 20px;
+    background: #191919;
+    border: 3px solid white;
+    text-align: center;
+}
+
+#resultTitle {
+    font-size: 50px;
+}
+
+#restart {
+    background: #ffd740;
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     시작 화면
+========================= -->
+
+<div id="menu" class="screen active">
+
+    <div class="title">탈모 잡기</div>
+
+    <div class="menuBox">
+
+        <button id="characterButton">
+            캐릭터 선택하기
+        </button>
+
+        <h2>난이도 선택</h2>
+
+        <button class="diffBtn selected" data-diff="easy">
+            쉬움
+        </button>
+
+        <button class="diffBtn" data-diff="hard">
+            어려움
+        </button>
+
+        <button class="diffBtn" data-diff="extreme">
+            익스트림
+        </button>
+
+        <br>
+
+        <button id="startSelect">
+            캐릭터 선택 화면으로
+        </button>
+
+    </div>
+</div>
+
+<!-- =========================
+     캐릭터 선택
+========================= -->
+
+<div id="selectScreen" class="screen">
+
+    <h1>캐릭터 선택하기</h1>
+
+    <div class="characterGrid">
+
+        <div class="characterCard" data-char="peng">
+
+            <h2>팽</h2>
+
+            <div class="portrait">
+                🐼
+            </div>
+
+            <p>체력 150</p>
+            <p>공격형 캐릭터</p>
+
+        </div>
+
+        <div class="characterCard" data-char="grandma">
+
+            <h2>매주할머니</h2>
+
+            <div class="portrait">
+                👵
+            </div>
+
+            <p>체력 150</p>
+            <p>회복 + 공격형 캐릭터</p>
+
+        </div>
+
+        <div class="characterCard" data-char="hyun">
+
+            <h2>현재구</h2>
+
+            <div class="portrait">
+                ⚾
+            </div>
+
+            <p>체력 50</p>
+            <p>야구 운빨 캐릭터</p>
+
+        </div>
+
+    </div>
+
+    <button id="confirmCharacter">
+        게임시작
+    </button>
+
+</div>
+
+<!-- =========================
+     캐릭터 설명
+========================= -->
+
+<div id="infoScreen" class="screen">
+
+    <div class="infoPanel">
+
+        <h1 id="infoName"></h1>
+
+        <div id="infoPortrait"
+             style="font-size:100px;">
+        </div>
+
+        <p id="infoDescription"></p>
+
+        <div class="controls">
+
+            <b>↑ ↓ ← →</b>
+            : 캐릭터 이동
+
+            <br>
+
+            <b>Q / W / E / R</b>
+            : 캐릭터 스킬
+
+            <br>
+
+            <b>D</b>
+            : 누르고 있는 방향으로 순간이동
+            (쿨타임 3초)
+
+            <br>
+
+            <b>F</b>
+            : 체력 20 회복
+            (쿨타임 5초)
+
+            <br><br>
+
+            Q 쿨타임: 3초<br>
+            W 쿨타임: 4초<br>
+            E 쿨타임: 4초<br>
+            R 쿨타임: 5초
+
+        </div>
+
+        <button id="realStart">
+            게임 시작
+        </button>
+
+    </div>
+</div>
+
+<!-- =========================
+     게임
+========================= -->
+
+<div id="game" class="screen">
+
+<div id="arena">
+
+    <!-- 보스 체력 -->
+
+    <div id="bossUI">
+
+        <div id="bossName">
+            탈모가 온 사람
+        </div>
+
+        <div class="hpOuter">
+
+            <div id="bossHPBar"
+                 class="hpInner">
+            </div>
+
+        </div>
+
+        <div id="bossHPText">
+            2999 / 2999
+        </div>
+
+    </div>
+
+    <!-- 플레이어 체력 -->
+
+    <div id="playerUI">
+
+        <div id="playerName">
+            플레이어
+        </div>
+
+        <div class="hpOuter">
+
+            <div id="playerHPBar"
+                 class="hpInner">
+            </div>
+
+        </div>
+
+        <div id="playerHPText"></div>
+
+        <div id="shieldText"></div>
+
+    </div>
+
+    <!-- 플레이어 -->
+
+    <div id="player"
+         class="entity">
+
+        <span id="playerIcon"></span>
+
+        <div id="playerEntityName"
+             class="entityName">
+        </div>
+
+    </div>
+
+    <!-- 보스 -->
+
+    <div id="boss"
+         class="entity">
+
+        👨‍🦲
+
+        <div class="entityName">
+            탈모가 온 사람
+        </div>
+
+    </div>
+
+    <!-- =========================
+         Q W E R D F 능력창
+    ========================= -->
+
+    <div id="skills">
+
+        <div class="skillBox"
+             id="skill-q">
+
+            <div class="skillKey">
+                Q
+            </div>
+
+            <small id="qName"></small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+        <div class="skillBox"
+             id="skill-w">
+
+            <div class="skillKey">
+                W
+            </div>
+
+            <small id="wName"></small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+        <div class="skillBox"
+             id="skill-e">
+
+            <div class="skillKey">
+                E
+            </div>
+
+            <small id="eName"></small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+        <div class="skillBox"
+             id="skill-r">
+
+            <div class="skillKey">
+                R
+            </div>
+
+            <small id="rName"></small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+        <!-- D -->
+
+        <div class="skillBox"
+             id="skill-d">
+
+            <div class="skillKey">
+                D
+            </div>
+
+            <small>
+                순간이동
+            </small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+        <!-- F -->
+
+        <div class="skillBox"
+             id="skill-f">
+
+            <div class="skillKey">
+                F
+            </div>
+
+            <small>
+                HP +20
+            </small>
+
+            <div class="cooldown"></div>
+
+        </div>
+
+    </div>
+
+    <div id="eventText"></div>
+
+    <div id="fireEdge"
+         class="fireEdge">
+    </div>
+
+</div>
+</div>
+
+<!-- =========================
+     결과
+========================= -->
+
+<div id="result">
+
+    <div class="resultPanel">
+
+        <h1 id="resultTitle"></h1>
+
+        <p id="resultText"></p>
+
+        <button id="restart">
+            다시 시작
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+/* ============================================================
+   게임 변수
+============================================================ */
+
+const screens = {
+    menu: document.getElementById("menu"),
+    select: document.getElementById("selectScreen"),
+    info: document.getElementById("infoScreen"),
+    game: document.getElementById("game")
+};
+
+const playerEl =
+    document.getElementById("player");
+
+const bossEl =
+    document.getElementById("boss");
+
+let selectedCharacter = null;
+
+let difficulty = "easy";
+
+let gameRunning = false;
+
+let bossHP = 2999;
+
+const bossMaxHP = 2999;
+
+let playerHP = 150;
+let playerMaxHP = 150;
+
+let shield = 0;
+
+let playerX = 20;
+let playerY = 70;
+
+let bossX = 75;
+let bossY = 45;
+
+let stunnedUntil = 0;
+
+let baseballDelayWin = false;
+
+const keys = {};
+
+const cooldowns = {
+    q: 0,
+    w: 0,
+    e: 0,
+    r: 0,
+    d: 0,
+    f: 0
+};
+
+const cooldownLength = {
+    q: 3000,
+    w: 4000,
+    e: 4000,
+    r: 5000,
+    d: 3000,
+    f: 5000
+};
+
+/* ============================================================
+   캐릭터 정보
+============================================================ */
+
+const characters = {
+
+    peng: {
+
+        name: "팽",
+
+        icon: "🐼",
+
+        hp: 150,
+
+        description:
+            "만리장성, 중국 국기, 만두, 마파두부를 사용하는 공격형 캐릭터.",
+
+        skills: {
+            q: "만리장성",
+            w: "중국 국기",
+            e: "만두",
+            r: "마파두부"
+        }
+    },
+
+    grandma: {
+
+        name: "매주할머니",
+
+        icon: "👵",
+
+        hp: 150,
+
+        description:
+            "광선으로 회복하고 메주와 지옥참마도 등을 사용하는 캐릭터.",
+
+        skills: {
+            q: "광선",
+            w: "메주",
+            e: "지옥참마도",
+            r: "할머니 소환"
+        }
+    },
+
+    hyun: {
+
+        name: "현재구",
+
+        icon: "⚾",
+
+        hp: 50,
+
+        description:
+            "체력은 낮지만 야구공으로 엄청난 데미지를 낼 수 있는 캐릭터.",
+
+        skills: {
+            q: "빵집",
+            w: "가족 보호막",
+            e: "구라",
+            r: "야구공"
+        }
+    }
+};
+
+/* ============================================================
+   화면 전환
+============================================================ */
+
+function showScreen(name) {
+
+    Object.values(screens).forEach(screen => {
+        screen.classList.remove("active");
+    });
+
+    screens[name].classList.add("active");
+}
+
+/* ============================================================
+   난이도 선택
+============================================================ */
+
+document.querySelectorAll(".diffBtn")
+.forEach(btn => {
+
+    btn.addEventListener("click", () => {
+
+        difficulty =
+            btn.dataset.diff;
+
+        document
+            .querySelectorAll(".diffBtn")
+            .forEach(b =>
+                b.classList.remove("selected")
+            );
+
+        btn.classList.add("selected");
+    });
+
+});
+
+/* ============================================================
+   캐릭터 선택 화면
+============================================================ */
+
+document.getElementById("characterButton")
+.onclick = () => {
+
+    showScreen("select");
+};
+
+document.getElementById("startSelect")
+.onclick = () => {
+
+    showScreen("select");
+};
+
+document.querySelectorAll(".characterCard")
+.forEach(card => {
+
+    card.onclick = () => {
+
+        selectedCharacter =
+            card.dataset.char;
+
+        document
+            .querySelectorAll(".characterCard")
+            .forEach(c =>
+                c.classList.remove("selected")
+            );
+
+        card.classList.add("selected");
+    };
+
+});
+
+/* ============================================================
+   캐릭터 설명
+============================================================ */
+
+document.getElementById("confirmCharacter")
+.onclick = () => {
+
+    if (!selectedCharacter) {
+
+        alert("캐릭터를 먼저 선택하세요!");
+
+        return;
+    }
+
+    const character =
+        characters[selectedCharacter];
+
+    document.getElementById("infoName")
+        .textContent =
+        character.name;
+
+    document.getElementById("infoPortrait")
+        .textContent =
+        character.icon;
+
+    document.getElementById("infoDescription")
+        .textContent =
+        character.description;
+
+    showScreen("info");
+};
+
+/* ============================================================
+   게임 시작
+============================================================ */
+
+document.getElementById("realStart")
+.onclick = startGame;
+
+function startGame() {
+
+    const c =
+        characters[selectedCharacter];
+
+    bossHP = bossMaxHP;
+
+    playerMaxHP = c.hp;
+    playerHP = c.hp;
+
+    shield = 0;
+
+    playerX = 20;
+    playerY = 70;
+
+    bossX = 75;
+    bossY = 45;
+
+    stunnedUntil = 0;
+
+    baseballDelayWin = false;
+
+    Object.keys(cooldowns)
+        .forEach(key => {
+            cooldowns[key] = 0;
+        });
+
+    document.getElementById("playerIcon")
+        .textContent =
+        c.icon;
+
+    document.getElementById("playerName")
+        .textContent =
+        c.name;
+
+    document.getElementById("playerEntityName")
+        .textContent =
+        c.name;
+
+    document.getElementById("qName")
+        .textContent =
+        c.skills.q;
+
+    document.getElementById("wName")
+        .textContent =
+        c.skills.w;
+
+    document.getElementById("eName")
+        .textContent =
+        c.skills.e;
+
+    document.getElementById("rName")
+        .textContent =
+        c.skills.r;
+
+    document.getElementById("shieldText")
+        .textContent = "";
+
+    updatePositions();
+
+    updateUI();
+
+    showScreen("game");
+
+    gameRunning = true;
+
+    startBossAttacks();
+}
+
+/* ============================================================
+   키 입력
+============================================================ */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        const key =
+            event.key.toLowerCase();
+
+        keys[key] = true;
+
+        if (!gameRunning)
+            return;
+
+        if (
+            [
+                "arrowup",
+                "arrowdown",
+                "arrowleft",
+                "arrowright"
+            ].includes(key)
+        ) {
+            event.preventDefault();
+        }
+
+        if (event.repeat) return;
+
+        if (key === "q")
+            useSkill("q");
+
+        if (key === "w")
+            useSkill("w");
+
+        if (key === "e")
+            useSkill("e");
+
+        if (key === "r")
+            useSkill("r");
+
+        if (key === "d")
+            teleport();
+
+        if (key === "f")
+            healPlayer();
+    }
+);
+
+document.addEventListener(
+    "keyup",
+    event => {
+
+        keys[event.key.toLowerCase()] = false;
+    }
+);
+
+/* ============================================================
+   플레이어 이동
+============================================================ */
+
+function movementLoop() {
+
+    requestAnimationFrame(
+        movementLoop
+    );
+
+    if (!gameRunning)
+        return;
+
+    if (Date.now() < stunnedUntil) {
+
+        playerEl.classList.add(
+            "stunned"
+        );
+
+        return;
+    }
+
+    playerEl.classList.remove(
+        "stunned"
+    );
+
+    const speed = 0.42;
+
+    if (keys.arrowup)
+        playerY -= speed;
+
+    if (keys.arrowdown)
+        playerY += speed;
+
+    if (keys.arrowleft)
+        playerX -= speed;
+
+    if (keys.arrowright)
+        playerX += speed;
+
+    playerX =
+        Math.max(
+            4,
+            Math.min(96, playerX)
+        );
+
+    playerY =
+        Math.max(
+            12,
+            Math.min(90, playerY)
+        );
+
+    updatePositions();
+}
+
+movementLoop();
+
+/* ============================================================
+   위치 업데이트
+============================================================ */
+
+function updatePositions() {
+
+    playerEl.style.left =
+        playerX + "%";
+
+    playerEl.style.top =
+        playerY + "%";
+
+    bossEl.style.left =
+        bossX + "%";
+
+    bossEl.style.top =
+        bossY + "%";
+}
+
+/* ============================================================
+   D 순간이동
+============================================================ */
+
+function teleport() {
+
+    if (!canUse("d"))
+        return;
+
+    let dx = 0;
+    let dy = 0;
+
+    if (keys.arrowleft)
+        dx -= 15;
+
+    if (keys.arrowright)
+        dx += 15;
+
+    if (keys.arrowup)
+        dy -= 15;
+
+    if (keys.arrowdown)
+        dy += 15;
+
+    /*
+       방향키를 누르지 않은 상태에서
+       D를 누르면 보스 방향으로 순간이동
+    */
+
+    if (dx === 0 && dy === 0) {
+
+        const distX =
+            bossX - playerX;
+
+        const distY =
+            bossY - playerY;
+
+        const length =
+            Math.hypot(
+                distX,
+                distY
+            ) || 1;
+
+        dx =
+            distX / length * 12;
+
+        dy =
+            distY / length * 12;
+    }
+
+    playerX += dx;
+    playerY += dy;
+
+    playerX =
+        Math.max(
+            4,
+            Math.min(96, playerX)
+        );
+
+    playerY =
+        Math.max(
+            12,
+            Math.min(90, playerY)
+        );
+
+    updatePositions();
+
+    showDamage(
+        playerX,
+        playerY,
+        "순간이동!"
+    );
+
+    setCooldown(
+        "d",
+        cooldownLength.d
+    );
+}
+
+/* ============================================================
+   F 체력 회복
+============================================================ */
+
+function healPlayer() {
+
+    if (!canUse("f"))
+        return;
+
+    /*
+       최대 체력 이상으로는
+       회복되지 않음
+    */
+
+    const before =
+        playerHP;
+
+    playerHP =
+        Math.min(
+            playerMaxHP,
+            playerHP + 20
+        );
+
+    const healed =
+        playerHP - before;
+
+    if (healed > 0) {
+
+        showDamage(
+            playerX,
+            playerY,
+            "+" + healed + " HP"
+        );
+
+    } else {
+
+        showDamage(
+            playerX,
+            playerY,
+            "HP 최대!"
+        );
+    }
+
+    updateUI();
+
+    setCooldown(
+        "f",
+        cooldownLength.f
+    );
+}
+
+/* ============================================================
+   Q W E R 스킬
+============================================================ */
+
+function useSkill(key) {
+
+    if (!canUse(key))
+        return;
+
+    setCooldown(
+        key,
+        cooldownLength[key]
+    );
+
+    if (
+        selectedCharacter ===
+        "peng"
+    ) {
+
+        pengSkill(key);
+    }
+
+    if (
+        selectedCharacter ===
+        "grandma"
+    ) {
+
+        grandmaSkill(key);
+    }
+
+    if (
+        selectedCharacter ===
+        "hyun"
+    ) {
+
+        hyunSkill(key);
+    }
+}
+
+/* ============================================================
+   팽 스킬
+============================================================ */
+
+function pengSkill(key) {
+
+    if (key === "q") {
+
+        attackProjectile(
+            "🧱",
+            100,
+            1000
+        );
+    }
+
+    if (key === "w") {
+
+        attackProjectile(
+            "🇨🇳",
+            60,
+            1000
+        );
+    }
+
+    if (key === "e") {
+
+        attackProjectile(
+            "🥟",
+            70,
+            1000
+        );
+    }
+
+    if (key === "r") {
+
+        attackProjectile(
+            "🍲",
+            150,
+            1000
+        );
+    }
+}
+
+/* ============================================================
+   매주할머니 스킬
+============================================================ */
+
+function grandmaSkill(key) {
+
+    if (key === "q") {
+
+        attackProjectile(
+            "✨",
+            0,
+            1000,
+            () => {
+
+                playerHP =
+                    Math.min(
+                        playerMaxHP,
+                        playerHP + 30
+                    );
+
+                showDamage(
+                    playerX,
+                    playerY,
+                    "+30"
+                );
+
+                updateUI();
+
+                setTimeout(() => {
+
+                    bossToPlayerProjectile(
+                        "✨",
+                        15,
+                        100
+                    );
+
+                }, 100);
+            }
+        );
+    }
+
+    if (key === "w") {
+
+        attackProjectile(
+            "🫘",
+            70,
+            1000
+        );
+    }
+
+    if (key === "e") {
+
+        attackProjectile(
+            "⚔️",
+            80,
+            1000
+        );
+    }
+
+    if (key === "r") {
+
+        for (
+            let i = 0;
+            i < 5;
+            i++
+        ) {
+
+            setTimeout(() => {
+
+                attackProjectile(
+                    "👵",
+                    30,
+                    1000
+                );
+
+            }, i * 120);
+        }
+    }
+}
+
+/* ============================================================
+   현재구 스킬
+============================================================ */
+
+function hyunSkill(key) {
+
+    if (key === "q") {
+
+        const bakery =
+            createFloatingObject(
+                "🏠",
+                playerX,
+                playerY
+            );
+
+        setTimeout(() => {
+
+            attackProjectileFrom(
+                "🍞",
+                40,
+                1000,
+                playerX,
+                playerY
+            );
+
+        }, 250);
+
+        setTimeout(() => {
+
+            bakery.remove();
+
+        }, 1800);
+    }
+
+    if (key === "w") {
+
+        const family =
+            createFloatingObject(
+                "👨‍👩‍👧‍👦",
+                playerX + 4,
+                playerY
+            );
+
+        shield = 30;
+
+        document.getElementById(
+            "shieldText"
+        ).textContent =
+            "보호막: 30";
+
+        setTimeout(() => {
+
+            shield = 0;
+
+            document.getElementById(
+                "shieldText"
+            ).textContent = "";
+
+            family.remove();
+
+        }, 3000);
+    }
+
+    if (key === "e") {
+
+        attackProjectile(
+            "🤥",
+            80,
+            1000
+        );
+    }
+
+    if (key === "r") {
+
+        baseballAttack();
+    }
+}
+
+/* ============================================================
+   현재구 야구공
+============================================================ */
+
+function baseballAttack() {
+
+    baseballDelayWin = true;
+
+    const random =
+        Math.random() * 100;
+
+    let result;
+    let damage;
+
+    if (random < 49.9) {
+
+        result =
+            "스트라이크!";
+
+        damage = 80;
+
+    } else if (
+        random < 74.9
+    ) {
+
+        result =
+            "볼!";
+
+        damage = 40;
+
+    } else if (
+        random < 89.9
+    ) {
+
+        result =
+            "삼진 아웃!";
+
+        damage = 160;
+
+    } else if (
+        random < 99.9
+    ) {
+
+        result =
+            "삼자 범퇴!";
+
+        damage = 800;
+
+    } else {
+
+        result =
+            "퍼펙트 게임!";
+
+        damage = 2999;
+    }
+
+    showBaseballResult(
+        result
+    );
+
+    attackProjectile(
+        "⚾",
+        damage,
+        1000,
+        null,
+        true
+    );
+
+    /*
+       현재구 R은 5초 동안 결과 표시
+    */
+
+    setTimeout(() => {
+
+        hideBaseballResult();
+
+        baseballDelayWin = false;
+
+        if (bossHP <= 0) {
+
+            winGame();
+        }
+
+    }, 5000);
+}
+
+/* ============================================================
+   야구 결과 표시
+============================================================ */
+
+function showBaseballResult(text) {
+
+    const event =
+        document.getElementById(
+            "eventText"
+        );
+
+    event.textContent = text;
+
+    event.style.display =
+        "block";
+
+    if (
+        text === "삼자 범퇴!" ||
+        text === "퍼펙트 게임!"
+    ) {
+
+        document.getElementById(
+            "fireEdge"
+        ).style.display =
+            "block";
+    }
+
+    if (
+        text ===
+        "퍼펙트 게임!"
+    ) {
+
+        createFireworks();
+    }
+}
+
+function hideBaseballResult() {
+
+    document.getElementById(
+        "eventText"
+    ).style.display =
+        "none";
+
+    document.getElementById(
+        "fireEdge"
+    ).style.display =
+        "none";
+}
+
+/* ============================================================
+   폭죽
+============================================================ */
+
+function createFireworks() {
+
+    for (
+        let i = 0;
+        i < 30;
+        i++
+    ) {
+
+        setTimeout(() => {
+
+            const firework =
+                document.createElement(
+                    "div"
+                );
+
+            firework.className =
+                "firework";
+
+            const icons =
+                [
+                    "🎆",
+                    "🎇",
+                    "✨",
+                    "💥"
+                ];
+
+            firework.textContent =
+                icons[
+                    Math.floor(
+                        Math.random() *
+                        icons.length
+                    )
+                ];
+
+            firework.style.left =
+                Math.random() *
+                95 + "%";
+
+            firework.style.top =
+                Math.random() *
+                85 + "%";
+
+            document.getElementById(
+                "arena"
+            ).appendChild(
+                firework
+            );
+
+            setTimeout(() => {
+
+                firework.remove();
+
+            }, 1100);
+
+        }, i * 100);
+    }
+}
+
+/* ============================================================
+   플레이어 공격
+============================================================ */
+
+function attackProjectile(
+    icon,
+    damage,
+    duration,
+    callback = null,
+    baseball = false
+) {
+
+    attackProjectileFrom(
+        icon,
+        damage,
+        duration,
+        playerX,
+        playerY,
+        callback,
+        baseball
+    );
+}
+
+function attackProjectileFrom(
+    icon,
+    damage,
+    duration,
+    startX,
+    startY,
+    callback = null,
+    baseball = false
+) {
+
+    const projectile =
+        document.createElement(
+            "div"
+        );
+
+    projectile.className =
+        "projectile";
+
+    projectile.textContent =
+        icon;
+
+    projectile.style.left =
+        startX + "%";
+
+    projectile.style.top =
+        startY + "%";
+
+    document.getElementById(
+        "arena"
+    ).appendChild(
+        projectile
+    );
+
+    const start =
+        performance.now();
+
+    const targetX =
+        bossX;
+
+    const targetY =
+        bossY;
+
+    function animate(now) {
+
+        if (!gameRunning) {
+
+            projectile.remove();
+
+            return;
+        }
+
+        const progress =
+            Math.min(
+                1,
+                (now - start) /
+                duration
+            );
+
+        projectile.style.left =
+            startX +
+            (
+                targetX -
+                startX
+            ) *
+            progress +
+            "%";
+
+        projectile.style.top =
+            startY +
+            (
+                targetY -
+                startY
+            ) *
+            progress +
+            "%";
+
+        if (progress < 1) {
+
+            requestAnimationFrame(
+                animate
+            );
+
+        } else {
+
+            projectile.remove();
+
+            if (damage > 0) {
+
+                damageBoss(
+                    damage,
+                    baseball
+                );
+            }
+
+            if (callback) {
+
+                callback();
+            }
+        }
+    }
+
+    requestAnimationFrame(
+        animate
+    );
+}
+
+/* ============================================================
+   보스 공격 투사체
+============================================================ */
+
+function bossToPlayerProjectile(
+    icon,
+    damage,
+    duration = 1000
+) {
+
+    const projectile =
+        document.createElement(
+            "div"
+        );
+
+    projectile.className =
+        "projectile laser";
+
+    projectile.textContent =
+        icon;
+
+    const startX =
+        bossX;
+
+    const startY =
+        bossY;
+
+    /*
+       발사 순간 플레이어가 있던
+       위치를 향해 날아감.
+       플레이어가 움직이면 회피 가능.
+    */
+
+    const targetX =
+        playerX;
+
+    const targetY =
+        playerY;
+
+    projectile.style.left =
+        startX + "%";
+
+    projectile.style.top =
+        startY + "%";
+
+    document.getElementById(
+        "arena"
+    ).appendChild(
+        projectile
+    );
+
+    const start =
+        performance.now();
+
+    function animate(now) {
+
+        if (!gameRunning) {
+
+            projectile.remove();
+
+            return;
+        }
+
+        const progress =
+            Math.min(
+                1,
+                (now - start) /
+                duration
+            );
+
+        const x =
+            startX +
+            (
+                targetX -
+                startX
+            ) *
+            progress;
+
+        const y =
+            startY +
+            (
+                targetY -
+                startY
+            ) *
+            progress;
+
+        projectile.style.left =
+            x + "%";
+
+        projectile.style.top =
+            y + "%";
+
+        const distance =
+            Math.hypot(
+
+                (
+                    x -
+                    playerX
+                ) *
+                window.innerWidth /
+                100,
+
+                (
+                    y -
+                    playerY
+                ) *
+                window.innerHeight /
+                100
+            );
+
+        if (distance < 45) {
+
+            projectile.remove();
+
+            playerHit(
+                damage
+            );
+
+            /*
+               맞으면 0.1초 이동 불가
+            */
+
+            stunnedUntil =
+                Date.now() +
+                100;
+
+            return;
+        }
+
+        if (progress < 1) {
+
+            requestAnimationFrame(
+                animate
+            );
+
+        } else {
+
+            projectile.remove();
+        }
+    }
+
+    requestAnimationFrame(
+        animate
+    );
+}
+
+/* ============================================================
+   초강력 광선
+============================================================ */
+
+let bossAttackToken = 0;
+
+function startBossAttacks() {
+
+    bossAttackToken++;
+
+    const token =
+        bossAttackToken;
+
+    let shots;
+    let damage;
+    let cooldown;
+
+    if (
+        difficulty ===
+        "easy"
+    ) {
+
+        shots = 10;
+
+        damage = 5;
+
+        cooldown = 5000;
+
+    } else if (
+        difficulty ===
+        "hard"
+    ) {
+
+        shots = 20;
+
+        damage = 10;
+
+        cooldown = 2500;
+
+    } else {
+
+        shots = 30;
+
+        damage = 15;
+
+        /*
+           익스트림:
+           추가 재사용 대기시간 없음
+        */
+
+        cooldown = 0;
+    }
+
+    function attackWave() {
+
+        if (
+            !gameRunning ||
+            token !==
+            bossAttackToken
+        ) {
+
+            return;
+        }
+
+        for (
+            let i = 0;
+            i < shots;
+            i++
+        ) {
+
+            setTimeout(() => {
+
+                if (
+                    gameRunning &&
+                    token ===
+                    bossAttackToken
+                ) {
+
+                    bossToPlayerProjectile(
+                        "☄️",
+                        damage,
+                        1000
+                    );
+                }
+
+            }, i * 150);
+        }
+
+        const waveDuration =
+            (shots - 1) *
+            150 +
+            1000;
+
+        setTimeout(() => {
+
+            if (
+                gameRunning &&
+                token ===
+                bossAttackToken
+            ) {
+
+                attackWave();
+            }
+
+        }, waveDuration + cooldown);
+    }
+
+    attackWave();
+}
+
+/* ============================================================
+   보스 랜덤 이동
+============================================================ */
+
+setInterval(() => {
+
+    if (!gameRunning)
+        return;
+
+    bossX +=
+        (Math.random() - .5) *
+        18;
+
+    bossY +=
+        (Math.random() - .5) *
+        18;
+
+    bossX =
+        Math.max(
+            15,
+            Math.min(
+                90,
+                bossX
+            )
+        );
+
+    bossY =
+        Math.max(
+            20,
+            Math.min(
+                82,
+                bossY
+            )
+        );
+
+    updatePositions();
+
+}, 650);
+
+/* ============================================================
+   보스 데미지
+============================================================ */
+
+function damageBoss(
+    amount,
+    baseball = false
+) {
+
+    bossHP -= amount;
+
+    showDamage(
+        bossX,
+        bossY,
+        "-" + amount
+    );
+
+    if (bossHP < 0) {
+
+        bossHP = 0;
+    }
+
+    updateUI();
+
+    if (
+        bossHP <= 0
+    ) {
+
+        /*
+           현재구 R 사용 중이면
+           5초 연출이 끝난 뒤 승리
+        */
+
+        if (
+            selectedCharacter ===
+            "hyun" &&
+            baseballDelayWin
+        ) {
+
+            return;
+        }
+
+        winGame();
+    }
+}
+
+/* ============================================================
+   플레이어 데미지
+============================================================ */
+
+function playerHit(amount) {
+
+    /*
+       현재구 R로 보스 HP가 0이 된 뒤
+       5초 연출 중에는 무적
+    */
+
+    if (
+        selectedCharacter ===
+        "hyun" &&
+        baseballDelayWin &&
+        bossHP <= 0
+    ) {
+
+        return;
+    }
+
+    let remaining =
+        amount;
+
+    /*
+       현재구 보호막
+    */
+
+    if (shield > 0) {
+
+        const blocked =
+            Math.min(
+                shield,
+                remaining
+            );
+
+        shield -=
+            blocked;
+
+        remaining -=
+            blocked;
+
+        document.getElementById(
+            "shieldText"
+        ).textContent =
+            shield > 0
+            ? "보호막: " +
+              shield
+            : "";
+    }
+
+    if (remaining > 0) {
+
+        playerHP -=
+            remaining;
+
+        showDamage(
+            playerX,
+            playerY,
+            "-" + remaining
+        );
+    }
+
+    if (playerHP < 0) {
+
+        playerHP = 0;
+    }
+
+    updateUI();
+
+    if (
+        playerHP <= 0
+    ) {
+
+        loseGame();
+    }
+}
+
+/* ============================================================
+   데미지 / 회복 표시
+============================================================ */
+
+function showDamage(
+    x,
+    y,
+    text
+) {
+
+    const damage =
+        document.createElement(
+            "div"
+        );
+
+    damage.className =
+        "damageNumber";
+
+    damage.textContent =
+        text;
+
+    damage.style.left =
+        x + "%";
+
+    damage.style.top =
+        y + "%";
+
+    document.getElementById(
+        "arena"
+    ).appendChild(
+        damage
+    );
+
+    setTimeout(() => {
+
+        damage.remove();
+
+    }, 850);
+}
+
+/* ============================================================
+   소환 오브젝트
+============================================================ */
+
+function createFloatingObject(
+    icon,
+    x,
+    y
+) {
+
+    const object =
+        document.createElement(
+            "div"
+        );
+
+    object.className =
+        "projectile";
+
+    object.textContent =
+        icon;
+
+    object.style.left =
+        x + "%";
+
+    object.style.top =
+        y + "%";
+
+    document.getElementById(
+        "arena"
+    ).appendChild(
+        object
+    );
+
+    return object;
+}
+
+/* ============================================================
+   HP UI
+============================================================ */
+
+function updateUI() {
+
+    document.getElementById(
+        "bossHPBar"
+    ).style.width =
+
+        Math.max(
+            0,
+            bossHP /
+            bossMaxHP *
+            100
+        ) + "%";
+
+    document.getElementById(
+        "bossHPText"
+    ).textContent =
+
+        Math.max(
+            0,
+            bossHP
+        ) +
+        " / " +
+        bossMaxHP;
+
+    document.getElementById(
+        "playerHPBar"
+    ).style.width =
+
+        Math.max(
+            0,
+            playerHP /
+            playerMaxHP *
+            100
+        ) + "%";
+
+    document.getElementById(
+        "playerHPText"
+    ).textContent =
+
+        Math.max(
+            0,
+            playerHP
+        ) +
+        " / " +
+        playerMaxHP;
+}
+
+/* ============================================================
+   쿨타임
+============================================================ */
+
+function canUse(key) {
+
+    return (
+        Date.now() >=
+        cooldowns[key]
+    );
+}
+
+/*
+   Q W E R뿐 아니라
+   D와 F도 화면에 쿨타임 표시
+*/
+
+function setCooldown(
+    key,
+    milliseconds
+) {
+
+    cooldowns[key] =
+        Date.now() +
+        milliseconds;
+
+    if (
+        ![
+            "q",
+            "w",
+            "e",
+            "r",
+            "d",
+            "f"
+        ].includes(key)
+    ) {
+
+        return;
+    }
+
+    const box =
+        document.getElementById(
+            "skill-" + key
+        );
+
+    if (!box)
+        return;
+
+    box.classList.add(
+        "cooling"
+    );
+
+    const display =
+        box.querySelector(
+            ".cooldown"
+        );
+
+    function updateCooldown() {
+
+        const remaining =
+            cooldowns[key] -
+            Date.now();
+
+        if (
+            remaining <= 0
+        ) {
+
+            box.classList.remove(
+                "cooling"
+            );
+
+            display.textContent =
+                "";
+
+            return;
+        }
+
+        display.textContent =
+            (
+                remaining /
+                1000
+            ).toFixed(1);
+
+        requestAnimationFrame(
+            updateCooldown
+        );
+    }
+
+    updateCooldown();
+}
+
+/* ============================================================
+   승리
+============================================================ */
+
+function winGame() {
+
+    if (!gameRunning)
+        return;
+
+    gameRunning = false;
+
+    bossAttackToken++;
+
+    document.getElementById(
+        "resultTitle"
+    ).textContent =
+        "게임 승리!";
+
+    document.getElementById(
+        "resultText"
+    ).textContent =
+        "탈모가 온 사람의 체력을 모두 깎았습니다!";
+
+    document.getElementById(
+        "result"
+    ).style.display =
+        "flex";
+}
+
+/* ============================================================
+   패배
+============================================================ */
+
+function loseGame() {
+
+    if (!gameRunning)
+        return;
+
+    gameRunning = false;
+
+    bossAttackToken++;
+
+    document.getElementById(
+        "resultTitle"
+    ).textContent =
+        "게임 패배";
+
+    document.getElementById(
+        "resultText"
+    ).textContent =
+
+        characters[
+            selectedCharacter
+        ].name +
+
+        "의 체력이 0이 되었습니다.";
+
+    document.getElementById(
+        "result"
+    ).style.display =
+        "flex";
+}
+
+/* ============================================================
+   다시 시작
+============================================================ */
+
+document.getElementById(
+    "restart"
+).onclick = () => {
+
+    gameRunning = false;
+
+    bossAttackToken++;
+
+    document.getElementById(
+        "result"
+    ).style.display =
+        "none";
+
+    hideBaseballResult();
+
+    selectedCharacter =
+        null;
+
+    document
+        .querySelectorAll(
+            ".characterCard"
+        )
+        .forEach(card => {
+
+            card.classList.remove(
+                "selected"
+            );
+        });
+
+    document
+        .querySelectorAll(
+            ".projectile"
+        )
+        .forEach(projectile => {
+
+            projectile.remove();
+        });
+
+    /*
+       남아 있는 쿨타임 표시 제거
+    */
+
+    document
+        .querySelectorAll(
+            ".skillBox"
+        )
+        .forEach(box => {
+
+            box.classList.remove(
+                "cooling"
+            );
+
+            const cd =
+                box.querySelector(
+                    ".cooldown"
+                );
+
+            if (cd) {
+                cd.textContent = "";
+            }
+        });
+
+    showScreen(
+        "menu"
+    );
+};
+
+</script>
+
+</body>
+</html>

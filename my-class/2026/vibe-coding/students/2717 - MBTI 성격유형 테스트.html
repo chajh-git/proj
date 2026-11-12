@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MBTI 테스트 게임</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #9face6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 600px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    .question {
+      font-size: 22px;
+      margin: 20px 0;
+    }
+
+    button {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: #6c63ff;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:hover {
+      background: #574bdb;
+    }
+
+    .result {
+      font-size: 24px;
+      margin-top: 20px;
+      color: #222;
+    }
+
+    .character {
+      font-size: 20px;
+      margin-top: 15px;
+      color: #444;
+    }
+
+    .emoji {
+      font-size: 60px;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 MBTI 성격 테스트</h1>
+    <div id="quiz"></div>
+  </div>
+
+  <script>
+    const questions = [
+      {
+        q: '주말에 시간이 생기면 가장 하고 싶은 것은?',
+        a: '친구들과 만나서 놀러 간다',
+        b: '집에서 혼자 쉬거나 취미를 즐긴다',
+        typeA: 'E',
+        typeB: 'I'
+      },
+      {
+        q: '새로운 게임을 시작했을 때 나는?',
+        a: '일단 플레이하면서 배운다',
+        b: '공략이나 설명을 먼저 본다',
+        typeA: 'S',
+        typeB: 'N'
+      },
+      {
+        q: '친구가 속상해 보이면?',
+        a: '어떻게 해결할지 같이 고민한다',
+        b: '먼저 위로하고 공감해준다',
+        typeA: 'T',
+        typeB: 'F'
+      },
+      {
+        q: '학교 수행평가가 있을 때?',
+        a: '미리 계획 세워서 준비한다',
+        b: '마감 직전에 집중해서 한다',
+        typeA: 'J',
+        typeB: 'P'
+      },
+      {
+        q: '낯선 사람들과 모둠 활동을 하면?',
+        a: '먼저 말을 걸고 분위기를 만든다',
+        b: '다른 친구들이 말할 때까지 기다린다',
+        typeA: 'E',
+        typeB: 'I'
+      },
+      {
+        q: '영화를 볼 때 더 좋아하는 것은?',
+        a: '현실적이고 실제 같은 이야기',
+        b: '상상력이 넘치는 판타지 이야기',
+        typeA: 'S',
+        typeB: 'N'
+      },
+      {
+        q: '친구와 의견 충돌이 생기면?',
+        a: '누가 맞는지 따져본다',
+        b: '서로 기분 상하지 않게 해결한다',
+        typeA: 'T',
+        typeB: 'F'
+      },
+      {
+        q: '가방이나 책상 정리는?',
+        a: '항상 깔끔하게 정리한다',
+        b: '필요할 때만 정리한다',
+        typeA: 'J',
+        typeB: 'P'
+      },
+      {
+        q: '학교 축제에서 나는?',
+        a: '무대나 활동에 적극 참여한다',
+        b: '구경하거나 조용히 즐긴다',
+        typeA: 'E',
+        typeB: 'I'
+      },
+      {
+        q: '미래를 생각할 때 더 가까운 것은?',
+        a: '현실적이고 안정적인 계획',
+        b: '새롭고 다양한 가능성 상상',
+        typeA: 'S',
+        typeB: 'N'
+      }
+    ];
+
+    const characters = {
+      ENFP: { name: '피카츄 ⚡', emoji: '⚡' },
+      INFP: { name: '해리포터 🪄', emoji: '🪄' },
+      ENTJ: { name: '아이언맨 🤖', emoji: '🤖' },
+      INTJ: { name: '셜록 홈즈 🕵️', emoji: '🕵️' },
+      ESFP: { name: '스폰지밥 🍔', emoji: '🍔' },
+      ISFP: { name: '토토로 🌳', emoji: '🌳' },
+      ESTP: { name: '나루토 🍥', emoji: '🍥' },
+      ISTJ: { name: '캡틴 아메리카 🛡️', emoji: '🛡️' }
+    };
+
+    let current = 0;
+    let scores = {
+      E: 0,
+      I: 0,
+      S: 0,
+      N: 0,
+      T: 0,
+      F: 0,
+      J: 0,
+      P: 0
+    };
+
+    const quiz = document.getElementById('quiz');
+
+    function showQuestion() {
+      if (current >= questions.length) {
+        showResult();
+        return;
+      }
+
+      const q = questions[current];
+
+      quiz.innerHTML = `
+        <div class="question">${current + 1}. ${q.q}</div>
+        <button onclick="choose('A')">A. ${q.a}</button>
+        <button onclick="choose('B')">B. ${q.b}</button>
+      `;
+    }
+
+    function choose(answer) {
+      const q = questions[current];
+
+      if (answer === 'A') {
+        scores[q.typeA]++;
+      } else {
+        scores[q.typeB]++;
+      }
+
+      current++;
+      showQuestion();
+    }
+
+    function showResult() {
+      const mbti =
+        (scores.E >= scores.I ? 'E' : 'I') +
+        (scores.S >= scores.N ? 'S' : 'N') +
+        (scores.T >= scores.F ? 'T' : 'F') +
+        (scores.J >= scores.P ? 'J' : 'P');
+
+      const character = characters[mbti] || {
+        name: '귀여운 랜덤 캐릭터 😄',
+        emoji: '😄'
+      };
+
+      quiz.innerHTML = `
+        <div class="result">🎉 당신의 MBTI는 <br><strong>${mbti}</strong> 입니다!</div>
+        <div class="character">잘 어울리는 캐릭터:<br><strong>${character.name}</strong></div>
+        <div class="emoji">${character.emoji}</div>
+        <button onclick="location.reload()">다시 하기</button>
+      `;
+    }
+
+    showQuestion();
+  </script>
+</body>
+</html>

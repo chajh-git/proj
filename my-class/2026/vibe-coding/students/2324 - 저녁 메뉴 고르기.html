@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>저녁 메뉴 추천</title>
+
+<style>
+body { margin:0; font-family:Arial; text-align:center; }
+
+.page {
+  display:none;
+  height:100vh;
+  padding-top:80px;
+  position:relative;
+}
+.active { display:block; }
+
+/* 연한 색 */
+.p1 { background:#ffcccc; }
+.p2 { background:#ffe0b3; }
+.p3 { background:#ffffcc; }
+.p4 { background:#cce5ff; }
+.p5 { background:#e6ccff; }
+
+button {
+  padding:10px 15px;
+  margin:6px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
+
+/* 하단 버튼 */
+.bottom {
+  position:absolute;
+  bottom:20px;
+  width:100%;
+}
+
+/* 결과 카드 */
+.card {
+  background:white;
+  padding:20px;
+  border-radius:15px;
+  display:inline-block;
+}
+
+img {
+  width:200px;
+  border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 1페이지 -->
+<div class="page p1 active" id="p1">
+  <h1>🍽️ 저녁 메뉴 추천</h1>
+  <button onclick="go(2)">시작</button>
+</div>
+
+<!-- 2페이지 -->
+<div class="page p2" id="p2">
+  <h2>무엇이 먹고 싶나요?</h2>
+  <button onclick="select('korean')">한식</button>
+  <button onclick="select('western')">양식</button>
+  <button onclick="select('japanese')">일식</button>
+  <button onclick="select('chinese')">중식</button>
+  <button onclick="select('etc')">딴거</button>
+
+  <div class="bottom">
+    <button onclick="go(1)">← 돌아가기</button>
+  </div>
+</div>
+
+<!-- 3페이지 -->
+<div class="page p3" id="p3">
+  <h2>음식 선택 (10개)</h2>
+  <div id="menuList"></div>
+
+  <div class="bottom">
+    <button onclick="go(2)">← 돌아가기</button>
+  </div>
+</div>
+
+<!-- 4페이지 -->
+<div class="page p4" id="p4">
+  <h2>결과 보기</h2>
+  <button onclick="showResult()">추천 결과</button>
+
+  <div class="bottom">
+    <button onclick="go(3)">← 돌아가기</button>
+  </div>
+</div>
+
+<!-- 5페이지 -->
+<div class="page p5" id="p5">
+  <h2>추천 메뉴 🍴</h2>
+  <div id="result"></div>
+
+  <div class="bottom">
+    <button onclick="go(4)">← 돌아가기</button>
+    <button onclick="location.reload()">처음으로</button>
+  </div>
+</div>
+
+<script>
+let category = "";
+let selectedMenu = "";
+
+// 페이지 이동
+function go(n){
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById("p"+n).classList.add('active');
+}
+
+// 데이터 (각 10개)
+const data = {
+  korean: [
+    {name:"비빔밥", kcal:"550kcal", img:"https://source.unsplash.com/200x200/?bibimbap"},
+    {name:"김치찌개", kcal:"450kcal", img:"https://source.unsplash.com/200x200/?kimchi"},
+    {name:"불고기", kcal:"650kcal", img:"https://source.unsplash.com/200x200/?bulgogi"},
+    {name:"된장찌개", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?stew"},
+    {name:"삼겹살", kcal:"800kcal", img:"https://source.unsplash.com/200x200/?pork"},
+    {name:"잡채", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?noodles"},
+    {name:"냉면", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?cold-noodles"},
+    {name:"김밥", kcal:"400kcal", img:"https://source.unsplash.com/200x200/?gimbap"},
+    {name:"순두부찌개", kcal:"450kcal", img:"https://source.unsplash.com/200x200/?tofu"},
+    {name:"갈비", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?ribs"}
+  ],
+  western: [
+    {name:"피자", kcal:"300kcal", img:"https://source.unsplash.com/200x200/?pizza"},
+    {name:"파스타", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?pasta"},
+    {name:"스테이크", kcal:"800kcal", img:"https://source.unsplash.com/200x200/?steak"},
+    {name:"햄버거", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?burger"},
+    {name:"샐러드", kcal:"300kcal", img:"https://source.unsplash.com/200x200/?salad"},
+    {name:"리조또", kcal:"650kcal", img:"https://source.unsplash.com/200x200/?risotto"},
+    {name:"샌드위치", kcal:"400kcal", img:"https://source.unsplash.com/200x200/?sandwich"},
+    {name:"핫도그", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?hotdog"},
+    {name:"라자냐", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?lasagna"},
+    {name:"오믈렛", kcal:"350kcal", img:"https://source.unsplash.com/200x200/?omelette"}
+  ],
+  japanese: [
+    {name:"초밥", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?sushi"},
+    {name:"라멘", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?ramen"},
+    {name:"돈카츠", kcal:"800kcal", img:"https://source.unsplash.com/200x200/?tonkatsu"},
+    {name:"우동", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?udon"},
+    {name:"덮밥", kcal:"650kcal", img:"https://source.unsplash.com/200x200/?rice"},
+    {name:"타코야끼", kcal:"400kcal", img:"https://source.unsplash.com/200x200/?takoyaki"},
+    {name:"오코노미야끼", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?okonomiyaki"},
+    {name:"규동", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?beef-bowl"},
+    {name:"벤토", kcal:"550kcal", img:"https://source.unsplash.com/200x200/?bento"},
+    {name:"소바", kcal:"450kcal", img:"https://source.unsplash.com/200x200/?soba"}
+  ],
+  chinese: [
+    {name:"짜장면", kcal:"800kcal", img:"https://source.unsplash.com/200x200/?noodles"},
+    {name:"짬뽕", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?spicy-noodle"},
+    {name:"탕수육", kcal:"900kcal", img:"https://source.unsplash.com/200x200/?pork"},
+    {name:"마파두부", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?tofu"},
+    {name:"볶음밥", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?fried-rice"},
+    {name:"군만두", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?dumplings"},
+    {name:"양장피", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?noodle-salad"},
+    {name:"깐풍기", kcal:"800kcal", img:"https://source.unsplash.com/200x200/?fried-chicken"},
+    {name:"유산슬", kcal:"650kcal", img:"https://source.unsplash.com/200x200/?seafood"},
+    {name:"마라탕", kcal:"700kcal", img:"https://source.unsplash.com/200x200/?spicy-soup"}
+  ],
+  etc: [
+    {name:"치킨", kcal:"900kcal", img:"https://source.unsplash.com/200x200/?fried-chicken"},
+    {name:"떡볶이", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?tteokbokki"},
+    {name:"햄버거", kcal:"600kcal", img:"https://source.unsplash.com/200x200/?burger"},
+    {name:"핫도그", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?hotdog"},
+    {name:"샌드위치", kcal:"400kcal", img:"https://source.unsplash.com/200x200/?sandwich"},
+    {name:"라면", kcal:"500kcal", img:"https://source.unsplash.com/200x200/?instant-noodles"},
+    {name:"피자", kcal:"300kcal", img:"https://source.unsplash.com/200x200/?pizza"},
+    {name:"도넛", kcal:"350kcal", img:"https://source.unsplash.com/200x200/?donut"},
+    {name:"아이스크림", kcal:"300kcal", img:"https://source.unsplash.com/200x200/?icecream"},
+    {name:"토스트", kcal:"400kcal", img:"https://source.unsplash.com/200x200/?toast"}
+  ]
+};
+
+// 선택
+function select(cat){
+  category = cat;
+  let html = "";
+
+  data[cat].forEach(m=>{
+    html += `<button onclick="chooseMenu('${m.name}')">${m.name}</button>`;
+  });
+
+  document.getElementById("menuList").innerHTML = html;
+  go(3);
+}
+
+// 메뉴 선택
+function chooseMenu(name){
+  selectedMenu = name;
+  go(4);
+}
+
+// 결과
+function showResult(){
+  const food = data[category].find(m=>m.name === selectedMenu);
+
+  document.getElementById("result").innerHTML = `
+    <div class="card">
+      <h3>${food.name}</h3>
+      <img src="${food.img}">
+      <p>🔥 ${food.kcal}</p>
+    </div>
+  `;
+
+  go(5);
+}
+</script>
+
+</body>
+</html>

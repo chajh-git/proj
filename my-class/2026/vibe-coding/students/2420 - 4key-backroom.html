@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BACKROOMS: FOUR KEYS</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#080807;font-family:Arial,"Malgun Gothic",sans-serif}
+#game{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%;outline:none}
+#hud,#help,#inputState,#message,#aim,#danger{position:fixed;z-index:5;pointer-events:none;color:#fff;text-shadow:0 2px 5px #000}
+#hud{top:14px;left:16px;font-size:16px;line-height:1.55;background:rgba(0,0,0,.27);padding:8px 11px;border-radius:8px}
+#help{top:14px;right:16px;text-align:right;font-size:14px;line-height:1.7;background:rgba(0,0,0,.24);padding:8px 11px;border-radius:8px}
+#inputState{left:16px;bottom:14px;font:14px monospace;background:rgba(0,0,0,.45);padding:7px 9px;border-radius:6px}
+#aim{left:50%;top:50%;width:9px;height:9px;margin:-4px;border:1px solid #fff;border-radius:50%;opacity:.7}
+#message{display:none;left:50%;bottom:13%;transform:translateX(-50%);padding:10px 17px;background:rgba(0,0,0,.78);border-radius:8px;font-size:16px;white-space:nowrap}
+#danger{inset:0;box-shadow:inset 0 0 0 rgba(255,0,0,0)}
+.screen{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;background:rgba(0,0,0,.92)}
+.panel{width:min(760px,92vw);padding:28px 25px;background:rgba(10,10,8,.85);border:1px solid #635e3e;border-radius:14px;box-shadow:0 0 55px #000}
+h1{letter-spacing:3px;margin:0 0 18px;color:#e8dfab}
+p{line-height:1.7}
+button{padding:13px 27px;border:1px solid #c7bd7c;border-radius:8px;background:#242317;color:#fff;font-size:17px;cursor:pointer}
+button:hover{background:#45402a}
+#jumpscare{display:none;background:#100000}
+#scareFace{font-size:150px;line-height:1.1;filter:contrast(1.8);text-shadow:0 0 28px #f00;animation:shake .065s infinite}
+@keyframes shake{0%{transform:translate(2px,-2px) scale(1.03)}50%{transform:translate(-3px,3px) scale(1.12)}100%{transform:translate(3px,2px) scale(1.05)}}
+#smallNote{color:#d4d0bb;font-size:13px}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+  목숨: <span id="lives">3</span><br>
+  가진 열쇠: <span id="keys">0</span> / 4<br>
+  꽂은 열쇠: <span id="inserted">0</span> / 4<br>
+  괴물 거리: <span id="distance">--</span>
+</div>
+<div id="help">
+  <b>W A S D</b> 이동 · <b>Shift</b> 달리기<br>
+  <b>마우스</b> 시선 · <b>Enter</b> 손전등<br>
+  <b>E</b> 열쇠 줍기 / 옷장 숨기 / 열쇠 꽂기<br>
+  괴물은 <b>손전등 빛</b>을 감지하면 추적한다.
+</div>
+<div id="inputState">W:○ A:○ S:○ D:○ · 손전등: ON</div>
+<div id="aim"></div>
+<div id="message"></div>
+<div id="danger"></div>
+
+<div id="intro" class="screen">
+  <div class="panel">
+    <h1>BACKROOMS: FOUR KEYS</h1>
+    <p>끝없이 이어지는 노란 복도에서 열쇠 4개를 찾아라.</p>
+    <p>스폰 지점의 출구 옆 열쇠걸이로 돌아가 <b>E</b>를 눌러 열쇠를 하나씩 꽂아라.<br>
+    4개를 모두 꽂으면 문이 열리고 탈출에 성공한다.</p>
+    <p>괴물은 발소리를 듣지 않는다. <b>손전등 빛에 감지되면</b> 너를 쫓아온다.<br>
+    괴물을 피하고 싶을 때는 손전등을 끄거나 옷장에 숨어라.</p>
+    <p><b>WASD는 게임 시작 후 바로 작동한다.</b> 시선은 마우스를 드래그하거나 클릭해 돌려라.</p>
+    <button id="start">게임 시작</button>
+    <p id="smallNote">Three.js를 불러오려면 인터넷 연결이 필요해.</p>
+  </div>
+</div>
+
+<div id="jumpscare" class="screen">
+  <div>
+    <div id="scareFace">☠</div>
+    <h1>잡혔다</h1>
+    <p>SPACE를 눌러 다시 시작</p>
+  </div>
+</div>
+
+<div id="end" class="screen" style="display:none">
+  <div class="panel">
+    <h1 id="endTitle">탈출 성공</h1>
+    <p id="endText"></p>
+    <button onclick="location.reload()">다시 하기</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+const gameEl=document.getElementById('game');
+if(!window.THREE){
+  document.getElementById('intro').style.display='flex';
+  document.querySelector('#intro .panel').innerHTML =
+    '<h1>게임을 불러올 수 없어</h1><p>인터넷 연결을 확인하고 페이지를 다시 열어줘. 게임은 Three.js 라이브러리를 사용해.</p>';
+  return;
+}
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x17160f);
+scene.fog=new THREE.FogExp2(0x1a190f,.019);
+
+const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.05,120);
+const spawnPosition=new THREE.Vector3(-20,1.65,20);
+camera.position.copy(spawnPosition);
+camera.rotation.order='YXZ';
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.domElement.tabIndex=0;
+gameEl.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0x888261,0x1a140c,.64));
+
+const flashlight=new THREE.SpotLight(0xfff2c3,8.5,18,THREE.MathUtils.degToRad(25),.42,1.15);
+flashlight.position.copy(camera.position);
+flashlight.target.position.set(0,1,-4);
+scene.add(flashlight,flashlight.target);
+
+const floorMat=new THREE.MeshStandardMaterial({color:0x766d3b,roughness:1});
+const wallMat=new THREE.MeshStandardMaterial({color:0xb7aa51,roughness:.96});
+const ceilingMat=new THREE.MeshStandardMaterial({color:0xc8bd79,roughness:1});
+const blackMat=new THREE.MeshStandardMaterial({color:0x020202,roughness:1});
+const lockerMat=new THREE.MeshStandardMaterial({color:0x414548,metalness:.15,roughness:.8});
+const keyMat=new THREE.MeshStandardMaterial({color:0xffcc31,emissive:0x9e6700,emissiveIntensity:1.5,metalness:.35,roughness:.35});
+const slotMat=new THREE.MeshStandardMaterial({color:0x777b7a,metalness:.55,roughness:.35});
+const slotUsedMat=new THREE.MeshStandardMaterial({color:0x693737,emissive:0x350000,metalness:.25,roughness:.4});
+
+const wallColliders=[];
+function box(x,y,z,sx,sy,sz,mat,collide=false){
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);
+  mesh.position.set(x,y,z);
+  scene.add(mesh);
+  if(collide) wallColliders.push({mesh,minX:x-sx/2,maxX:x+sx/2,minZ:z-sz/2,maxZ:z+sz/2});
+  return mesh;
+}
+
+box(0,-.12,0,52,.2,52,floorMat);
+box(0,5.15,0,52,.2,52,ceilingMat);
+
+// Perimeter walls have a gap at the spawn door.
+box(0,2.5,-26,52,5,1,wallMat,true);
+box(-26,2.5,0,1,5,52,wallMat,true);
+box(26,2.5,0,1,5,52,wallMat,true);
+box(-25.1,2.5,26,1.8,5,1,wallMat,true);
+box(5.1,2.5,26,41.8,5,1,wallMat,true);
+
+// Labyrinth walls. The key locations are kept clear of these wall segments.
+[
+  [-14,-16,1,20],[-14,-5,12,1],[-8,5,14,1],[-1,15,1,20],
+  [8,-16,1,20],[14,-6,12,1],[13,8,1,17],[18,18,10,1],
+  [-19,-20,1,12],[4,-1,10,1],[19,-11,1,11],[-5,-18,9,1],
+  [-21,2,1,12],[2,21,14,1],[9,11,1,9],[-18,-1,7,1]
+].forEach(a=>box(a[0],2.5,a[1],a[2],5,a[3],wallMat,true));
+
+// Ceiling lamps with pools of warm light.
+for(let x=-20;x<=20;x+=10){
+  for(let z=-20;z<=20;z+=10){
+    const lamp=new THREE.PointLight(0xffedaf,1.15,12);
+    lamp.position.set(x,4.7,z);
+    scene.add(lamp);
+    box(x,4.96,z,2.7,.07,.65,new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.6}));
+  }
+}
+
+function makeKey(x,z){
+  const group=new THREE.Group();
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.18,.05,8,20),keyMat);
+  ring.rotation.x=Math.PI/2;
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,.52,8),keyMat);
+  shaft.rotation.z=Math.PI/2;
+  shaft.position.x=.25;
+  const tooth=new THREE.Mesh(new THREE.BoxGeometry(.19,.07,.07),keyMat);
+  tooth.position.set(.47,-.04,0);
+  group.add(ring,shaft,tooth);
+  group.position.set(x,.55,z);
+  scene.add(group);
+  return group;
+}
+
+const keySpawns=[
+  new THREE.Vector3(-22,.55,-19),
+  new THREE.Vector3(11,.55,17),
+  new THREE.Vector3(22,.55,-19),
+  new THREE.Vector3(-23,.55,12)
+];
+const keyMeshes=keySpawns.map(p=>makeKey(p.x,p.z));
+const keyTaken=[false,false,false,false];
+let keyCount=0;
+
+// Spawn exit door and its four-key rack.
+const exitDoor=box(-20,2.45,25.4,7.8,4.9,.42,blackMat,true);
+const doorSideL=box(-24.1,2.5,25.35,.35,5.3,.8,slotMat);
+const doorSideR=box(-15.9,2.5,25.35,.35,5.3,.8,slotMat);
+const doorTop=box(-20,5.1,25.35,8.5,.35,.8,slotMat);
+
+const rackGroup=new THREE.Group();
+rackGroup.position.set(-14.5,0,22.0);
+scene.add(rackGroup);
+const rackBack=new THREE.Mesh(new THREE.BoxGeometry(3.2,2.25,.22),new THREE.MeshStandardMaterial({color:0x242726,metalness:.15,roughness:.8}));
+rackBack.position.set(0,2,0);
+rackGroup.add(rackBack);
+
+const holders=[];
+for(let i=0;i<4;i++){
+  const x=-1.05+i*.7;
+  const y=1.55;
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(.57,.78,.15),slotMat);
+  plate.position.set(x,y,-.17);
+  const hook=new THREE.Mesh(new THREE.TorusGeometry(.14,.035,7,15),new THREE.MeshStandardMaterial({color:0xd6d2b2,metalness:.55,roughness:.3}));
+  hook.position.set(x,y+.03,-.28);
+  rackGroup.add(plate,hook);
+  const glow=new THREE.PointLight(0x9fb9ff,.05,1.5);
+  glow.position.set(x,y,-.5);
+  rackGroup.add(glow);
+  holders.push({plate,hook,glow,used:false});
+}
+const rackLabel=makeLabel('INSERT 4 KEYS',0xffd75a);
+rackLabel.position.set(-14.5,3.5,21.7);
+scene.add(rackLabel);
+
+function makeLabel(text,color){
+  const canvas=document.createElement('canvas');
+  canvas.width=512;canvas.height=96;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#11110c';ctx.fillRect(0,0,512,96);
+  ctx.font='bold 40px monospace';ctx.textAlign='center';ctx.fillStyle='#'+color.toString(16).padStart(6,'0');
+  ctx.fillText(text,256,62);
+  const tex=new THREE.CanvasTexture(canvas);
+  const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:tex}));
+  sprite.scale.set(3.2,.6,1);
+  return sprite;
+}
+
+// Four lockers that allow the player to hide.
+function makeLocker(x,z,rot){
+  const group=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(1.45,3.5,1.0),lockerMat);
+  body.position.y=1.75;
+  const door=new THREE.Mesh(new THREE.BoxGeometry(1.3,3.25,.08),new THREE.MeshStandardMaterial({color:0x555a5d}));
+  door.position.set(0,1.75,.54);
+  const handle=new THREE.Mesh(new THREE.BoxGeometry(.06,.5,.08),new THREE.MeshStandardMaterial({color:0xb7b7ad,metalness:.8}));
+  handle.position.set(.48,1.75,.6);
+  group.add(body,door,handle);
+  group.position.set(x,0,z);
+  group.rotation.y=rot;
+  scene.add(group);
+  return group;
+}
+const lockers=[
+  makeLocker(-20,16,Math.PI/2),
+  makeLocker(20,8,0),
+  makeLocker(-7,-10,Math.PI),
+  makeLocker(16,-16,Math.PI/2)
+];
+
+// Monster: only moves after the flashlight beam detects it.
+const monster=new THREE.Group();
+const monsterMat=new THREE.MeshStandardMaterial({color:0x020202,roughness:1});
+const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.56,1.5,7,12),monsterMat);
+torso.position.y=1.25;
+monster.add(torso);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.56,16,16),monsterMat);
+head.position.y=2.55;
+monster.add(head);
+const eyeMat=new THREE.MeshBasicMaterial({color:0xff1818});
+for(const ex of [-.19,.19]){
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.065,8,8),eyeMat);
+  eye.position.set(ex,2.63,-.49);
+  monster.add(eye);
+}
+monster.position.set(18,0,-20);
+scene.add(monster);
+
+let lives=3;
+let hiding=false;
+let caught=false;
+let gameStarted=false;
+let flashlightOn=true;
+let unlocked=false;
+let yaw=0;
+let pitch=0;
+let running=false;
+let lastFrame=performance.now();
+let heartbeatTimer=0;
+let chaseUntil=0;
+let audioCtx=null;
+
+const keys={w:false,a:false,s:false,d:false,shift:false};
+
+function updateInputStatus(){
+  document.getElementById('inputState').textContent=
+    'W:'+(keys.w?'●':'○')+' A:'+(keys.a?'●':'○')+' S:'+(keys.s?'●':'○')+' D:'+(keys.d?'●':'○')+
+    ' · 손전등: '+(flashlightOn?'ON':'OFF');
+}
+function showMessage(text,ms=2300){
+  const el=document.getElementById('message');
+  el.textContent=text;el.style.display='block';
+  clearTimeout(showMessage.timer);
+  showMessage.timer=setTimeout(()=>el.style.display='none',ms);
+}
+function sound(freq,duration=.12,type='sine',volume=.05){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+    osc.type=type;osc.frequency.value=freq;
+    gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start();osc.stop(audioCtx.currentTime+duration);
+  }catch(e){}
+}
+
+function setKey(e,down){
+  let k='';
+  if(e.code==='KeyW'||e.key.toLowerCase()==='w')k='w';
+  else if(e.code==='KeyA'||e.key.toLowerCase()==='a')k='a';
+  else if(e.code==='KeyS'||e.key.toLowerCase()==='s')k='s';
+  else if(e.code==='KeyD'||e.key.toLowerCase()==='d')k='d';
+  else if(e.code==='ShiftLeft'||e.code==='ShiftRight')k='shift';
+  if(k){
+    keys[k]=down;
+    e.preventDefault();
+    updateInputStatus();
+  }
+}
+
+window.addEventListener('keydown',e=>{
+  setKey(e,true);
+  if(e.code==='Enter' && gameStarted && !caught){
+    if(!e.repeat){
+      flashlightOn=!flashlightOn;
+      flashlight.intensity=flashlightOn?8.5:0;
+      updateInputStatus();
+      sound(flashlightOn?650:230,.08,'square',.025);
+    }
+    e.preventDefault();
+  }
+  if(e.code==='KeyE' && gameStarted && !caught && !e.repeat){
+    interact();
+    e.preventDefault();
+  }
+  if(e.code==='Space' && caught){
+    resetAfterCaught();
+    e.preventDefault();
+  }
+},true);
+window.addEventListener('keyup',e=>setKey(e,false),true);
+window.addEventListener('blur',()=>{
+  Object.keys(keys).forEach(k=>keys[k]=false);
+  updateInputStatus();
+});
+
+let dragging=false,lastX=0,lastY=0;
+function turnView(dx,dy){
+  if(!gameStarted||caught||hiding)return;
+  yaw-=dx*.003;
+  pitch-=dy*.003;
+  pitch=Math.max(-1.38,Math.min(1.38,pitch));
+}
+renderer.domElement.addEventListener('mousedown',e=>{
+  if(!gameStarted||caught)return;
+  dragging=true;lastX=e.clientX;lastY=e.clientY;
+  try{renderer.domElement.requestPointerLock?.();}catch(err){}
+});
+window.addEventListener('mouseup',()=>dragging=false);
+renderer.domElement.addEventListener('mousemove',e=>{
+  if(!gameStarted||caught||hiding)return;
+  if(document.pointerLockElement===renderer.domElement){
+    turnView(e.movementX,e.movementY);
+  }else if(dragging){
+    turnView(e.clientX-lastX,e.clientY-lastY);
+    lastX=e.clientX;lastY=e.clientY;
+  }
+});
+renderer.domElement.addEventListener('touchstart',e=>{
+  if(!gameStarted||caught)return;
+  lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+},{passive:true});
+renderer.domElement.addEventListener('touchmove',e=>{
+  if(!gameStarted||caught)return;
+  const t=e.touches[0];turnView(t.clientX-lastX,t.clientY-lastY);
+  lastX=t.clientX;lastY=t.clientY;
+},{passive:true});
+
+function blocked(x,z){
+  const r=.38;
+  if(x<-25.4+r||x>25.4-r||z<-25.4+r||z>25.4-r)return true;
+  for(const w of wallColliders){
+    if(x>w.minX-r&&x<w.maxX+r&&z>w.minZ-r&&z<w.maxZ+r)return true;
+  }
+  return false;
+}
+function movePlayer(dt){
+  let forward=(keys.w?1:0)-(keys.s?1:0);
+  let side=(keys.d?1:0)-(keys.a?1:0);
+  if(!forward&&!side)return;
+  const speed=keys.shift?5.35:3.45;
+  const sin=Math.sin(yaw),cos=Math.cos(yaw);
+  let vx=side*cos-forward*sin;
+  let vz=-side*sin-forward*cos;
+  const length=Math.hypot(vx,vz)||1;
+  vx/=length;vz/=length;
+  const step=speed*dt;
+  const nx=camera.position.x+vx*step;
+  const nz=camera.position.z+vz*step;
+  if(!blocked(nx,camera.position.z))camera.position.x=nx;
+  if(!blocked(camera.position.x,nz))camera.position.z=nz;
+  running=keys.shift;
+}
+
+function beamSeesMonster(){
+  if(!flashlightOn||hiding)return false;
+  const target=new THREE.Vector3(monster.position.x,camera.position.y+1.0,monster.position.z);
+  const to=target.clone().sub(camera.position);
+  const distance=to.length();
+  if(distance>16)return false;
+  to.normalize();
+  const forward=new THREE.Vector3(-Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),-Math.cos(yaw)*Math.cos(pitch)).normalize();
+  if(forward.dot(to)<Math.cos(THREE.MathUtils.degToRad(28)))return false;
+  const ray=new THREE.Raycaster(camera.position.clone(),to.clone(),0,distance);
+  const hit=ray.intersectObjects(wallColliders.map(w=>w.mesh),false);
+  return hit.length===0;
+}
+function moveMonster(dt,nowSeconds){
+  if(hiding)return;
+  const playerXZ=new THREE.Vector2(camera.position.x,camera.position.z);
+  const monsterXZ=new THREE.Vector2(monster.position.x,monster.position.z);
+  const distance=playerXZ.distanceTo(monsterXZ);
+  const lit=beamSeesMonster();
+  if(lit)chaseUntil=nowSeconds+4.0;
+
+  const chasing=nowSeconds<chaseUntil;
+  if(chasing){
+    const dx=camera.position.x-monster.position.x;
+    const dz=camera.position.z-monster.position.z;
+    const len=Math.hypot(dx,dz)||1;
+    const speed=3.25;
+    const step=Math.min(speed*dt,len);
+    const nx=monster.position.x+dx/len*step;
+    const nz=monster.position.z+dz/len*step;
+    if(!blocked(nx,monster.position.z))monster.position.x=nx;
+    if(!blocked(monster.position.x,nz))monster.position.z=nz;
+    monster.lookAt(camera.position.x,1.8,camera.position.z);
+    heartbeatTimer-=dt;
+    if(heartbeatTimer<=0){
+      sound(Math.max(45,105-distance*3),.1,'sine',.05);
+      heartbeatTimer=.5;
+    }
+  }
+  if(distance<1.25&&chasing&&!hiding&&!caught)doCaught();
+  document.getElementById('danger').style.boxShadow=
+    'inset 0 0 '+Math.round(Math.max(0,12-distance)*10)+'px rgba(170,0,0,'+(chasing?.23:0)+')';
+}
+
+function horizDistance(a,b){return Math.hypot(a.x-b.x,a.z-b.z);}
+function interact(){
+  if(hiding){
+    hiding=false;camera.position.y=1.65;
+    showMessage('옷장에서 나왔다.');
+    return;
+  }
+
+  // Pick up keys first.
+  for(let i=0;i<keyMeshes.length;i++){
+    if(!keyTaken[i]&&horizDistance(camera.position,keyMeshes[i].position)<1.7){
+      keyTaken[i]=true;keyCount++;
+      scene.remove(keyMeshes[i]);
+      sound(820,.16,'triangle',.07);
+      showMessage('열쇠 획득! '+keyCount+'/4');
+      updateHud();
+      return;
+    }
+  }
+
+  // Hide in a nearby locker.
+  for(const locker of lockers){
+    if(horizDistance(camera.position,locker.position)<2.1){
+      hiding=true;camera.position.y=.9;
+      flashlightOn=false;flashlight.intensity=0;chaseUntil=0;
+      updateInputStatus();
+      showMessage('옷장에 숨었다. E를 눌러 나오기.');
+      return;
+    }
+  }
+
+  // Insert carried keys into the spawn key rack.
+  const rackPosition=new THREE.Vector3();
+  rackGroup.getWorldPosition(rackPosition);
+  if(horizDistance(camera.position,rackPosition)<3.7){
+    if(keyCount<=0){
+      showMessage('꽂을 열쇠가 없다. 복도에서 열쇠를 찾아라.');
+      return;
+    }
+    const index=holders.findIndex(h=>!h.used);
+    if(index<0){
+      showMessage('열쇠 4개가 모두 꽂혀 있다.');
+      return;
+    }
+    holders[index].used=true;
+    holders[index].plate.material=slotUsedMat;
+    holders[index].hook.material=keyMat;
+    holders[index].glow.intensity=1.0;
+    keyCount--;
+    sound(560+index*100,.2,'triangle',.07);
+    const inserted=holders.filter(h=>h.used).length;
+    showMessage('열쇠를 꽂았다! '+inserted+'/4');
+    updateHud();
+
+    if(inserted===4){
+      unlocked=true;
+      exitDoor.position.y=-3.0;
+      exitDoor.scale.y=.02;
+      sound(900,.55,'sine',.09);
+      showMessage('출구가 열렸다!',1800);
+      setTimeout(()=>{
+        if(gameStarted&&!caught){
+          gameStarted=false;
+          document.exitPointerLock?.();
+          document.getElementById('endTitle').textContent='탈출 성공!';
+          document.getElementById('endText').textContent='열쇠 4개를 모두 꽂고 백룸에서 탈출했다.';
+          document.getElementById('end').style.display='flex';
+        }
+      },1000);
+    }
+    return;
+  }
+  showMessage('가까이 다가가 E를 눌러 상호작용해.');
+}
+
+function updateHud(){
+  document.getElementById('lives').textContent=lives;
+  document.getElementById('keys').textContent=keyCount;
+  document.getElementById('inserted').textContent=holders.filter(h=>h.used).length;
+  document.getElementById('distance').textContent=
+    Math.hypot(camera.position.x-monster.position.x,camera.position.z-monster.position.z).toFixed(1)+'m';
+}
+
+function doCaught(){
+  caught=true;lives--;
+  document.getElementById('jumpscare').style.display='flex';
+  sound(42,.7,'sawtooth',.15);
+  updateHud();
+}
+function resetKeys(){
+  for(let i=0;i<keyMeshes.length;i++){
+    keyTaken[i]=false;
+    keyMeshes[i].position.copy(keySpawns[i]);
+    scene.add(keyMeshes[i]);
+  }
+  keyCount=0;
+  holders.forEach(h=>{
+    h.used=false;h.plate.material=slotMat;h.hook.material=new THREE.MeshStandardMaterial({color:0xd6d2b2,metalness:.55,roughness:.3});h.glow.intensity=.05;
+  });
+  unlocked=false;
+  exitDoor.position.set(-20,2.45,25.4);
+  exitDoor.scale.set(1,1,1);
+}
+function resetAfterCaught(){
+  document.getElementById('jumpscare').style.display='none';
+  resetKeys();
+  if(lives<=0){
+    document.getElementById('endTitle').textContent='GAME OVER';
+    document.getElementById('endText').textContent='목숨을 모두 잃었다. 열쇠가 전부 원래 위치로 돌아갔다.';
+    document.getElementById('end').style.display='flex';
+    gameStarted=false;
+    return;
+  }
+  caught=false;hiding=false;
+  camera.position.copy(spawnPosition);
+  yaw=0;pitch=0;
+  monster.position.set(18,0,-20);
+  chaseUntil=0;heartbeatTimer=0;
+  flashlightOn=true;flashlight.intensity=8.5;
+  keys.w=keys.a=keys.s=keys.d=keys.shift=false;
+  updateInputStatus();updateHud();
+  showMessage('죽어서 열쇠가 모두 원래 위치로 돌아갔다.');
+}
+
+document.getElementById('start').addEventListener('click',()=>{
+  document.getElementById('intro').style.display='none';
+  gameStarted=true;
+  try{audioCtx?.resume();}catch(e){}
+  renderer.domElement.focus();
+  updateInputStatus();
+  showMessage('WASD로 이동 · E로 열쇠를 줍거나 꽂기',3000);
+});
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+function animate(now){
+  requestAnimationFrame(animate);
+  const dt=Math.min(.045,(now-lastFrame)/1000);
+  lastFrame=now;
+  if(gameStarted&&!caught){
+    camera.rotation.set(pitch,yaw,0,'YXZ');
+    flashlight.position.copy(camera.position);
+    flashlight.target.position.set(
+      camera.position.x-Math.sin(yaw)*Math.cos(pitch)*4,
+      camera.position.y+Math.sin(pitch)*4,
+      camera.position.z-Math.cos(yaw)*Math.cos(pitch)*4
+    );
+    movePlayer(dt);
+    moveMonster(dt,now/1000);
+    updateHud();
+  }
+  renderer.render(scene,camera);
+}
+updateInputStatus();updateHud();animate(performance.now());
+})();
+</script>
+</body>
+</html>

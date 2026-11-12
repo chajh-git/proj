@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>여러 생물들 채집하기</title>
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #10251b;
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+#wrap {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas {
+  background: #77b85a;
+  border: 4px solid #243f2c;
+  max-width: 100vw;
+  max-height: 100vh;
+}
+
+.help {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  background: #0009;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.panel {
+  position: absolute;
+  inset: 0;
+  background: #0009;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.box {
+  width: min(720px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: #f4ead2;
+  color: #2d3a2d;
+  border: 5px solid #5a3d22;
+  border-radius: 18px;
+  padding: 22px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  background: #fff9;
+  border: 2px solid #9b875e;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+
+button {
+  font-size: 18px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #3e7b4b;
+  color: white;
+  cursor: pointer;
+}
+
+.close {
+  float: right;
+  background: #8c3e36;
+}
+
+.locked {
+  opacity: .45;
+}
+
+.found {
+  background: #d9efc7;
+}
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="game" width="1000" height="650"></canvas>
+
+  <div class="help">
+    WASD: 이동 · 2: 상점 · 3: 도감 · SPACE: 채집
+  </div>
+
+  <div id="panel" class="panel">
+    <div class="box" id="box"></div>
+  </div>
+</div>
+
+<script>
+const c = document.getElementById('game');
+const ctx = c.getContext('2d');
+
+const W = c.width;
+const H = c.height;
+
+const keys = {};
+
+let tool = 'hand';
+let coins = 0;
+let won = false;
+
+const tools = {
+  hand: { name: '손', price: 0, max: 0 },
+  net:  { name: '잠자리채', price: 12, max: 1 },
+  gun:  { name: '총', price: 30, max: 2 }
+};
+
+const creatures = [
+  {n:'개미',r:0,coin:3,emoji:'🐜'},
+  {n:'파리',r:0,coin:3,emoji:'🪰'},
+  {n:'모기',r:0,coin:3,emoji:'🦟'},
+  {n:'나비',r:0,coin:3,emoji:'🦋'},
+
+  {n:'펭귄',r:1,coin:10,emoji:'🐧'},
+  {n:'공작',r:1,coin:10,emoji:'🦚'},
+  {n:'개구리',r:1,coin:10,emoji:'🐸'},
+
+  {n:'사자',r:2,coin:20,emoji:'🦁'},
+  {n:'범고래',r:2,coin:20,emoji:'🐋'},
+  {n:'독수리',r:2,coin:20,emoji:'🦅'},
+  {n:'치타',r:2,coin:20,emoji:'🐆'}
+];
+
+const caught = new Set();
+
+const player = {
+  x: W / 2,
+  y: H / 2,
+  r: 18,
+  s: 4
+};
+
+let animals = [];
+
+// 60프레임 기준 600프레임 = 약 10초
+let spawnTimer = 600;
+
+let msg = '야생을 탐험해 생물을 찾아보세요!';
+let msgT = 180;
+
+function rand(a, b) {
+  return Math.random() * (b - a) + a;
+}
+
+// 생물의 등급을 확률에 따라 결정
+function pickCreature() {
+  const p = Math.random();
+
+  // 일반 60%, 희귀 30%, 전설 10%
+  const rarityLevel =
+    p < 0.60 ? 0 :
+    p < 0.90 ? 1 : 2;
+
+  const pool = creatures.filter(
+    animal => animal.r === rarityLevel
+  );
+
+  const selected =
+    pool[Math.floor(Math.random() * pool.length)];
+
+  return {
+    ...selected,
+    x: rand(45, W - 45),
+    y: rand(100, H - 45),
+    dx: rand(-1.5, 1.5),
+    dy: rand(-1.5, 1.5),
+    move: rand(40, 100)
+  };
+}
+
+// ★ 핵심: 기존 동물을 모두 지우고 새 동물 2~3마리 생성
+function spawn() {
+  animals = [];
+
+  const count = 2 + Math.floor(Math.random() * 2);
+
+  for (let i = 0; i < count; i++) {
+    animals.push(pickCreature());
+  }
+}
+
+function say(text) {
+  msg = text;
+  msgT = 180;
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function rarity(r) {
+  return r === 0 ? '일반' :
+         r === 1 ? '희귀' : '전설';
+}
+
+function canCatch(animal) {
+  return tools[tool].max >= animal.r;
+}
+
+// 가까운 동물 한 마리 채집
+function catchAnimal() {
+  if (animals.length === 0) {
+    say('새로운 생물을 기다려주세요!');
+    return;
+  }
+
+  let targetIndex = -1;
+  let bestDist = Infinity;
+
+  animals.forEach((animal, i) => {
+    const d = distance(player, animal);
+
+    if (d <= 55 && d < bestDist) {
+      bestDist = d;
+      targetIndex = i;
+    }
+  });
+
+  if (targetIndex === -1) {
+    say('조금 더 가까이 가세요!');
+    return;
+  }
+
+  const animal = animals[targetIndex];
+
+  if (!canCatch(animal)) {
+    say(
+      tools[tool].name + '으로는 ' +
+      rarity(animal.r) + ' 생물을 잡을 수 없어요!'
+    );
+    return;
+  }
+
+  // 이미 도감에 있어도 코인을 지급
+  caught.add(animal.n);
+  coins += animal.coin;
+
+  say(animal.n + ' 채집 성공! +' + animal.coin + '코인');
+
+  // 잡은 동물만 제거
+  animals.splice(targetIndex, 1);
+
+  checkWin();
+}
+
+function checkWin() {
+  if (caught.size === creatures.length) {
+    won = true;
+    say('축하합니다! 도감을 모두 모았습니다!');
+  }
+}
+
+function openPanel(type) {
+  const panel = document.getElementById('panel');
+  const box = document.getElementById('box');
+
+  panel.style.display = 'flex';
+
+  if (type === 'shop') {
+    box.innerHTML = `
+      <button class="close" onclick="closePanel()">닫기</button>
+      <h2>🛒 도구 상점</h2>
+      <p>현재 코인: <b>${coins}</b></p>
+
+      <div class="grid">
+        <div class="card">
+          <h3>🦋 잠자리채</h3>
+          <p>12코인<br>일반 + 희귀 생물 채집</p>
+          <button onclick="buy('net')">구매</button>
+        </div>
+
+        <div class="card">
+          <h3>🔫 총</h3>
+          <p>30코인<br>모든 생물 채집</p>
+          <button onclick="buy('gun')">구매</button>
+        </div>
+      </div>
+    `;
+  } else {
+    box.innerHTML = `
+      <button class="close" onclick="closePanel()">닫기</button>
+      <h2>📖 도감 (
+caught.size/{creatures.length})</h2>
+
+      <div class="grid">
+        ${creatures.map(animal => `
+          <div class="card ${caught.has(animal.n) ? 'found' : 'locked'}">
+            <div style="font-size:38px">
+              ${caught.has(animal.n) ? animal.emoji : '❓'}
+            </div>
+            <b>${caught.has(animal.n) ? animal.n : '???'}</b>
+            <br>
+            ${rarity(animal.r)} · ${animal.coin}코인
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+}
+
+function closePanel() {
+  document.getElementById('panel').style.display = 'none';
+}
+
+function buy(t) {
+  if (tool === t) {
+    say('이미 가진 도구입니다.');
+    closePanel();
+    return;
+  }
+
+  if (coins < tools[t].price) {
+    say('코인이 부족합니다!');
+    closePanel();
+    return;
+  }
+
+  coins -= tools[t].price;
+  tool = t;
+
+  say(tools[t].name + ' 구매 완료!');
+  closePanel();
+}
+
+window.buy = buy;
+window.closePanel = closePanel;
+
+// 키보드 입력
+addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+
+  if (e.key === '2') openPanel('shop');
+  if (e.key === '3') openPanel('book');
+  if (e.code === 'Space') catchAnimal();
+});
+
+addEventListener('keyup', e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+// 게임 업데이트
+function update() {
+  if (document.getElementById('panel').style.display === 'flex') {
+    return;
+  }
+
+  let dx = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
+  let dy = (keys.s ? 1 : 0) - (keys.w ? 1 : 0);
+
+  if (dx || dy) {
+    const length = Math.hypot(dx, dy);
+    player.x += dx / length * player.s;
+    player.y += dy / length * player.s;
+  }
+
+  player.x = Math.max(25, Math.min(W - 25, player.x));
+  player.y = Math.max(85, Math.min(H - 25, player.y));
+
+  // ★ 생물을 전부 잡았는지와 상관없이 10초 타이머 진행
+  spawnTimer--;
+
+  if (spawnTimer <= 0) {
+    // 기존 동물은 사라지고 새 2~3마리로 교체
+    spawn();
+
+    // 다음 교체까지 다시 10초
+    spawnTimer = 600;
+  }
+
+  // 동물들이 계속 움직이도록 설정
+  animals.forEach(animal => {
+    animal.x += animal.dx;
+    animal.y += animal.dy;
+
+    if (animal.x < 35 || animal.x > W - 35) {
+      animal.dx *= -1;
+    }
+
+    if (animal.y < 90 || animal.y > H - 35) {
+      animal.dy *= -1;
+    }
+
+    animal.move--;
+
+    if (animal.move <= 0) {
+      animal.dx = rand(-2.2, 2.2);
+      animal.dy = rand(-2.2, 2.2);
+      animal.move = rand(35, 100);
+    }
+  });
+
+  if (msgT > 0) msgT--;
+}
+
+// 화면 그리기
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#77b85a';
+  ctx.fillRect(0, 0, W, H);
+
+  // 풀 장식
+  for (let i = 0; i < 80; i++) {
+    const x = (i * 83) % W;
+    const y = 90 + (i * 137) % 560;
+
+    ctx.strokeStyle = '#4e944d';
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + 3, y - 9);
+    ctx.stroke();
+  }
+
+  // 상단 정보
+  ctx.fillStyle = '#24452e';
+  ctx.fillRect(0, 0, W, 72);
+
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 22px Arial';
+  ctx.fillText('🌿 여러 생물들 채집하기', 22, 31);
+
+  ctx.font = '17px Arial';
+  ctx.fillText('🪙 ' + coins + ' 코인', 22, 57);
+
+  ctx.fillText(
+    '도구: ' + tools[tool].name +
+    ' | 도감: ' + caught.size + '/' + creatures.length,
+    230, 44
+  );
+
+  ctx.fillText(
+    '다음 무리: ' + Math.ceil(spawnTimer / 60) + '초',
+    650, 44
+  );
+
+  // 동물 그리기
+  animals.forEach(animal => {
+    ctx.font = '48px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(animal.emoji, animal.x, animal.y);
+
+    ctx.font = '13px Arial';
+    ctx.fillStyle = '#163';
+    ctx.fillText(rarity(animal.r), animal.x, animal.y + 25);
+  });
+
+  // 플레이어 그리기
+  ctx.fillStyle = '#34495e';
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#f4d03f';
+  ctx.beginPath();
+  ctx.arc(player.x, player.y - 8, 9, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'white';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('YOU', player.x, player.y + 5);
+
+  if (msgT > 0) {
+    ctx.fillStyle = '#000b';
+    ctx.fillRect(230, 590, 540, 42);
+
+    ctx.fillStyle = 'white';
+    ctx.font = '17px Arial';
+    ctx.fillText(msg, 500, 617);
+  }
+
+  ctx.textAlign = 'left';
+
+  if (won) {
+    ctx.fillStyle = '#000a';
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = '#ffe66d';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+
+    ctx.fillText('🎉 도감 완성! 승리! 🎉', W / 2, H / 2);
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// 시작하자마자 동물 등장
+spawn();
+loop();
+</script>
+</body>
+</html>

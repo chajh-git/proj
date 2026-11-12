@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 나의 운세순위는?</title>
+<style>
+:root {
+  --primary: #6c4ccf;
+  --secondary: #e9e1ff;
+  --background: #f7f4ff;
+  --text: #21183d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, "Malgun Gothic", sans-serif;
+  color: var(--text);
+  background: var(--background);
+}
+main {
+  max-width: 760px;
+  margin: auto;
+  padding: 30px 20px 60px;
+}
+header { text-align: center; padding: 22px 0 28px; }
+.eyebrow {
+  color: var(--primary);
+  font-weight: 800;
+  letter-spacing: .12em;
+  font-size: .75rem;
+}
+h1 { font-size: 2.4rem; line-height: 1.2; }
+.subtitle { color: #716889; line-height: 1.7; }
+.panel {
+  background: white;
+  border: 1px solid #e8e0fa;
+  border-radius: 24px;
+  padding: 24px;
+  margin: 14px 0;
+  box-shadow: 0 12px 40px #38206e12;
+}
+label { display: block; font-weight: 750; margin-bottom: 10px; }
+.inputrow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+input {
+  flex: 1;
+  min-width: 180px;
+  border: 1px solid #d9d0ec;
+  border-radius: 13px;
+  padding: 14px;
+  font: inherit;
+}
+button {
+  border: 0;
+  border-radius: 13px;
+  padding: 14px 20px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.primary { background: var(--primary); color: white; }
+.note { font-size: .85rem; color: #817791; line-height: 1.6; }
+.hidden { display: none; }
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  padding: 7px 12px;
+  border-radius: 99px;
+  background: var(--secondary);
+  color: #30205f;
+  font-size: .84rem;
+  font-weight: 800;
+}
+.rankbox { display: flex; align-items: center; gap: 18px; margin-top: 20px; }
+.ranknum {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  flex-shrink: 0;
+  border-radius: 26px;
+  background: var(--primary);
+  color: white;
+  font-size: 2rem;
+  font-weight: 900;
+}
+.rank-title { font-size: 1.2rem; font-weight: 850; margin-bottom: 5px; }
+.muted { color: #837894; font-size: .92rem; line-height: 1.6; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fortune {
+  background: white;
+  border: 1px solid #e8e0fa;
+  border-radius: 20px;
+  padding: 19px;
+  min-height: 145px;
+}
+.emoji { font-size: 1.5rem; }
+.fortune h3 { margin: 10px 0 7px; }
+.fortune p { margin: 0; line-height: 1.65; color: #625675; }
+.color-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 7px;
+  border: 1px solid #0002;
+}
+.quote {
+  background: var(--secondary);
+  color: #30205f;
+  border-radius: 20px;
+  padding: 22px;
+  margin-top: 14px;
+}
+.quote h3 { margin: 0 0 8px; }
+.quote p { font-size: 1.15rem; font-weight: 800; line-height: 1.6; margin: 0; }
+.foot { text-align: center; color: #897f99; font-size: .78rem; margin-top: 22px; line-height: 1.6; }
+@media(max-width:480px) {
+  h1 { font-size: 1.9rem; }
+  .cards { grid-template-columns: 1fr; }
+  .panel { padding: 19px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">✦ YOUR DAILY COSMIC GUIDE ✦</div>
+    <h1>오늘 나의<br>운세순위는?</h1>
+    <p class="subtitle">생일을 입력하고 오늘의 별자리 운세를 확인해 봐요.</p>
+  </header>
+
+  <section class="panel">
+    <label for="birthday">🎂 생년월일을 입력해 주세요</label>
+    <div class="inputrow">
+      <input id="birthday" type="date" min="1900-01-01" aria-label="생년월일">
+      <button class="primary" id="go">오늘의 운세 보기 ✨</button>
+    </div>
+    <p class="note">운세는 재미로 즐기는 콘텐츠예요.</p>
+    <p id="error" class="hidden" role="alert" style="color:#b42355">
+      생년월일을 선택해 주세요.
+    </p>
+  </section>
+
+  <section id="results" class="hidden" aria-live="polite">
+    <div class="panel">
+      <div class="results-head">
+        <span class="pill" id="today"></span>
+        <span class="pill" id="sign"></span>
+      </div>
+      <div class="rankbox">
+        <div class="ranknum" id="rank">1위</div>
+        <div>
+          <div class="rank-title" id="rankTitle"></div>
+          <div class="muted" id="rankDesc"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <article class="fortune">
+        <div class="emoji">🔮</div>
+        <h3>오늘의 운세</h3>
+        <p id="daily"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">💗</div>
+        <h3>연애운</h3>
+        <p id="love"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">🪙</div>
+        <h3>금전운</h3>
+        <p id="money"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">🎨</div>
+        <h3>럭키 컬러</h3>
+        <p id="lucky"></p>
+      </article>
+    </div>
+
+    <div class="quote">
+      <h3>☾ 오늘의 한마디</h3>
+      <p id="quote"></p>
+    </div>
+    <p class="foot">
+      별자리는 생일로 자동 계산했어요.
+      운세와 순위는 재미를 위한 콘텐츠예요.
+    </p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const signs = [
+    {name:"염소자리", emoji:"♑", start:[12,22], end:[1,19]},
+    {name:"물병자리", emoji:"♒", start:[1,20], end:[2,18]},
+    {name:"물고기자리", emoji:"♓", start:[2,19], end:[3,20]},
+    {name:"양자리", emoji:"♈", start:[3,21], end:[4,19]},
+    {name:"황소자리", emoji:"♉", start:[4,20], end:[5,20]},
+    {name:"쌍둥이자리", emoji:"♊", start:[5,21], end:[6,21]},
+    {name:"게자리", emoji:"♋", start:[6,22], end:[7,22]},
+    {name:"사자자리", emoji:"♌", start:[7,23], end:[8,22]},
+    {name:"처녀자리", emoji:"♍", start:[8,23], end:[9,22]},
+    {name:"천칭자리", emoji:"♎", start:[9,23], end:[10,23]},
+    {name:"전갈자리", emoji:"♏", start:[10,24], end:[11,22]},
+    {name:"사수자리", emoji:"♐", start:[11,23], end:[12,21]}
+  ];
+
+  const dailyFortunes = [
+    "작은 시도가 생각보다 좋은 기회로 이어질 수 있어요.",
+    "차분히 우선순위를 정하면 일이 술술 풀려요.",
+    "주변의 조언 속에서 유용한 힌트를 발견해요.",
+    "새로운 생각을 행동으로 옮기기 좋은 날이에요.",
+    "서두르기보다 한 번 더 살피면 좋은 결과가 와요.",
+    "꾸준히 해 온 일이 조금씩 빛을 발하는 날이에요.",
+    "가벼운 변화가 하루에 신선한 기운을 더해 줘요.",
+    "자신의 장점을 믿고 한 걸음 나아가 보세요.",
+    "기다리던 소식이나 반가운 일이 생길 수 있어요.",
+    "새로운 것을 배우기에 좋은 하루예요."
+  ];
+
+  const loveFortunes = [
+    "따뜻한 말 한마디가 관계를 더 가깝게 만들어요.",
+    "상대의 이야기를 잘 들어 주면 마음이 통할 거예요.",
+    "자연스러운 대화 속에서 기분 좋은 순간이 생겨요.",
+    "나를 아끼는 마음부터 챙기면 관계도 편안해져요.",
+    "먼저 안부를 건네면 좋은 분위기가 만들어져요.",
+    "억지로 서두르지 말고 편안한 속도를 유지해요.",
+    "친구와 즐겁게 이야기하다 좋은 기분을 얻을 수 있어요."
+  ];
+
+  const moneyFortunes = [
+    "필요한 것과 원하는 것을 나눠 생각해 보세요.",
+    "충동구매보다 계획적인 선택이 빛나는 날이에요.",
+    "작은 절약 습관이 뿌듯함을 가져다줘요.",
+    "새로운 지출은 한 번 더 비교한 뒤 결정해요.",
+    "돈과 관련된 약속이나 영수증을 꼼꼼히 확인해요.",
+    "오늘은 예산을 정해 두면 마음이 한결 편해요.",
+    "필요한 물건의 가격을 비교해 보면 도움이 돼요."
+  ];
+
+  const colors = [
+    ["라벤더","#B8A1E3"], ["민트","#8EDCC5"],
+    ["코랄","#FF8F83"], ["하늘색","#8DCBFA"],
+    ["레몬 옐로","#F5D95F"], ["로즈 핑크","#F1A8C6"],
+    ["세이지 그린","#A8B99A"], ["살구색","#FFC18B"],
+    ["인디고","#6268B5"], ["아이보리","#F4EBD8"],
+    ["터콰이즈","#55C9C4"], ["베이비 블루","#B7D7F5"],
+    ["라일락","#D6B7E8"], ["피치","#FFB49A"],
+    ["골드","#DDBB55"], ["포레스트 그린","#39765D"]
+  ];
+
+  const quotes = [
+    "완벽하지 않아도 괜찮아. 시작하는 용기가 중요해요.",
+    "작은 좋은 일이 모여 멋진 하루가 돼요.",
+    "오늘의 나에게 친절하게 대해 주세요.",
+    "천천히 가도 괜찮아요. 멈추지만 않으면 돼요.",
+    "좋은 기회는 준비된 마음에 찾아와요.",
+    "당신만의 속도로 빛나도 충분해요.",
+    "한 번의 미소가 하루의 분위기를 바꿀 수 있어요.",
+    "오늘 할 수 있는 작은 일부터 시작해 봐요.",
+    "새로운 하루에는 새로운 가능성이 있어요."
+  ];
+
+  const $ = id => document.getElementById(id);
+
+  // 같은 생일과 같은 날짜에는 항상 같은 결과가 나오도록 계산해요.
+  function hash(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function getSign(month, day) {
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) {
+      return signs[0];
+    }
+    for (let i = 1; i < signs.length; i++) {
+      const [sm, sd] = signs[i].start;
+      const [em, ed] = signs[i].end;
+      const afterStart = month > sm || (month === sm && day >= sd);
+      const beforeEnd = month < em || (month === em && day <= ed);
+      if (afterStart && beforeEnd) return signs[i];
+    }
+    return signs[0];
+  }
+
+  function showFortune() {
+    const value = $("birthday").value;
+    if (!value) {
+      $("error").classList.remove("hidden");
+      return;
+    }
+
+    const selectedDate = new Date(value + "T12:00:00");
+    if (Number.isNaN(selectedDate.getTime())) {
+      $("error").classList.remove("hidden");
+      return;
+    }
+
+    
+("error").classList.add("hidden");const[year,month,day]=value.split("-").map(Number);constsign=getSign(month,day);constnow=newDate();constdayKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");constseed=hash(value+"|"+dayKey);constdaily=dailyFortunes[seed%dailyFortunes.length];constlove=loveFortunes[(seed>>>3)%loveFortunes.length];constmoney=moneyFortunes[(seed>>>7)%moneyFortunes.length];constcolor=colors[(seed>>>11)%colors.length];constquote=quotes[hash(daily+"|"+seed)%quotes.length];//날짜마다순위가달라지며,같은날같은별자리는같은순위예요.constranked=signs.map(s=>(name:s.name,score:hash(dayKey+"|"+s.name))).sort((a,b)=>a.score-b.score);constrank=ranked.findIndex(s=>s.name===sign.name)+1;constdateText=`{now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+
+    $("today").textContent = "☀ " + dateText;
+    $("sign").textContent = sign.name + " " + sign.emoji;
+    $("rank").textContent = rank + "위";
+
+    $("rankTitle").textContent =
+      rank <= 3 ? "오늘은 행운이 반짝!" :
+      rank <= 6 ? "기분 좋은 흐름이 기대돼요" :
+      rank <= 9 ? "차분하게 균형을 맞춰 봐요" :
+      "작은 여유가 행운을 불러와요";
+
+    $("rankDesc").textContent =
+      `12개 별자리 중 ${rank}위예요. 나만의 페이스를 지켜 보세요.`;
+
+    $("daily").textContent = daily;
+    $("love").textContent = love;
+    $("money").textContent = money;
+    $("lucky").replaceChildren();
+
+    const swatch = document.createElement("span");
+    swatch.className = "color-swatch";
+    swatch.style.backgroundColor = color[1];
+
+    const colorName = document.createElement("strong");
+    colorName.textContent = color[0];
+
+    const description = document.createElement("span");
+    description.className = "muted";
+    description.textContent = "오늘의 기분을 산뜻하게 밝혀 줄 색";
+
+    $("lucky").append(swatch, colorName, document.createElement("br"), description);
+    $("quote").textContent = quote;
+
+    $("results").classList.remove("hidden");
+    $("results").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  $("go").addEventListener("click", showFortune);
+  $("birthday").addEventListener("keydown", event => {
+    if (event.key === "Enter") showFortune();
+  });
+})();
+</script>
+</body>
+</html>
+
+3. 인터넷에 공개하
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘 나의 운세순위는?</title>
+<style>
+:root {
+  --primary: #6c4ccf;
+  --secondary: #e9e1ff;
+  --background: #f7f4ff;
+  --text: #21183d;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, "Malgun Gothic", sans-serif;
+  color: var(--text);
+  background: var(--background);
+}
+main {
+  max-width: 760px;
+  margin: auto;
+  padding: 30px 20px 60px;
+}
+header { text-align: center; padding: 22px 0 28px; }
+.eyebrow {
+  color: var(--primary);
+  font-weight: 800;
+  letter-spacing: .12em;
+  font-size: .75rem;
+}
+h1 { font-size: 2.4rem; line-height: 1.2; }
+.subtitle { color: #716889; line-height: 1.7; }
+.panel {
+  background: white;
+  border: 1px solid #e8e0fa;
+  border-radius: 24px;
+  padding: 24px;
+  margin: 14px 0;
+  box-shadow: 0 12px 40px #38206e12;
+}
+label { display: block; font-weight: 750; margin-bottom: 10px; }
+.inputrow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+input {
+  flex: 1;
+  min-width: 180px;
+  border: 1px solid #d9d0ec;
+  border-radius: 13px;
+  padding: 14px;
+  font: inherit;
+}
+button {
+  border: 0;
+  border-radius: 13px;
+  padding: 14px 20px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.primary { background: var(--primary); color: white; }
+.note { font-size: .85rem; color: #817791; line-height: 1.6; }
+.hidden { display: none; }
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  padding: 7px 12px;
+  border-radius: 99px;
+  background: var(--secondary);
+  color: #30205f;
+  font-size: .84rem;
+  font-weight: 800;
+}
+.rankbox { display: flex; align-items: center; gap: 18px; margin-top: 20px; }
+.ranknum {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  flex-shrink: 0;
+  border-radius: 26px;
+  background: var(--primary);
+  color: white;
+  font-size: 2rem;
+  font-weight: 900;
+}
+.rank-title { font-size: 1.2rem; font-weight: 850; margin-bottom: 5px; }
+.muted { color: #837894; font-size: .92rem; line-height: 1.6; }
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fortune {
+  background: white;
+  border: 1px solid #e8e0fa;
+  border-radius: 20px;
+  padding: 19px;
+  min-height: 145px;
+}
+.emoji { font-size: 1.5rem; }
+.fortune h3 { margin: 10px 0 7px; }
+.fortune p { margin: 0; line-height: 1.65; color: #625675; }
+.color-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 7px;
+  border: 1px solid #0002;
+}
+.quote {
+  background: var(--secondary);
+  color: #30205f;
+  border-radius: 20px;
+  padding: 22px;
+  margin-top: 14px;
+}
+.quote h3 { margin: 0 0 8px; }
+.quote p { font-size: 1.15rem; font-weight: 800; line-height: 1.6; margin: 0; }
+.foot { text-align: center; color: #897f99; font-size: .78rem; margin-top: 22px; line-height: 1.6; }
+@media(max-width:480px) {
+  h1 { font-size: 1.9rem; }
+  .cards { grid-template-columns: 1fr; }
+  .panel { padding: 19px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">✦ YOUR DAILY COSMIC GUIDE ✦</div>
+    <h1>오늘 나의<br>운세순위는?</h1>
+    <p class="subtitle">생일을 입력하고 오늘의 별자리 운세를 확인해 봐요.</p>
+  </header>
+
+  <section class="panel">
+    <label for="birthday">🎂 생년월일을 입력해 주세요</label>
+    <div class="inputrow">
+      <input id="birthday" type="date" min="1900-01-01" aria-label="생년월일">
+      <button class="primary" id="go">오늘의 운세 보기 ✨</button>
+    </div>
+    <p class="note">운세는 재미로 즐기는 콘텐츠예요.</p>
+    <p id="error" class="hidden" role="alert" style="color:#b42355">
+      생년월일을 선택해 주세요.
+    </p>
+  </section>
+
+  <section id="results" class="hidden" aria-live="polite">
+    <div class="panel">
+      <div class="results-head">
+        <span class="pill" id="today"></span>
+        <span class="pill" id="sign"></span>
+      </div>
+      <div class="rankbox">
+        <div class="ranknum" id="rank">1위</div>
+        <div>
+          <div class="rank-title" id="rankTitle"></div>
+          <div class="muted" id="rankDesc"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <article class="fortune">
+        <div class="emoji">🔮</div>
+        <h3>오늘의 운세</h3>
+        <p id="daily"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">💗</div>
+        <h3>연애운</h3>
+        <p id="love"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">🪙</div>
+        <h3>금전운</h3>
+        <p id="money"></p>
+      </article>
+      <article class="fortune">
+        <div class="emoji">🎨</div>
+        <h3>럭키 컬러</h3>
+        <p id="lucky"></p>
+      </article>
+    </div>
+
+    <div class="quote">
+      <h3>☾ 오늘의 한마디</h3>
+      <p id="quote"></p>
+    </div>
+    <p class="foot">
+      별자리는 생일로 자동 계산했어요.
+      운세와 순위는 재미를 위한 콘텐츠예요.
+    </p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const signs = [
+    {name:"염소자리", emoji:"♑", start:[12,22], end:[1,19]},
+    {name:"물병자리", emoji:"♒", start:[1,20], end:[2,18]},
+    {name:"물고기자리", emoji:"♓", start:[2,19], end:[3,20]},
+    {name:"양자리", emoji:"♈", start:[3,21], end:[4,19]},
+    {name:"황소자리", emoji:"♉", start:[4,20], end:[5,20]},
+    {name:"쌍둥이자리", emoji:"♊", start:[5,21], end:[6,21]},
+    {name:"게자리", emoji:"♋", start:[6,22], end:[7,22]},
+    {name:"사자자리", emoji:"♌", start:[7,23], end:[8,22]},
+    {name:"처녀자리", emoji:"♍", start:[8,23], end:[9,22]},
+    {name:"천칭자리", emoji:"♎", start:[9,23], end:[10,23]},
+    {name:"전갈자리", emoji:"♏", start:[10,24], end:[11,22]},
+    {name:"사수자리", emoji:"♐", start:[11,23], end:[12,21]}
+  ];
+
+  const dailyFortunes = [
+    "작은 시도가 생각보다 좋은 기회로 이어질 수 있어요.",
+    "차분히 우선순위를 정하면 일이 술술 풀려요.",
+    "주변의 조언 속에서 유용한 힌트를 발견해요.",
+    "새로운 생각을 행동으로 옮기기 좋은 날이에요.",
+    "서두르기보다 한 번 더 살피면 좋은 결과가 와요.",
+    "꾸준히 해 온 일이 조금씩 빛을 발하는 날이에요.",
+    "가벼운 변화가 하루에 신선한 기운을 더해 줘요.",
+    "자신의 장점을 믿고 한 걸음 나아가 보세요.",
+    "기다리던 소식이나 반가운 일이 생길 수 있어요.",
+    "새로운 것을 배우기에 좋은 하루예요."
+  ];
+
+  const loveFortunes = [
+    "따뜻한 말 한마디가 관계를 더 가깝게 만들어요.",
+    "상대의 이야기를 잘 들어 주면 마음이 통할 거예요.",
+    "자연스러운 대화 속에서 기분 좋은 순간이 생겨요.",
+    "나를 아끼는 마음부터 챙기면 관계도 편안해져요.",
+    "먼저 안부를 건네면 좋은 분위기가 만들어져요.",
+    "억지로 서두르지 말고 편안한 속도를 유지해요.",
+    "친구와 즐겁게 이야기하다 좋은 기분을 얻을 수 있어요."
+  ];
+
+  const moneyFortunes = [
+    "필요한 것과 원하는 것을 나눠 생각해 보세요.",
+    "충동구매보다 계획적인 선택이 빛나는 날이에요.",
+    "작은 절약 습관이 뿌듯함을 가져다줘요.",
+    "새로운 지출은 한 번 더 비교한 뒤 결정해요.",
+    "돈과 관련된 약속이나 영수증을 꼼꼼히 확인해요.",
+    "오늘은 예산을 정해 두면 마음이 한결 편해요.",
+    "필요한 물건의 가격을 비교해 보면 도움이 돼요."
+  ];
+
+  const colors = [
+    ["라벤더","#B8A1E3"], ["민트","#8EDCC5"],
+    ["코랄","#FF8F83"], ["하늘색","#8DCBFA"],
+    ["레몬 옐로","#F5D95F"], ["로즈 핑크","#F1A8C6"],
+    ["세이지 그린","#A8B99A"], ["살구색","#FFC18B"],
+    ["인디고","#6268B5"], ["아이보리","#F4EBD8"],
+    ["터콰이즈","#55C9C4"], ["베이비 블루","#B7D7F5"],
+    ["라일락","#D6B7E8"], ["피치","#FFB49A"],
+    ["골드","#DDBB55"], ["포레스트 그린","#39765D"]
+  ];
+
+  const quotes = [
+    "완벽하지 않아도 괜찮아. 시작하는 용기가 중요해요.",
+    "작은 좋은 일이 모여 멋진 하루가 돼요.",
+    "오늘의 나에게 친절하게 대해 주세요.",
+    "천천히 가도 괜찮아요. 멈추지만 않으면 돼요.",
+    "좋은 기회는 준비된 마음에 찾아와요.",
+    "당신만의 속도로 빛나도 충분해요.",
+    "한 번의 미소가 하루의 분위기를 바꿀 수 있어요.",
+    "오늘 할 수 있는 작은 일부터 시작해 봐요.",
+    "새로운 하루에는 새로운 가능성이 있어요."
+  ];
+
+  const $ = id => document.getElementById(id);
+
+  // 같은 생일과 같은 날짜에는 항상 같은 결과가 나오도록 계산해요.
+  function hash(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i++) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function getSign(month, day) {
+    if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) {
+      return signs[0];
+    }
+    for (let i = 1; i < signs.length; i++) {
+      const [sm, sd] = signs[i].start;
+      const [em, ed] = signs[i].end;
+      const afterStart = month > sm || (month === sm && day >= sd);
+      const beforeEnd = month < em || (month === em && day <= ed);
+      if (afterStart && beforeEnd) return signs[i];
+    }
+    return signs[0];
+  }
+
+  function showFortune() {
+    const value = $("birthday").value;
+    if (!value) {
+      $("error").classList.remove("hidden");
+      return;
+    }
+
+    const selectedDate = new Date(value + "T12:00:00");
+    if (Number.isNaN(selectedDate.getTime())) {
+      $("error").classList.remove("hidden");
+      return;
+    }
+
+    ("error").classList.add("hidden");const[year,month,day]=value.split("-").map(Number);constsign=getSign(month,day);constnow=newDate();constdayKey=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),String(now.getDate()).padStart(2,"0")].join("-");constseed=hash(value+"|"+dayKey);constdaily=dailyFortunes[seed%dailyFortunes.length];constlove=loveFortunes[(seed>>>3)%loveFortunes.length];constmoney=moneyFortunes[(seed>>>7)%moneyFortunes.length];constcolor=colors[(seed>>>11)%colors.length];constquote=quotes[hash(daily+"|"+seed)%quotes.length];//날짜마다순위가달라지며,같은날같은별자리는같은순위예요.constranked=signs.map(s=>(name:s.name,score:hash(dayKey+"|"+s.name))).sort((a,b)=>a.score-b.score);constrank=ranked.findIndex(s=>s.name===sign.name)+1;constdateText=`{now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+
+    $("today").textContent = "☀ " + dateText;
+    $("sign").textContent = sign.name + " " + sign.emoji;
+    $("rank").textContent = rank + "위";
+
+    $("rankTitle").textContent =
+      rank <= 3 ? "오늘은 행운이 반짝!" :
+      rank <= 6 ? "기분 좋은 흐름이 기대돼요" :
+      rank <= 9 ? "차분하게 균형을 맞춰 봐요" :
+      "작은 여유가 행운을 불러와요";
+
+    $("rankDesc").textContent =
+      `12개 별자리 중 ${rank}위예요. 나만의 페이스를 지켜 보세요.`;
+
+    $("daily").textContent = daily;
+    $("love").textContent = love;
+    $("money").textContent = money;
+    $("lucky").replaceChildren();
+
+    const swatch = document.createElement("span");
+    swatch.className = "color-swatch";
+    swatch.style.backgroundColor = color[1];
+
+    const colorName = document.createElement("strong");
+    colorName.textContent = color[0];
+
+    const description = document.createElement("span");
+    description.className = "muted";
+    description.textContent = "오늘의 기분을 산뜻하게 밝혀 줄 색";
+
+    $("lucky").append(swatch, colorName, document.createElement("br"), description);
+    $("quote").textContent = quote;
+
+    $("results").classList.remove("hidden");
+    $("results").scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  $("go").addEventListener("click", showFortune);
+  $("birthday").addEventListener("keydown", event => {
+    if (event.key === "Enter") showFortune();
+  });
+})();
+</script>
+</body>
+</html>

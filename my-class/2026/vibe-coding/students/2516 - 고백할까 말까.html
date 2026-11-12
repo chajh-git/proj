@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>고백을 할까? 말까?</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,"Noto Sans KR",sans-serif;background:linear-gradient(135deg,#fff1f5,#ffe4ec);color:#333}
+.container{max-width:650px;margin:0 auto;padding:24px 18px 40px}
+h1{text-align:center;color:#ff4f86;margin:8px 0 5px;font-size:30px}
+.subtitle{text-align:center;color:#777;margin-bottom:16px}
+.gauge-wrap{position:sticky;top:0;background:rgba(255,241,245,.95);padding:12px 0 14px;z-index:5;backdrop-filter:blur(5px)}
+.gauge{height:22px;background:#f4d9e3;border-radius:20px;overflow:hidden;border:2px solid #ffc8d9}
+.gauge-fill{height:100%;width:0%;background:linear-gradient(90deg,#ff9bbb,#ff3f78);border-radius:20px;transition:width .35s ease}
+.gauge-info{text-align:center;margin-top:8px;font-size:14px;color:#777}
+.question-card{background:white;border-radius:24px;padding:30px 22px;margin-top:24px;min-height:420px;box-shadow:0 6px 20px rgba(180,70,110,.12);display:flex;flex-direction:column;justify-content:center}
+.qnum{color:#ff5b8d;font-weight:bold;font-size:14px;text-align:center}
+.question{font-size:21px;font-weight:bold;line-height:1.5;text-align:center;margin:12px 0 24px}
+.option{display:block;width:100%;padding:14px;margin:9px 0;border:2px solid #f1d8e0;background:#fff;border-radius:14px;text-align:left;cursor:pointer;font-size:15px;transition:.2s}
+.option:hover{border-color:#ff9cba;background:#fff7fa}
+.option.selected{border-color:#ff4f86;background:#fff0f5;font-weight:bold}
+.navigation{display:flex;gap:10px;margin-top:16px}
+.nav-btn{flex:1;border:0;border-radius:14px;padding:14px;background:#ff5b8d;color:white;font-size:16px;font-weight:bold;cursor:pointer}
+.nav-btn:disabled{background:#ddd;cursor:not-allowed}
+.result{display:none;background:white;border-radius:22px;padding:28px 20px;margin-top:22px;text-align:center;box-shadow:0 5px 20px rgba(180,70,110,.12)}
+.result h2{color:#ff4f86}
+.small{font-size:13px;color:#888;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>💖 고백을 할까? 말까?</h1>
+<div class="subtitle">천천히 생각해보고 솔직하게 골라보세요!</div>
+<div class="gauge-wrap">
+<div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+<div class="gauge-info" id="gaugeInfo">0 / 20 질문 완료 💭</div>
+</div>
+<div class="question-card">
+<div class="qnum" id="qnum"></div>
+<div class="question" id="question"></div>
+<div id="options"></div>
+</div>
+<div class="navigation">
+<button class="nav-btn" id="prevBtn">← 이전</button>
+<button class="nav-btn" id="nextBtn">다음 →</button>
+</div>
+<div class="result" id="result">
+<div id="resultEmoji" style="font-size:42px"></div>
+<h2 id="resultTitle"></h2>
+<p id="resultText"></p>
+<p class="small">이 결과는 재미로 참고하는 테스트예요. 가장 중요한 건 상대방의 마음과 내 마음을 존중하는 것이에요.</p>
+<button class="nav-btn" id="restartBtn">다시 해보기</button>
+</div>
+</div>
+<script>
+const questions = [
+ {q:"나와 상대방의 친밀도는 어느 정도인가요?", a:[["아직 많이 어색하다",0],["조금 친한 편이다",2],["꽤 친하다",4],["서로 편하게 이야기한다",5]]},
+ {q:"평소 연락은 얼마나 자주 하나요?", a:[["거의 하지 않는다",0],["가끔 한다",2],["자주 한다",4],["매일 또는 거의 매일 한다",5]]},
+ {q:"상대방에게 호감 신호가 있다고 느끼나요?", a:[["전혀 모르겠다",0],["조금 그런 것 같다",2],["그런 것 같다",4],["꽤 확실하다고 느낀다",5]]},
+ {q:"상대방이 먼저 연락하는 편인가요?", a:[["거의 없다",0],["가끔 있다",2],["자주 먼저 한다",4],["먼저 연락하는 경우가 많다",5]]},
+ {q:"서로 알고 지낸 기간은 어느 정도인가요?", a:[["얼마 되지 않았다",0],["몇 달 정도",2],["1년 이상",4],["오랫동안 알고 지냈다",5]]},
+ {q:"둘이 단둘이 이야기하거나 만나는 일이 있나요?", a:[["거의 없다",0],["가끔 있다",2],["종종 있다",4],["자연스럽게 자주 있다",5]]},
+ {q:"상대방이 나에게 관심을 보이는 것 같나요?", a:[["그렇지 않은 것 같다",0],["잘 모르겠다",2],["조금 그런 것 같다",4],["확실히 관심이 있어 보인다",5]]},
+ {q:"서로 장난이나 편한 대화를 자주 하나요?", a:[["거의 하지 않는다",0],["가끔 한다",2],["자주 한다",4],["아주 편하게 이야기한다",5]]},
+ {q:"상대방과 함께 있을 때 분위기는 어떤가요?", a:[["어색한 편이다",0],["보통이다",2],["편하고 즐겁다",4],["서로 즐거워하는 게 느껴진다",5]]},
+ {q:"지금 서로 썸인 것 같다고 느끼나요?", a:[["전혀 아니다",0],["잘 모르겠다",2],["조금 그런 것 같다",4],["서로 썸이라고 느낀다",5]]},
+
+ {q:"상대방을 좋아하는 마음이 얼마나 확실한가요?", a:[["나도 잘 모르겠다",0],["조금 호감이 있는 것 같다",2],["좋아하는 마음이 확실하다",4],["오랫동안 진지하게 좋아했다",5]]},
+ {q:"내가 상대방을 좋아하는 이유를 생각해본 적이 있나요?", a:[["특별한 이유를 모르겠다",0],["한두 가지는 생각난다",2],["좋아하는 이유가 여러 가지 있다",4],["그 사람의 성격이나 가치관까지 생각해봤다",5]]},
+ {q:"친구로 지내는 것보다 연인이 되고 싶은 마음이 더 큰가요?", a:[["친구로 지내고 싶다",0],["잘 모르겠다",2],["연인이 되고 싶은 마음이 조금 더 크다",4],["연인이 되고 싶은 마음이 확실히 크다",5]]},
+ {q:"내가 외로워서 좋아하는 것인지, 정말 그 사람을 좋아하는지 생각해본 적 있나요?", a:[["생각해본 적 없다",0],["잘 모르겠다",2],["그 사람 자체가 좋다고 생각한다",4],["충분히 생각해봤고 그 사람을 좋아한다고 느낀다",5]]},
+ {q:"상대방의 좋은 점뿐 아니라 아쉬운 점도 알고 있나요?", a:[["거의 모른다",0],["조금 알고 있다",2],["어느 정도 알고 있다",4],["좋은 점과 아쉬운 점을 모두 생각해봤다",5]]},
+ {q:"상대방과 사귀게 된다면 서로 잘 맞을 것 같나요?", a:[["잘 모르겠다",0],["조금 걱정된다",2],["잘 맞을 것 같다",4],["서로의 성격이나 가치관이 잘 맞는다고 생각한다",5]]},
+ {q:"지금 고백하지 않고 기다리면 나중에 후회할 것 같나요?", a:[["전혀 후회하지 않을 것 같다",0],["조금 아쉬울 것 같다",2],["후회할 것 같다",4],["고백하지 않은 것을 크게 후회할 것 같다",5]]},
+ {q:"상대방이 다른 사람과 사귀게 된다면 어떤 마음일 것 같나요?", a:[["괜찮을 것 같다",0],["조금 아쉬울 것 같다",2],["많이 아쉬울 것 같다",4],["고백하지 않은 것을 후회할 것 같다",5]]},
+ {q:"고백 후 관계가 조금 어색해질 가능성도 받아들일 수 있나요?", a:[["그건 너무 걱정된다",0],["조금 걱정된다",2],["어느 정도 받아들일 수 있다",4],["결과가 어떻든 존중할 수 있다",5]]},
+ {q:"마지막으로, 다른 사람의 의견을 빼고 내 마음만 생각하면 고백하고 싶은가요?", a:[["아직 고백하고 싶지 않다",0],["잘 모르겠다",2],["조금 고백하고 싶다",4],["내 마음은 고백하고 싶다고 확실히 말할 수 있다",5]]}
+];
+let current=0;
+let answers=new Array(questions.length).fill(null);
+const qnum=document.getElementById("qnum"), question=document.getElementById("question"), options=document.getElementById("options");
+const prevBtn=document.getElementById("prevBtn"), nextBtn=document.getElementById("nextBtn");
+
+function renderQuestion(){
+ const item=questions[current];
+ qnum.textContent=`QUESTION ${current+1} / ${questions.length}`;
+ question.textContent=item.q;
+ options.innerHTML="";
+ item.a.forEach(opt=>{
+  const btn=document.createElement("button");
+  btn.className="option";
+  btn.textContent=opt[0];
+  if(answers[current]===opt[1]) btn.classList.add("selected");
+  btn.onclick=()=>{
+   answers[current]=opt[1];
+   options.querySelectorAll(".option").forEach(x=>x.classList.remove("selected"));
+   btn.classList.add("selected");
+   updateGauge();
+  };
+  options.appendChild(btn);
+ });
+ prevBtn.disabled=current===0;
+ nextBtn.textContent=current===questions.length-1?"결과 보기 💖":"다음 →";
+}
+
+function updateGauge(){
+ const count=answers.filter(x=>x!==null).length;
+ document.getElementById("gaugeFill").style.width=(count/questions.length*100)+"%";
+ document.getElementById("gaugeInfo").textContent=`${count} / ${questions.length} 질문 완료 ${count===questions.length?"💖":"💭"}`;
+}
+prevBtn.onclick=()=>{if(current>0){current--;renderQuestion()}};
+nextBtn.onclick=()=>{
+ if(answers[current]===null){alert("답을 하나 골라주세요! 💗");return}
+ if(current<questions.length-1){current++;renderQuestion()}else showResult();
+};
+function showResult(){
+ const score=answers.reduce((a,b)=>a+b,0);
+ let emoji,title,text;
+ if(score>=80){emoji="💖";title="지금 당장 고백한다!";text="상대방과의 관계도 꽤 좋고, 내 마음도 비교적 확실해 보여요. 너무 완벽한 타이밍을 기다리기보다 진솔하게 마음을 전해보는 것도 좋겠어요."}
+ else if(score>=55){emoji="💓";title="조금 더 관계를 쌓는다!";text="호감과 가능성은 있지만 아직 생각해볼 부분도 있어요. 조금 더 대화하고 서로를 알아간 뒤 결정해도 늦지 않아요."}
+ else{emoji="💭";title="고백하지 않는다.";text="지금은 서두르기보다 내 마음과 상대방과의 관계를 조금 더 생각해보는 게 좋겠어요. 마음이 바뀌거나 확실해질 때 다시 생각해봐도 좋아요."}
+ document.getElementById("resultEmoji").textContent=emoji;
+ document.getElementById("resultTitle").textContent=title;
+ document.getElementById("resultText").textContent=text;
+ document.querySelector(".question-card").style.display="none";
+ document.querySelector(".navigation").style.display="none";
+ document.getElementById("result").style.display="block";
+ document.getElementById("result").scrollIntoView({behavior:"smooth"});
+}
+document.getElementById("restartBtn").onclick=()=>{
+ answers=new Array(questions.length).fill(null);current=0;
+ document.getElementById("result").style.display="none";
+ document.querySelector(".question-card").style.display="flex";
+ document.querySelector(".navigation").style.display="flex";
+ updateGauge();renderQuestion();window.scrollTo({top:0,behavior:"smooth"});
+};
+renderQuestion();updateGauge();
+</script>
+</body>
+</html>
