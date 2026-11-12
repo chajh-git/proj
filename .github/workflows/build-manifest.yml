@@ -1,0 +1,74 @@
+name: Build vibe-coding manifest
+
+# (어느 경로든) 20XX/vibe-coding 폴더에 파일이 올라올 때마다 files.json 을 자동으로 만듭니다.
+# 위치: 저장소 루트의 .github/workflows/build-manifest.yml
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/20??/vibe-coding/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate files.json
+        run: |
+          python3 - <<'PY'
+          import glob, json, os
+
+          def html_files(d):
+              if not os.path.isdir(d):
+                  return []
+              return sorted(f for f in os.listdir(d)
+                            if f.lower().endswith((".html", ".htm")))
+
+          # 예시 작품: examples/ 아래 폴더마다 열 파일을 고름
+          # (index.html 이 있으면 그것, 없으면 이름순 첫 번째 .html)
+          def example_entries(d):
+              out = []
+              if not os.path.isdir(d):
+                  return out
+              for name in sorted(os.listdir(d)):
+                  sub = os.path.join(d, name)
+                  if not os.path.isdir(sub):
+                      continue
+                  htmls = html_files(sub)
+                  if not htmls:
+                      continue
+                  entry = "index.html" if "index.html" in htmls else htmls[0]
+                  out.append({"dir": name, "entry": entry})
+              return out
+
+          for root in sorted(glob.glob("**/20??/vibe-coding", recursive=True)):
+              schools = {}
+              for d in sorted(glob.glob(os.path.join(root, "school-*/"))):
+                  code = os.path.basename(d.rstrip("/"))
+                  schools[code] = html_files(os.path.join(d, "student"))
+              data = {
+                  "examples": example_entries(os.path.join(root, "examples")),
+                  "schools": schools,
+              }
+              with open(os.path.join(root, "files.json"), "w", encoding="utf-8") as fp:
+                  json.dump(data, fp, ensure_ascii=False, indent=2)
+                  fp.write("\n")
+              print("generated", root)
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          find . -path ./.git -prune -o -type f -name files.json -path "*/20??/vibe-coding/*" -print0 | xargs -0 -r git add -A --
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update files.json"
+            git pull --rebase
+            git push
+          fi
