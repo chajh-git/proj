@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>저팔게 폐교 탈출</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#e9e6df;--fg:#1c1b18;--pn:#fbfaf6;--ac:#8a3b2e;--ln:#b9b4a6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15150f;--fg:#e6e2d6;--pn:#23221a;--ln:#4a4739}}
+:root[data-theme="dark"]{--bg:#15150f;--fg:#e6e2d6;--pn:#23221a;--ln:#4a4739}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px}
+#wrap{position:relative;width:100%;max-width:1100px;aspect-ratio:16/9;background:#000;border:2px solid var(--ln);overflow:hidden}
+canvas#c{width:100%;height:100%;display:block}
+#msg,#inv,.help{width:100%;max-width:1100px}
+#msg{min-height:3em;padding:8px 12px;background:var(--pn);border:1px solid var(--ln)}
+#inv{display:flex;flex-wrap:wrap;gap:6px;min-height:36px}
+.s{padding:4px 10px;border:1px solid var(--ln);background:var(--pn);cursor:pointer}
+.s.on{border-color:var(--ac);outline:2px solid var(--ac)}
+.help{font-size:13px;opacity:.8}
+#dot{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px;border-radius:50%;background:#fff;opacity:.6;pointer-events:none}
+#pr{position:absolute;left:0;right:0;top:58%;text-align:center;color:#fff;text-shadow:0 0 4px #000;pointer-events:none}
+#fi{position:absolute;left:12px;top:8px;color:#fff;font-size:20px;opacity:.85;text-shadow:0 0 4px #000;pointer-events:none}
+#red{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 35%,#b3121a 130%)}
+#bl,#pz,#end,#dead{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.78);color:#fff;text-align:center;cursor:pointer}
+#pz,#end,#dead{display:none;cursor:default}
+#js{position:absolute;inset:0;display:none;background:#000;align-items:center;justify-content:center}
+#js canvas{height:100%;max-width:100%}
+.box{background:var(--pn);color:var(--fg);border:2px solid var(--ac);padding:20px;width:min(440px,92%);max-height:90%;overflow:auto;text-align:left}
+.box h2{margin:0 0 10px;font-size:20px}.box ul{padding-left:18px;margin:0 0 10px}
+input{font-size:24px;width:100%;padding:6px 10px;letter-spacing:.4em;text-align:center;background:var(--bg);color:var(--fg);border:1px solid var(--ln);margin:6px 0}
+button{font:inherit;padding:6px 14px;margin-right:6px;background:var(--ac);color:#fff;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid #e0b84a}
+</style></head><body>
+<div id="wrap"><canvas id="c"></canvas><div id="dot"></div><div id="red"></div><div id="pr"></div><div id="fi">1층</div>
+<div id="bl"><div><h2>저팔게 폐교 탈출</h2>화면을 클릭해서 시작 (소리 주의 🔊)<br>폐교 안에 저팔게 3마리와 친구가 돌아다닌다. 잡히면 죽는다.<br><small>마우스로 둘러보기 (잠금이 안 되면 드래그, 방향키도 가능)</small></div></div>
+<div id="pz"><div class="box"><h2 id="pt"></h2><div id="pb"></div><input id="ci" maxlength="4" inputmode="numeric" autocomplete="off"><div><button id="ok">확인</button><button id="cl">닫기 (Esc)</button></div></div></div>
+<div id="js"><canvas id="jc" width="480" height="480"></canvas></div>
+<div id="dead"><div class="box"><h2 id="dt">죽었다</h2><p id="dd"></p><button onclick="location.reload()">다시 도전</button></div></div>
+<div id="end"><div class="box"><h2>폐교 탈출 성공!</h2><p>저팔게들을 따돌리고 대정문을 빠져나와 폐교를 탈출했습니다.</p><button onclick="location.reload()">다시 시작</button></div></div></div>
+<div id="msg"></div><div id="inv"></div>
+<div class="help">W A S D 이동 · R 뛰기 · 마우스 시점 · G 줍기 · 계단은 걸어서 · U 문 열기·닫기/아이템 사용 · T 버리기 · P 퍼즐/단서 · 1~8 선택 · M 소리 끄기</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),C=$('c'),LEN=32,RW=8,CZ0=9,CZ1=12;
+const sc=new THREE.Scene(),cam=new THREE.PerspectiveCamera(70,16/9,.1,140),ren=new THREE.WebGLRenderer({canvas:C,antialias:true});
+ren.setPixelRatio(Math.min(devicePixelRatio,1.5));
+function rs(){const w=$('wrap').clientWidth,h=$('wrap').clientHeight;ren.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+addEventListener('resize',rs);rs();
+sc.background=new THREE.Color(0x040508);sc.fog=new THREE.FogExp2(0x040508,.045);
+const amb=new THREE.AmbientLight(0x303040,.55);sc.add(amb,cam);
+cam.add(new THREE.PointLight(0xa89880,.9,8));
+const sp=new THREE.SpotLight(0xfff2cc,0,30,.5,.45,1);sp.target.position.set(0,0,-5);cam.add(sp,sp.target);
+function tex(base,grid){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle=base;g.fillRect(0,0,128,128);
+  for(let i=0;i<900;i++){g.fillStyle='rgba(0,0,0,'+Math.random()*.28+')';g.fillRect(Math.random()*128,Math.random()*128,2+Math.random()*4,2)}
+  if(grid){g.strokeStyle='rgba(0,0,0,.5)';g.lineWidth=3;g.strokeRect(0,0,128,128)}
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;return t}
+const M=o=>new THREE.MeshStandardMaterial(Object.assign({roughness:1},o)),BM=c=>new THREE.MeshBasicMaterial({color:c});
+const wm=M({map:tex('#8a8774')}),wood=M({map:tex('#6b4a2c')}),doorM=M({map:tex('#7a5530'),color:0xbbaa99});
+const ft=tex('#55534a',true);const ct=tex('#3a3935');
+let cg,cc;
+function B(x1,z1,x2,z2,h=3,y0=0,mat=wm,solid=true){const m=new THREE.Mesh(new THREE.BoxGeometry(x2-x1,h,z2-z1),mat);m.position.set((x1+x2)/2,y0+h/2,(z1+z2)/2);cg.add(m);if(solid)cc.push([x1,z1,x2,z2]);return m}
+function signTex(t,w=256){const c=document.createElement('canvas');c.width=w;c.height=96;const g=c.getContext('2d');g.fillStyle='#d8d2bd';g.fillRect(0,0,w,96);g.fillStyle='#2a2a24';g.font='bold 40px "Malgun Gothic",sans-serif';g.textAlign='center';g.fillText(t,w/2,62);return new THREE.CanvasTexture(c)}
+const cls=g=>[1,2,3,4,5,6,7].map(n=>g+'학년 '+n+'반');
+const LAY=[[['교무실','급식실**'],['계단실','강당**']],
+ [cls(1).slice(0,4),['계단실',...cls(1).slice(4)]],[cls(2).slice(0,4),['계단실',...cls(2).slice(4)]],[cls(3).slice(0,4),['계단실',...cls(3).slice(4)]],
+ [['도서실','미술실','과학실','방송실'],['계단실','컴퓨터실','서고','음악실']]];
+const IT=[
+ [0,'교무실','n1','멈춘 시계 메모','note','교무실 벽시계는 7시에 멈춰 있다. (상자 비밀번호 1번째 숫자)'],
+ [4,'음악실','n2','피아노 악보','note','악보에 "솔"이 크게 적혀 있다. 도레미파솔라시 중 몇 번째? (상자 2번째 숫자)'],
+ [0,'급식실','n3','급식 식판 메모','note','식판은 4칸으로 나뉘어 있다. (상자 3번째 숫자)'],
+ [0,'강당','n4','무대 조명 메모','note','무대 조명이 3개 켜져 있다. (상자 4번째 숫자)'],
+ [0,'교무실','f1','손전등','light'],
+ [1,'1학년 6반','d1','부러진 분필','junk'],
+ [2,'2학년 3반','n5','칠판 낙서','note','칠판: "이 학교는 ○○87년에 문을 닫았다." (정문 비밀번호 뒤 두 자리)'],
+ [2,'2학년 5반','d2','낡은 인형','junk'],
+ [4,'도서실','n6','졸업 앨범','note','첫 장: "19○○년 개교." (정문 비밀번호 앞 두 자리)'],
+ [4,'미술실','d3','굳은 물감','junk'],
+ [0,'교무실','n7','교무일지','note','교무일지: 1학년 3반 캐비닛의 비밀번호는 1×2×3×4×5×6×7 이다.',.4],
+ [3,'3학년 7반','n8','칠판 문제','note','칠판: 2학년 6반 보관함의 비밀번호는 2를 11번 곱한 수다. (2의 11제곱)'],
+ [1,'1학년 2반','n9','칠판 퀴즈','note','칠판: 5층 도서실 보관함의 비밀번호는 광복절 날짜(월일 네 자리)다.'],
+ [2,'2학년 2반','n10','수열 메모','note','수열: 1, 1, 2, 3, 5, 8, 13, 21, … 다음 두 수를 이어 쓰면 5층 미술실 보관함의 비밀번호다.'],
+ [4,'서고','n11','급식 달력','note','급식 달력: 크리스마스 이브(월일 네 자리)가 1층 급식실 보관함의 비밀번호다.'],
+ [1,'1학년 7반','n12','농구 규칙','note','농구 규칙: 한 팀은 5명. 5를 네 번 곱한 수가 1층 강당 보관함의 비밀번호다.']];
+const LK=[[3,'3학년 2반','7543',0x7a5230],[1,'1학년 3반','5040',0x66707a],[2,'2학년 6반','2048',0x7a5230],[4,'도서실','0815',0x55664a],[4,'미술실','3455',0x8a8a8a],[0,'급식실','1224',0x66707a],[0,'강당','625',0x4a5a7a,-8,4.4]];
+const F=[];
+function build(f){
+  const g=new THREE.Group(),X={g,col:[],items:[],doors:[],fx:[],rooms:[],locks:[],gate:null};
+  cg=g;cc=X.col;F[f]=X;
+  const slab=(t,y,rx,sy,hole)=>{const s=new THREE.Shape();s.moveTo(0,0);s.lineTo(LEN,0);s.lineTo(LEN,sy*21);s.lineTo(0,sy*21);s.closePath();
+    if(hole){const p=new THREE.Path(),[a,b,c,d]=hole;p.moveTo(a,sy*b);p.lineTo(a,sy*d);p.lineTo(c,sy*d);p.lineTo(c,sy*b);p.closePath();s.holes.push(p)}
+    const m=new THREE.Mesh(new THREE.ShapeGeometry(s),M({map:t}));m.rotation.x=rx;m.position.y=y;g.add(m)};
+  slab(ft,0,-Math.PI/2,-1,f>0?[1,14.5,2.6,18.5]:null);slab(ct,3,Math.PI/2,1,f<4?[5.4,14.5,7,18.5]:null);
+  B(-.2,-.2,LEN+.2,0);B(-.2,21,LEN+.2,21.2);B(-.2,0,0,21);B(LEN,0,LEN+.2,CZ0);B(LEN,CZ1,LEN+.2,21);if(f)B(LEN,CZ0,LEN+.2,CZ1);
+  const dk=[];
+  LAY[f].forEach((arr,row)=>arr.forEach((nn,i)=>{
+    const wd=q=>RW*(1+q.split('*').length-1),n=nn.replace(/\*/g,''),W=wd(nn),x0=arr.slice(0,i).reduce((a,q)=>a+wd(q),0),cx=x0+W/2,dz=row?CZ1:CZ0,s=row?1:-1,stair=n=='계단실',gw=stair?1.2:.8;
+    X.rooms.push({n,cx,dz,s,stair,x0,W});
+    if(x0>0)B(x0-.1,row?CZ1:0,x0+.1,row?21:CZ0);
+    B(x0,dz-.1,cx-gw,dz+.1);B(cx+gw,dz-.1,x0+W,dz+.1);B(cx-gw,dz-.1,cx+gw,dz+.1,.6,2.4,wm,false);
+    const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.2,.4),new THREE.MeshBasicMaterial({map:signTex(n),color:0x999999}));
+    sg.position.set(cx,2.7,dz-s*.11);if(row)sg.rotation.y=Math.PI;g.add(sg);
+    if(n.includes('반')){const bd=new THREE.Mesh(new THREE.PlaneGeometry(4,1.2),M({color:0x1d2a23}));bd.position.set(cx,1.5,row?20.89:.11);if(row)bd.rotation.y=Math.PI;g.add(bd);
+      [-2.8,-1.2,1.2,2.8].forEach(dx=>[2.5,3.8,5.1,6.4].forEach(d=>{const x=cx+dx,z=dz+s*d;B(x-.42,z-.3,x+.42,z+.3,.75,0,wood)}))}
+    if(n=='급식실')[-8,-4,4,8].forEach(dx=>[2.5,5,7.5].forEach(d=>{const x=cx+dx,z=dz+s*d;B(x-.75,z-.4,x+.75,z+.4,.75,0,wood)}));
+    if(!stair){const dm=new THREE.Mesh(new THREE.BoxGeometry(1.6,2.4,.06),doorM);dm.position.set(cx,1.2,dz-s*.15);g.add(dm);
+      const dc=[cx-.8,dz-.1,cx+.8,dz+.1];X.col.push(dc);X.doors.push({m:dm,c:dc,cx,dz,open:false,a:0})}
+    else{const SG=(x,t)=>{const pl=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.5),new THREE.MeshBasicMaterial({map:signTex(t),color:0xaaaaaa}));pl.position.set(x,2.3,20.89);pl.rotation.y=Math.PI;g.add(pl)},rail=(a,b,c,d)=>B(a,b,c,d,1,0,wood);
+      if(f<4){SG(6.2,'▲ 위층');for(let k=0;k<16;k++)B(5.4,14.5+k*.25,7,14.75+k*.25,(k+1)*.1875,0,wm,false);rail(5.3,14.5,5.4,18.5);rail(7,14.5,7.1,18.5);rail(5.3,18.5,7.1,18.6)}
+      if(f>0){SG(1.8,'▼ 아래층');for(let k=0;k<16;k++)B(1,18.5-(k+1)*.25,2.6,18.5-k*.25,.15,-(k+1)*.1875-.15,wm,false);rail(.9,14.5,1,18.5);rail(2.6,14.5,2.7,18.5);rail(.9,14.4,2.7,14.5)}}
+  }));
+  const rp=n=>X.rooms.find(r=>r.n==n),pos=(n,dx,d)=>{const r=rp(n);return[r.cx+dx,r.dz+r.s*d]};
+  const used={};
+  IT.filter(a=>a[0]==f).forEach(([,room,id,name,type,text,dx=0])=>{const[x,z]=pos(room,dx,3.2),it={id,name,type,text,x,z,y:.85};
+    const t=type=='note'?0xe6d98a:type=='light'?0x5cc8d8:0x8a857a;
+    const m=new THREE.Mesh(new THREE.BoxGeometry(.28,.04,.38),M({color:t,emissive:type=='note'?0x4a3a00:0}));m.position.set(x,it.y,z);it.m=m;g.add(m);X.items.push(it);
+    if(!used[room+dx]){used[room+dx]=1;B(x-.5,z-.4,x+.5,z+.4,.06,.75,wood);B(x-.3,z-.25,x+.3,z+.25,.75,0,wood,false)}});
+  for(let x=4;x<LEN;x+=8)X.fx.push(B(x-.6,10.2,x+.6,10.8,.06,2.94,BM(0xcfd8c0),false));
+  LK.filter(l=>l[0]==f).forEach(([,room,code,col_,ldx,ldp])=>{const[x,z]=pos(room,ldx||0,ldp||7.8),L={x,z,code,room,open:false};
+    B(x-.5,z-.3,x+.5,z+.3,.5,0,M({color:col_}));L.lid=B(x-.5,z-.3,x+.5,z+.3,.15,.5,M({color:0x5a3b20}),false);X.locks.push(L)});
+  if(f==0){X.gate={x:LEN,z:10.5,open:false,a:0};const fm=M({color:0xb8bcc2,metalness:.7,roughness:.4});
+    B(LEN-.1,CZ0,LEN+.1,CZ1,.5,2.5,wm,false);
+    const leaf=(z1,z2)=>{const gl=new THREE.Mesh(new THREE.BoxGeometry(.05,2.4,z2-z1),new THREE.MeshStandardMaterial({color:0x9fd0e0,transparent:true,opacity:.35,metalness:.3}));gl.position.set(LEN,1.25,(z1+z2)/2);g.add(gl);return gl};
+    X.gl=leaf(CZ0+.12,10.5);X.gr=leaf(10.5,CZ1-.12);
+    X.gk=new THREE.Mesh(new THREE.BoxGeometry(.08,.16,.1),BM(0xff2a2a));X.gk.position.set(LEN-.1,1.1,10.5);g.add(X.gk);
+    X.gate.c=[LEN-.15,CZ0,LEN+.15,CZ1];X.col.push(X.gate.c);
+    // 운동장과 대정문
+    const gr=new THREE.Mesh(new THREE.PlaneGeometry(78,52),BM(0x2c2a22));gr.rotation.x=-Math.PI/2;gr.position.set(70.2,-.02,10.5);g.add(gr);
+    const pt=new THREE.Mesh(new THREE.PlaneGeometry(76,3),BM(0x6a665a));pt.rotation.x=-Math.PI/2;pt.position.set(70.2,.02,10.5);g.add(pt);
+    const wl=M({color:0x4a4840});B(32.2,-15.4,108,-15.1,1.8,0,wl);B(32.2,36,108,36.3,1.8,0,wl);B(108,-15.4,109,6.8,3,0,wl);B(108,14.2,109,36.3,3,0,wl);B(107.6,6.8,109.4,8.2,4.2,0,wl);B(107.6,12.8,109.4,14.2,4.2,0,wl);
+    for(let x=40;x<106;x+=11)[8.2,12.8].forEach(z=>{const p=B(x-.05,z-.05,x+.05,z+.05,3.2,0,M({color:0x333333}),false);const o=new THREE.Mesh(new THREE.SphereGeometry(.22,8,6),BM(0xffd890));o.position.set(x,3.3,z);g.add(o)});
+    const sgn=new THREE.Mesh(new THREE.PlaneGeometry(4,.75),new THREE.MeshBasicMaterial({map:signTex('○○학교',512),color:0xaaaaaa}));sgn.position.set(107.5,3.95,10.5);sgn.rotation.y=-Math.PI/2;g.add(sgn)}
+  g.visible=false;sc.add(g)}
+for(let f=0;f<5;f++)build(f);
+
+// ===== 저팔게 백룸의 적들 (저팔게 3마리 + 친구) =====
+function faceTex(kind){const c=document.createElement('canvas');c.width=c.height=256;const k=c.getContext('2d');
+  if(kind==0){ // 저팔게: 돼지 얼굴 + 게 집게
+    k.fillStyle='#d4432e';[[30,150,-1],[226,150,1]].forEach(([x,y,s])=>{k.beginPath();k.arc(x,y,34,0,7);k.fill();k.fillStyle='#240805';k.beginPath();k.moveTo(x,y);k.lineTo(x+s*40,y-40);k.lineTo(x+s*10,y-8);k.fill();k.fillStyle='#d4432e'});
+    k.fillStyle='#e8a0a8';k.beginPath();k.ellipse(70,60,28,38,-.5,0,7);k.ellipse(186,60,28,38,.5,0,7);k.fill();
+    k.fillStyle='#f0b4b8';k.beginPath();k.arc(128,130,86,0,7);k.fill();
+    k.fillStyle='#d88890';k.beginPath();k.ellipse(128,165,42,30,0,0,7);k.fill();
+    k.fillStyle='#3a0a10';k.beginPath();k.ellipse(112,165,8,12,0,0,7);k.ellipse(144,165,8,12,0,0,7);k.fill();
+    [[96,108],[160,108]].forEach(([x,y])=>{k.fillStyle='#fff';k.beginPath();k.arc(x,y,16,0,7);k.fill();k.fillStyle='#e01010';k.beginPath();k.arc(x,y,8,0,7);k.fill()});
+    k.fillStyle='#600';k.fillRect(88,208,80,8);k.fillStyle='#eee';for(let i=0;i<7;i++)k.fillRect(90+i*11,204,6,10)}
+  else{ // 친구
+    k.fillStyle='#b9b0a0';k.beginPath();k.arc(128,130,92,0,7);k.fill();k.fillStyle='#0a0a0a';k.beginPath();k.arc(128,70,92,Math.PI,0);k.fill();k.fillRect(36,60,184,30);
+    [[96,120],[160,120]].forEach(([x,y])=>{k.fillStyle='#000';k.beginPath();k.ellipse(x,y,20,26,0,0,7);k.fill();k.fillStyle='#d8d0b4';k.beginPath();k.arc(x,y,4,0,7);k.fill()});
+    k.fillStyle='#050000';k.beginPath();k.ellipse(128,198,32,36,0,0,7);k.fill();k.fillStyle='#d8d0b4';for(let i=-3;i<=3;i++)k.fillRect(128+i*9-3,166,6,10)}
+  return k.canvas}
+const TX=[0,1].map(i=>new THREE.CanvasTexture(faceTex(i)));
+const EN=[];
+function mkEnemy(kind,fl){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:TX[kind],transparent:true}));s.scale.set(kind?2:1.8,kind?2:1.8,1);s.position.y=1;sc.add(s);
+  const e={kind,fl,x:3+Math.random()*26,z:10.5,tx:0,tz:10.5,s:s,spd:kind?3.2:2.4};e.tx=e.x;EN.push(e);return e}
+const hit=(x,z,col)=>col.some(c=>x+.3>c[0]&&x-.3<c[2]&&z+.3>c[1]&&z-.3<c[3]);
+function stepEn(e,dt){const col=F[e.fl].col,pl=e.fl==fi,d=Math.hypot(P.x-e.x,P.z-e.z);let tx,tz;
+  const chase=pl&&d<18;
+  if(chase){tx=P.x;tz=P.z}else{if(Math.hypot(e.tx-e.x,e.tz-e.z)<.6){e.tx=2+Math.random()*28;e.tz=10.5}tx=e.tx;tz=e.tz}
+  const dx=tx-e.x,dz=tz-e.z,l=Math.hypot(dx,dz)||1,v=e.spd*(chase?1.15:.6)*dt;
+  const nx=e.x+dx/l*v,nz=e.z+dz/l*v;
+  if(!hit(nx,e.z,col))e.x=nx;if(!hit(e.x,nz,col))e.z=nz;
+  if(!chase&&Math.random()<.01)e.tx=2+Math.random()*28;
+  e.s.visible=pl;e.s.position.set(e.x,1+Math.sin(performance.now()/200+e.x)*.05,e.z);
+  const near=pl&&d<18;return{d,near,pl}}
+
+// ===== 오디오 =====
+let AC,mg,muted=false;
+function audio(){if(AC){AC.resume();return}try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(_){return}
+  mg=AC.createGain();mg.gain.value=.7;mg.connect(AC.destination);
+  [[41.2,'sine',.14],[55,'sawtooth',.07],[82.4,'sine',.1]].forEach(([f,t,v])=>{const o=AC.createOscillator(),g=AC.createGain(),l=AC.createBiquadFilter();o.type=t;o.frequency.value=f;l.type='lowpass';l.frequency.value=220;g.gain.value=v;o.connect(l);l.connect(g);g.connect(mg);o.start()})}
+function tone(f,t,dur,v,f2){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),n=AC.currentTime;o.type=t;o.frequency.setValueAtTime(f,n);if(f2)o.frequency.exponentialRampToValueAtTime(f2,n+dur);
+  g.gain.setValueAtTime(.0001,n);g.gain.linearRampToValueAtTime(v,n+dur*.2);g.gain.exponentialRampToValueAtTime(.0001,n+dur);o.connect(g);g.connect(mg);o.start(n);o.stop(n+dur+.05)}
+function burst(dur,v,fq){if(!AC)return;const n=AC.currentTime,b=AC.createBuffer(1,AC.sampleRate*dur,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const s=AC.createBufferSource(),g=AC.createGain(),l=AC.createBiquadFilter();s.buffer=b;l.type='lowpass';l.frequency.value=fq;g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.0001,n+dur);s.connect(l);l.connect(g);g.connect(mg);s.start(n)}
+const grunt=()=>tone(120,'sawtooth',.7,.2,50),sting=()=>{burst(.9,.9,4000);tone(1500,'sawtooth',.6,.4,250)};
+
+// ===== 상태 =====
+const P={x:2,z:10.5,yaw:-Math.PI/2,pitch:0},keys={};
+let fi=0,FL=F[0],inv=[],clues=[],sel=0,modal=null,done=false,dead=false,lockOK=false,drag=false,fl_on=false,curL=null,bob=0,stepT=0,gruntT=0,last=performance.now(),lastPr='',reloc=35;
+cam.rotation.order='YXZ';FL.g.visible=true;
+[0,0,0].forEach(()=>mkEnemy(0,0));mkEnemy(1,0);
+EN.forEach((e,i)=>{e.fl=[1,2,3,4][i%4];e.s.visible=false});EN[3].fl=4;
+const say=t=>$('msg').textContent=t,fw=()=>[-Math.sin(P.yaw),-Math.cos(P.yaw)];
+function setFloor(n){FL.g.visible=false;fi=n;FL=F[n];FL.g.visible=true;$('fi').textContent=(n+1)+'층'}
+function renderInv(){$('inv').innerHTML='';inv.forEach((it,i)=>{const b=document.createElement('span');b.className='s'+(i==sel?' on':'');b.textContent=(i+1)+'. '+it.name;b.onclick=()=>{sel=i;renderInv()};$('inv').appendChild(b)});if(!inv.length)$('inv').innerHTML='<span class="s">인벤토리 비어 있음</span>'}
+const hitP=(x,z)=>hit(x,z,FL.col);
+function target(){const f=fw();let b=null,bd=2.2;FL.items.forEach(it=>{const dx=it.x-P.x,dz=it.z-P.z,d=Math.hypot(dx,dz);if(d<bd&&(dx*f[0]+dz*f[1])/d>.45){bd=d;b=it}});return b}
+function doorT(){const f=fw();let b=null,bd=2.4;FL.doors.forEach(d=>{const dx=d.cx-P.x,dz=d.dz-P.z,k=Math.hypot(dx,dz);if(k<bd&&(dx*f[0]+dz*f[1])/k>.3){bd=k;b=d}});return b}
+const nearChest=()=>FL.locks.find(l=>!l.open&&Math.hypot(P.x-l.x,P.z-l.z)<2.4),
+ nearGate=()=>FL.gate&&!FL.gate.open&&Math.hypot(P.x-FL.gate.x,P.z-FL.gate.z)<3.5,
+ stOff=()=>{if(P.z<14.5||P.z>18.5)return 0;if(fi<4&&Math.abs(P.x-6.2)<.8)return 3*(P.z-14.5)/4;if(fi>0&&Math.abs(P.x-1.8)<.8)return-3*(18.5-P.z)/4;return 0},
+ stHint=()=>fi<4&&Math.hypot(P.x-6.2,P.z-13.6)<1.8?1:fi>0&&Math.hypot(P.x-1.8,P.z-19.4)<1.8?-1:0;
+function toggleDoor(d){if(d.open&&Math.hypot(P.x-d.cx,P.z-d.dz)<.8)return say('문 사이에 서 있어서 닫을 수 없다.');
+  d.open=!d.open;burst(.5,.25,500);if(d.open)FL.col.splice(FL.col.indexOf(d.c),1);else FL.col.push(d.c);say(d.open?'문을 열었다.':'문을 닫았다.')}
+function climb(){if(P.z<14.5||P.z>18.5)return;
+  if(fi<4&&Math.abs(P.x-6.2)<.8&&P.z>=18){setFloor(fi+1);P.x=4;P.z=19.6;say((fi+1)+'층에 올라왔다.');burst(.3,.3,300)}
+  else if(fi>0&&Math.abs(P.x-1.8)<.8&&P.z<=15){setFloor(fi-1);P.x=6.2;P.z=13.3;say((fi+1)+'층으로 내려왔다.');burst(.3,.3,300)}}
+function addKey(){let r=inv.find(i=>i.type=='ring');if(!r){r={id:'ring',type:'ring',n:0,name:''};inv.push(r)}r.n++;r.name='열쇠 꾸러미 ('+r.n+'/7)';sel=inv.indexOf(r);renderInv();return r.n}
+function pick(){const it=target();if(!it)return say('주울 물건이 없다.');
+  if(it.type!='note'&&inv.length>=8)return say('인벤토리가 가득 찼다. (T로 버리기)');
+  FL.items=FL.items.filter(i=>i!==it);FL.g.remove(it.m);
+  if(it.type=='note'){if(!clues.includes(it))clues.push(it);return say(it.name+': '+it.text+' (P키로 단서를 모아 볼 수 있다)')}
+  inv.push(it);sel=inv.length-1;say(it.name+'을(를) 주웠다.');renderInv()}
+function use(){const d=doorT();if(d)return toggleDoor(d);
+  const it=inv[sel];if(!it)return say('선택된 물건이 없다.');
+  if(it.type=='light'){fl_on=!fl_on;say(fl_on?'손전등을 켰다.':'손전등을 껐다.')}
+  else if(it.type=='ring')say('열쇠 꾸러미: '+it.n+'/7개. 정문 자물쇠에는 열쇠 구멍이 7개 있다.');
+  else say('여기서는 쓸 수 없다.')}
+function drop(){const it=inv[sel];if(!it)return say('버릴 물건이 없다.');if(it.type=='ring')return say('열쇠 꾸러미는 버릴 수 없다.');
+  const f=fw();inv.splice(sel,1);it.x=P.x+f[0]*.8;it.z=P.z+f[1]*.8;it.y=.06;it.m.position.set(it.x,it.y,it.z);FL.g.add(it.m);FL.items.push(it);sel=Math.max(0,sel-1);say(it.name+'을(를) 버렸다.');renderInv()}
+function openModal(k){modal=k;for(const q in keys)delete keys[q];if(document.exitPointerLock)document.exitPointerLock();
+  $('pz').style.display='flex';$('ci').value='';const code=k!='clue';
+  $('ci').style.display=code?'block':'none';$('ok').style.display=code?'inline-block':'none';
+  $('pt').textContent=k=='box'?'잠긴 보관함 · '+curL.room:k=='gate'?'정문 자물쇠 (4자리)':'수집한 단서';
+  $('pb').innerHTML=k=='clue'?(clues.length?'<ul>'+clues.map(c=>'<li><b>'+c.name+'</b><br>'+c.text+'</li>').join('')+'</ul>':'<p>아직 모은 단서가 없다.</p>'):'<p>단서를 조합해 비밀번호를 입력하자.</p>';
+  (code?$('ci'):$('cl')).focus()}
+function closeModal(){modal=null;$('pz').style.display='none';if(lockOK)$('bl').style.display='flex'}
+function submit(){const v=$('ci').value.trim();
+  if(modal=='box'){
+    if(v==curL.code){const c=curL;c.open=true;c.lid.rotation.x=-.9;c.lid.position.y+=.25;closeModal();const n=addKey();say('상자가 열렸다! 열쇠를 얻었다. ('+n+'/7) 나머지 열쇠도 찾아야 한다.')}
+    else $('pb').innerHTML='<p>찰칵… 열리지 않는다. 다시 입력하자.</p>'}
+  else if(modal=='gate'){
+    if(v=='1987'){FL.gate.open=true;FL.gk.material.color.set(0x30ff60);FL.col.splice(FL.col.indexOf(FL.gate.c),1);inv=inv.filter(i=>i.type!='ring');sel=0;renderInv();closeModal();say('정문이 열렸다! 동쪽으로 나가자.')}
+    else $('pb').innerHTML='<p>틀렸다. 단서를 다시 확인하고 입력하자.</p>'}}
+function openP(){if(modal)return closeModal();
+  if(nearChest()){curL=nearChest();return openModal('box')}
+  if(nearGate()){const r=inv.find(i=>i.type=='ring');if(r&&r.n>=7)return openModal('gate');return say('정문 자물쇠에는 열쇠 구멍이 7개 있다. 지금은 '+(r?r.n:0)+'/7개다.')}
+  openModal('clue')}
+// 죽음 연출
+function die(e){if(dead)return;dead=true;if(document.exitPointerLock)document.exitPointerLock();$('bl').style.display='none';
+  const jc=$('jc'),k=jc.getContext('2d'),img=faceTex(e.kind),t0=performance.now();$('js').style.display='flex';$('red').style.opacity=0;
+  sting();burst(1.3,.8,3000);tone(900,'sawtooth',1.2,.5,300);try{const u=new SpeechSynthesisUtterance('아아아아악!');u.lang='ko-KR';u.pitch=1.7;u.rate=.7;speechSynthesis.speak(u)}catch(_){}
+  (function f(){const t=(performance.now()-t0)/1000,z=Math.min(1,t/.35),sz=480*(.5+z*1.1),sh=(Math.random()-.5)*14*z;
+    k.fillStyle='#000';k.fillRect(0,0,480,480);k.drawImage(img,(480-sz)/2+sh,(480-sz)/2+sh,sz,sz);k.fillStyle='rgba(180,0,0,'+(.25+Math.random()*.3)+')';k.fillRect(0,0,480,480);if(t<.07){k.fillStyle='#fff';k.fillRect(0,0,480,480)}
+    if(t<2.2)requestAnimationFrame(f);else{$('js').style.display='none';$('dt').textContent='죽었다';$('dd').textContent=e.kind?'친구에게 잡혔다.':'저팔게에게 잡혔다.';$('dead').style.display='flex'}})()}
+addEventListener('keydown',e=>{
+  if(modal){if(e.code=='Escape')closeModal();else if(e.code=='Enter'&&modal!='clue')submit();return}
+  if(e.code.startsWith('Arrow')||e.code=='Space')e.preventDefault();
+  keys[e.code]=1;
+  if(e.code=='KeyG')pick();else if(e.code=='KeyU')use();else if(e.code=='KeyT')drop();else if(e.code=='KeyP')openP();
+  else if(e.code=='KeyM'){muted=!muted;if(mg)mg.gain.value=muted?0:.7}
+  else if(/^Digit[1-8]$/.test(e.code)&&+e.code[5]<=inv.length){sel=+e.code[5]-1;renderInv()}});
+addEventListener('keyup',e=>delete keys[e.code]);
+function look(dx,dy){P.yaw-=dx*.0025;P.pitch=Math.max(-1.2,Math.min(1.2,P.pitch-dy*.0025))}
+$('bl').onclick=()=>{$('bl').style.display='none';audio();try{const r=C.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(_){}};
+document.addEventListener('pointerlockchange',()=>{const l=document.pointerLockElement===C;if(l)lockOK=true;else if(lockOK&&!modal&&!done&&!dead)$('bl').style.display='flex'});
+addEventListener('mousemove',e=>{if(document.pointerLockElement===C||(drag&&!modal))look(e.movementX,e.movementY)});
+C.addEventListener('mousedown',()=>drag=true);addEventListener('mouseup',()=>drag=false);
+$('ok').onclick=submit;$('cl').onclick=closeModal;
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
+  const run=!modal&&!done&&!dead&&$('bl').style.display=='none';let mv=0;
+  if(run){
+    if(keys.ArrowLeft)P.yaw+=1.8*dt;if(keys.ArrowRight)P.yaw-=1.8*dt;if(keys.ArrowUp)P.pitch=Math.min(1.2,P.pitch+1.2*dt);if(keys.ArrowDown)P.pitch=Math.max(-1.2,P.pitch-1.2*dt);
+    const f=fw(),r=[-f[1],f[0]];let a=(keys.KeyW?1:0)-(keys.KeyS?1:0),b=(keys.KeyD?1:0)-(keys.KeyA?1:0);
+    mv=a||b;if(a&&b){a*=.707;b*=.707}const v=(keys.KeyR?6:3)*dt;
+    const dx=(f[0]*a+r[0]*b)*v,dz=(f[1]*a+r[1]*b)*v;
+    if(!hitP(P.x+dx,P.z))P.x+=dx;if(!hitP(P.x,P.z+dz))P.z+=dz;
+    bob+=mv?dt*(keys.KeyR?12:8):0;
+    if(mv){stepT-=dt;if(stepT<=0){burst(.1,.16,300);stepT=keys.KeyR?.3:.5}}
+    climb();
+    if(fi==0&&P.x>109.5){done=true;$('end').style.display='flex';if(document.exitPointerLock)document.exitPointerLock()}
+    // 적 이동·충돌
+    let nearD=99;
+    EN.forEach(e=>{const r_=stepEn(e,dt);if(r_.pl){nearD=Math.min(nearD,r_.d);if(r_.d<.8)die(e)}});
+    $('red').style.opacity=Math.max(0,1-nearD/7);
+    gruntT-=dt;if(nearD<10&&gruntT<=0){grunt();gruntT=.8+nearD*.2}
+    reloc-=dt;if(reloc<=0){reloc=30+Math.random()*20;const e=EN[Math.random()*EN.length|0];e.fl=fi;e.x=P.x>16?3:29;e.z=10.5;e.tx=P.x;sting()}}
+  else EN.forEach(e=>{e.s.visible=e.fl==fi});
+  sc.fog.density+=((P.x>LEN+.5&&fi==0?.022:.045)-sc.fog.density)*Math.min(1,dt*2);
+  if(Math.random()<.03)FL.fx.forEach(m=>m.visible=Math.random()>.25);
+  FL.doors.forEach(d=>{d.a+=((d.open?1:0)-d.a)*Math.min(1,dt*6);d.m.position.x=d.cx+d.a*1.6});
+  if(FL.gate&&FL.gate.open){const q=FL.gate;q.a=Math.min(1,q.a+dt*.5);FL.gl.position.z=-1.4*q.a;FL.gr.position.z=1.4*q.a}
+  cam.position.set(P.x,1.6+stOff()+Math.sin(bob)*.035,P.z);cam.rotation.set(P.pitch,P.yaw,0);
+  sp.intensity+=((fl_on?1.9:0)-sp.intensity)*.3;
+  FL.items.forEach(it=>{if(it.y>.5)it.m.rotation.y+=dt});
+  let pr='';const t=target(),sd=stHint(),dr=doorT();
+  if(t)pr='[G] 줍기: '+t.name;else if(sd)pr=sd>0?'▲ 계단을 걸어 올라가자 ('+(fi+2)+'층)':'▼ 계단을 걸어 내려가자 ('+fi+'층)';else if(dr)pr='[U] 문 '+(dr.open?'닫기':'열기');else if(nearChest())pr='[P] 보관함 비밀번호 입력';else if(nearGate())pr='[P] 정문 비밀번호 입력';
+  if(pr!=lastPr){$('pr').textContent=pr;lastPr=pr}
+  ren.render(sc,cam)}
+renderInv();say('폐교 1층 복도. 이 폐교에는 저팔게 3마리와 친구가 돌아다닌다. 문은 U키로 열고, 계단실의 계단은 걸어서 오르내린다. 정문을 열려면 열쇠 7개와 비밀번호가 필요하다. 열쇠는 잠긴 보관함 안에 있고, 곳곳의 단서 메모(P키)에서 비밀번호를 알아내야 한다. 정문 밖 운동장을 지나 대정문까지 가면 탈출!');
+requestAnimationFrame(loop);
+</script></body></html>
