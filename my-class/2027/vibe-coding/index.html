@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
@@ -360,33 +360,55 @@ async function loadManifest() {
   } catch { return null; }
 }
 
-async function ghList(path) {
-  const url = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${path}?ref=${GITHUB_BRANCH}`;
-  const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
-  if (res.status === 404) return [];
-  if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
-  return res.json();
+/* 폴더 안의 html 중 열 파일 고르기: index.html 이 있으면 그것, 없으면 이름순 첫 번째 */
+function pickEntry(files) {
+  const h = files.filter(f => /\.html?$/i.test(f)).sort(cmp);
+  if (!h.length) return null;
+  return h.find(f => /^index\.html?$/i.test(f)) || h[0];
 }
 
+/* 저장소 전체 목록을 API 한 번으로 받아서 필요한 부분만 골라냄 */
 async function fetchTreeFromGitHub() {
   if (!GH_USER || !GH_REPO) throw new Error("저장소 정보를 알 수 없습니다 (files.json 도 없음)");
-  const base  = REPO_PATH ? REPO_PATH + "/" : "";
-  const top   = await ghList(REPO_PATH);
-  let codes   = top.filter(i => i.type === "dir" && /^school-/i.test(i.name)).map(i => i.name);
-  if (FIXED_SCHOOL && !codes.includes(FIXED_SCHOOL)) codes.push(FIXED_SCHOOL);
-  if (FIXED_SCHOOL) codes = [FIXED_SCHOOL];
-  const names = items => items.filter(i => i.type === "file").map(i => i.name);
-  const dirs  = items => items.filter(i => i.type === "dir").map(i => i.name);
-  const [ex, ...lists] = await Promise.all([
-    ghList(base + EXAMPLES_DIR),
-    ...codes.map(c => ghList(`${base}${c}/${STUDENT_DIR}`)),
-  ]);
-  const schools = {};
-  codes.forEach((c, i) => { schools[c] = names(lists[i]); });
-  return { examples: dirs(ex), schools };   // 예시는 작품별 폴더 이름 목록
+  const url = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`;
+  const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
+  if (!res.ok) throw new Error(`GitHub API 오류: ${res.status}`);
+  const data = await res.json();
+
+  const base = REPO_PATH ? REPO_PATH + "/" : "";
+  const exFiles = {}, schools = {};
+  const bucket = (o, k) => (o[k] = o[k] || []);
+  (data.tree || []).forEach(t => {
+    if (t.type !== "blob" || !t.path.startsWith(base)) return;
+    const parts = t.path.slice(base.length).split("/");
+    if (parts[0] === EXAMPLES_DIR && parts.length >= 3) {
+      const list = bucket(exFiles, parts[1]);
+      if (parts.length === 3) list.push(parts[2]);
+    } else if (/^school-/i.test(parts[0]) && parts.length >= 3) {
+      const list = bucket(schools, parts[0]);
+      if (parts[1] === STUDENT_DIR && parts.length === 3) list.push(parts[2]);
+    }
+  });
+  const examples = Object.keys(exFiles)
+    .map(dir => ({ dir, entry: pickEntry(exFiles[dir]) }))
+    .filter(e => e.entry);
+  return { examples, schools };
+}
+
+function normalizeTree(tree) {
+  tree.examples = (tree.examples || [])
+    .map(e => typeof e === "string" ? { dir: e, entry: "index.html" } : e)
+    .filter(e => e && e.dir && e.entry);
+  return tree;
 }
 
 async function loadTree() {
+  const r = await loadTreeRaw();
+  normalizeTree(r.tree);
+  return r;
+}
+
+async function loadTreeRaw() {
   const m = await loadManifest();
   if (m) return { tree: m, source: "files.json (자동 생성 목록)" };
 
@@ -671,16 +693,19 @@ function bindClassChips() {
 
 /* ═══════════════════════════════════════════════════════
    예시 작품 (vibe-coding/examples/ — 모든 학교 공통)
-   작품 하나 = 폴더 하나 (폴더 안의 index.html 이 열림)
-   예) examples/flexbox-demo/index.html
+   작품 하나 = 폴더 하나. 폴더 안의 index.html 이 열리고,
+   index.html 이 없으면 폴더 안의 첫 번째 .html 이 열림
 ═══════════════════════════════════════════════════════ */
 function exampleSectionHTML() {
-  const names = TREE.examples.slice().sort(cmp);
-  const body = names.length
-    ? `<div class="example-list">${names.map(n => `
-        <a class="example-item" href="${ROOT_REL}${EXAMPLES_DIR}/${encodeURIComponent(n)}/" target="_blank" rel="noopener">
-          <span class="ex-icon">▶</span><span>${esc(n)}</span>
-        </a>`).join("")}</div>`
+  const items = TREE.examples.slice().sort((x, y) => cmp(x.dir, y.dir));
+  const body = items.length
+    ? `<div class="example-list">${items.map(e => {
+        const open = /^index\.html?$/i.test(e.entry) ? "" : encodeURIComponent(e.entry);
+        return `
+        <a class="example-item" href="${ROOT_REL}${EXAMPLES_DIR}/${encodeURIComponent(e.dir)}/${open}" target="_blank" rel="noopener">
+          <span class="ex-icon">▶</span><span>${esc(e.dir)}</span>
+        </a>`;
+      }).join("")}</div>`
     : `<div class="class-hint">${EXAMPLES_DIR}/ 폴더에 예시 작품 폴더가 없습니다.</div>`;
   return `<div class="section-label">💡 예시 작품</div>${body}`;
 }
@@ -764,7 +789,7 @@ function render() {
       <div class="class-hint" style="text-align:left;line-height:1.8">
         목록 출처: <b>${esc(LOAD_INFO.source)}</b><br>
         저장소: <b>${esc(GH_USER)}/${esc(GH_REPO)}</b> · 경로: <b>${esc(REPO_PATH)}</b> · 학교 필터: <b>${esc(FIXED_SCHOOL || "없음(통합)")}</b><br>
-        인식한 학교: <b>${esc(VISIBLE.join(", "))}</b> · 학생 .html 파일: <b>${ALL_STUDENTS.length}</b><br>
+        예시 작품 폴더: <b>${TREE.examples.length}</b> · 인식한 학교: <b>${esc(VISIBLE.join(", "))}</b> · 학생 .html 파일: <b>${ALL_STUDENTS.length}</b><br>
         <button class="class-chip" onclick="localStorage.removeItem('${TREE_CACHE_KEY}');location.reload()">저장된 목록 지우고 새로고침</button>
       </div>
       <div class="table-wrap" style="margin-top:12px"><table>
