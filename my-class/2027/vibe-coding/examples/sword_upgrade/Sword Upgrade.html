@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>⚔️ 검 강화 게임</title>
+
+<!-- ================================================================
+     ★★★ 개발자 설정 영역 (여기 값만 바꾸면 게임 전체에 반영됩니다) ★★★
+     ================================================================ -->
+<script>
+/* ───────── 파일 / 이미지 ───────── */
+// 이미지 폴더 이름 (index.html 과 같은 위치에 있어야 합니다)
+const IMG_FOLDER    = 'sword_images';
+// 이미지 폴더 안의 목록 파일 이름 (make_manifest.py 가 생성)
+const MANIFEST_FILE = 'manifest.json';
+// 화면에 표시되는 이미지의 가로 크기(px).
+//   0    = 이미지를 원본 크기(픽셀) 그대로 출력 (확대/축소 없음)   ← 현재 설정
+//   숫자 = 모든 이미지를 그 가로 크기로 고정 (예: 1254). 원본 가로세로 비율은 항상 유지됩니다.
+const IMG_WIDTH     = 0;
+// 이미지 표시 영역의 세로 크기(px). 0 = 가장 큰(세로가 긴) 이미지에 자동으로 맞춤.
+// 크기가 다른 이미지는 이 영역 안에서 가로·세로 모두 중앙 정렬됩니다.
+const STAGE_HEIGHT  = 0;
+
+/* ───────── 글자 크기 ───────── */
+// ★ 게임 내 모든 글자 크기의 배율 (1.0 = 기본, 1.2 = 20% 크게, 0.8 = 20% 작게)
+const FONT_SCALE    = 1.0;
+
+/* ───────── 시작 조건 ───────── */
+const START_GOLD            = 500;   // 시작 골드
+const START_WITH_FREE_SWORD = true;  // true: 시작/재시작 시 가장 낮은 단계 검을 무료 지급
+const NEW_SWORD_PRICE       = 20;    // 새 검(가장 낮은 단계) 구매 가격(골드)
+
+/* ───────── 강화 미니게임 (성공 여부는 미니게임 실력으로 직접 판정, 건너뛰기 없음) ───────── */
+// 단계별 미니게임 배정: 현재 단계가 to 이하인 첫 항목이 사용됩니다.
+//   game: 'hammer'(망치질 리듬) / 'timing'(타이밍 게이지) / 'mash'(연타 게이지)
+const MINIGAME_RANGES = [
+  { to: 7,        game: 'hammer' },   // 1~7단계
+  { to: 15,       game: 'timing' },   // 8~15단계
+  { to: Infinity, game: 'mash'   },   // 16단계 이상 전부
+];
+// 난이도 d = (단계 / 최대 단계)^DIFF_SHAPE  (0~1).  아래 [쉬움, 어려움] 값 사이를 d 로 보간합니다.
+const DIFF_SHAPE = 1;
+// 🔨 망치질 리듬
+const HAMMER_HITS       = [3, 5];        // 두드리는 횟수
+const HAMMER_RING_MS    = [1100, 650];   // 링이 줄어드는 시간(ms) - 짧을수록 빠름
+const HAMMER_PERFECT_MS = [110, 50];     // PERFECT 판정 허용 오차(ms)
+const HAMMER_GOOD_MS    = [230, 120];    // GOOD 판정 허용 오차(ms)
+const HAMMER_PASS       = [0.6, 0.85];   // 성공에 필요한 점수 비율 (PERFECT=1점, GOOD=0.6점)
+// 🎯 타이밍 게이지
+const TIMING_ZONE   = [0.28, 0.07];      // 초록 성공 구간 너비 (게이지 전체 대비 비율)
+const TIMING_SPEED  = [0.8, 1.9];        // 바 속도 (게이지 길이/초)
+const TIMING_LIMIT  = 8;                 // 제한시간(초) - 지나면 실패
+// 💥 연타 게이지
+const MASH_NEED     = [18, 42];          // 채워야 하는 탭 횟수
+const MASH_TIME     = [5.5, 5.0];        // 제한시간(초)
+
+/* ───────── 판매 시 강화비 환급 ───────── */
+const REFUND_PERCENT = 90;  // 그 검에 쓴 강화 골드 총합의 이 %(소수점 절삭)를 판매가에 추가
+
+/* ───────── 실패 페널티 구간 (최대 단계 대비 비율) ───────── */
+const ZONE_KEEP_UNTIL = 0.3;  // 이 비율 이하: 실패해도 단계 유지 (골드만 소모)
+const ZONE_DROP_UNTIL = 0.7;  // 이 비율 이하: 실패 시 1단계 하락
+                              // 그 위 구간: 실패 시 파괴
+const DESTROY_CHANCE  = 1.0;  // 파괴 구간 실패 시 실제로 파괴될 확률 (나머지는 1단계 하락)
+
+/* ───────── 비용 / 판매 (수식: 기본값 × 증가율^단계) ───────── */
+const COST_BASE   = 10;    // 강화 골드 비용 기본값
+const COST_GROWTH = 1.06;  // 단계당 비용 증가율
+const SELL_BASE   = 8;     // 판매가 기본값
+const SELL_GROWTH = 1.2;   // 단계당 판매가 증가율
+const TERMINAL_SELL_BONUS = 1.5; // 종료 단계(최종) 검 판매가 보너스 배율
+
+/* ───────── 강화석 ───────── */
+const STONE_FROM_STAGE   = 20;   // 이 단계 이상을 강화할 때 강화석(+골드)이 필요
+const STONE_BASE_NEED    = 1;    // 필요한 강화석 기본 개수
+const STONE_NEED_STEP    = 10;   // 이 단계 올라갈 때마다 필요 개수 +1
+const STONE_PRICE        = 100;  // 강화석 1개 구매 가격(골드)
+const SELL_STONE_DROP    = 0.05; // 저단계 검 판매 시 강화석 1개 드랍 확률
+const DISMANTLE_MIN_STAGE = 5;   // 분해 가능한 최소 단계
+const DISMANTLE_STONE_DIV = 5;   // 분해 시 강화석 = 단계 ÷ 이 값 (최소 1개)
+
+/* ───────── 강화 성공 연출 단계 (새로 도달한 단계 기준) ───────── */
+// 모든 단계: 화면 플래시 + 빛기둥 + "+N 단계" 큰 문구
+const FX_TIER2_FROM = 11;  // 이 단계부터 파티클 폭죽/불꽃 추가
+const FX_TIER3_FROM = 20;  // 이 단계부터 화면 흔들림 + 충격파 링 추가
+
+/* ───────── 효과음 ───────── */
+const SOUND_ENABLED = true; // false 면 모든 효과음 끔
+const SOUND_VOLUME  = 0.6;  // 전체 음량 (0 ~ 1)
+
+/* ───────── 저장 ───────── */
+const SAVE_KEY = 'sword_enhance_save_v1'; // 브라우저 자동 저장 키
+</script>
+
+<style>
+:root{
+  --bg0:#07080c; --bg1:#0e1118; --bg2:#161a24; --bg3:#1f2431; --line:#2a3042;
+  --text:#e9ecf5; --sub:#8d95ad; --gold:#ffcf4a; --green:#4be08e; --red:#ff5c6c;
+  --blue:#5b9dff; --purple:#b085ff;
+  --img-w:1254px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}              /* JS 가 FONT_SCALE 을 곱해 덮어씁니다 */
+body{background:var(--bg0);color:var(--text);
+  font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  font-size:1rem;min-height:100vh}
+button{font-family:inherit}
+
+/* ── 상단 HUD ── */
+#hud{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:center;
+  padding:.6rem 1rem;background:rgba(14,17,24,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(6px)}
+#hud .title{font-weight:800;font-size:1.1rem;color:var(--gold);letter-spacing:.04em}
+#hud .stat{font-size:.95rem;color:var(--sub)}
+#hud .stat b{color:var(--text);font-size:1.15rem;margin-left:.3rem}
+#hud .stat.gold b{color:var(--gold)} #hud .stat.stone b{color:var(--purple)}
+#hud .grow{flex:1}
+
+/* ── 이미지(스테이지) 영역 ── */
+#stageScroll{overflow-x:auto;overflow-y:hidden;background:#000;border-bottom:1px solid var(--line)}
+#stage{position:relative;width:var(--img-w);margin:0 auto;overflow:hidden;background:radial-gradient(ellipse at center,#141824 0%,#05060a 80%)}
+.layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#swordImg{height:auto;max-width:none;display:block;will-change:transform,filter}   /* 크기는 JS 가 이미지마다 지정 */
+#emptyMsg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:.6rem;color:var(--sub);font-size:1.4rem;text-align:center}
+#beam{position:absolute;left:50%;top:-20%;width:34%;height:140%;transform:translateX(-50%) scaleY(0);opacity:0;z-index:3;
+  background:linear-gradient(90deg,transparent,rgba(255,236,160,.55) 30%,rgba(255,255,255,.95) 50%,rgba(255,236,160,.55) 70%,transparent);
+  mix-blend-mode:screen;pointer-events:none;filter:blur(.4rem)}
+#fx{position:absolute;inset:0;z-index:4;pointer-events:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:5;pointer-events:none}
+#bigText{position:absolute;left:0;right:0;top:42%;transform:translateY(-50%);text-align:center;z-index:6;
+  font-weight:900;font-size:5rem;line-height:1.1;opacity:0;pointer-events:none;white-space:pre-line;
+  text-shadow:0 0 .6rem currentColor,0 .15rem 0 rgba(0,0,0,.6),0 0 2rem rgba(0,0,0,.8)}
+.ring{position:absolute;left:50%;top:50%;width:10rem;height:10rem;border-radius:50%;
+  border:.45rem solid #ffd95a;z-index:4;pointer-events:none;opacity:0;box-shadow:0 0 1.5rem #ffb400,inset 0 0 1.5rem #ffb400}
+
+/* ── 정보 카드 ── */
+#info{max-width:70rem;margin:1rem auto;padding:0 1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));gap:.8rem}
+.card{background:var(--bg1);border:1px solid var(--line);border-radius:.7rem;padding:.8rem 1rem}
+.card h4{font-size:.8rem;color:var(--sub);font-weight:600;margin-bottom:.35rem;letter-spacing:.05em}
+.card .v{font-size:1.25rem;font-weight:800}
+.card .s{font-size:.85rem;color:var(--sub);margin-top:.25rem;line-height:1.5}
+.badge{display:inline-block;padding:.1rem .5rem;border-radius:1rem;font-size:.75rem;font-weight:700;margin-left:.4rem;vertical-align:middle}
+.b-max{background:#3a2d00;color:var(--gold);border:1px solid #7a5f00}
+.b-keep{background:#12331f;color:var(--green)} .b-drop{background:#3a2d00;color:var(--gold)} .b-destroy{background:#3a1218;color:var(--red)}
+.good{color:var(--green)} .bad{color:var(--red)} .gold{color:var(--gold)}
+
+/* ── 하단 행동 바 ── */
+#actions{position:sticky;bottom:0;z-index:50;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center;
+  padding:.7rem 1rem;background:rgba(14,17,24,.96);border-top:1px solid var(--line);backdrop-filter:blur(6px)}
+.btn{border:1px solid var(--line);background:var(--bg3);color:var(--text);padding:.65rem 1.1rem;border-radius:.6rem;
+  font-size:1rem;font-weight:700;cursor:pointer;transition:transform .08s,filter .15s,background .15s}
+.btn:hover:not(:disabled){filter:brightness(1.25)} .btn:active:not(:disabled){transform:scale(.96)}
+.btn:disabled{opacity:.35;cursor:not-allowed}
+.btn small{display:block;font-size:.72rem;font-weight:500;color:var(--sub);margin-top:.1rem}
+.btn.primary{background:linear-gradient(180deg,#ffd75e,#e0a21a);color:#2a1d00;border-color:#ffe28a;font-size:1.15rem;padding:.7rem 1.8rem}
+.btn.primary small{color:#5c4200}
+.btn.danger{background:#3a1218;border-color:#6a2430;color:#ff9aa5}
+.btn.ghost{background:transparent}
+
+/* ── 토스트 ── */
+#toast{position:fixed;left:50%;bottom:6.5rem;transform:translateX(-50%);z-index:200;background:rgba(31,36,49,.97);
+  border:1px solid var(--line);padding:.6rem 1.2rem;border-radius:2rem;font-size:.95rem;opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.show{opacity:1}
+
+/* ── 모달(도감 / 게임오버 / 로딩) ── */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:1rem}
+.modal.open{display:flex}
+.modal .box{background:var(--bg1);border:1px solid var(--line);border-radius:.9rem;width:min(70rem,100%);max-height:92vh;
+  display:flex;flex-direction:column;overflow:hidden}
+.modal .head{display:flex;align-items:center;gap:.8rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--line);font-weight:800;font-size:1.1rem}
+.modal .head .grow{flex:1}
+.modal .body{overflow:auto;padding:1rem}
+.cx-row{margin-bottom:1rem}
+.cx-row h5{font-size:.9rem;color:var(--gold);margin-bottom:.4rem}
+.cx-grid{display:flex;flex-wrap:wrap;gap:.6rem}
+.cx-item{width:9.5rem;text-align:center;font-size:.8rem;color:var(--sub)}
+.cx-item .th{width:9.5rem;height:9.5rem;background:#000;border:1px solid var(--line);border-radius:.5rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cx-item img{max-width:100%;max-height:100%;object-fit:contain}
+.cx-item.locked img{filter:brightness(0) opacity(.35)}
+.cx-item.on{color:var(--text)} .cx-item.on .th{border-color:#7a5f00}
+#goBox{text-align:center;padding:2.5rem 2rem;gap:1rem;align-items:center;width:min(32rem,100%)}
+#goBox h2{font-size:3rem;color:var(--red);letter-spacing:.08em}
+#goBox p{color:var(--sub);line-height:1.7}
+#loadBox{padding:2rem;text-align:center;width:min(34rem,100%);gap:.8rem;align-items:center}
+#mgBox{width:min(46rem,100%)}
+#mgDesc{padding:.6rem 1rem;color:var(--sub);text-align:center;font-size:.95rem}
+#mgPad{touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;background:#000;line-height:0}
+#mgCv{display:block;width:100%;height:auto}
+#loadBox .bar{width:100%;height:.6rem;background:var(--bg3);border-radius:1rem;overflow:hidden}
+#loadBox .bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .15s}
+#loadMsg{color:var(--sub);line-height:1.7;font-size:.95rem;white-space:pre-line}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <span class="title">⚔️ 검 강화</span>
+  <span class="stat gold">💰 골드<b id="hGold">0</b></span>
+  <span class="stat stone">💎 강화석<b id="hStone">0</b></span>
+  <span class="grow"></span>
+  <span class="stat">📖 도감<b id="hCodex">0/0</b></span>
+  <span class="stat">시도<b id="hTry">0</b></span>
+  <span class="stat">성공<b id="hOk">0</b></span>
+</div>
+
+<div id="stageScroll">
+  <div id="stage">
+    <div class="layer"><img id="swordImg" alt="" draggable="false"></div>
+    <div id="emptyMsg"><div style="font-size:4rem">🗡️</div><div>소유한 검이 없습니다</div><div style="font-size:1rem">아래에서 새 검을 구매하세요</div></div>
+    <div id="beam"></div>
+    <canvas id="fx"></canvas>
+    <div id="flash"></div>
+    <div id="bigText"></div>
+  </div>
+</div>
+
+<div id="info">
+  <div class="card"><h4>현재 검</h4><div class="v" id="iName">-</div><div class="s" id="iStage"></div></div>
+  <div class="card"><h4>강화 미니게임 / 난이도</h4><div class="v" id="iRate">-</div><div class="s" id="iFail"></div></div>
+  <div class="card"><h4>강화 비용</h4><div class="v" id="iCost">-</div><div class="s" id="iCostSub"></div></div>
+  <div class="card"><h4>판매 / 분해</h4><div class="v" id="iSell">-</div><div class="s" id="iSellSub"></div></div>
+</div>
+
+<div id="actions">
+  <button class="btn primary" id="bEnh">🔨 강화<small id="bEnhSub"></small></button>
+  <button class="btn" id="bSell">💰 판매<small id="bSellSub"></small></button>
+  <button class="btn" id="bDis">🔧 분해<small id="bDisSub"></small></button>
+  <button class="btn" id="bBuy">🗡️ 새 검 구매<small id="bBuySub"></small></button>
+  <button class="btn" id="bStone">💎 강화석 구매<small id="bStoneSub"></small></button>
+  <button class="btn ghost" id="bCodex">📖 도감</button>
+  <button class="btn ghost" id="bMute">🔊</button>
+  <button class="btn danger ghost" id="bReset">⟲ 초기화</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- 도감 -->
+<div class="modal" id="codexModal">
+  <div class="box">
+    <div class="head">📖 도감 <span id="cxCount" style="color:var(--sub);font-weight:500;font-size:.9rem"></span><span class="grow"></span>
+      <button class="btn ghost" id="cxClose">✕ 닫기</button></div>
+    <div class="body" id="cxBody"></div>
+  </div>
+</div>
+
+<!-- 강화 미니게임 -->
+<div class="modal" id="mgModal" style="z-index:250">
+  <div class="box" id="mgBox">
+    <div class="head"><span id="mgTitle"></span><span class="grow"></span>
+      <span id="mgInfo" style="color:var(--sub);font-weight:500;font-size:.9rem"></span></div>
+    <div id="mgDesc"></div>
+    <div id="mgPad"><canvas id="mgCv"></canvas></div>
+  </div>
+</div>
+
+<!-- 게임오버 -->
+<div class="modal" id="goModal">
+  <div class="box" id="goBox">
+    <h2>GAME OVER</h2>
+    <p>가진 검도 없고, 새 검을 살 골드도 부족합니다.<br>도감은 그대로 유지됩니다.</p>
+    <button class="btn primary" id="goRestart">다시 시작</button>
+  </div>
+</div>
+
+<!-- 로딩 -->
+<div class="modal open" id="loadModal">
+  <div class="box" id="loadBox">
+    <div style="font-size:1.4rem;font-weight:800">⚔️ 이미지 불러오는 중…</div>
+    <div class="bar"><i id="loadBar"></i></div>
+    <div id="loadMsg"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================================================================
+   글자 크기 배율 적용 (모든 글자는 rem 단위 → 이 한 줄로 전체 조절)
+   ================================================================ */
+document.documentElement.style.fontSize = (16 * FONT_SCALE) + 'px';
+
+const $ = s => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rnd = (a, b) => a + Math.random() * (b - a);
+const fmt = n => Math.round(n).toLocaleString('ko-KR');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const imgUrl = f => IMG_FOLDER + '/' + encodeURIComponent(f);
+
+/* ================================================================
+   1. 이미지 목록 파싱  (파일명 규칙: A.[B.]C.png)
+   ================================================================ */
+let LEVELS = [];      // [{A, files:[{file,name,B,term,w,h}]}]  A 오름차순 (term=true: 더 강화할 수 없는 종료 검)
+let MAXA = 0;
+let STAGE_H = 0, STAGE_W = 0;
+let TOTAL_FILES = 0;
+
+// png 이외의 파일(manifest.json 등)은 이 정규식에 맞지 않아 자동으로 무시됩니다.
+const NAME_RE = /^(\d+)\.(?:(\d+)\.)?(.+)\.png$/i;
+
+function buildLevels(list) {
+  const byA = new Map();
+  for (const f of list) {
+    if (typeof f !== 'string') continue;
+    const m = NAME_RE.exec(f);
+    if (!m) { if (!/\.json$/i.test(f)) console.warn('[규칙 불일치 → 무시]', f); continue; }
+    const A = +m[1];
+    if (!byA.has(A)) byA.set(A, []);
+    byA.get(A).push({ file: f, B: m[2] !== undefined ? +m[2] : null, name: m[3] });
+  }
+  // 같은 단계의 파일은 일반(계속 강화 가능)·종료(B 숫자 있음)를 모두 보관합니다.
+  // 종료 여부(f.term)는 finalizeLevels() 가 이미지 로드 후 확정합니다.
+  return [...byA.keys()].sort((a, b) => a - b).map(A => ({
+    A, files: byA.get(A).sort((a, b) => a.file.localeCompare(b.file, 'ko'))
+  }));
+}
+
+// 이미지 로드 검증 후 호출: 강화 사슬(일반 파일이 이어지는 단계)을 확정하고 각 파일의 종료 여부를 표시
+//  - 어떤 단계에 일반 파일이 하나도 없으면 그 뒤 단계에는 도달할 수 없으므로 잘라냅니다.
+//  - 마지막 단계의 파일은 (다음 단계가 없으므로) 모두 종료 파일로 취급합니다.
+function finalizeLevels(levels) {
+  const out = [];
+  for (const l of levels) {
+    out.push(l);
+    if (!l.files.some(f => f.B === null)) break;
+  }
+  if (out.length < levels.length)
+    console.warn(`[경고] ${out[out.length - 1].A}단계에 일반 파일(계속 강화 가능)이 없어 이후 ${levels.length - out.length}개 단계는 도달할 수 없으므로 무시합니다.`);
+  out.forEach((l, i) => l.files.forEach(f => { f.term = f.B !== null || i === out.length - 1; }));
+  return out;
+}
+
+function preloadImages(levels, onProgress) {
+  const all = levels.flatMap(l => l.files);
+  let done = 0;
+  return Promise.all(all.map(f => new Promise(res => {
+    const im = new Image();
+    im.onload  = () => { f.w = im.naturalWidth; f.h = im.naturalHeight; f.ok = true; step(); };
+    im.onerror = () => { console.warn('[이미지 로드 실패]', imgUrl(f.file)); f.ok = false; step(); };
+    im.src = imgUrl(f.file);
+    function step() { done++; onProgress(done, all.length); res(); }
+  })));
+}
+
+/* ================================================================
+   2. 게임 규칙 함수 (수식)
+   ================================================================ */
+const lvIdx = A => LEVELS.findIndex(l => l.A === A);
+const lv    = A => LEVELS[lvIdx(A)];
+// 강화 성공 시: 다음 단계의 파일(일반+종료) 중 n개 균등 확률(1/n)로 결정
+const pickFile = level => level.files[Math.floor(Math.random() * level.files.length)];
+// 시작·하락 시: 계속 강화 가능한 일반 파일만 대상
+const pickNormal = level => { const n = level.files.filter(f => !f.term); return pickFile({ files: n.length ? n : level.files }); };
+// 현재 검이 종료 검인지 (파일명 규칙 A.B.이름.png 의 B 유무 / 마지막 단계)
+const isTerm = s => { const f = s && FILEMAP[s.file]; return !!(f && f.term); };
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const L = (pair, d) => lerp(pair[0], pair[1], d);
+const diffOf = A => clamp(Math.pow(MAXA > 0 ? A / MAXA : 0, DIFF_SHAPE), 0, 1);
+function minigameOf(A) {
+  for (const r of MINIGAME_RANGES) if (A <= r.to) return r.game;
+  return MINIGAME_RANGES[MINIGAME_RANGES.length - 1].game;
+}
+function zoneOf(A) {
+  const r = MAXA > 0 ? A / MAXA : 0;
+  if (r <= ZONE_KEEP_UNTIL) return 'keep';
+  if (r <= ZONE_DROP_UNTIL) return 'drop';
+  return 'destroy';
+}
+const costOf      = A => Math.round(COST_BASE * Math.pow(COST_GROWTH, A));
+const stoneNeedOf = A => A >= STONE_FROM_STAGE ? STONE_BASE_NEED + Math.floor((A - STONE_FROM_STAGE) / STONE_NEED_STEP) : 0;
+const sellOf      = (A, term) => Math.round(SELL_BASE * Math.pow(SELL_GROWTH, A) * (term ? TERMINAL_SELL_BONUS : 1));
+// 그 검에 쓴 강화 골드 총합의 REFUND_PERCENT% (소수점 절삭)
+const refundOf    = s => Math.floor((s.spent || 0) * REFUND_PERCENT / 100);
+const sellTotalOf = (s, term) => sellOf(s.A, term) + refundOf(s);
+const dismantleOf = A => Math.max(1, Math.floor(A / DISMANTLE_STONE_DIV));
+const canDismantle = (A, term) => !term && A >= DISMANTLE_MIN_STAGE && A < STONE_FROM_STAGE;
+
+/* ================================================================
+   3. 상태 / 저장
+   ================================================================ */
+let G = null;
+let busy = false;
+
+function freshState(keepCodex) {
+  const g = { gold: START_GOLD, stones: 0, sword: null, codex: keepCodex || {}, stats: { attempts: 0, success: 0 } };
+  if (START_WITH_FREE_SWORD) giveLowestSword(g);
+  return g;
+}
+function giveLowestSword(g) {
+  const l = LEVELS[0], f = pickNormal(l);
+  g.sword = { A: l.A, file: f.file, spent: 0 };
+  g.codex[f.file] = 1;
+}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (e) {} }
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if (!s || typeof s.gold !== 'number') return null;
+    s.codex = s.codex || {}; s.stats = s.stats || { attempts: 0, success: 0 }; s.stones = s.stones || 0;
+    if (s.sword) {
+      // 저장된 검 파일이 더 이상 없으면 같은 단계(없으면 가까운 단계)의 파일로 대체
+      const exists = LEVELS.some(l => l.files.some(f => f.file === s.sword.file));
+      if (!exists) {
+        const l = LEVELS.find(l => l.A >= s.sword.A) || LEVELS[LEVELS.length - 1];
+        s.sword = { A: l.A, file: pickFile(l).file, spent: s.sword.spent || 0 };
+      } else {
+        s.sword.A = LEVELS.find(l => l.files.some(f => f.file === s.sword.file)).A;
+        s.sword.spent = s.sword.spent || 0;
+      }
+    }
+    return s;
+  } catch (e) { return null; }
+}
+
+/* ================================================================
+   4. 효과음 (Web Audio 합성 - 사운드 파일 불필요)
+   ================================================================ */
+let AC = null, MASTER = null, muted = false, NOISE = null;
+function audio() {
+  if (!SOUND_ENABLED || muted) return null;
+  if (!AC) {
+    const C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    AC = new C(); MASTER = AC.createGain(); MASTER.gain.value = SOUND_VOLUME; MASTER.connect(AC.destination);
+    NOISE = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+    const d = NOISE.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function tone(freq, t0, dur, o = {}) {
+  const ac = audio(); if (!ac) return;
+  const { type = 'sine', vol = 0.25, slide = null, attack = 0.005 } = o;
+  const t = ac.currentTime + t0, osc = ac.createOscillator(), g = ac.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, t);
+  if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g); g.connect(MASTER); osc.start(t); osc.stop(t + dur + 0.05);
+}
+function noise(t0, dur, o = {}) {
+  const ac = audio(); if (!ac) return;
+  const { vol = 0.3, type = 'lowpass', f0 = 2000, f1 = 300, q = 1 } = o;
+  const t = ac.currentTime + t0, src = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = NOISE; fl.type = type; fl.Q.value = q;
+  fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(fl); fl.connect(g); g.connect(MASTER); src.start(t, rnd(0, 0.9)); src.stop(t + dur + 0.05);
+}
+const N = { C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, C7: 2093 };
+
+const sfx = {
+  click()   { tone(880, 0, .05, { type: 'triangle', vol: .14 }); tone(1320, .03, .05, { type: 'triangle', vol: .08 }); },
+  error()   { tone(190, 0, .13, { type: 'square', vol: .13 }); tone(150, .14, .16, { type: 'square', vol: .13 }); },
+  coin()    { tone(1318, 0, .07, { type: 'square', vol: .1 }); tone(1760, .07, .22, { type: 'square', vol: .1 }); },
+  buy()     { tone(1568, 0, .06, { type: 'square', vol: .1 }); tone(1175, .06, .06, { type: 'square', vol: .1 }); tone(784, .12, .16, { type: 'square', vol: .1 }); },
+  crunch()  { noise(0, .25, { vol: .35, type: 'bandpass', f0: 1800, f1: 400, q: 2 }); tone(300, 0, .2, { type: 'sawtooth', vol: .12, slide: 90 }); tone(1500, .22, .2, { type: 'sine', vol: .12 }); },
+  charge()  { tone(180, 0, .7, { type: 'sawtooth', vol: .1, slide: 1400, attack: .1 });
+              noise(0, .7, { vol: .12, type: 'highpass', f0: 400, f1: 5000 }); },
+  fail()    { tone(330, 0, .4, { type: 'square', vol: .16, slide: 90 }); noise(0, .2, { vol: .15, type: 'lowpass', f0: 900, f1: 150 }); },
+  drop()    { tone(440, 0, .5, { type: 'sawtooth', vol: .16, slide: 110 }); tone(220, .15, .5, { type: 'triangle', vol: .12, slide: 70 }); },
+  destroy() { noise(0, .9, { vol: .5, f0: 4000, f1: 80 }); tone(130, 0, .6, { type: 'sawtooth', vol: .28, slide: 35 });
+              for (let i = 0; i < 6; i++) tone(rnd(2200, 4200), rnd(.05, .5), .12, { type: 'sine', vol: .06 }); },
+  gameover(){ [N.G5, N.E5, N.C5, 261.6].forEach((f, i) => tone(f, i * .32, .5, { type: 'triangle', vol: .2 })); tone(98, 1.1, 1.2, { type: 'sawtooth', vol: .15, slide: 60 }); },
+  // 미니게임 전용 효과음
+  tick()    { tone(660, 0, .07, { type: 'triangle', vol: .13 }); },
+  go()      { tone(990, 0, .2, { type: 'triangle', vol: .17 }); tone(1480, .04, .2, { type: 'triangle', vol: .1 }); },
+  tap(p)    { tone(480 + p * 900, 0, .05, { type: 'square', vol: .07 }); },
+  anvil(q)  { const f = 800 + q * 900;                                  // 모루 소리 (q: 0~1 클수록 맑음)
+              tone(f, 0, .4, { type: 'square', vol: .09 }); tone(f * 1.5, 0, .35, { type: 'triangle', vol: .14 });
+              tone(f * 2.76, 0, .22, { type: 'sine', vol: .08 }); noise(0, .09, { vol: .3, type: 'highpass', f0: 3500, f1: 1500 }); },
+  thud()    { tone(130, 0, .2, { type: 'sine', vol: .25, slide: 60 }); noise(0, .12, { vol: .2, f0: 800, f1: 200 }); },
+  // ★ 강화 성공: 상승 휘파람 → 팡파레 아르페지오 → 반짝임. 단계가 높을수록 길고 웅장해짐
+  success(tier, terminal) {
+    noise(0, .35, { vol: .3, type: 'bandpass', f0: 300, f1: 6000, q: 1.2 });            // 휘익
+    tone(260, 0, .3, { type: 'sawtooth', vol: .1, slide: 1500 });
+    const melody = tier === 1 ? [N.C5, N.E5, N.G5, N.C6]
+                 : tier === 2 ? [N.C5, N.E5, N.G5, N.C6, N.E6, N.G6]
+                 :              [N.C5, N.E5, N.G5, N.C6, N.G5, N.C6, N.E6, N.G6];
+    melody.forEach((f, i) => {                                                          // 팡파레
+      const t = .22 + i * .085;
+      tone(f, t, .28, { type: 'triangle', vol: .24 });
+      tone(f * 2, t, .2, { type: 'square', vol: .05 });
+    });
+    const tEnd = .22 + melody.length * .085;
+    [N.C6, N.E6, N.G6].forEach(f => tone(f, tEnd, .9, { type: 'triangle', vol: .2 }));   // 마무리 화음
+    tone(N.C5, tEnd, .9, { type: 'sawtooth', vol: .07 });
+    for (let i = 0; i < (tier === 1 ? 6 : 14); i++)                                      // 반짝임
+      tone(rnd(2400, 5200), tEnd + rnd(0, .8), .1, { type: 'sine', vol: .07 });
+    if (tier >= 3) { tone(90, .22, .7, { type: 'sine', vol: .5, slide: 38 }); noise(.22, .5, { vol: .3, f0: 600, f1: 60 }); }   // 쿵
+    if (terminal) {                                                                       // 최종 단계 대형 팡파레
+      const big = [N.C5, N.E5, N.G5, N.C6, N.G5, N.C6, N.E6, N.G6, N.E6, N.G6, N.C7];
+      big.forEach((f, i) => { tone(f, tEnd + 1 + i * .11, .45, { type: 'triangle', vol: .24 }); tone(f / 2, tEnd + 1 + i * .11, .45, { type: 'square', vol: .06 }); });
+      const t2 = tEnd + 1 + big.length * .11;
+      [N.C5, N.G5, N.C6, N.E6, N.G6, N.C7].forEach(f => tone(f, t2, 1.6, { type: 'triangle', vol: .17 }));
+      for (let i = 0; i < 24; i++) tone(rnd(2000, 5600), t2 + rnd(0, 1.4), .12, { type: 'sine', vol: .07 });
+    }
+  },
+};
+
+/* ================================================================
+   5. 이펙트 엔진 (파티클 / 플래시 / 빛기둥 / 흔들림 / 충격파 / 큰 문구)
+   ================================================================ */
+const stageEl = $('#stage'), swordImg = $('#swordImg'), fxCv = $('#fx'), fctx = fxCv.getContext('2d');
+let parts = [], fxRunning = false;
+
+function addBurst(x, y, n, o = {}) {
+  const { colors = ['#ffd54a', '#fff6c8', '#ff9f43'], speed = 9, life = 60, size = 5, gravity = .14, shard = false } = o;
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, Math.PI * 2), s = rnd(speed * .25, speed);
+    parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - (shard ? 2 : 0), life: life * rnd(.6, 1.2), max: life, g: gravity,
+      c: colors[Math.floor(Math.random() * colors.length)], sz: size * rnd(.5, 1.4), shard, rot: rnd(0, 6.28), vr: rnd(-.3, .3) });
+  }
+  if (!fxRunning) { fxRunning = true; requestAnimationFrame(fxLoop); }
+}
+function fxLoop() {
+  fctx.clearRect(0, 0, fxCv.width, fxCv.height);
+  fctx.globalCompositeOperation = 'lighter';
+  parts = parts.filter(p => p.life > 0);
+  for (const p of parts) {
+    p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= .99; p.life--; p.rot += p.vr;
+    const a = clamp(p.life / p.max, 0, 1);
+    fctx.globalAlpha = a; fctx.fillStyle = p.c;
+    if (p.shard) { fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.rot); fctx.fillRect(-p.sz, -p.sz / 2, p.sz * 2, p.sz); fctx.restore(); }
+    else { fctx.beginPath(); fctx.arc(p.x, p.y, p.sz * (.4 + a * .6), 0, 6.28); fctx.fill(); }
+  }
+  fctx.globalAlpha = 1; fctx.globalCompositeOperation = 'source-over';
+  if (parts.length) requestAnimationFrame(fxLoop); else fxRunning = false;
+}
+function fireworks(bursts, spanMs, big) {
+  for (let i = 0; i < bursts; i++) setTimeout(() => {
+    const x = rnd(fxCv.width * .15, fxCv.width * .85), y = rnd(fxCv.height * .15, fxCv.height * .6);
+    const pal = [['#ffd54a', '#fff6c8', '#ff9f43'], ['#7be0ff', '#fff', '#5b9dff'], ['#ff7ad9', '#ffe0f6', '#b085ff'], ['#7dffb0', '#eaffee', '#4be08e']][i % 4];
+    addBurst(x, y, big ? 110 : 70, { colors: pal, speed: big ? 13 : 10, life: 70, size: 5, gravity: .12 });
+  }, (spanMs / Math.max(1, bursts)) * i);
+}
+function flash(color, peak, dur) {
+  const f = $('#flash'); f.style.background = color;
+  f.animate([{ opacity: 0 }, { opacity: peak, offset: .3 }, { opacity: 0 }], { duration: dur, easing: 'ease-out' });
+}
+function beam(dur, color) {
+  const b = $('#beam');
+  if (color) b.style.filter = 'blur(.4rem) ' + color;
+  b.animate([
+    { transform: 'translateX(-50%) scaleY(0) scaleX(.3)', opacity: 0 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(1)', opacity: 1, offset: .25 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(.6)', opacity: .7, offset: .7 },
+    { transform: 'translateX(-50%) scaleY(1) scaleX(.1)', opacity: 0 }
+  ], { duration: dur, easing: 'ease-out' });
+}
+function shake(power, dur) {
+  const kf = [];
+  for (let i = 0; i < 14; i++) { const k = 1 - i / 14; kf.push({ transform: `translate(${rnd(-power, power) * k}px,${rnd(-power, power) * k}px)` }); }
+  kf.push({ transform: 'translate(0,0)' });
+  stageEl.animate(kf, { duration: dur, easing: 'linear' });
+}
+function ring(delay, color) {
+  const r = document.createElement('div'); r.className = 'ring';
+  if (color) { r.style.borderColor = color; r.style.boxShadow = `0 0 1.5rem ${color}, inset 0 0 1.5rem ${color}`; }
+  stageEl.appendChild(r);
+  const a = r.animate([
+    { transform: 'translate(-50%,-50%) scale(.2)', opacity: .95 },
+    { transform: 'translate(-50%,-50%) scale(14)', opacity: 0 }
+  ], { duration: 1000, delay, easing: 'cubic-bezier(.1,.6,.3,1)', fill: 'both' });
+  a.onfinish = () => r.remove();
+}
+function bigText(text, color, o = {}) {
+  const { dur = 1500, scale = 1, size = null } = o;
+  const t = $('#bigText'); t.textContent = text; t.style.color = color; t.style.fontSize = size || '5rem';
+  t.animate([
+    { opacity: 0, transform: `translateY(-50%) scale(${.2 * scale})` },
+    { opacity: 1, transform: `translateY(-50%) scale(${1.25 * scale})`, offset: .18 },
+    { opacity: 1, transform: `translateY(-50%) scale(${1 * scale})`, offset: .3 },
+    { opacity: 1, transform: `translateY(-50%) scale(${1 * scale})`, offset: .78 },
+    { opacity: 0, transform: `translateY(-65%) scale(${1.1 * scale})` }
+  ], { duration: dur, easing: 'ease-out' });
+}
+
+/* ── 연출 시퀀스 ── */
+const FILEMAP = {};   // 파일명 → {w,h,...}
+// 이미지 한 장의 화면 표시 크기: IMG_WIDTH=0 이면 원본 픽셀 크기, 아니면 가로 고정 + 비율 유지
+function dispSize(f) {
+  return IMG_WIDTH > 0 ? { w: IMG_WIDTH, h: IMG_WIDTH * f.h / f.w } : { w: f.w, h: f.h };
+}
+function applyImgSize(file) {
+  const f = FILEMAP[file]; if (!f) return;
+  const d = dispSize(f);
+  swordImg.style.width = d.w + 'px'; swordImg.style.height = d.h + 'px';
+}
+function showCurrentImage() {
+  swordImg.getAnimations().forEach(a => a.cancel());   // 이전 연출의 잔여 효과(fill) 제거
+  if (G.sword) { applyImgSize(G.sword.file); swordImg.style.display = 'block'; swordImg.src = imgUrl(G.sword.file); $('#emptyMsg').style.display = 'none'; }
+  else { swordImg.style.display = 'none'; $('#emptyMsg').style.display = 'flex'; }
+}
+async function setImageDecoded(file) {
+  applyImgSize(file); swordImg.style.display = 'block'; swordImg.src = imgUrl(file);
+  try { await swordImg.decode(); } catch (e) {}
+}
+
+async function playCharge() {
+  const kf = [];
+  for (let i = 0; i < 12; i++) { const k = i / 11; kf.push({ transform: `translate(${rnd(-1, 1) * 4 * k}px,${rnd(-1, 1) * 4 * k}px) scale(${1 + .015 * k})`,
+    filter: `brightness(${1 + .9 * k}) drop-shadow(0 0 ${2.2 * k}rem #ffb400)` }); }
+  swordImg.animate(kf, { duration: 700, easing: 'linear' });
+  await sleep(700);
+}
+
+async function playSuccess(oldS, newS, terminal) {
+  const A = newS.A;
+  const tier = A >= FX_TIER3_FROM ? 3 : A >= FX_TIER2_FROM ? 2 : 1;
+  const W = fxCv.width, H = fxCv.height;
+  sfx.success(tier, terminal);
+
+  // (공통) 화면 플래시 + 빛기둥
+  flash(terminal ? '#fff2b0' : '#ffffff', 1, terminal ? 1000 : 750);
+  beam(terminal ? 1800 : 1300, terminal ? 'hue-rotate(-10deg) saturate(1.6)' : '');
+
+  // 이전 이미지를 복제해 확대하며 사라지게
+  const ghost = swordImg.cloneNode(); ghost.removeAttribute('id');
+  ghost.style.cssText = `position:absolute;left:50%;top:50%;width:${swordImg.style.width};height:${swordImg.style.height};max-width:none;transform:translate(-50%,-50%);z-index:2;pointer-events:none`;
+  stageEl.appendChild(ghost);
+  ghost.animate([
+    { transform: 'translate(-50%,-50%) scale(1)', opacity: 1, filter: 'brightness(1)' },
+    { transform: 'translate(-50%,-50%) scale(1.25)', opacity: 0, filter: 'brightness(3.5) blur(.5rem)' }
+  ], { duration: 420, easing: 'ease-in', fill: 'forwards' }).onfinish = () => ghost.remove();
+
+  await sleep(240);   // 플래시가 가장 밝은 순간에 이미지 교체
+  await setImageDecoded(newS.file);
+  swordImg.animate([
+    { transform: 'scale(.55)', filter: 'brightness(4) blur(1rem)', opacity: .2 },
+    { transform: 'scale(1.12)', filter: 'brightness(2) drop-shadow(0 0 3rem #ffd54a)', opacity: 1, offset: .5 },
+    { transform: 'scale(1)', filter: 'brightness(1) drop-shadow(0 0 0 transparent)', opacity: 1 }
+  ], { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)' });
+
+  // (공통) +N 단계 큰 문구
+  const txt = terminal ? `+${A} 단계\n★ MAX ★` : `+${A} 단계`;
+  bigText(txt, terminal ? '#ffd54a' : '#fff6c8', { dur: terminal ? 2300 : 1600, scale: tier >= 3 ? 1.25 : 1, size: terminal ? '5.5rem' : null });
+
+  // (11단계~) 파티클 폭죽 / 불꽃
+  if (tier >= 2) {
+    addBurst(W / 2, H / 2, tier === 3 ? 160 : 100, { speed: 12, life: 70, size: 5 });
+    fireworks(tier === 3 ? 7 : 4, 1200, tier === 3);
+  }
+  // (20단계~) 화면 흔들림 + 충격파 링
+  if (tier >= 3) {
+    shake(18, 600);
+    ring(0); ring(180, '#ffffff'); ring(360);
+  }
+  // 종료 단계 특별 연출
+  if (terminal) {
+    fireworks(14, 2200, true);
+    shake(22, 900);
+    ring(0); ring(200, '#ffffff'); ring(400); ring(700, '#ffb400');
+    setTimeout(() => flash('#ffe27a', .7, 900), 700);
+    await sleep(2300);
+  } else {
+    await sleep(tier === 1 ? 1300 : 1500);
+  }
+}
+
+async function playFail(zone) {
+  const W = fxCv.width, H = fxCv.height;
+  flash('#ff2a3d', .5, 600);
+  if (zone === 'drop') { sfx.drop(); } else { sfx.fail(); }
+  shake(10, 450);
+  swordImg.animate([
+    { filter: 'brightness(1)' }, { filter: 'brightness(.35) sepia(1) hue-rotate(-30deg) saturate(4)', offset: .25 }, { filter: 'brightness(1)' }
+  ], { duration: 650 });
+  addBurst(W / 2, H / 2, 40, { colors: ['#ff5c6c', '#8a1f2b', '#444'], speed: 6, life: 40, size: 4, gravity: .2 });
+  await sleep(700);
+}
+async function playDestroy() {
+  const W = fxCv.width, H = fxCv.height;
+  sfx.destroy();
+  flash('#ff1530', .8, 800);
+  shake(24, 700);
+  swordImg.animate([
+    { transform: 'scale(1)', opacity: 1, filter: 'brightness(1)' },
+    { transform: 'scale(1.05)', opacity: 1, filter: 'brightness(3) contrast(2)', offset: .2 },
+    { transform: 'scale(.85) rotate(2deg)', opacity: 0, filter: 'brightness(.2) blur(.6rem)' }
+  ], { duration: 800, easing: 'ease-in', fill: 'forwards' });
+  addBurst(W / 2, H / 2, 150, { colors: ['#ff5c6c', '#b3b8c8', '#666c80', '#ffd0d0'], speed: 14, life: 70, size: 7, gravity: .3, shard: true });
+  bigText('검이 파괴되었습니다…', '#ff5c6c', { dur: 1800, size: '3.6rem' });
+  await sleep(1500);
+}
+
+/* ================================================================
+   6. 행동 (강화 / 판매 / 분해 / 구매)
+   ================================================================ */
+/* ── 강화 미니게임 엔진 (캔버스 / 마우스·터치·스페이스 공용) ── */
+const MG_W = 720, MG_H = 360, MG_PREP = 1350, MG_RESULT = 1000;
+const mgCv = $('#mgCv'), mctx = mgCv.getContext('2d');
+mgCv.width = MG_W; mgCv.height = MG_H;
+const mgImgs = {};
+function mgImage(file) {
+  let im = mgImgs[file];
+  if (!im) { im = new Image(); im.src = imgUrl(file); mgImgs[file] = im; }
+  return im;
+}
+const MS = { sparks: [], shakeAt: -1e9, shakePow: 0, finish: () => {} };
+function mgSpark(x, y, n, colors, speed = 7) {
+  colors = colors || ['#ffd54a', '#fff6c8', '#ff9f43'];
+  for (let i = 0; i < n; i++) {
+    const a = rnd(0, 6.283), s = rnd(speed * .3, speed);
+    MS.sparks.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 1.5, life: rnd(25, 45), max: 45,
+      c: colors[Math.floor(Math.random() * colors.length)], sz: rnd(2, 4.5) });
+  }
+}
+function mgPulse(pow) { MS.shakeAt = performance.now(); MS.shakePow = pow; }
+function mgText(c, text, x, y, size, color, alpha = 1) {
+  c.save(); c.globalAlpha = alpha; c.font = `900 ${size}px "Noto Sans KR","Malgun Gothic",sans-serif`;
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.shadowColor = color; c.shadowBlur = 14;
+  c.fillStyle = color; c.fillText(text, x, y); c.restore();
+}
+function mgTimeBar(c, frac) {
+  c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(50, 22, MG_W - 100, 8);
+  c.fillStyle = frac > .3 ? '#ffd54a' : '#ff5c6c'; c.fillRect(50, 22, (MG_W - 100) * clamp(frac, 0, 1), 8);
+}
+const MG_JUDGE = { perfect: { t: 'PERFECT', c: '#ffd54a' }, good: { t: 'GOOD', c: '#7be0ff' }, miss: { t: 'MISS', c: '#ff5c6c' } };
+
+const MG_DEFS = {
+  /* 🔨 망치질 리듬: 줄어드는 링이 안쪽 원에 맞을 때 탭 */
+  hammer: {
+    name: '🔨 망치질 리듬', desc: '링이 안쪽 원에 겹치는 순간 탭(클릭)하세요!  (스페이스·엔터도 가능)',
+    make(d) {
+      const hits = Math.round(L(HAMMER_HITS, d)), ringMs = L(HAMMER_RING_MS, d);
+      const pw = L(HAMMER_PERFECT_MS, d), gw = L(HAMMER_GOOD_MS, d), pass = L(HAMMER_PASS, d);
+      const lead = 500, gap = 220, R0 = 170, R1 = 34, hs = [];
+      for (let i = 0; i < hits; i++) {
+        const spawn = lead + i * (ringMs + gap);
+        hs.push({ x: rnd(MG_W * .25, MG_W * .75), y: rnd(MG_H * .32, MG_H * .68), spawn, hitAt: spawn + ringMs, res: null, at: 0 });
+      }
+      let score = 0, doneAt = null;
+      const settle = (h, t, res) => {
+        h.res = res; h.at = t; score += res === 'perfect' ? 1 : res === 'good' ? .6 : 0;
+        if (res === 'miss') sfx.thud(); else sfx.anvil(res === 'perfect' ? 1 : .3);
+        if (res !== 'miss') mgSpark(h.x, h.y, res === 'perfect' ? 36 : 14, undefined, res === 'perfect' ? 9 : 6);
+        mgPulse(res === 'perfect' ? 7 : res === 'good' ? 4 : 2);
+      };
+      return {
+        onTap(t) {
+          const h = hs.find(h => !h.res && t >= h.spawn); if (!h) return;
+          const ad = Math.abs(t - h.hitAt);
+          settle(h, t, ad <= pw ? 'perfect' : ad <= gw ? 'good' : 'miss');
+        },
+        update(t) {
+          for (const h of hs) if (!h.res && t > h.hitAt + gw) settle(h, t, 'miss');
+          if (doneAt === null && hs.every(h => h.res)) doneAt = t;
+          if (doneAt !== null && t > doneAt + 450)
+            MS.finish(score >= hits * pass - 1e-9, `점수 ${score.toFixed(1)} / ${hits}  (필요 ${(hits * pass).toFixed(1)})`);
+        },
+        draw(c, t) {
+          for (const h of hs) {
+            if (h.res) {
+              const k = (t - h.at) / 700;
+              if (k < 1) { const j = MG_JUDGE[h.res]; mgText(c, j.t, h.x, h.y - 40 * k - 10, 34, j.c, 1 - k); }
+              continue;
+            }
+            const active = t >= h.spawn;
+            if (!active) continue;   // 아직 차례가 아닌 원은 숨김 (현재 턴의 원 하나만 표시)
+            c.save();
+            c.lineWidth = 4; c.strokeStyle = active ? '#ffb400' : 'rgba(255,180,0,.25)';
+            c.fillStyle = active ? 'rgba(255,180,0,.18)' : 'rgba(255,180,0,.05)';
+            c.shadowColor = '#ffb400'; c.shadowBlur = active ? 16 : 0;
+            c.beginPath(); c.arc(h.x, h.y, R1, 0, 6.283); c.fill(); c.stroke();
+            if (active) {
+              const p = (t - h.spawn) / ringMs, r = Math.max(6, R1 + (R0 - R1) * (1 - p));
+              c.lineWidth = 6; c.strokeStyle = Math.abs(t - h.hitAt) <= pw ? '#fff6c8' : '#ffffff';
+              c.shadowColor = '#fff'; c.shadowBlur = 10; c.globalAlpha = clamp(.35 + p, 0, 1);
+              c.beginPath(); c.arc(h.x, h.y, r, 0, 6.283); c.stroke();
+            }
+            c.restore();
+          }
+          for (let i = 0; i < hits; i++) {                       // 하단 결과 표시
+            const h = hs[i], x = MG_W / 2 + (i - (hits - 1) / 2) * 30;
+            c.beginPath(); c.arc(x, MG_H - 24, 9, 0, 6.283);
+            c.fillStyle = h.res ? MG_JUDGE[h.res].c : 'rgba(255,255,255,.2)'; c.fill();
+          }
+        }
+      };
+    }
+  },
+
+  /* 🎯 타이밍 게이지: 좌우로 움직이는 바를 초록 구간에서 정지 */
+  timing: {
+    name: '🎯 타이밍 게이지', desc: '바가 초록 구간 안에 있을 때 탭(클릭)하세요! 기회는 단 한 번입니다.',
+    make(d) {
+      const zw = L(TIMING_ZONE, d), speed = L(TIMING_SPEED, d), limit = TIMING_LIMIT * 1000;
+      const zs = rnd(.06, .94 - zw), ph0 = rnd(0, 2);
+      const X0 = 50, TW = MG_W - 100, Y = MG_H * .52, TH = 58;
+      const pos = t => { const u = (ph0 + speed * t / 1000) % 2; return u < 1 ? u : 2 - u; };
+      let stopP = null;
+      return {
+        onTap(t) {
+          if (stopP !== null) return;
+          stopP = pos(t);
+          const ok = stopP >= zs && stopP <= zs + zw;
+          if (ok) { sfx.anvil(1); mgSpark(X0 + stopP * TW, Y, 40, undefined, 9); mgPulse(7); }
+          else { sfx.thud(); mgPulse(3); }
+          MS.finish(ok, ok ? '명중!' : '빗나갔습니다');
+        },
+        update(t) {
+          if (stopP === null && t > limit) { stopP = pos(t); sfx.thud(); MS.finish(false, '시간 초과'); }
+        },
+        draw(c, t) {
+          mgTimeBar(c, stopP === null ? 1 - t / limit : 1);
+          c.fillStyle = 'rgba(255,92,108,.22)'; c.fillRect(X0, Y - TH / 2, TW, TH);
+          c.save(); c.shadowColor = '#4be08e'; c.shadowBlur = 18; c.fillStyle = '#4be08e';
+          c.fillRect(X0 + zs * TW, Y - TH / 2, zw * TW, TH); c.restore();
+          c.lineWidth = 3; c.strokeStyle = '#8d95ad'; c.strokeRect(X0, Y - TH / 2, TW, TH);
+          const x = X0 + (stopP !== null ? stopP : pos(t)) * TW;
+          c.save(); c.shadowColor = '#fff'; c.shadowBlur = 14; c.fillStyle = '#fff';
+          c.fillRect(x - 4, Y - TH / 2 - 16, 8, TH + 32);
+          c.beginPath(); c.moveTo(x - 12, Y - TH / 2 - 30); c.lineTo(x + 12, Y - TH / 2 - 30); c.lineTo(x, Y - TH / 2 - 14); c.fill();
+          c.restore();
+          mgText(c, 'TAP!', MG_W / 2, MG_H * .84, 30, 'rgba(255,255,255,.55)', .7 + .3 * Math.sin(t / 120));
+        }
+      };
+    }
+  },
+
+  /* 💥 연타 게이지: 제한시간 안에 연타해서 게이지 채우기 */
+  mash: {
+    name: '💥 연타 게이지', desc: '제한시간 안에 화면을 최대한 빠르게 연타해서 게이지를 가득 채우세요!',
+    make(d) {
+      const need = Math.round(L(MASH_NEED, d)), limit = L(MASH_TIME, d) * 1000;
+      const X0 = 60, GW = MG_W - 120, Y = MG_H * .68, GH = 46;
+      let taps = 0;
+      return {
+        onTap() {
+          if (taps >= need) return;
+          taps++; sfx.tap(taps / need); mgPulse(3);
+          mgSpark(rnd(MG_W * .3, MG_W * .7), MG_H * .42, 5, undefined, 5);
+          if (taps >= need) { sfx.anvil(1); mgSpark(MG_W / 2, Y, 50, undefined, 10); MS.finish(true, `${taps} / ${need}`); }
+        },
+        update(t) { if (taps < need && t >= limit) { sfx.thud(); MS.finish(false, `${taps} / ${need}`); } },
+        draw(c, t) {
+          mgTimeBar(c, 1 - t / limit);
+          mgText(c, 'TAP! TAP!', MG_W / 2, MG_H * .36, 54 + 6 * Math.sin(t / 70), '#ffd54a');
+          mgText(c, `${taps} / ${need}`, MG_W / 2, MG_H * .52, 26, '#e9ecf5');
+          c.fillStyle = 'rgba(255,255,255,.1)'; c.fillRect(X0, Y - GH / 2, GW, GH);
+          const g = c.createLinearGradient(X0, 0, X0 + GW, 0);
+          g.addColorStop(0, '#ff9f43'); g.addColorStop(1, '#ffd54a');
+          c.save(); c.shadowColor = '#ffb400'; c.shadowBlur = 16; c.fillStyle = g;
+          c.fillRect(X0, Y - GH / 2, GW * clamp(taps / need, 0, 1), GH); c.restore();
+          c.lineWidth = 3; c.strokeStyle = '#8d95ad'; c.strokeRect(X0, Y - GH / 2, GW, GH);
+        }
+      };
+    }
+  },
+};
+
+function mgDrawBg(c, now, img) {
+  c.clearRect(0, 0, MG_W, MG_H);
+  const g = c.createRadialGradient(MG_W / 2, MG_H / 2, 20, MG_W / 2, MG_H / 2, MG_W * .6);
+  g.addColorStop(0, '#3a1a08'); g.addColorStop(1, '#07080c');
+  c.fillStyle = g; c.fillRect(0, 0, MG_W, MG_H);
+  if (img.complete && img.naturalWidth) {
+    const k = Math.min(MG_W * .85 / img.naturalWidth, MG_H * .85 / img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    c.globalAlpha = .5; c.drawImage(img, (MG_W - w) / 2, (MG_H - h) / 2, w, h); c.globalAlpha = 1;
+  }
+  c.save(); c.globalCompositeOperation = 'lighter';
+  const h2 = c.createRadialGradient(MG_W / 2, MG_H * .55, 10, MG_W / 2, MG_H * .55, MG_W * .45);
+  h2.addColorStop(0, `rgba(255,120,20,${.16 + .05 * Math.sin(now / 200)})`); h2.addColorStop(1, 'rgba(255,120,20,0)');
+  c.fillStyle = h2; c.fillRect(0, 0, MG_W, MG_H); c.restore();
+}
+
+// 미니게임 실행 → Promise<{success:boolean}>
+function runMinigame(sword) {
+  return new Promise(resolve => {
+    const kind = minigameOf(sword.A), d = diffOf(sword.A), def = MG_DEFS[kind], game = def.make(d);
+    const img = mgImage(sword.file), nextA = LEVELS[lvIdx(sword.A) + 1].A, c = mctx, pad = $('#mgPad');
+    $('#mgTitle').textContent = def.name; $('#mgDesc').textContent = def.desc;
+    $('#mgInfo').textContent = `${sword.A} → ${nextA}단계 · 난이도 ${Math.round(d * 100)}%`;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    MS.sparks = []; MS.shakeAt = -1e9;
+    let phase = 'prep', t0 = performance.now(), st = 0, resultAt = 0, res = null, closed = false, lastN = 0;
+    MS.finish = (ok, msg) => { if (phase !== 'play') return; phase = 'result'; resultAt = performance.now(); res = { ok, msg }; };
+    const tap = () => { if (phase === 'play') game.onTap(performance.now() - t0); };
+    const onDown = e => { e.preventDefault(); tap(); };
+    const onKey = e => {
+      if (e.code !== 'Space' && e.code !== 'Enter') return;
+      e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) tap();
+    };
+    const close = ok => {
+      closed = true; $('#mgModal').classList.remove('open');
+      pad.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey, true);
+      resolve({ success: ok });
+    };
+    const frame = now => {
+      if (closed) return;
+      let prepN = 0;
+      if (phase === 'prep') {
+        const el = now - t0; prepN = 3 - Math.floor(el / 450);
+        if (prepN >= 1 && prepN !== lastN) { lastN = prepN; sfx.tick(); }
+        if (el >= MG_PREP) { phase = 'play'; t0 = now; sfx.go(); }
+      }
+      if (phase === 'play') { st = now - t0; game.update(st); }
+      if (phase === 'result' && now - resultAt > MG_RESULT) { close(res.ok); return; }
+
+      mgDrawBg(c, now, img);
+      c.save();
+      if (now - MS.shakeAt < 160) { const p = MS.shakePow * (1 - (now - MS.shakeAt) / 160); c.translate(rnd(-p, p), rnd(-p, p)); }
+      game.draw(c, st);
+      c.globalCompositeOperation = 'lighter';
+      MS.sparks = MS.sparks.filter(p => p.life > 0);
+      for (const p of MS.sparks) {
+        p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .98; p.life--;
+        c.globalAlpha = clamp(p.life / p.max, 0, 1); c.fillStyle = p.c;
+        c.beginPath(); c.arc(p.x, p.y, p.sz, 0, 6.283); c.fill();
+      }
+      c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+      c.restore();
+
+      if (phase === 'prep') {
+        c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(0, 0, MG_W, MG_H);
+        mgText(c, prepN >= 1 ? String(prepN) : 'GO!', MG_W / 2, MG_H / 2, 110, '#ffd54a');
+      } else if (phase === 'result') {
+        const k = Math.min(1, (now - resultAt) / 220);
+        c.fillStyle = 'rgba(0,0,0,.55)'; c.fillRect(0, 0, MG_W, MG_H);
+        mgText(c, res.ok ? 'SUCCESS!' : 'FAIL…', MG_W / 2, MG_H / 2 - 12, 40 + 50 * k, res.ok ? '#4be08e' : '#ff5c6c', k);
+        mgText(c, res.msg, MG_W / 2, MG_H / 2 + 62, 22, '#c9cfe0', k);
+      }
+      requestAnimationFrame(frame);
+    };
+    $('#mgModal').classList.add('open');
+    pad.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey, true);
+    requestAnimationFrame(frame);
+  });
+}
+
+function toast(msg, ms = 2200) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+async function doEnhance() {
+  if (busy || !G.sword) return;
+  sfx.click();
+  const A = G.sword.A, level = lv(A);
+  if (isTerm(G.sword)) { sfx.error(); toast('최종 단계 검입니다. 판매만 가능합니다.'); return; }
+  const cost = costOf(A), need = stoneNeedOf(A);
+  if (G.gold < cost)    { sfx.error(); toast('골드가 부족합니다.'); return; }
+  if (G.stones < need)  { sfx.error(); toast('강화석이 부족합니다.'); return; }
+
+  busy = true; G.gold -= cost; G.stones -= need; G.stats.attempts++;
+  G.sword.spent = (G.sword.spent || 0) + cost;   // 이 검에 쓴 강화비 누적 (판매 시 환급)
+  save(); render();                              // 비용은 미니게임 시작 전에 확정 저장 (새로고침으로 취소 불가)
+
+  const mg = await runMinigame(G.sword);         // ★ 미니게임 결과가 곧 강화 성패
+  sfx.charge(); await playCharge();
+
+  if (mg.success) {
+    const next = LEVELS[lvIdx(A) + 1], f = pickFile(next), oldS = G.sword;
+    G.sword = { A: next.A, file: f.file, spent: oldS.spent }; G.stats.success++;
+    const isNew = !G.codex[f.file]; G.codex[f.file] = 1;
+    render();
+    await playSuccess(oldS, G.sword, !!f.term);
+    if (isNew) toast('📖 도감 등록! ' + f.name);
+  } else {
+    let zone = zoneOf(A);
+    if (zone === 'destroy' && Math.random() >= DESTROY_CHANCE) zone = 'drop';
+    if (zone === 'keep') {
+      bigText('강화 실패\n단계 유지', '#ff8a96', { dur: 1300, size: '3.4rem' });
+      await playFail('keep');
+    } else if (zone === 'drop') {
+      const idx = lvIdx(A), prev = LEVELS[Math.max(0, idx - 1)];
+      bigText(idx > 0 ? `강화 실패\n${A} → ${prev.A} 단계 하락` : '강화 실패\n단계 유지', '#ffb36b', { dur: 1400, size: '3.4rem' });
+      await playFail('drop');
+      if (idx > 0) { const f = pickNormal(prev); G.sword = { A: prev.A, file: f.file, spent: G.sword.spent }; G.codex[f.file] = 1; await setImageDecoded(f.file); }
+    } else {
+      await playDestroy();
+      G.sword = null;
+    }
+  }
+  save(); busy = false; showCurrentImage(); render(); checkGameOver();
+}
+
+function doSell() {
+  if (busy || !G.sword) return; sfx.click();
+  const { A } = G.sword, term = isTerm(G.sword), refund = refundOf(G.sword), price = sellTotalOf(G.sword, term);
+  G.gold += price; let msg = `+${fmt(price)} 골드 획득` + (refund ? ` (강화비 환급 +${fmt(refund)})` : '');
+  if (!term && A < STONE_FROM_STAGE && Math.random() < SELL_STONE_DROP) { G.stones++; msg += ' · 💎 강화석 1개 드랍!'; }
+  setTimeout(sfx.coin, 40); G.sword = null;
+  swordFadeOut(); toast(msg); afterAction();
+}
+function doDismantle() {
+  if (busy || !G.sword) return; sfx.click();
+  const { A } = G.sword;
+  if (!canDismantle(A, isTerm(G.sword))) { sfx.error(); toast(`분해는 ${DISMANTLE_MIN_STAGE}~${STONE_FROM_STAGE - 1}단계 검만 가능합니다.`); return; }
+  const n = dismantleOf(A); G.stones += n; G.sword = null;
+  setTimeout(sfx.crunch, 40); swordFadeOut(); toast(`💎 강화석 ${n}개 획득`); afterAction();
+}
+function doBuySword() {
+  if (busy || G.sword) return; sfx.click();
+  if (G.gold < NEW_SWORD_PRICE) { sfx.error(); toast('골드가 부족합니다.'); return; }
+  G.gold -= NEW_SWORD_PRICE; giveLowestSword(G); setTimeout(sfx.buy, 40);
+  showCurrentImage();
+  swordImg.animate([{ transform: 'scale(.8)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 400, easing: 'ease-out' });
+  toast('새 검을 구매했습니다.'); afterAction();
+}
+function doBuyStone() {
+  if (busy) return; sfx.click();
+  if (G.gold < STONE_PRICE) { sfx.error(); toast('골드가 부족합니다.'); return; }
+  G.gold -= STONE_PRICE; G.stones++; setTimeout(sfx.buy, 40); toast('💎 강화석 1개 구매'); afterAction();
+}
+function swordFadeOut() {
+  const a = swordImg.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.92)' }], { duration: 300, fill: 'forwards' });
+  a.onfinish = () => { a.cancel(); showCurrentImage(); };
+}
+function afterAction() { save(); render(); checkGameOver(); }
+
+function checkGameOver() {
+  if (!G.sword && G.gold < NEW_SWORD_PRICE) {
+    if (!$('#goModal').classList.contains('open')) { sfx.gameover(); }
+    $('#goModal').classList.add('open');
+  }
+}
+$('#goRestart').onclick = () => {
+  sfx.click(); G = freshState(G.codex); save(); $('#goModal').classList.remove('open'); showCurrentImage(); render();
+};
+
+/* ================================================================
+   7. 화면 갱신
+   ================================================================ */
+function render() {
+  const total = TOTAL_FILES, got = Object.keys(G.codex).length;
+  $('#hGold').textContent = fmt(G.gold);
+  $('#hStone').textContent = fmt(G.stones);
+  $('#hCodex').textContent = `${got}/${total}`;
+  $('#hTry').textContent = fmt(G.stats.attempts);
+  $('#hOk').textContent = fmt(G.stats.success);
+
+  const s = G.sword;
+  if (!s) {
+    $('#iName').textContent = '없음'; $('#iStage').textContent = '새 검을 구매하세요';
+    $('#iRate').textContent = '-'; $('#iFail').textContent = '';
+    $('#iCost').textContent = '-'; $('#iCostSub').textContent = '';
+    $('#iSell').textContent = '-'; $('#iSellSub').textContent = '';
+  } else {
+    const level = lv(s.A), term = isTerm(s);
+    const f = level.files.find(x => x.file === s.file);
+    $('#iName').innerHTML = esc(f ? f.name : '?') + (term ? '<span class="badge b-max">MAX</span>' : '');
+    $('#iStage').textContent = `현재 ${s.A}단계` + (term ? ' · 강화 종료 (판매만 가능)' : ` · 최대 ${MAXA}단계`);
+    if (term) {
+      $('#iRate').textContent = '-'; $('#iFail').textContent = '더 이상 강화할 수 없습니다';
+      $('#iCost').textContent = '-'; $('#iCostSub').textContent = '';
+    } else {
+      const z = zoneOf(s.A), need = stoneNeedOf(s.A);
+      $('#iRate').textContent = MG_DEFS[minigameOf(s.A)].name;
+      $('#iFail').innerHTML = `난이도 ${Math.round(diffOf(s.A) * 100)}% · ` + (z === 'keep' ? '<span class="badge b-keep" style="margin:0">실패 시 유지</span>'
+        : z === 'drop' ? '<span class="badge b-drop" style="margin:0">실패 시 1단계 하락</span>'
+        : '<span class="badge b-destroy" style="margin:0">실패 시 파괴 위험!</span>');
+      $('#iCost').innerHTML = `<span class="gold">${fmt(costOf(s.A))}</span> 골드`;
+      $('#iCostSub').innerHTML = need ? `+ 💎 강화석 ${need}개 (보유 ${fmt(G.stones)})` : '강화석 불필요';
+    }
+    $('#iSell').innerHTML = `<span class="gold">${fmt(sellTotalOf(s, term))}</span> 골드`;
+    $('#iSellSub').innerHTML = `기본 ${fmt(sellOf(s.A, term))} + 강화비 ${REFUND_PERCENT}% 환급 ${fmt(refundOf(s))}<br>` +
+      (canDismantle(s.A, term) ? `분해 시 💎 강화석 ${dismantleOf(s.A)}개` : '분해 불가 (' + DISMANTLE_MIN_STAGE + '~' + (STONE_FROM_STAGE - 1) + '단계만 가능)');
+  }
+
+  // 버튼 상태 / 보조 문구
+  const has = !!s, term = has && isTerm(s);
+  $('#bEnh').disabled  = busy || !has || term;
+  $('#bSell').disabled = busy || !has;
+  $('#bDis').disabled  = busy || !has || !canDismantle(s ? s.A : 0, term);
+  $('#bBuy').disabled  = busy || has;
+  $('#bStone').disabled = busy;
+  $('#bEnhSub').textContent = has && !term ? `${fmt(costOf(s.A))}G` + (stoneNeedOf(s.A) ? ` + 💎${stoneNeedOf(s.A)}` : '') : '';
+  $('#bSellSub').textContent = has ? `+${fmt(sellTotalOf(s, term))}G` : '';
+  $('#bDisSub').textContent = has && canDismantle(s.A, term) ? `💎 +${dismantleOf(s.A)}` : '';
+  $('#bBuySub').textContent = `${fmt(NEW_SWORD_PRICE)}G`;
+  $('#bStoneSub').textContent = `${fmt(STONE_PRICE)}G`;
+  $('#bMute').textContent = muted ? '🔇' : '🔊';
+}
+
+/* ── 도감 ── */
+function openCodex() {
+  sfx.click();
+  const got = Object.keys(G.codex).length;
+  $('#cxCount').textContent = `${got} / ${TOTAL_FILES} 수집`;
+  $('#cxBody').innerHTML = LEVELS.map(l =>
+    `<div class="cx-row"><h5>${l.A}단계</h5><div class="cx-grid">` +
+    l.files.map(f => {
+      const on = !!G.codex[f.file];
+      return `<div class="cx-item ${on ? 'on' : 'locked'}"><div class="th"><img src="${imgUrl(f.file)}" alt="" loading="lazy"></div>${on ? esc(f.name) : '???'}${f.term ? '<br><span style="color:var(--gold)">★ 종착</span>' : ''}</div>`;
+    }).join('') + '</div></div>').join('');
+  $('#codexModal').classList.add('open');
+}
+$('#cxClose').onclick = () => { sfx.click(); $('#codexModal').classList.remove('open'); };
+$('#codexModal').addEventListener('click', e => { if (e.target.id === 'codexModal') $('#codexModal').classList.remove('open'); });
+
+/* ── 버튼 연결 ── */
+$('#bEnh').onclick = doEnhance;
+$('#bSell').onclick = doSell;
+$('#bDis').onclick = doDismantle;
+$('#bBuy').onclick = doBuySword;
+$('#bStone').onclick = doBuyStone;
+$('#bCodex').onclick = openCodex;
+$('#bMute').onclick = () => { muted = !muted; if (!muted) sfx.click(); render(); };
+$('#bReset').onclick = () => {
+  sfx.click();
+  if (!confirm('모든 진행 상황(골드, 강화석, 도감)을 초기화할까요?')) return;
+  localStorage.removeItem(SAVE_KEY); G = freshState(); save(); $('#goModal').classList.remove('open'); showCurrentImage(); render();
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') $('#codexModal').classList.remove('open');
+  if ((e.key === 'Enter' || e.key === ' ') && !$('#codexModal').classList.contains('open') && e.target === document.body) { e.preventDefault(); doEnhance(); }
+});
+
+/* ================================================================
+   8. 초기화 (manifest 읽기 → 이미지 사전 로드 → 시작)
+   ================================================================ */
+function loadFail(msg) {
+  $('#loadMsg').textContent = msg;
+  $('#loadBox').querySelector('div').textContent = '⚠️ 시작할 수 없습니다';
+}
+
+(async function init() {
+  if (location.protocol === 'file:')
+    console.warn('file:// 로 열면 manifest.json 을 읽을 수 없습니다. GitHub Pages 또는 로컬 서버(python -m http.server)로 실행하세요.');
+  let list;
+  try {
+    const res = await fetch(`${IMG_FOLDER}/${MANIFEST_FILE}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    list = Array.isArray(j) ? j : (j.files || []);
+  } catch (e) {
+    loadFail(`${IMG_FOLDER}/${MANIFEST_FILE} 를 읽지 못했습니다.\n(${e.message})\n\n· make_manifest.py 로 manifest.json 을 만들었는지\n· GitHub Pages(또는 로컬 서버)로 실행 중인지 확인하세요.\n  (index.html 을 더블클릭해 file:// 로 열면 동작하지 않습니다)`);
+    return;
+  }
+  LEVELS = buildLevels(list);
+  if (!LEVELS.length) { loadFail('규칙(A.[B.]C.png)에 맞는 이미지가 manifest 에 없습니다.'); return; }
+
+  await preloadImages(LEVELS, (d, t) => { $('#loadBar').style.width = (d / t * 100) + '%'; $('#loadMsg').textContent = `${d} / ${t}`; });
+
+  // 로드 실패한 파일 제거 → 빈 단계는 건너뜀
+  LEVELS.forEach(l => { l.files = l.files.filter(f => f.ok); });
+  LEVELS = LEVELS.filter(l => l.files.length);
+  if (!LEVELS.length) { loadFail('불러올 수 있는 이미지가 하나도 없습니다.\n폴더 이름(' + IMG_FOLDER + ')과 파일명을 확인하세요.'); return; }
+
+  LEVELS = finalizeLevels(LEVELS);   // 강화 사슬 확정 + 파일별 종료 여부(term) 표시
+  MAXA = LEVELS[LEVELS.length - 1].A;
+  TOTAL_FILES = LEVELS.reduce((n, l) => n + l.files.length, 0);
+
+  // 이미지 영역 크기: 가장 큰 이미지에 맞춤 (가로 = IMG_WIDTH 또는 가장 넓은 원본, 세로 = 가장 높은 이미지 또는 STAGE_HEIGHT)
+  const allF = LEVELS.flatMap(l => l.files);
+  allF.forEach(f => { FILEMAP[f.file] = f; });
+  const sizes = allF.map(dispSize);
+  STAGE_W = Math.ceil(Math.max(...sizes.map(d => d.w)));
+  STAGE_H = STAGE_HEIGHT > 0 ? STAGE_HEIGHT : Math.ceil(Math.max(...sizes.map(d => d.h)));
+  document.documentElement.style.setProperty('--img-w', STAGE_W + 'px');
+  stageEl.style.height = STAGE_H + 'px';
+  fxCv.width = STAGE_W; fxCv.height = STAGE_H;
+  $('#emptyMsg').style.minHeight = '0';
+
+  G = load() || freshState();
+  save(); showCurrentImage(); render();
+  $('#loadModal').classList.remove('open');
+  checkGameOver();
+})();
+</script>
+</body>
+</html>

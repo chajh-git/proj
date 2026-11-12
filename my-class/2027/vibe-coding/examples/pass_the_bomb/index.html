@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>💣 폭탄 돌리기</title>
+<style>
+:root{--bg:#0f0e17;--sf:#1a1830;--cd:#231f3a;--bd:#332e52;--ac:#ff6b35;--an:#4ecdc4;--bm:#ff3860;--gd:#ffd700;--tx:#e8e6f0;--mu:#8882aa}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--tx);font:15px 'Noto Sans KR',system-ui,sans-serif;min-height:100vh}
+body.danger{animation:dg 1s infinite}@keyframes dg{50%{box-shadow:inset 0 0 90px #ff386088}}
+.wrap{max-width:760px;margin:0 auto;padding:16px}.hide{display:none!important}h1{text-align:center;font-size:2.2rem;margin:18px 0}
+.card{background:var(--cd);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}.card h3{color:var(--ac);margin-bottom:10px;font-size:1rem}
+input{width:100%;background:var(--sf);border:1px solid var(--bd);color:var(--tx);border-radius:8px;padding:10px;font-size:15px;margin-bottom:8px}
+.row{display:flex;gap:8px}.row>*{flex:1}label{font-size:12px;color:var(--mu)}
+button{border:0;border-radius:8px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--sf);color:var(--tx);border:1px solid var(--bd)}
+button.p{background:var(--ac);border-color:var(--ac);color:#fff}button.g{background:var(--an);color:#000}button.r{background:var(--bm);color:#fff}button:disabled{opacity:.4;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:6px 12px;border-radius:20px;background:var(--sf);border:1px solid var(--bd);font-size:13px}.chip.off{opacity:.4}
+.bar{height:6px;background:var(--sf);border-radius:3px;overflow:hidden}#tb{height:100%;background:var(--an)}
+#timer{font-size:2rem;text-align:center;font-weight:800}.tag{display:inline-block;padding:3px 9px;border-radius:12px;font-size:12px;background:#3a2a00;color:var(--gd);margin:2px}
+.big{width:170px;height:240px;margin:8px auto;border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:3.6rem;border:3px solid;cursor:pointer}
+.big small{font-size:1rem;margin-top:8px}.c-angel{border-color:var(--an);background:#0d3a38;color:var(--an)}.c-bomb{border-color:var(--bm);background:#3a0a10;color:var(--bm)}
+.c-neutral{border-color:#aaa;background:#2a2a35;color:#ccc}.c-double{border-color:var(--gd);background:#3a3000;color:var(--gd)}.c-mirror{border-color:#9b8cff;background:#241f4a;color:#b9afff}.c-back{border-color:var(--bd);background:var(--sf);color:var(--mu)}
+#chat{height:150px;overflow:auto;background:var(--sf);border-radius:8px;padding:8px;margin:8px 0;font-size:13px}#chat b{color:var(--an)}#chat .me b{color:var(--ac)}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{border:1px solid var(--bd);padding:6px;text-align:center}th{background:var(--sf);color:var(--mu)}
+.a{color:var(--an)}.b{color:var(--bm)}.win td{background:#1a3a00}canvas{width:100%;background:var(--sf);border-radius:8px}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd);border:1px solid var(--bd);padding:10px 20px;border-radius:30px;opacity:0;transition:.3s;pointer-events:none;z-index:9}#toast.on{opacity:1}
+#boom{position:fixed;inset:0;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:2rem;z-index:8;animation:pop .4s}@keyframes pop{from{transform:scale(.3);opacity:0}}
+</style></head><body>
+<div class="wrap">
+<div id="s-intro"><h1>💣 폭탄 돌리기 💣</h1>
+ <div class="card" id="hostbox"><h3>🏫 진행자</h3><input id="hn" value="선생님" maxlength="10"><button class="p" style="width:100%" onclick="create()">방 개설하기</button></div>
+ <div class="card"><h3>🎒 학생 입장</h3><input id="jn" placeholder="내 이름" maxlength="10"><input id="jr" placeholder="방 코드" maxlength="6"><button class="g" style="width:100%" onclick="join()">입장하기</button>
+ <div style="font-size:11px;color:var(--mu);margin-top:6px">기기가 바뀌었거나 새로고침했다면 같은 이름으로 다시 입장하면 이어서 진행됩니다.</div></div></div>
+
+<div id="s-lobby" class="hide"><h1>대기실 · <span id="code" style="color:var(--gd)"></span></h1>
+ <div class="card"><h3>🔗 초대 링크 (클릭하면 복사)</h3><div id="link" style="word-break:break-all;cursor:pointer;font-size:13px" onclick="navigator.clipboard.writeText(this.textContent);toast('복사됨')"></div></div>
+ <div class="card"><h3>👥 참가자 <span id="pc"></span></h3><div class="chips" id="lp"></div></div>
+ <div class="card" id="cfg"><h3>⚙️ 설정</h3><div class="row"><div><label>천사 비율</label><input id="ca" type="number" value="1" min="1" max="10"></div><div><label>폭탄 비율</label><input id="cb" type="number" value="1" min="1" max="10"></div></div>
+  <div class="row"><div><label>라운드 수(1~15)</label><input id="cr" type="number" value="4" min="1" max="15"></div><div><label>라운드 시간(초, 10~300)</label><input id="cd" type="number" value="60" min="10" max="300"></div></div>
+  <div style="font-size:12px;color:var(--mu);margin-bottom:8px">3·7라운드 이모지 전용 / 4·8라운드 교환 2회 / 마지막 라운드 시간 절반 · 6명 이상이면 특수 카드 포함</div>
+  <button class="p" style="width:100%" onclick="send({a:'start',rounds:cr.value,dur:cd.value,angel:ca.value,bomb:cb.value})">🎮 게임 시작</button></div>
+ <div class="card" id="wm" style="text-align:center;color:var(--mu)">⏳ 진행자가 시작할 때까지 기다려 주세요</div></div>
+
+<div id="s-game" class="hide">
+ <div class="card"><div style="text-align:center"><b id="rd"></b> <span id="rl"></span></div><div id="timer"></div><div class="bar"><div id="tb"></div></div>
+  <div id="hint" style="text-align:center;margin-top:6px;color:var(--gd)"></div></div>
+ <div id="stu">
+  <div class="card" style="text-align:center"><h3>🃏 내 카드 (눌러서 확인 / 숨기기)</h3><div id="mycard"></div><div id="myinfo" style="font-size:12px;color:var(--mu)"></div></div>
+  <div class="card" id="rolebox"><h3 id="roletitle"></h3><div id="roledesc" style="font-size:13px;color:var(--mu);margin-bottom:8px"></div><div id="rolebtns" class="chips"></div></div>
+  <div class="card hide" id="incoming" style="border-color:var(--ac);text-align:center"><div id="inmsg" style="margin-bottom:8px"></div><button class="p" onclick="resp(true)">수락</button> <button onclick="resp(false)">거절</button></div>
+  <div class="card hide" id="nego"><h3>🤝 <span id="np"></span>와 협상</h3><div id="ns" style="font-size:12px;color:var(--mu)"></div>
+   <div id="chat"></div><div class="chips" id="emos" style="margin-bottom:8px"></div>
+   <div class="row" id="trow"><input id="ti" maxlength="100" placeholder="메시지" onkeydown="if(event.key=='Enter')say()"><button class="p" style="flex:0 0 70px" onclick="say()">전송</button></div>
+   <div class="row"><button class="r" id="agbtn" onclick="agree()">🔄 교환 동의</button><button onclick="send({a:'close',nego:V.nego.id})">협상 종료</button></div></div>
+  <div class="card"><h3>👥 협상 신청할 상대 선택</h3><div class="chips" id="plist"></div></div></div>
+ <div id="hostview" class="hide"><div class="card"><h3>🕸 교환 네트워크 &nbsp;<span style="font-weight:400;color:var(--mu)">점선(주황) = 지금 협상 중 · 실선(청록) = 완료한 교환 · 카드 정보는 표시되지 않습니다</span></h3><canvas id="cv1" width="1200" height="640"></canvas><div id="livetxt" style="margin-top:8px;font-size:1.1rem;text-align:center;min-height:1.6em"></div></div>
+  <div style="height:110vh;text-align:center;color:var(--mu);padding-top:40px">▼ 진행자 전용 영역 ▼<br><small>전자칠판 공유 중에는 내리지 마세요</small></div>
+  <div class="card"><h3>📊 현재 카드 현황 (진행자 전용)</h3><div id="mx"></div></div></div>
+ <div class="card"><h3>🏅 점수판</h3><div id="sb"></div></div>
+ <div id="endbtn" class="hide"><button class="r" style="width:100%" onclick="confirm('게임을 즉시 종료할까요?')&&send({a:'end'})">🛑 게임 강제 종료 (진행자 전용)</button></div></div>
+
+<div id="s-result" class="hide"><h1>🏆 게임 종료!</h1><div id="win" style="text-align:center;font-size:1.3rem;color:var(--gd);margin-bottom:12px"></div>
+ <div class="card"><h3>최종 순위 (누적 점수 → 교환 횟수)</h3><div id="rank"></div></div>
+ <div class="card"><h3>📈 라운드별 점수 변화</h3><div id="trend"></div></div>
+ <div class="card"><h3>🕸 교환 네트워크 회고 (⭐ = 가장 많이 연결된 허브)</h3><canvas id="cv2" width="700" height="400"></canvas><div id="hub" style="font-size:13px;color:var(--mu);margin-top:6px"></div></div>
+ <div class="card"><h3>🧮 토론 데이터</h3><div id="stats" style="font-size:13px;line-height:1.7"></div></div>
+ <button id="rp" class="p hide" onclick="send({a:'replay'})">🔄 다시 하기</button> <button onclick="home()">🏠 처음으로</button></div>
+</div><div id="toast"></div>
+<script>
+const API=window.BOMB_API||'https://sdhpzypjqmowhrhxvvsj.supabase.co/functions/v1/game';
+const KEY='sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc',SK='bomb_v2';
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IC={angel:['😇','천사 +1'],bomb:['💣','폭탄 −1'],neutral:['⚪','중립 0'],double:['✨','더블 +2'],mirror:['🪞','거울(복사)']};
+const ROLE={detective:['🔍 탐정','상대 1명의 카드를 몰래 확인 (1회)'],shield:['🛡 방패','폭탄을 들고 있어도 한 번 점수 감점을 막아줍니다 (자동)'],force:['⚡ 강제 교환','상대 1명과 거절 불가로 즉시 교환 (1회)']};
+let S=JSON.parse(localStorage.getItem(SK)||'null'),V=null,shown=false,lastRound=0,chatKey='',busy=false,boomT=0;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2600)}
+async function call(b){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json',apikey:KEY,Authorization:'Bearer '+KEY},body:JSON.stringify({room:S?.room,pid:S?.pid,...b})});return await r.json()}catch(e){return{ok:false,err:'네트워크 오류'}}}
+async function send(b){const r=await call(b);if(!r.ok)toast(r.err);if(r.v){V=r.v;render()}return r}
+async function create(){const r=await call({a:'create',name:hn.value});if(!r.ok)return toast(r.err);S={room:r.room,pid:r.pid};localStorage.setItem(SK,JSON.stringify(S));V=r.v;render()}
+async function join(){const r=await call({a:'join',name:jn.value,room:jr.value.trim().toUpperCase()});
+ if(!r.ok)return toast(r.err);S={room:jr.value.trim().toUpperCase(),pid:r.pid};localStorage.setItem(SK,JSON.stringify(S));V=r.v;render()}
+function home(){localStorage.removeItem(SK);S=null;V=null;history.pushState({},'',location.pathname);show('s-intro')}
+function show(id){['s-intro','s-lobby','s-game','s-result'].forEach(x=>$(x).classList.toggle('hide',x!=id))}
+const resp=a=>send({a:'respond',nego:V.nego.id,accept:a}),agree=()=>send({a:'agree',nego:V.nego.id,v:!V.nego.agree}),
+ say=()=>{const t=ti.value.trim();if(t){ti.value='';send({a:'chat',nego:V.nego.id,text:t})}};
+async function poll(){if(!S||busy)return;busy=true;const r=await call({a:'state'});busy=false;
+ if(r.v){V=r.v;render()}else if(r.err&&/찾을 수|정보가/.test(r.err)){home()}}
+setInterval(poll,1200);setInterval(()=>V&&V.status=='playing'&&tickUI(),250);
+
+function render(){if(!V)return;
+ if(V.status=='waiting'){shown=false;show('s-lobby');code.textContent=V.id;link.textContent=location.origin+location.pathname+'?room='+V.id;
+  pc.textContent='('+V.players.length+'명)';lp.innerHTML=V.players.map(p=>`<span class="chip ${p.on?'':'off'}">${p.host?'👑 ':''}${esc(p.name)}</span>`).join('');
+  cfg.classList.toggle('hide',!V.host);wm.classList.toggle('hide',V.host);return}
+ if(V.status=='finished'){document.body.classList.remove('danger');show('s-result');return renderResult()}
+ show('s-game');
+ if(lastRound&&V.round!=lastRound&&V.last){boomT=Date.now();const d=document.createElement('div');d.id='boom';
+  d.innerHTML=`<div style="font-size:5rem">💥</div>라운드 ${V.last.round} 종료<br><small>이번 라운드 폭탄 ${V.last.bombs}장</small>`;document.body.appendChild(d);setTimeout(()=>d.remove(),1600)}
+ lastRound=V.round;rd.textContent=`라운드 ${V.round} / ${V.cfg.rounds}`;
+ rl.innerHTML=(V.rules.emoji?'<span class="tag">🤐 이모지만</span>':'')+(V.rules.max>1?'<span class="tag">🔄 교환 2회</span>':'')+(V.rules.last?'<span class="tag">⏱ 마지막(시간 절반)</span>':'');
+ hint.textContent=V.hint!=null?`📢 중간 공개: 지금 폭탄 카드는 ${V.hint}장!`:'';
+ stu.classList.toggle('hide',V.host);hostview.classList.toggle('hide',!V.host);endbtn.classList.toggle('hide',!V.host);document.querySelector('.wrap').style.maxWidth=V.host?'1200px':'760px';
+ sb.innerHTML='<table><tr><th>이름</th><th>점수</th><th>교환(인정)</th></tr>'+V.players.filter(p=>!p.host).sort((a,b)=>b.score-a.score||b.trades-a.trades).map(p=>`<tr><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.trades}</td></tr>`).join('')+'</table>';
+ if(V.host){mx.innerHTML='<table><tr><th>이름</th><th>카드</th><th>점수</th><th>교환</th></tr>'+V.players.filter(p=>!p.host).map(p=>{const c=V.cards[p.id];return `<tr><td>${esc(p.name)}</td><td class="${c=='bomb'?'b':'a'}">${IC[c][0]} ${IC[c][1]}</td><td>${p.score}</td><td>${p.trades}</td></tr>`}).join('')+'</table>';
+  const nm=Object.fromEntries(V.players.map(p=>[p.id,p.name]));livetxt.innerHTML=V.live.length?V.live.map(l=>`<span class="tag" style="font-size:1rem">${esc(nm[l.a])} ⇄ ${esc(nm[l.b])} ${l.st=='pending'?'(요청 중)':'(협상 중)'}</span>`).join(' '):'<span style="color:var(--mu)">지금 협상 중인 학생이 없습니다</span>';
+  graph(cv1,V.players.filter(p=>!p.host),V.edges,V.live);return}
+ const m=V.me,c=IC[m.card]||['?',''];
+ mycard.innerHTML=shown?`<div class="big c-${m.card}" onclick="shown=false;render()">${c[0]}<small>${c[1]}</small></div>`:`<div class="big c-back" onclick="shown=true;render()">🂠<small>눌러서 확인</small></div>`;
+ myinfo.textContent=`이번 라운드 교환 ${m.tr}/${V.rules.max}`;
+ const R=ROLE[m.role];roletitle.textContent='🎭 내 역할: '+R[0]+(m.used?' (사용함)':'');
+ roledesc.textContent=R[1]+(m.peek?` · 🔍 결과: ${m.peek.name}의 카드는 ${IC[m.peek.card][0]} ${IC[m.peek.card][1]} (R${m.peek.r} 시점)`:'');
+ rolebtns.innerHTML='';if(!m.used&&m.role!='shield'&&!V.nego)V.players.filter(p=>!p.host&&p.id!=m.id).forEach(p=>{const b=document.createElement('button');b.textContent=(m.role=='force'?'⚡ ':'🔍 ')+p.name;b.onclick=()=>send({a:'role',target:p.id});rolebtns.appendChild(b)});
+ const n=V.nego,inc=n&&n.status=='pending'&&!n.mine;
+ incoming.classList.toggle('hide',!inc);if(inc)inmsg.textContent=`🤝 ${n.partner}이(가) 협상을 요청했습니다 (${Math.ceil(n.left/1000)}초 내 응답)`;
+ nego.classList.toggle('hide',!n||inc);
+ if(n&&!inc){np.textContent=n.partner;ns.textContent=n.status=='pending'?`⏳ 상대의 수락을 기다리는 중... (${Math.ceil(n.left/1000)}초 후 자동 취소)`:`나: ${n.agree?'✅':'⬜'} / 상대: ${n.pAgree?'✅':'⬜'} — 둘 다 동의하면 교환됩니다`;
+  agbtn.disabled=n.status!='active';agbtn.textContent=n.agree?'✅ 동의함 (취소하려면 클릭)':'🔄 교환 동의';
+  trow.classList.toggle('hide',V.rules.emoji);emos.innerHTML=V.emo.map(e=>`<button onclick="send({a:'chat',nego:V.nego.id,text:'${e}'})">${e}</button>`).join('');
+  const k=n.id+':'+n.chat.length;if(k!=chatKey){chatKey=k;chat.innerHTML=n.chat.map(x=>{const mine=x.f==m.id;return `<div class="${mine?'me':''}"><b>${mine?'나':esc(n.partner)}</b> ${esc(x.m)}</div>`}).join('');chat.scrollTop=1e9}}
+ plist.innerHTML='';V.players.filter(p=>!p.host&&p.id!=m.id).forEach(p=>{const b=document.createElement('button');
+  b.textContent=p.name+(p.busy?' · 협상중':p.tr>=V.rules.max?' ✅':'')+(p.on?'':' · 오프라인');b.disabled=p.busy||p.tr>=V.rules.max||!p.on||!!V.nego||m.tr>=V.rules.max;b.onclick=()=>send({a:'request',target:p.id});plist.appendChild(b)})}
+function tickUI(){const off=V.now-0;const now=V.now+(Date.now()-(V._t||(V._t=Date.now())));
+ const left=Math.max(0,V.roundEnd-now),tot=V.roundEnd-V.roundStart;timer.textContent=Math.floor(left/60000)+':'+String(Math.ceil(left/1000)%60).padStart(2,'0');
+ tb.style.width=left/tot*100+'%';tb.style.background=left/tot>.4?'var(--an)':left/tot>.2?'var(--gd)':'var(--bm)';document.body.classList.toggle('danger',left>0&&left<=10000)}
+const _r=render;render=function(){if(V&&V.__seen!==V.now){V._t=Date.now();V.__seen=V.now}_r()};
+
+function graph(cv,pl,edges,live){const x=cv.getContext('2d'),W=cv.width,H=cv.height;x.clearRect(0,0,W,H);const N=pl.length;if(!N)return{};
+ const pos={};pl.forEach((p,i)=>{const a=i/N*6.283-1.57;pos[p.id]=[W/2+Math.cos(a)*(W/2-W/9),H/2+Math.sin(a)*(H/2-H/9)]});
+ const cnt={},deg={};(edges||[]).forEach(e=>{const k=[e.a,e.b].sort().join();cnt[k]=(cnt[k]||0)+1});
+ Object.keys(cnt).forEach(k=>{const[a,b]=k.split(',');deg[a]=(deg[a]||0)+1;deg[b]=(deg[b]||0)+1;x.strokeStyle='#4ecdc4aa';x.lineWidth=1+cnt[k]*1.5;x.beginPath();x.moveTo(...pos[a]);x.lineTo(...pos[b]);x.stroke()});
+ const hub=Object.keys(deg).sort((a,b)=>deg[b]-deg[a])[0];if(live){x.setLineDash([14,10]);x.strokeStyle='#ff6b35';x.lineWidth=W/200;live.forEach(l=>{x.beginPath();x.moveTo(...pos[l.a]);x.lineTo(...pos[l.b]);x.stroke()});x.setLineDash([])}
+ const lv=new Set((live||[]).flatMap(l=>[l.a,l.b]));x.textAlign='center';x.font=(W/42|0)+'px sans-serif';
+ pl.forEach(p=>{const[px,py]=pos[p.id],r=W/70+(deg[p.id]||0)*W/230;x.fillStyle=p.id==hub?'#ffd700':lv.has(p.id)?'#ff9b6b':'#ff6b35';x.beginPath();x.arc(px,py,r,0,6.283);x.fill();x.fillStyle='#e8e6f0';x.fillText((p.id==hub&&hub?'⭐ ':'')+p.name,px,py+r+W/40)});
+ return{deg,hub}}
+
+function renderResult(){const pl=V.players.filter(p=>!p.host),by={};pl.forEach(p=>by[p.id]=p);
+ const rk=[...pl].sort((a,b)=>b.score-a.score||b.trades-a.trades),top=rk[0];
+ const ws=rk.filter(p=>p.score==top.score&&p.trades==top.trades);win.textContent=ws.length>1?'🏆 공동 우승: '+ws.map(p=>p.name).join(', '):'🏆 우승: '+top.name;
+ rank.innerHTML='<table><tr><th>순위</th><th>이름</th><th>누적 점수</th><th>인정 교환</th><th>마지막 카드</th></tr>'+rk.map((p,i)=>{const c=V.cards[p.id];return `<tr class="${ws.includes(p)?'win':''}"><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.score}</td><td>${p.trades}</td><td>${IC[c][0]}</td></tr>`}).join('')+'</table>';
+ const mx=Math.max(1,...V.hist.flatMap(h=>Object.values(h.total).map(Math.abs)));
+ trend.innerHTML='<table><tr><th>이름</th>'+V.hist.map(h=>`<th>R${h.round}</th>`).join('')+'</tr>'+rk.map(p=>'<tr><td>'+esc(p.name)+'</td>'+V.hist.map(h=>{const t=h.total[p.id]??0,d=h.delta[p.id]??0;return `<td><div style="height:8px;width:${Math.abs(t)/mx*100}%;background:${t<0?'var(--bm)':'var(--an)'};margin:auto"></div>${t} <small class="${d<0?'b':'a'}">(${d>0?'+':''}${d})</small></td>`}).join('')+'</tr>').join('')+'</table>';
+ const g=graph(cv2,pl,V.edges)||{};const deg=g.deg||{};hub.textContent=g.hub?`허브: ${by[g.hub].name} (서로 다른 ${deg[g.hub]}명과 연결)`:'교환이 없었습니다';
+ const tot=V.edges.length,real=pl.reduce((a,p)=>a+p.trades,0)/2,fin=V.hist.length;
+ const bombSeq=V.hist.map(h=>Object.values(h.cards).filter(c=>c=='bomb').length);
+ stats.innerHTML=`• 전체 교환 ${tot}회 중 점수로 인정된 교환 ${real}회 (${tot?Math.round(real/tot*100):0}%)<br>• 라운드별 폭탄 수: ${bombSeq.join(' → ')}<br>• 교환을 한 번도 안 한 학생: ${pl.filter(p=>!(deg[p.id])).length}명<br>• 토론: 교환을 많이 한 학생이 점수도 높았나요? 허브는 왜 생겼을까요?`;
+ rp.classList.toggle('hide',!V.host)}
+const q=new URLSearchParams(location.search).get('room');if(q){jr.value=q.toUpperCase();hostbox.classList.add('hide')}
+if(S)poll();
+</script></body></html>
