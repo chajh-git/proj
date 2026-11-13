@@ -15,12 +15,12 @@
       --accent2:   #7c5cfc;
       --text:      #e8ecf5;
       --muted:     #6b7490;
+      --diamond:   #7fe8ff;
       --gold:      #f5c842;
       --silver:    #b0bec5;
-      --bronze:    #cd7c3a;
+      --glow-dia:  #7fe8ff4d;
       --glow-gold: #f5c84255;
       --glow-sil:  #b0bec540;
-      --glow-bro:  #cd7c3a40;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,6 +44,16 @@
       opacity: .35;
       pointer-events: none;
       z-index: 0;
+    }
+
+    /* 배경 빛줄기 효과 (내용 뒤에 위치, 클릭 방해 없음) */
+    #bg-rain {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
     }
 
     header {
@@ -113,17 +123,30 @@
     }
 
     /* ── 메달 카드 ── */
+    .tier-label {
+      font-size: .85rem; font-weight: 700; letter-spacing: .06em;
+      margin: 22px 0 10px; display: flex; align-items: center; gap: 8px;
+    }
+    .tier-label span { font-size: .72rem; font-weight: 500; color: var(--muted); }
+    .tier-label.diamond { color: var(--diamond); }
+    .tier-label.gold    { color: var(--gold); }
+    .tier-label.silver  { color: var(--silver); }
+
+    /* 기본(최대 화면): 메달 등급별로 한 줄에 3개 */
     .medal-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 16px;
       margin-bottom: 8px;
     }
+    @media (max-width: 900px) { .medal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 560px) { .medal-grid { grid-template-columns: minmax(0, 1fr); } }
+
     .medal-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 22px 20px 18px;
+      padding: 14px 20px 18px;
       position: relative;
       overflow: hidden;
       cursor: pointer;
@@ -132,32 +155,57 @@
       color: inherit;
       display: block;
     }
+    .medal-card > * { position: relative; }
     .medal-card:hover { transform: translateY(-4px); }
-    .medal-card.gold   { border-color: var(--gold);   box-shadow: 0 0 28px var(--glow-gold); }
-    .medal-card.silver { border-color: var(--silver);  box-shadow: 0 0 20px var(--glow-sil); }
-    .medal-card.bronze { border-color: var(--bronze);  box-shadow: 0 0 20px var(--glow-bro); }
-    .medal-card.gold::before   { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #f5c84215 0%, transparent 60%); }
-    .medal-card.silver::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #b0bec510 0%, transparent 60%); }
-    .medal-card.bronze::before { content:''; position:absolute; inset:0; background: radial-gradient(circle at 80% 20%, #cd7c3a12 0%, transparent 60%); }
+    .medal-card.diamond { border-color: var(--diamond); box-shadow: 0 0 30px var(--glow-dia); }
+    .medal-card.gold    { border-color: var(--gold);    box-shadow: 0 0 28px var(--glow-gold); }
+    .medal-card.silver  { border-color: var(--silver);  box-shadow: 0 0 20px var(--glow-sil); }
+    .medal-card::before { content:''; position:absolute; inset:0; pointer-events:none; }
+    .medal-card.diamond::before { background: radial-gradient(circle at 80% 20%, #7fe8ff18 0%, transparent 60%); }
+    .medal-card.gold::before    { background: radial-gradient(circle at 80% 20%, #f5c84215 0%, transparent 60%); }
+    .medal-card.silver::before  { background: radial-gradient(circle at 80% 20%, #b0bec510 0%, transparent 60%); }
 
-    .medal-badge { font-size: 2rem; line-height: 1; margin-bottom: 10px; }
+    .medal-card .thumb { margin: 0 0 14px; }
+    .medal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .medal-badge { font-size: 2rem; line-height: 1; }
     .medal-rank {
-      position: absolute; top: 18px; right: 18px;
       font-size: .7rem; letter-spacing: .1em; font-weight: 700;
       padding: 3px 10px; border-radius: 20px;
     }
-    .gold   .medal-rank { background: #f5c84222; color: var(--gold); }
-    .silver .medal-rank { background: #b0bec520; color: var(--silver); }
-    .bronze .medal-rank { background: #cd7c3a20; color: var(--bronze); }
+    .diamond .medal-rank { background: #7fe8ff22; color: var(--diamond); }
+    .gold    .medal-rank { background: #f5c84222; color: var(--gold); }
+    .silver  .medal-rank { background: #b0bec520; color: var(--silver); }
 
     .card-name  { font-size: .8rem; color: var(--muted); margin-bottom: 4px; }
-    .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 26px; line-height: 1.3; word-break: break-all; }
+    .card-title { font-size: 1.725rem; font-weight: 700; margin-bottom: 34px; line-height: 1.3; word-break: break-all; }
     .card-views {
       position: absolute; bottom: 16px; right: 18px;
       font-size: .78rem; color: var(--muted);
       display: flex; align-items: center; gap: 5px;
     }
     .card-views svg { opacity: .6; }
+
+    /* ── 썸네일 (작품 실행 화면 미리보기) ── */
+    .thumb {
+      position: relative; width: 100%; aspect-ratio: 16 / 10;
+      overflow: hidden; border-radius: 8px;
+      border: 1px solid var(--border); background: #0a0c11;
+    }
+    .thumb::before {
+      content: '🖼'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; opacity: .25;
+    }
+    .thumb iframe {
+      position: absolute; top: 0; left: 0;
+      width: 1280px; height: 800px; border: 0;
+      transform-origin: 0 0; pointer-events: none;
+      background: #fff; opacity: 0; transition: opacity .4s;
+    }
+    .thumb iframe.loaded { opacity: 1; }
+    a.thumb-link { display: block; }
+    td.thumb-cell { width: 192px; min-width: 192px; }
+    td.thumb-cell .thumb { width: 176px; }
 
     /* ── 테이블 ── */
     .table-wrap {
@@ -177,10 +225,12 @@
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #ffffff05; }
     td { padding: 13px 16px; vertical-align: middle; }
-    td.rank-cell  { font-size: 1.1rem; text-align: center; width: 56px; }
+    td.rank-cell  { font-size: 1.1rem; text-align: center; width: 84px; white-space: nowrap; }
+    .rk { color: var(--muted); font-size: .8rem; margin-left: 4px; }
     td.views-cell { color: var(--accent); font-weight: 600; white-space: nowrap; }
     td a { color: var(--text); text-decoration: none; font-weight: 500; transition: color .2s; }
     td a:hover { color: var(--accent); }
+    td a.work-title { font-size: 1.32rem; }   /* 작품명: 기존 .88rem 의 1.5배 */
     .name-cell   { font-size: .85rem; color: var(--muted); }
     .school-cell { font-size: .8rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
     .id-cell     { font-size: .85rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
@@ -246,10 +296,18 @@
       border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 12px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @media (max-width: 640px) { th, td { padding: 10px 10px; } }
+    @media (max-width: 640px) {
+      th, td { padding: 10px 10px; }
+      td.thumb-cell { width: 128px; min-width: 128px; }
+      td.thumb-cell .thumb { width: 112px; }
+      td a.work-title { font-size: 1.1rem; }
+      .card-title { font-size: 1.4rem; }
+    }
   </style>
 </head>
 <body>
+
+<canvas id="bg-rain" aria-hidden="true"></canvas>
 
 <header>
   <div class="title-main">AI를 활용한 나만의 프로그램 만들기</div>
@@ -299,6 +357,18 @@ const SUPABASE_URL  = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
 const SUPABASE_KEY  = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";
 const TABLE         = "views";
 const RATINGS_TABLE = "ratings";
+
+/* 명예의 전당 등급 (위에서부터 순서대로 인원 배정: 다이아 3 → 금 6 → 은 9) */
+const TIERS = [
+  { cls: "diamond", icon: "💎", label: "다이아", count: 3 },
+  { cls: "gold",    icon: "🥇", label: "금",     count: 6 },
+  { cls: "silver",  icon: "🥈", label: "은",     count: 9 },
+];
+const HALL_SIZE = TIERS.reduce((n, t) => n + t.count, 0);   // 18
+
+/* 썸네일 (작품 실행 화면 미리보기) 켜기/끄기 */
+const THUMBS_ENABLED = true;
+const THUMB_W = 1280, THUMB_H = 800;   // 작품을 이 크기의 화면으로 렌더링한 뒤 축소해서 보여줌
 
 /* ═══════════════════════════════════════════════════════
    위치 자동 인식
@@ -591,11 +661,55 @@ function attachStarEvents(root = document) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   썸네일 — 작품 페이지를 iframe 으로 불러와 축소해서 표시
+   · 화면에 보일 때만 불러옴(지연 로딩)
+   · 클릭/키보드 조작은 막혀 있어 미리보기로만 동작
+═══════════════════════════════════════════════════════ */
+function thumbHTML(href) {
+  if (!THUMBS_ENABLED) return "";
+  return `<div class="thumb"><iframe data-src="${href}" title="" tabindex="-1" scrolling="no"
+    sandbox="allow-scripts allow-same-origin" aria-hidden="true"></iframe></div>`;
+}
+
+const thumbResizer = "ResizeObserver" in window
+  ? new ResizeObserver(entries => entries.forEach(en => fitThumb(en.target)))
+  : null;
+
+function fitThumb(box) {
+  const fr = box.firstElementChild;
+  if (fr) fr.style.transform = `scale(${box.clientWidth / THUMB_W})`;
+}
+
+const thumbLoader = "IntersectionObserver" in window
+  ? new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (!en.isIntersecting) return;
+        const fr = en.target.firstElementChild;
+        thumbLoader.unobserve(en.target);
+        if (!fr || fr.src) return;
+        fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true });
+        fr.src = fr.dataset.src;
+      });
+    }, { rootMargin: "200px" })
+  : null;
+
+function initThumbs(root = document) {
+  root.querySelectorAll(".thumb").forEach(box => {
+    const fr = box.firstElementChild;
+    if (!fr || fr.dataset.bound) return;
+    fr.dataset.bound = "1";
+    fr.style.width = THUMB_W + "px";
+    fr.style.height = THUMB_H + "px";
+    fitThumb(box);
+    thumbResizer && thumbResizer.observe(box);
+    if (thumbLoader) thumbLoader.observe(box);
+    else { fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true }); fr.src = fr.dataset.src; }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
    상수 / 상태
 ═══════════════════════════════════════════════════════ */
-const MEDALS      = ["🥇", "🥈", "🥈", "🥉", "🥉", "🥉"];
-const MEDAL_CLASS = ["gold", "silver", "silver", "bronze", "bronze", "bronze"];
-const MEDAL_LABEL = ["1위", "2위", "2위", "3위", "3위", "3위"];
 const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2">
   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -608,6 +722,22 @@ let selectedKey  = null;    // 예: "school-a|21"
 function formatOpenDate() {
   const d = new Date(RATING_OPEN_DATE + "T00:00:00");
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
+
+/* 순위 번호(0부터)로 등급 찾기. 등급 밖이면 null */
+function tierOf(i) {
+  let acc = 0;
+  for (const t of TIERS) {
+    acc += t.count;
+    if (i < acc) return t;
+  }
+  return null;
+}
+
+/* 정렬: 조회수 내림차순 → (같으면) 별점 평균 내림차순 → 작품명 */
+const ratingOf = s => (s.avgRating === null || s.avgRating === undefined) ? -1 : s.avgRating;
+function rankCompare(a, b) {
+  return (b.views - a.views) || (ratingOf(b) - ratingOf(a)) || cmp(a.title, b.title);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -668,7 +798,7 @@ function renderClassList() {
             <tr>
               <td class="id-cell">${esc(s.id || "-")}</td>
               <td class="name-cell">${esc(s.name || "-")}</td>
-              <td><a href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
+              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
               <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
               ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
             </tr>`).join("")}
@@ -695,15 +825,17 @@ function bindClassChips() {
    예시 작품 (vibe-coding/examples/ — 모든 학교 공통)
    작품 하나 = 폴더 하나. 폴더 안의 index.html 이 열리고,
    index.html 이 없으면 폴더 안의 첫 번째 .html 이 열림
+   표시 이름에서는 .html 을 생략
 ═══════════════════════════════════════════════════════ */
 function exampleSectionHTML() {
   const items = TREE.examples.slice().sort((x, y) => cmp(x.dir, y.dir));
   const body = items.length
     ? `<div class="example-list">${items.map(e => {
         const open = /^index\.html?$/i.test(e.entry) ? "" : encodeURIComponent(e.entry);
+        const shown = e.dir.replace(/\.html?$/i, "");
         return `
         <a class="example-item" href="${ROOT_REL}${EXAMPLES_DIR}/${encodeURIComponent(e.dir)}/${open}" target="_blank" rel="noopener">
-          <span class="ex-icon">▶</span><span>${esc(e.dir)}</span>
+          <span class="ex-icon">▶</span><span>${esc(shown)}</span>
         </a>`;
       }).join("")}</div>`
     : `<div class="class-hint">${EXAMPLES_DIR}/ 폴더에 예시 작품 폴더가 없습니다.</div>`;
@@ -716,8 +848,7 @@ function exampleSectionHTML() {
 function render() {
   const app      = document.getElementById("app");
   const multi    = VISIBLE.length > 1;
-  const sorted   = [...ALL_STUDENTS].sort((a, b) => b.views - a.views);
-  const top6     = sorted.slice(0, 6);
+  const sorted   = [...ALL_STUDENTS].sort(rankCompare);
 
   const soonBanner = !RATING_ENABLED ? `
     <div class="rating-soon-banner">
@@ -729,18 +860,33 @@ function render() {
       </div>
     </div>` : "";
 
+  /* 명예의 전당: 다이아 → 금 → 은 등급별로 구분해서 표시 */
+  let medalBody = "";
+  let offset = 0;
+  TIERS.forEach(t => {
+    const part = sorted.slice(offset, offset + t.count);
+    if (!part.length) { offset += t.count; return; }
+    medalBody += `
+      <div class="tier-label ${t.cls}">${t.icon} ${t.label} <span>${part.length}명</span></div>
+      <div class="medal-grid">
+        ${part.map((s, j) => `
+          <a class="medal-card ${t.cls}" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">
+            ${thumbHTML(s.href)}
+            <div class="medal-head">
+              <div class="medal-badge">${t.icon}</div>
+              <div class="medal-rank">${offset + j + 1}위</div>
+            </div>
+            <div class="card-name">${multi ? esc(schoolLabel(s.school)) + " · " : ""}${esc(s.name || s.id || "")}</div>
+            <div class="card-title">${esc(s.title)}</div>
+            <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
+          </a>`).join("")}
+      </div>`;
+    offset += t.count;
+  });
+
   const medalHTML = !sorted.length ? "" : `
-    <div class="section-label">🏆 명예의 전당 — TOP 6</div>
-    <div class="medal-grid">
-      ${top6.map((s, i) => `
-        <a class="medal-card ${MEDAL_CLASS[i]}" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">
-          <div class="medal-badge">${MEDALS[i]}</div>
-          <div class="medal-rank">${MEDAL_LABEL[i]}</div>
-          <div class="card-name">${multi ? esc(schoolLabel(s.school)) + " · " : ""}${esc(s.name || s.id || "")}</div>
-          <div class="card-title">${esc(s.title)}</div>
-          <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
-        </a>`).join("")}
-    </div>
+    <div class="section-label">🏆 명예의 전당</div>
+    ${medalBody}
     ${soonBanner}`;
 
   const tableHTML = !sorted.length ? "" : `
@@ -751,20 +897,24 @@ function render() {
           <tr>
             <th style="text-align:center">순위</th>
             ${multi ? "<th>학교</th>" : ""}
-            <th>이름</th><th>작품명</th><th>조회수</th>
+            ${THUMBS_ENABLED ? "<th>미리보기</th>" : ""}
+            <th>작품명</th><th>조회수</th>
             ${RATING_ENABLED ? "<th>별점</th>" : ""}
           </tr>
         </thead>
         <tbody>
-          ${sorted.map((s, i) => `
+          ${sorted.map((s, i) => {
+            const t = tierOf(i);
+            return `
             <tr>
-              <td class="rank-cell">${i < 6 ? MEDALS[i] : `<span style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
+              <td class="rank-cell">${t ? `${t.icon}<span class="rk">${i + 1}</span>` : `<span style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
               ${multi ? `<td class="school-cell">${esc(schoolLabel(s.school))}</td>` : ""}
-              <td class="name-cell">${esc(s.name || "-")}</td>
-              <td><a href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
+              ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
+              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
               <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
               ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
-            </tr>`).join("")}
+            </tr>`;
+          }).join("")}
         </tbody>
       </table>
     </div>`;
@@ -777,6 +927,7 @@ function render() {
   bindClassChips();
   renderClassList();
   attachStarEvents(app);
+  initThumbs(app);
 
   /* 진단 패널: 주소 끝에 ?debug=1 */
   if (new URLSearchParams(location.search).has("debug")) {
@@ -807,6 +958,69 @@ document.addEventListener("click", async e => {
   markViewed(key);
   try { await incrementViews(key); } catch (err) { console.warn(err); }
 });
+
+/* ═══════════════════════════════════════════════════════
+   배경 효과: 가늘고 희미한 빛줄기가 눈처럼 천천히 내려옴
+   (캔버스는 내용 뒤에 깔리며, 밀도·속도·밝기는 아래 값으로 조절)
+═══════════════════════════════════════════════════════ */
+(function bgLightRain() {
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cv = document.getElementById("bg-rain");
+  const ctx = cv.getContext("2d");
+
+  const STREAK_LEN   = 200;     // 빛줄기 길이(px)
+  const DENSITY_PX   = 170;     // 화면 가로 몇 px 당 1줄 (클수록 더 드물게)
+  const SPEED_MIN    = 18;      // 낙하 속도(px/초)
+  const SPEED_MAX    = 40;
+  const ALPHA_MIN    = 0.06;    // 밝기 (0~1)
+  const ALPHA_MAX    = 0.16;
+  const COLOR        = "150,185,255";
+
+  let W = 0, H = 0, streaks = [];
+
+  const make = initial => ({
+    x: Math.random() * W,
+    y: initial ? Math.random() * (H + STREAK_LEN) - STREAK_LEN
+               : -STREAK_LEN - Math.random() * H * 0.5,
+    len: STREAK_LEN * (0.85 + Math.random() * 0.3),
+    speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN),
+    drift: (Math.random() - 0.5) * 4,
+    alpha: ALPHA_MIN + Math.random() * (ALPHA_MAX - ALPHA_MIN),
+  });
+
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.max(5, Math.round(W / DENSITY_PX));
+    while (streaks.length < n) streaks.push(make(true));
+    streaks.length = n;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  let last = performance.now();
+  function frame(t) {
+    const dt = Math.min(0.05, (t - last) / 1000);
+    last = t;
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < streaks.length; i++) {
+      const s = streaks[i];
+      s.y += s.speed * dt;
+      s.x += s.drift * dt;
+      if (s.y > H) { streaks[i] = make(false); continue; }
+      const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.len);
+      g.addColorStop(0,   `rgba(${COLOR},0)`);
+      g.addColorStop(0.5, `rgba(${COLOR},${s.alpha})`);
+      g.addColorStop(1,   `rgba(${COLOR},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(s.x, s.y, 1.2, s.len);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
 
 /* ═══════════════════════════════════════════════════════
    초기 로드
