@@ -897,6 +897,7 @@ function render() {
           <tr>
             <th style="text-align:center">순위</th>
             ${multi ? "<th>학교</th>" : ""}
+            <th>학번</th>
             ${THUMBS_ENABLED ? "<th>미리보기</th>" : ""}
             <th>작품명</th><th>조회수</th>
             ${RATING_ENABLED ? "<th>별점</th>" : ""}
@@ -909,6 +910,7 @@ function render() {
             <tr>
               <td class="rank-cell">${t ? `${t.icon}<span class="rk">${i + 1}</span>` : `<span style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
               ${multi ? `<td class="school-cell">${esc(schoolLabel(s.school))}</td>` : ""}
+              <td class="id-cell">${esc(s.id || "-")}</td>
               ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
               <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
               <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
