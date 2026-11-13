@@ -649,7 +649,7 @@ function attachStarEvents(root = document) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   썸네일 — 작품 페이지를 iframe 으로 불러와 축소해서 표시
+   썸네일 — 작품 페이지를 iframe 으로 불러와 축소해서 표시 (소리 없음)
    · 화면에 보일 때만 불러옴(지연 로딩)
    · 클릭/키보드 조작은 막혀 있어 미리보기로만 동작
 ═══════════════════════════════════════════════════════ */
@@ -657,6 +657,65 @@ function thumbHTML(href) {
   if (!THUMBS_ENABLED) return "";
   return `<div class="thumb"><iframe data-src="${href}" title="" tabindex="-1" scrolling="no"
     sandbox="allow-scripts allow-same-origin" aria-hidden="true"></iframe></div>`;
+}
+
+/* 썸네일은 "소리 없이" 불러옴
+   작품 html 을 받아 맨 앞에 음소거 스크립트를 끼운 뒤 iframe 에 넣는다.
+   (작품이 실행되기 전에 오디오 출력을 막아야 하므로 src 대신 srcdoc 사용)
+   · Web Audio : 스피커로 가는 출구(destination)를 볼륨 0 으로 교체
+   · audio/video : 항상 muted, 볼륨 0
+   · 음성합성(speechSynthesis) : 무시
+   썸네일을 클릭해 열리는 실제 작품 페이지에는 영향이 없다. */
+const THUMB_MUTE_JS = "(" + function () {
+  try {
+    var B = window.BaseAudioContext || window.AudioContext || window.webkitAudioContext;
+    var dg = B && Object.getOwnPropertyDescriptor(B.prototype, "destination");
+    if (dg && dg.get) {
+      var cache = new WeakMap();
+      Object.defineProperty(B.prototype, "destination", {
+        configurable: true,
+        get: function () {
+          if (window.OfflineAudioContext && this instanceof OfflineAudioContext) return dg.get.call(this);
+          var g = cache.get(this);
+          if (!g) { g = this.createGain(); g.gain.value = 0; g.connect(dg.get.call(this)); cache.set(this, g); }
+          return g;
+        }
+      });
+    }
+  } catch (e) {}
+  try {
+    var mp = HTMLMediaElement.prototype;
+    var md = Object.getOwnPropertyDescriptor(mp, "muted");
+    var vd = Object.getOwnPropertyDescriptor(mp, "volume");
+    var quiet = function (el) { try { md.set.call(el, true); vd.set.call(el, 0); } catch (e) {} };
+    Object.defineProperty(mp, "muted",  { configurable: true, get: function () { return md.get.call(this); }, set: function () { md.set.call(this, true); } });
+    Object.defineProperty(mp, "volume", { configurable: true, get: function () { return vd.get.call(this); }, set: function () { vd.set.call(this, 0); } });
+    var op = mp.play;
+    mp.play = function () { quiet(this); return op.apply(this, arguments); };
+    document.addEventListener("play", function (e) { quiet(e.target); }, true);
+    document.addEventListener("DOMContentLoaded", function () {
+      var l = document.querySelectorAll("audio,video"); for (var i = 0; i < l.length; i++) quiet(l[i]);
+    });
+  } catch (e) {}
+  try { if (window.speechSynthesis) window.speechSynthesis.speak = function () {}; } catch (e) {}
+}.toString() + ")();";
+
+async function loadThumb(fr) {
+  if (fr.dataset.loading) return;
+  fr.dataset.loading = "1";
+  const url = new URL(fr.dataset.src, location.href).href;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    let html = await res.text();
+    const inject = `<base href="${url}"><script>${THUMB_MUTE_JS}<\/script>`;
+    if (/<head[^>]*>/i.test(html))      html = html.replace(/<head[^>]*>/i, m => m + inject);
+    else if (/<html[^>]*>/i.test(html)) html = html.replace(/<html[^>]*>/i, m => m + inject);
+    else                                html = html.replace(/^(\s*<!doctype[^>]*>)?/i, m => m + inject);
+    fr.srcdoc = html;
+  } catch (err) {
+    console.warn("썸네일을 불러오지 못했습니다:", url, err);   /* 실패하면 빈 칸으로 둠 (소리 방지) */
+  }
 }
 
 const thumbResizer = "ResizeObserver" in window
@@ -674,9 +733,9 @@ const thumbLoader = "IntersectionObserver" in window
         if (!en.isIntersecting) return;
         const fr = en.target.firstElementChild;
         thumbLoader.unobserve(en.target);
-        if (!fr || fr.src) return;
+        if (!fr || fr.dataset.loading) return;
         fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true });
-        fr.src = fr.dataset.src;
+        loadThumb(fr);
       });
     }, { rootMargin: "200px" })
   : null;
@@ -691,7 +750,7 @@ function initThumbs(root = document) {
     fitThumb(box);
     thumbResizer && thumbResizer.observe(box);
     if (thumbLoader) thumbLoader.observe(box);
-    else { fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true }); fr.src = fr.dataset.src; }
+    else { fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true }); loadThumb(fr); }
   });
 }
 
