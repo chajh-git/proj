@@ -158,6 +158,7 @@
     .medal-card .thumb { margin: 0 0 14px; }
     .medal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .medal-badge { font-size: 2rem; line-height: 1; }
+    .medal-rank .rn { font-weight: inherit; }
     .medal-rank {
       font-size: .7rem; letter-spacing: .1em; font-weight: 700;
       padding: 3px 10px; border-radius: 20px;
@@ -217,6 +218,7 @@
     td { padding: 13px 16px; vertical-align: middle; }
     td.rank-cell  { font-size: 1.1rem; text-align: center; width: 84px; white-space: nowrap; }
     .rk { color: var(--muted); font-size: .8rem; margin-left: 4px; }
+    .rk.rk0 { margin-left: 0; }
     td.views-cell { color: var(--accent); font-weight: 600; white-space: nowrap; }
     td a { color: var(--text); text-decoration: none; font-weight: 500; transition: color .2s; }
     td a:hover { color: var(--accent); }
@@ -919,14 +921,14 @@ function render() {
     const part = sorted.slice(offset, offset + t.count);
     if (!part.length) { offset += t.count; return; }
     medalBody += `
-      <div class="tier-label ${t.cls}">${t.icon} ${t.label} <span>${part.length}명</span></div>
+      <div class="tier-label ${t.cls}"><span class="tier-icon">${t.icon}</span> <span class="tier-name">${t.label}</span> <span>${part.length}명</span></div>
       <div class="medal-grid">
         ${part.map((s, j) => `
           <a class="medal-card ${t.cls}" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">
             ${thumbHTML(s.href)}
             <div class="medal-head">
               <div class="medal-badge">${t.icon}</div>
-              <div class="medal-rank">${offset + j + 1}위</div>
+              <div class="medal-rank"><b class="rn">${offset + j + 1}</b><span class="ru">위</span></div>
             </div>
             <div class="card-name">${multi ? esc(schoolLabel(s.school)) + " · " : ""}${esc(s.name || s.id || "")}</div>
             <div class="card-title">${esc(s.title)}</div>
@@ -960,7 +962,7 @@ function render() {
             const t = tierOf(i);
             return `
             <tr>
-              <td class="rank-cell">${t ? `${t.icon}<span class="rk">${i + 1}</span>` : `<span style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
+              <td class="rank-cell">${t ? `<span class="tier-icon">${t.icon}</span><span class="rk">${i + 1}</span>` : `<span class="rk rk0" style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
               ${multi ? `<td class="school-cell">${esc(schoolLabel(s.school))}</td>` : ""}
               <td class="id-cell">${esc(s.id || "-")}</td>
               ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
@@ -1014,9 +1016,40 @@ document.addEventListener("click", async e => {
 });
 
 /* ═══════════════════════════════════════════════════════
+   디자인 템플릿
+   · 선택값은 이 폴더의 theme.json ({"theme":"neon"}) 에 저장됨 (admin 페이지에서 바꿈)
+   · 주소 끝에 ?theme=neon 을 붙이면 저장하지 않고 미리보기만 가능
+   · 테마 파일은 my-class/assets/themes/ 에 있음. 목록에 없거나 default 이면 기본 디자인
+═══════════════════════════════════════════════════════ */
+const THEME_IDS = ["neon", "bento", "brutal", "clay", "editorial"];
+const THEME_DIR = ROOT_REL + "../../assets/themes/";
+
+async function applyTheme() {
+  let id = new URLSearchParams(location.search).get("theme");
+  if (id === null) {
+    try {
+      const r = await fetch(ROOT_REL + "theme.json?t=" + Date.now(), { cache: "no-store" });
+      if (r.ok) id = (await r.json()).theme;
+    } catch {}
+  }
+  if (!THEME_IDS.includes(id)) return;
+  document.documentElement.dataset.theme = id;
+  await new Promise(done => {
+    const l = document.createElement("link");
+    l.rel = "stylesheet";
+    l.href = THEME_DIR + id + ".css";
+    l.onload = l.onerror = done;
+    document.head.appendChild(l);
+    setTimeout(done, 2500);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
    초기 로드
 ═══════════════════════════════════════════════════════ */
 (async () => {
+  await applyTheme();
+
   /* 머리말 */
   const subEl = document.getElementById("title-sub");
   subEl.textContent = `${YEAR}학년도 ${SUBJECT}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");

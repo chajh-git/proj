@@ -1,0 +1,77 @@
+/* 테마: 네온 아케이드 — 짙은 남색 바탕, 네온 테두리, 픽셀 숫자 */
+@import url("https://fonts.googleapis.com/css2?family=Gugi&family=Press+Start+2P&family=Noto+Sans+KR:wght@400;500;700&display=swap");
+
+html[data-theme="neon"] {
+  --bg: #0a0620; --card: #140d36; --border: #2c1f6b;
+  --accent: #38f3ff; --accent2: #ff3df2;
+  --text: #f1ecff; --muted: #a79fd6;
+  --diamond: #38f3ff; --gold: #ffd93d; --silver: #c9c4e8;
+  --glow-dia: #38f3ff66; --glow-gold: #ffd93d55; --glow-sil: #c9c4e844;
+  --px: 'Press Start 2P', 'Gugi', monospace;
+  --gg: 'Gugi', 'Noto Sans KR', sans-serif;
+}
+
+html[data-theme="neon"] body {
+  background: radial-gradient(ellipse 80% 520px at 50% 0, rgba(255,61,242,.28), rgba(10,6,32,0) 70%), var(--bg);
+}
+html[data-theme="neon"] body::before {
+  background-image: linear-gradient(rgba(56,243,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(56,243,255,.14) 1px, transparent 1px);
+  background-size: 56px 56px; opacity: 1;
+  -webkit-mask-image: linear-gradient(to top, #000, transparent 55%); mask-image: linear-gradient(to top, #000, transparent 55%);
+}
+html[data-theme="neon"] body::after {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 3px);
+}
+
+html[data-theme="neon"] .title-main {
+  font-family: var(--gg); font-weight: 400;
+  background: none; -webkit-text-fill-color: #fff; color: #fff;
+  text-shadow: -2px 0 #38f3ff, 2px 0 #ff3df2, 0 0 28px rgba(255,61,242,.55);
+}
+html[data-theme="neon"] .title-sub { font-family: var(--gg); color: #38f3ff; font-weight: 400; letter-spacing: .08em; }
+html[data-theme="neon"] header::after { background: linear-gradient(90deg, #ff3df2, #38f3ff); box-shadow: 0 0 14px #ff3df2; }
+html[data-theme="neon"] .back-link { border-radius: 0; border-width: 2px; }
+
+html[data-theme="neon"] .section-label {
+  font-family: var(--gg); font-size: 1.4rem; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--text);
+}
+html[data-theme="neon"] .section-label::before { content: ''; width: 12px; height: 12px; background: #ff3df2; box-shadow: 0 0 12px #ff3df2; flex: none; }
+html[data-theme="neon"] .section-label::after { height: 2px; background: linear-gradient(90deg, var(--border), rgba(44,31,107,0)); }
+
+html[data-theme="neon"] .tier-label { font-family: var(--gg); font-weight: 400; font-size: 1.1rem; }
+html[data-theme="neon"] .tier-icon, html[data-theme="neon"] .medal-badge { display: none; }
+html[data-theme="neon"] .tier-label span { font-family: 'Noto Sans KR', sans-serif; }
+
+html[data-theme="neon"] .medal-card {
+  border-radius: 0; border-width: 2px; background: var(--card);
+}
+html[data-theme="neon"] .medal-card.diamond { box-shadow: 0 0 22px var(--glow-dia), 5px 5px 0 rgba(56,243,255,.28); }
+html[data-theme="neon"] .medal-card.gold    { box-shadow: 0 0 20px var(--glow-gold), 5px 5px 0 rgba(255,217,61,.25); }
+html[data-theme="neon"] .medal-card.silver  { box-shadow: 0 0 16px var(--glow-sil), 5px 5px 0 rgba(201,196,232,.2); }
+html[data-theme="neon"] .medal-card:hover { transform: translate(-2px, -3px); }
+html[data-theme="neon"] .medal-card .thumb, html[data-theme="neon"] .thumb { border-radius: 0; border: 2px solid var(--border); }
+html[data-theme="neon"] .medal-rank { background: none; padding: 0; font-family: var(--px); font-size: 1.15rem; letter-spacing: 0; }
+html[data-theme="neon"] .medal-rank .ru { font-family: var(--gg); font-size: .8rem; margin-left: 3px; }
+html[data-theme="neon"] .medal-head { justify-content: flex-start; margin-bottom: 12px; }
+html[data-theme="neon"] .card-name { font-family: var(--px); font-size: .55rem; line-height: 1.6; }
+html[data-theme="neon"] .card-title { font-family: var(--gg); font-weight: 400; color: #fff; }
+html[data-theme="neon"] .card-views { font-family: var(--px); font-size: .6rem; color: #38f3ff; }
+
+html[data-theme="neon"] .table-wrap { border-radius: 0; border: 2px solid var(--border); }
+html[data-theme="neon"] th { font-family: var(--gg); font-weight: 400; letter-spacing: .04em; text-transform: none; font-size: .8rem; }
+html[data-theme="neon"] thead tr { border-bottom: 2px solid var(--border); }
+html[data-theme="neon"] td.rank-cell { font-family: var(--px); }
+html[data-theme="neon"] .rk, html[data-theme="neon"] .rk0 { color: #ff3df2 !important; font-family: var(--px); font-size: .8rem !important; margin-left: 0; }
+html[data-theme="neon"] td.views-cell { font-family: var(--px); font-size: .62rem; color: #38f3ff; }
+html[data-theme="neon"] .school-cell, html[data-theme="neon"] .id-cell { font-family: var(--px); font-size: .6rem; color: var(--muted); font-weight: 400; }
+html[data-theme="neon"] td a.work-title { font-family: var(--gg); font-weight: 400; color: #fff; }
+html[data-theme="neon"] td a:hover { color: #38f3ff; }
+
+html[data-theme="neon"] .grade-label { font-family: var(--px); font-size: .62rem; font-weight: 400; }
+html[data-theme="neon"] .class-chip { border-radius: 0; border-width: 2px; font-family: var(--px); font-size: .68rem; font-weight: 400; padding: 9px 16px; }
+html[data-theme="neon"] .class-chip.active { background: #ff3df2; color: #0a0620; box-shadow: 0 0 16px #ff3df2aa; }
+html[data-theme="neon"] .class-hint { border-radius: 0; }
+html[data-theme="neon"] .example-item { border-radius: 0; border-width: 2px; }
+html[data-theme="neon"] .example-item .ex-icon { color: #38f3ff; }
+html[data-theme="neon"] .rating-soon-banner { border-radius: 0; }

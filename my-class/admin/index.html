@@ -1,1 +1,315 @@
-관리자 페이지
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 · 디자인 템플릿</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1117; --panel: #171a23; --line: #2a2f3d; --text: #eceef4; --muted: #9aa1b4;
+    --accent: #4f8ef7; --ok: #5fd39a; --warn: #f5c842; --err: #ff7d7d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Noto Sans KR', sans-serif; line-height: 1.6; }
+  main { max-width: 1180px; margin: 0 auto; padding: 36px 20px 80px; display: flex; flex-direction: column; gap: 28px; }
+  h1 { margin: 0; font-size: 1.6rem; }
+  h2 { margin: 0 0 12px; font-size: 1.05rem; }
+  p.sub { margin: 4px 0 0; color: var(--muted); font-size: .92rem; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  label { font-size: .88rem; color: var(--muted); }
+  input[type=password], input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit;
+  }
+  button {
+    font: inherit; font-weight: 700; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--panel); color: var(--text); cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .grow { flex: 1 1 280px; }
+  .status { margin-top: 10px; font-size: .9rem; min-height: 1.4em; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--err); } .status.warn { color: var(--warn); }
+  details { margin-top: 12px; color: var(--muted); font-size: .88rem; }
+  details ol { margin: 8px 0 0; padding-left: 20px; }
+  details li { margin-bottom: 4px; }
+  code { background: var(--bg); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; font-size: .85em; }
+  .years { display: flex; flex-wrap: wrap; gap: 10px; }
+  .years label { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); cursor: pointer; }
+  .years label.on { border-color: var(--accent); background: rgba(79,142,247,.12); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .tcard {
+    text-align: left; padding: 0; overflow: hidden; display: flex; flex-direction: column; background: var(--bg);
+  }
+  .tcard[aria-pressed=true] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .sw { height: 74px; display: flex; align-items: flex-end; gap: 6px; padding: 8px; }
+  .sw i { display: block; flex: 1; height: 100%; border-radius: 4px; }
+  .tcard b { padding: 10px 12px 0; font-size: .95rem; }
+  .tcard span { padding: 2px 12px 12px; font-size: .78rem; font-weight: 400; color: var(--muted); }
+  .tcard .badge { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: 999px; background: var(--ok); color: #06210f; font-size: .72rem; font-weight: 700; }
+  .frame-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .frame-wrap { background: #000; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; justify-content: center; }
+  iframe { border: 0; width: 100%; height: 760px; background: #fff; transition: width .2s; max-width: 100%; }
+  iframe.phone { width: 390px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>디자인 템플릿 관리</h1>
+    <p class="sub">수업 페이지(vibe-coding)의 디자인을 고르고, 선택한 연도에 적용합니다. 기능과 내용은 그대로이고 모양만 바뀝니다.</p>
+  </header>
+
+  <section aria-labelledby="h-conn">
+    <h2 id="h-conn">1. GitHub 연결</h2>
+    <div class="row">
+      <div class="grow">
+        <label for="token">GitHub 토큰 (저장소 <code>proj</code> 의 Contents 읽기·쓰기 권한)</label>
+        <input id="token" type="password" autocomplete="off" placeholder="github_pat_..." />
+      </div>
+      <div style="align-self:flex-end"><button id="btn-check" type="button">연결 확인</button></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label style="display:inline-flex;align-items:center;gap:8px"><input id="remember" type="checkbox"> 이 브라우저에 토큰 기억하기 (공용 컴퓨터에서는 끄세요)</label>
+    </div>
+    <div id="st-conn" class="status" role="status"></div>
+    <details>
+      <summary>토큰은 어떻게 만드나요?</summary>
+      <ol>
+        <li>GitHub에 로그인한 뒤 오른쪽 위 프로필 → <b>Settings</b></li>
+        <li>맨 아래 <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b></li>
+        <li>Expiration(만료)은 30~90일, <b>Only select repositories</b>에서 <code>proj</code> 만 선택</li>
+        <li>Permissions → Repository permissions → <b>Contents: Read and write</b></li>
+        <li>만든 뒤 한 번만 보이는 토큰(<code>github_pat_</code> 로 시작)을 위 칸에 붙여넣기</li>
+      </ol>
+    </details>
+  </section>
+
+  <section aria-labelledby="h-year">
+    <h2 id="h-year">2. 적용할 연도</h2>
+    <div id="years" class="years" role="group" aria-label="적용할 연도"></div>
+    <div id="st-year" class="status" role="status"></div>
+  </section>
+
+  <section aria-labelledby="h-tpl">
+    <h2 id="h-tpl">3. 템플릿 선택</h2>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section aria-labelledby="h-prev">
+    <h2 id="h-prev">4. 미리보기와 적용</h2>
+    <div class="frame-bar">
+      <div class="row">
+        <label for="prev-year">미리볼 연도</label>
+        <select id="prev-year" style="padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit"></select>
+        <button id="btn-pc" type="button" aria-pressed="true">PC</button>
+        <button id="btn-phone" type="button" aria-pressed="false">폰</button>
+      </div>
+      <div class="row">
+        <button id="btn-apply" class="primary" type="button" disabled>선택한 연도에 적용</button>
+      </div>
+    </div>
+    <div id="st-apply" class="status" role="status">템플릿을 선택하면 아래에서 실제 페이지로 미리 볼 수 있습니다. 미리보기는 저장되지 않습니다.</div>
+    <div class="frame-wrap"><iframe id="frame" title="선택한 템플릿 미리보기"></iframe></div>
+    <p class="sub" style="margin-top:10px">미리보기의 작품 썸네일은 소리 없이 불러옵니다. 적용 후 학생 화면에는 1~2분 뒤 반영됩니다.</p>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ═══ 설정 ═══ */
+const OWNER  = "chajh-git";
+const REPO   = "proj";
+const BRANCH = "main";
+const BASE   = "my-class";                 // 저장소 안의 폴더
+const PAGE   = "vibe-coding";              // 연도 폴더 안의 수업 페이지 폴더
+const FALLBACK_YEARS = ["2026", "2027"];
+
+const TEMPLATES = [
+  { id: "default",   name: "기본",              desc: "지금 쓰는 디자인",                      sw: ["#0d0f14", "#4f8ef7", "#7c5cfc", "#f5c842"] },
+  { id: "neon",      name: "네온 아케이드",     desc: "짙은 남색 + 네온, 픽셀 숫자",           sw: ["#0a0620", "#ff3df2", "#38f3ff", "#ffd93d"] },
+  { id: "bento",     name: "다크 벤토",         desc: "비대칭 타일, 제품 UI 느낌",             sw: ["#0b0c10", "#12141a", "#7fe8ff", "#8ab4ff"] },
+  { id: "brutal",    name: "네오브루탈리즘",    desc: "노란 바탕, 굵은 테두리·그림자",         sw: ["#ffe45e", "#111111", "#ff5d8f", "#8be9ff"] },
+  { id: "clay",      name: "소프트 클레이",     desc: "말랑한 입체 카드, 밝고 친근",           sw: ["#dff5ec", "#ffffff", "#ff7a59", "#6fd8ff"] },
+  { id: "editorial", name: "에디토리얼 타이포", desc: "흰 바탕, 거대한 제목과 순위 숫자",      sw: ["#fafafa", "#0e0e0e", "#d93a12", "#c9c9c4"] },
+];
+
+/* ═══ 상태 ═══ */
+const $ = id => document.getElementById(id);
+let years = [];                 // 존재하는 연도
+const picked = new Set();       // 적용 대상 연도
+let selected = null;            // 선택한 템플릿 id
+const current = {};             // 연도 → 현재 적용된 템플릿 id
+let connected = false;
+
+function say(el, msg, kind) { el.textContent = msg; el.className = "status" + (kind ? " " + kind : ""); }
+const apiUrl = path => `https://api.github.com/repos/${OWNER}/${REPO}/${path}`;
+function headers(auth) {
+  const h = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  const t = $("token").value.trim();
+  if (auth && t) h["Authorization"] = "Bearer " + t;
+  return h;
+}
+
+/* ═══ 토큰 기억 ═══ */
+try {
+  const saved = localStorage.getItem("vc_admin_token");
+  if (saved) { $("token").value = saved; $("remember").checked = true; }
+} catch {}
+function persistToken() {
+  try {
+    if ($("remember").checked && $("token").value.trim()) localStorage.setItem("vc_admin_token", $("token").value.trim());
+    else localStorage.removeItem("vc_admin_token");
+  } catch {}
+}
+$("remember").addEventListener("change", persistToken);
+$("token").addEventListener("change", persistToken);
+
+/* ═══ 연도 목록 ═══ */
+async function loadYears() {
+  let list = [];
+  try {
+    const r = await fetch(apiUrl(`contents/${BASE}?ref=${BRANCH}`), { headers: headers(true) });
+    if (r.ok) {
+      const dirs = (await r.json()).filter(i => i.type === "dir" && /^\d{4}$/.test(i.name)).map(i => i.name);
+      for (const y of dirs) {
+        const rr = await fetch(apiUrl(`contents/${BASE}/${y}/${PAGE}?ref=${BRANCH}`), { headers: headers(true) });
+        if (rr.ok) list.push(y);
+      }
+    }
+  } catch {}
+  years = (list.length ? list : FALLBACK_YEARS).sort();
+  renderYears();
+  fillPreviewYears();
+  await loadCurrent();
+}
+
+function renderYears() {
+  const box = $("years");
+  box.innerHTML = "";
+  years.forEach(y => {
+    const lab = document.createElement("label");
+    lab.className = picked.has(y) ? "on" : "";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = picked.has(y);
+    cb.addEventListener("change", () => { cb.checked ? picked.add(y) : picked.delete(y); lab.className = cb.checked ? "on" : ""; updateApply(); });
+    lab.append(cb, document.createTextNode(y + "학년도"));
+    box.appendChild(lab);
+  });
+}
+function fillPreviewYears() {
+  const sel = $("prev-year");
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}학년도</option>`).join("");
+  sel.value = years[years.length - 1];
+  sel.addEventListener("change", loadPreview);
+}
+
+/* ═══ 현재 적용값 읽기 ═══ */
+async function loadCurrent() {
+  for (const y of years) {
+    try {
+      const r = await fetch(apiUrl(`contents/${BASE}/${y}/${PAGE}/theme.json?ref=${BRANCH}`), { headers: headers(true) });
+      if (r.ok) {
+        const j = await r.json();
+        current[y] = JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g, ""))))).theme || "default";
+      } else current[y] = "default";
+    } catch { current[y] = "default"; }
+  }
+  renderCards();
+  const summary = years.map(y => `${y}학년도: ${nameOf(current[y])}`).join(" · ");
+  say($("st-year"), "현재 적용 — " + summary);
+}
+const nameOf = id => (TEMPLATES.find(t => t.id === id) || TEMPLATES[0]).name;
+
+/* ═══ 템플릿 카드 ═══ */
+function renderCards() {
+  const box = $("cards");
+  box.innerHTML = "";
+  TEMPLATES.forEach(t => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tcard"; b.setAttribute("aria-pressed", String(selected === t.id));
+    const applied = years.filter(y => current[y] === t.id);
+    b.innerHTML = `<div class="sw">${t.sw.map(c => `<i style="background:${c};box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)"></i>`).join("")}</div>
+      <b>${t.name}${applied.length ? `<span class="badge">${applied.join("·")} 적용 중</span>` : ""}</b><span>${t.desc}</span>`;
+    b.addEventListener("click", () => { selected = t.id; renderCards(); loadPreview(); updateApply(); });
+    box.appendChild(b);
+  });
+}
+
+/* ═══ 미리보기 ═══ */
+function loadPreview() {
+  if (!selected) return;
+  const y = $("prev-year").value;
+  $("frame").src = `../${y}/${PAGE}/index.html?theme=${selected}&_=${Date.now()}`;
+  say($("st-apply"), `미리보기: ${y}학년도 · ${nameOf(selected)} (저장되지 않음)`);
+}
+function setDevice(phone) {
+  $("frame").classList.toggle("phone", phone);
+  $("btn-pc").setAttribute("aria-pressed", String(!phone));
+  $("btn-phone").setAttribute("aria-pressed", String(phone));
+}
+$("btn-pc").addEventListener("click", () => setDevice(false));
+$("btn-phone").addEventListener("click", () => setDevice(true));
+
+/* ═══ 연결 확인 ═══ */
+$("btn-check").addEventListener("click", async () => {
+  persistToken();
+  const t = $("token").value.trim();
+  if (!t) { say($("st-conn"), "토큰을 먼저 붙여넣어 주세요.", "warn"); return; }
+  say($("st-conn"), "확인하는 중…");
+  try {
+    const r = await fetch(apiUrl(""), { headers: headers(true) });
+    if (!r.ok) throw new Error(r.status === 401 ? "토큰이 올바르지 않거나 만료되었습니다." : r.status === 404 ? "저장소에 접근할 수 없습니다. 토큰의 저장소 선택을 확인하세요." : "오류 " + r.status);
+    const j = await r.json();
+    if (!j.permissions || !j.permissions.push) throw new Error("읽기만 가능합니다. 토큰에 Contents: Read and write 권한이 필요합니다.");
+    connected = true;
+    say($("st-conn"), `연결됨: ${j.full_name} (쓰기 가능)`, "ok");
+    await loadCurrent();
+  } catch (e) { connected = false; say($("st-conn"), e.message, "err"); }
+  updateApply();
+});
+
+/* ═══ 적용 ═══ */
+function updateApply() { $("btn-apply").disabled = !(connected && selected && picked.size); }
+
+async function putTheme(year, id) {
+  const path = `${BASE}/${year}/${PAGE}/theme.json`;
+  let sha;
+  const g = await fetch(apiUrl(`contents/${path}?ref=${BRANCH}`), { headers: headers(true) });
+  if (g.ok) sha = (await g.json()).sha;
+  const body = {
+    message: `${year}: 디자인 템플릿을 '${nameOf(id)}'(으)로 변경`,
+    content: btoa(unescape(encodeURIComponent(JSON.stringify({ theme: id, updated: new Date().toISOString() }, null, 2) + "\n"))),
+    branch: BRANCH,
+  };
+  if (sha) body.sha = sha;
+  const r = await fetch(apiUrl(`contents/${path}`), { method: "PUT", headers: { ...headers(true), "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`${year}: 저장 실패 (${r.status}) ${(await r.json().catch(() => ({}))).message || ""}`);
+}
+
+$("btn-apply").addEventListener("click", async () => {
+  const targets = [...picked].sort();
+  $("btn-apply").disabled = true;
+  say($("st-apply"), "저장하는 중…");
+  const done = [], fail = [];
+  for (const y of targets) {
+    try { await putTheme(y, selected); done.push(y); current[y] = selected; }
+    catch (e) { fail.push(e.message); }
+  }
+  renderCards();
+  if (fail.length) say($("st-apply"), (done.length ? `${done.join(", ")} 저장됨. ` : "") + fail.join(" / "), "err");
+  else say($("st-apply"), `${done.join(", ")}학년도에 '${nameOf(selected)}' 적용을 저장했습니다. 학생 화면에는 1~2분 뒤 반영됩니다.`, "ok");
+  updateApply();
+});
+
+/* ═══ 시작 ═══ */
+renderCards();
+loadYears();
+</script>
+</body>
+</html>

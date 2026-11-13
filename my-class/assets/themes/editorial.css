@@ -1,0 +1,112 @@
+/* 테마: 에디토리얼 타이포 — 흰 바탕, 거대한 제목과 순위 숫자, 가는 선 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap");
+
+html[data-theme="editorial"] {
+  --bg: #fafafa; --card: #fafafa; --border: #0e0e0e;
+  --accent: #d93a12; --accent2: #d93a12;
+  --text: #0e0e0e; --muted: #4a4a4a;
+  --diamond: #0a7f9e; --gold: #0e0e0e; --silver: #5b6270;
+  --sg: 'Space Grotesk', 'Noto Sans KR', sans-serif;
+}
+
+html[data-theme="editorial"] body { background: var(--bg); color: var(--text); }
+html[data-theme="editorial"] body::before { display: none; }
+
+html[data-theme="editorial"] header { max-width: 1200px; margin: 0 auto; text-align: left; padding: 48px 20px 12px; }
+html[data-theme="editorial"] header::before { content: ''; display: block; border-top: 6px solid #0e0e0e; margin-bottom: 18px; }
+html[data-theme="editorial"] header::after { display: none; }
+html[data-theme="editorial"] .title-main {
+  font-family: 'Noto Sans KR', sans-serif; font-weight: 900; letter-spacing: -.045em; line-height: 1.02; word-break: keep-all;
+  background: none; -webkit-text-fill-color: #0e0e0e; color: #0e0e0e; font-size: clamp(2.6rem, 8.4vw, 7rem);
+}
+html[data-theme="editorial"] .title-sub { font-family: var(--sg); font-weight: 700; font-size: 1rem; letter-spacing: 0; color: #0e0e0e; margin-top: 18px; }
+html[data-theme="editorial"] .back-link { border: 2px solid #0e0e0e; border-radius: 0; }
+
+html[data-theme="editorial"] .section-label {
+  display: block; border-top: 6px solid #0e0e0e; padding-top: 14px; margin: 72px 0 18px;
+  font-size: 1.9rem; font-weight: 900; letter-spacing: -.02em; text-transform: none; color: #0e0e0e;
+}
+html[data-theme="editorial"] .section-label::after { display: none; }
+html[data-theme="editorial"] .tier-label { font-weight: 700; font-size: .9rem; margin: 6px 0 4px; }
+html[data-theme="editorial"] .tier-label.diamond { color: #0a7f9e; }
+html[data-theme="editorial"] .tier-label.gold    { color: #8a6200; }
+html[data-theme="editorial"] .tier-label.silver  { color: #5b6270; }
+html[data-theme="editorial"] .tier-label span { color: #4a4a4a; }
+html[data-theme="editorial"] .tier-icon, html[data-theme="editorial"] .medal-badge { display: none; }
+
+/* 다이아: 한 줄에 작품 하나, 거대한 순위 숫자 */
+html[data-theme="editorial"] .medal-grid { display: block; margin-bottom: 18px; }
+html[data-theme="editorial"] .medal-card {
+  display: grid; grid-template-columns: 190px minmax(0, 1fr) 320px; column-gap: 32px; align-items: center;
+  grid-template-areas: "head name thumb" "head title thumb" "head views thumb";
+  padding: 26px 0; border: 0; border-top: 2px solid #0e0e0e; border-radius: 0; background: transparent; box-shadow: none; color: #0e0e0e;
+}
+html[data-theme="editorial"] .medal-card.diamond, html[data-theme="editorial"] .medal-card.gold, html[data-theme="editorial"] .medal-card.silver { border-color: #0e0e0e; box-shadow: none; }
+html[data-theme="editorial"] .medal-card::before { display: none; }
+html[data-theme="editorial"] .medal-card:hover { transform: none; background: #f0f0ec; }
+html[data-theme="editorial"] .medal-head { grid-area: head; margin: 0; }
+html[data-theme="editorial"] .thumb { grid-area: thumb; margin: 0; border: 0; border-radius: 0; width: 100%; }
+html[data-theme="editorial"] .card-name { grid-area: name; align-self: end; margin: 0 0 6px; font-family: var(--sg); font-weight: 700; color: #4a4a4a; font-size: .9rem; }
+html[data-theme="editorial"] .card-title { grid-area: title; margin: 0; font-weight: 900; font-size: clamp(1.8rem, 3.6vw, 3.1rem); letter-spacing: -.03em; line-height: 1.1; }
+html[data-theme="editorial"] .card-views { grid-area: views; position: static; align-self: start; margin-top: 12px; font-family: var(--sg); font-weight: 700; color: #4a4a4a; font-size: .95rem; }
+html[data-theme="editorial"] .card-views svg { opacity: 1; }
+html[data-theme="editorial"] .medal-rank { background: none; padding: 0; font-family: var(--sg); letter-spacing: 0; }
+html[data-theme="editorial"] .medal-rank .rn { display: block; font-weight: 700; font-size: 9.4rem; line-height: .85; letter-spacing: -.06em; color: transparent; -webkit-text-stroke: 3px #0e0e0e; }
+html[data-theme="editorial"] .medal-rank .ru { display: none; }
+html[data-theme="editorial"] .medal-card.diamond:first-child .rn { color: #d93a12; -webkit-text-stroke-color: #0e0e0e; }
+
+/* 골드·은: 3열의 작은 줄 */
+html[data-theme="editorial"] .medal-grid:has(.medal-card.gold), html[data-theme="editorial"] .medal-grid:has(.medal-card.silver) {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 32px;
+}
+html[data-theme="editorial"] .medal-card.gold, html[data-theme="editorial"] .medal-card.silver {
+  grid-template-columns: 64px 96px minmax(0, 1fr); column-gap: 16px; padding: 18px 0; border-top-width: 1px;
+  grid-template-areas: "head thumb name" "head thumb title" "head thumb views";
+}
+html[data-theme="editorial"] .medal-card.gold .rn, html[data-theme="editorial"] .medal-card.silver .rn { font-size: 3rem; letter-spacing: -.05em; -webkit-text-stroke-width: 2px; }
+html[data-theme="editorial"] .medal-card.gold .card-title, html[data-theme="editorial"] .medal-card.silver .card-title { font-size: 1.3rem; }
+html[data-theme="editorial"] .medal-card.gold .card-views, html[data-theme="editorial"] .medal-card.silver .card-views { margin-top: 4px; font-size: .8rem; }
+@media (max-width: 960px) {
+  html[data-theme="editorial"] .medal-grid:has(.medal-card.gold), html[data-theme="editorial"] .medal-grid:has(.medal-card.silver) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  html[data-theme="editorial"] .medal-card.diamond {
+    grid-template-columns: minmax(0, 1fr); row-gap: 10px;
+    grid-template-areas: "head" "name" "title" "views" "thumb";
+  }
+  html[data-theme="editorial"] .medal-rank .rn { font-size: 6rem; }
+  html[data-theme="editorial"] .medal-grid:has(.medal-card.gold), html[data-theme="editorial"] .medal-grid:has(.medal-card.silver) { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* 표 */
+html[data-theme="editorial"] .table-wrap { border: 0; border-radius: 0; background: transparent; }
+html[data-theme="editorial"] thead tr { background: none; border-top: 2px solid #0e0e0e; border-bottom: 2px solid #0e0e0e; }
+html[data-theme="editorial"] th { color: #0e0e0e; letter-spacing: 0; text-transform: none; font-size: .8rem; font-weight: 700; }
+html[data-theme="editorial"] tbody tr { border-bottom: 1px solid #0e0e0e; }
+html[data-theme="editorial"] tbody tr:hover { background: #f0f0ec; }
+html[data-theme="editorial"] td.rank-cell { text-align: left; }
+html[data-theme="editorial"] .rk { color: #0e0e0e; font-family: var(--sg); font-weight: 700; font-size: 1.9rem; letter-spacing: -.04em; margin-left: 0; }
+html[data-theme="editorial"] .rk0 { color: #0e0e0e !important; font-size: 1.9rem !important; }
+html[data-theme="editorial"] td.views-cell { color: #0e0e0e; font-family: var(--sg); font-weight: 700; }
+html[data-theme="editorial"] .school-cell { color: #0e0e0e; font-family: var(--sg); }
+html[data-theme="editorial"] .id-cell { color: #4a4a4a; font-family: var(--sg); font-weight: 500; }
+html[data-theme="editorial"] td a { color: #0e0e0e; }
+html[data-theme="editorial"] td a:hover { color: #d93a12; }
+html[data-theme="editorial"] td a.work-title { font-weight: 900; letter-spacing: -.03em; font-size: 1.6rem; }
+html[data-theme="editorial"] .star-avg span { color: #0e0e0e; }
+
+/* 칩·예시 */
+html[data-theme="editorial"] .grade-label { font-family: var(--sg); color: #4a4a4a; }
+html[data-theme="editorial"] .class-chips { gap: 8px 22px; }
+html[data-theme="editorial"] .class-chip { padding: 4px 0; border: 0; border-bottom: 3px solid #0e0e0e; border-radius: 0; background: transparent; color: #0e0e0e; font-family: var(--sg); font-size: 1.2rem; }
+html[data-theme="editorial"] .class-chip:hover { color: #d93a12; border-color: #d93a12; }
+html[data-theme="editorial"] .class-chip.active { background: transparent; color: #d93a12; border-color: #d93a12; box-shadow: none; }
+html[data-theme="editorial"] .class-hint { border: 1px solid #0e0e0e; border-radius: 0; background: transparent; }
+html[data-theme="editorial"] .example-list { gap: 0 32px; }
+html[data-theme="editorial"] .example-item { border: 0; border-top: 1px solid #0e0e0e; border-radius: 0; background: transparent; color: #0e0e0e; padding: 16px 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+html[data-theme="editorial"] .example-item:hover { color: #d93a12; border-color: #0e0e0e; transform: none; }
+html[data-theme="editorial"] .example-item .ex-icon { color: #d93a12; font-size: 1rem; }
+html[data-theme="editorial"] .rating-soon-banner { background: transparent; border: 1px solid #0e0e0e; border-left-width: 6px; border-radius: 0; color: #4a4a4a; }
+html[data-theme="editorial"] .rating-soon-banner strong { color: #0e0e0e; }
+html[data-theme="editorial"] .rating-soon-banner .banner-date { color: #d93a12; }
+html[data-theme="editorial"] .state-msg { color: #4a4a4a; }

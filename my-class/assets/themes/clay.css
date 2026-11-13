@@ -1,0 +1,88 @@
+/* 테마: 소프트 클레이 — 민트 바탕, 말랑하게 부푼 카드, 둥근 글꼴 */
+@import url("https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap");
+
+html[data-theme="clay"] {
+  --bg: #dff5ec; --card: #ffffff; --border: #c6e3d8;
+  --accent: #ff7a59; --accent2: #ff7a59;
+  --text: #1f3a36; --muted: #4d6b66;
+  --diamond: #6fd8ff; --gold: #ff9a1f; --silver: #cfd6e6;
+  --jua: 'Jua', 'Noto Sans KR', sans-serif;
+  --puff: inset 0 -6px 10px rgba(31,58,54,.07), inset 0 6px 10px rgba(255,255,255,.95);
+}
+
+html[data-theme="clay"] body {
+  color: var(--text);
+  background: radial-gradient(circle at 12% 6%, rgba(255,255,255,.8) 0, rgba(255,255,255,0) 28%), radial-gradient(circle at 92% 28%, rgba(111,216,255,.3) 0, rgba(111,216,255,0) 30%), var(--bg);
+}
+html[data-theme="clay"] body::before { display: none; }
+
+html[data-theme="clay"] .title-main {
+  font-family: var(--jua); font-weight: 400; background: none; -webkit-text-fill-color: var(--text); color: var(--text);
+  text-shadow: 0 4px 0 rgba(255,255,255,.9), 0 10px 18px rgba(31,58,54,.18);
+}
+html[data-theme="clay"] .title-sub {
+  display: inline-block; margin-top: 16px; padding: 8px 22px; border-radius: 999px; background: #ff7a59; color: #fff;
+  font-family: var(--jua); font-weight: 400; font-size: 1.05rem; letter-spacing: 0;
+  box-shadow: 0 12px 20px -8px rgba(255,122,89,.65), inset 0 -5px 8px rgba(160,50,20,.25), inset 0 5px 8px rgba(255,255,255,.4);
+}
+html[data-theme="clay"] header::after { display: none; }
+html[data-theme="clay"] .back-link { border: 0; border-radius: 999px; background: #fff; box-shadow: 0 10px 16px -8px rgba(31,58,54,.35), var(--puff); }
+
+html[data-theme="clay"] .section-label { font-family: var(--jua); font-weight: 400; font-size: 1.9rem; letter-spacing: 0; text-transform: none; color: var(--text); margin-top: 56px; }
+html[data-theme="clay"] .section-label::after { display: none; }
+
+html[data-theme="clay"] .tier-label { font-family: var(--jua); font-weight: 400; font-size: 1.1rem; width: fit-content; padding: 5px 18px; border-radius: 999px; }
+html[data-theme="clay"] .tier-label span { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: .85rem; }
+html[data-theme="clay"] .tier-label.diamond { background: #6fd8ff; color: #0d3a4d; box-shadow: 0 8px 14px -6px rgba(40,140,180,.55), inset 0 -4px 6px rgba(20,100,140,.2), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .tier-label.gold    { background: #ffcf4a; color: #4a3300; box-shadow: 0 8px 14px -6px rgba(180,130,0,.55), inset 0 -4px 6px rgba(150,100,0,.22), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .tier-label.silver  { background: #cfd6e6; color: #2a3350; box-shadow: 0 8px 14px -6px rgba(80,90,120,.45), inset 0 -4px 6px rgba(60,70,100,.18), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .tier-icon, html[data-theme="clay"] .medal-badge { display: none; }
+
+html[data-theme="clay"] .medal-grid { gap: 26px; }
+html[data-theme="clay"] .medal-card {
+  border: 0; border-radius: 32px; background: #fff; color: var(--text); padding: 16px 16px 24px;
+  box-shadow: 0 22px 36px -16px rgba(31,58,54,.32), inset 0 -8px 14px rgba(255,207,74,.28), inset 0 8px 12px rgba(255,255,255,.95);
+}
+html[data-theme="clay"] .medal-card.diamond { box-shadow: 0 22px 36px -16px rgba(31,58,54,.32), inset 0 -8px 14px rgba(111,216,255,.25), inset 0 8px 12px rgba(255,255,255,.95); }
+html[data-theme="clay"] .medal-card.silver  { box-shadow: 0 22px 36px -16px rgba(31,58,54,.3), inset 0 -8px 14px rgba(160,170,200,.22), inset 0 8px 12px rgba(255,255,255,.95); }
+html[data-theme="clay"] .medal-card::before { display: none; }
+html[data-theme="clay"] .medal-card:hover { transform: translateY(-5px); }
+html[data-theme="clay"] .thumb { border: 0; border-radius: 22px; margin-bottom: 14px; }
+html[data-theme="clay"] .medal-head { margin: 0 6px 8px; justify-content: flex-start; }
+html[data-theme="clay"] .medal-rank { font-family: var(--jua); font-weight: 400; font-size: 1.1rem; letter-spacing: 0; padding: 4px 16px; border-radius: 999px; }
+html[data-theme="clay"] .diamond .medal-rank { background: #6fd8ff; color: #0d3a4d; box-shadow: inset 0 -4px 6px rgba(20,100,140,.22), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .gold .medal-rank    { background: #ffcf4a; color: #4a3300; box-shadow: inset 0 -4px 6px rgba(150,100,0,.2), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .silver .medal-rank  { background: #cfd6e6; color: #2a3350; box-shadow: inset 0 -4px 6px rgba(60,70,100,.18), inset 0 4px 6px rgba(255,255,255,.6); }
+html[data-theme="clay"] .card-name { margin: 0 6px 4px; font-weight: 700; }
+html[data-theme="clay"] .card-title { margin: 0 6px 40px; font-family: var(--jua); font-weight: 400; color: var(--text); }
+html[data-theme="clay"] .card-views { right: 24px; bottom: 22px; font-weight: 700; }
+
+html[data-theme="clay"] .table-wrap { background: transparent; border: 0; border-radius: 0; padding-bottom: 10px; }
+html[data-theme="clay"] table { border-collapse: separate; border-spacing: 0 14px; }
+html[data-theme="clay"] thead tr { background: none; border: 0; }
+html[data-theme="clay"] th { color: var(--muted); letter-spacing: 0; text-transform: none; font-weight: 700; font-size: .8rem; }
+html[data-theme="clay"] tbody tr { border: 0; }
+html[data-theme="clay"] tbody tr:hover { background: none; }
+html[data-theme="clay"] tbody td { background: #fff; box-shadow: 0 16px 22px -16px rgba(31,58,54,.32); }
+html[data-theme="clay"] tbody td:first-child { border-radius: 26px 0 0 26px; }
+html[data-theme="clay"] tbody td:last-child { border-radius: 0 26px 26px 0; }
+html[data-theme="clay"] td.rank-cell { font-family: var(--jua); }
+html[data-theme="clay"] .rk { color: var(--text); font-family: var(--jua); font-size: 1.1rem; margin-left: 0; }
+html[data-theme="clay"] .rk0 { color: var(--muted) !important; font-size: 1rem !important; }
+html[data-theme="clay"] td.views-cell { color: var(--text); }
+html[data-theme="clay"] .school-cell, html[data-theme="clay"] .id-cell { color: var(--muted); font-weight: 700; }
+html[data-theme="clay"] td a { color: var(--text); }
+html[data-theme="clay"] td a:hover { color: #ff7a59; }
+html[data-theme="clay"] td a.work-title { font-family: var(--jua); font-weight: 400; }
+
+html[data-theme="clay"] .grade-label { font-family: var(--jua); font-weight: 400; font-size: 1rem; }
+html[data-theme="clay"] .class-chip { border: 0; background: #fff; color: var(--text); font-family: var(--jua); font-weight: 400; font-size: 1rem; box-shadow: 0 10px 16px -8px rgba(31,58,54,.35), var(--puff); }
+html[data-theme="clay"] .class-chip:hover { color: var(--text); transform: translateY(-2px); }
+html[data-theme="clay"] .class-chip.active { background: #ff7a59; color: #fff; box-shadow: 0 12px 18px -8px rgba(255,122,89,.65), inset 0 -4px 6px rgba(160,50,20,.25), inset 0 4px 6px rgba(255,255,255,.4); }
+html[data-theme="clay"] .class-hint { border: 0; border-radius: 24px; background: #fff; box-shadow: 0 14px 24px -14px rgba(31,58,54,.3), var(--puff); }
+html[data-theme="clay"] .example-item { border: 0; border-radius: 24px; background: #fff; color: var(--text); font-weight: 700; box-shadow: 0 14px 24px -12px rgba(31,58,54,.3), var(--puff); }
+html[data-theme="clay"] .example-item:hover { color: var(--text); transform: translateY(-3px); }
+html[data-theme="clay"] .example-item .ex-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #ff7a59; color: #fff; font-size: .8rem; box-shadow: 0 6px 10px -4px rgba(255,122,89,.65), inset 0 -3px 5px rgba(160,50,20,.25), inset 0 3px 5px rgba(255,255,255,.4); }
+html[data-theme="clay"] .rating-soon-banner { background: #fff; border: 0; border-radius: 22px; box-shadow: 0 14px 24px -14px rgba(31,58,54,.3), var(--puff); color: var(--muted); }
+html[data-theme="clay"] .rating-soon-banner strong { color: var(--text); }
+html[data-theme="clay"] .rating-soon-banner .banner-date { color: #ff7a59; }

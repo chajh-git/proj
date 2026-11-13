@@ -1,0 +1,80 @@
+/* 테마: 다크 벤토 — 비대칭 타일, 얇은 윤곽선, 고정폭 숫자 */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+html[data-theme="bento"] {
+  --bg: #0b0c10; --card: #12141a; --border: #232734;
+  --accent: #8ab4ff; --accent2: #4f8ef7;
+  --text: #eceef4; --muted: #9aa1b4;
+  --diamond: #7fe8ff; --gold: #f5c842; --silver: #b0bec5;
+  --mono: 'IBM Plex Mono', monospace;
+}
+
+html[data-theme="bento"] body {
+  font-family: 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif;
+  background: radial-gradient(ellipse 70% 420px at 50% -5%, rgba(79,142,247,.18), rgba(11,12,16,0) 72%), var(--bg);
+}
+html[data-theme="bento"] body::before { display: none; }
+
+html[data-theme="bento"] header { max-width: 1200px; margin: 0 auto; text-align: left; padding: 64px 20px 20px; }
+html[data-theme="bento"] header::after { display: none; }
+html[data-theme="bento"] .title-main {
+  font-family: 'IBM Plex Sans KR', sans-serif; font-weight: 700; letter-spacing: -.02em; line-height: 1.2;
+  background: none; -webkit-text-fill-color: #f5f6fa; color: #f5f6fa; font-size: clamp(2rem, 4vw, 2.9rem);
+}
+html[data-theme="bento"] .title-sub { font-family: var(--mono); color: var(--accent); letter-spacing: .02em; font-weight: 400; }
+
+html[data-theme="bento"] .section-label { letter-spacing: .08em; text-transform: none; font-size: .88rem; font-weight: 500; margin-top: 56px; }
+html[data-theme="bento"] .tier-label { font-weight: 500; font-size: .9rem; }
+html[data-theme="bento"] .tier-icon, html[data-theme="bento"] .medal-badge { display: none; }
+
+/* 메달 타일 */
+html[data-theme="bento"] .medal-card {
+  border: 0; border-radius: 20px; background: var(--card); padding: 14px 14px 20px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px rgba(245,200,66,.34);
+}
+html[data-theme="bento"] .medal-card.diamond { box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 0 0 1px rgba(127,232,255,.4), 0 28px 56px -30px rgba(127,232,255,.5); }
+html[data-theme="bento"] .medal-card.silver  { box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 0 0 1px rgba(176,190,197,.3); }
+html[data-theme="bento"] .medal-card:hover { transform: translateY(-3px); }
+html[data-theme="bento"] .medal-card::before { display: none; }
+html[data-theme="bento"] .thumb { border-radius: 12px; border: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.07); }
+html[data-theme="bento"] .medal-head { margin: 4px 6px 8px; }
+html[data-theme="bento"] .medal-rank { font-family: var(--mono); font-weight: 500; font-size: .78rem; letter-spacing: 0; }
+html[data-theme="bento"] .card-name { font-family: var(--mono); margin: 0 6px 6px; }
+html[data-theme="bento"] .card-title { font-weight: 700; letter-spacing: -.01em; margin: 0 6px 38px; }
+html[data-theme="bento"] .card-views { font-family: var(--mono); right: 22px; bottom: 18px; }
+
+/* 다이아 구역: 1위는 큰 타일, 2·3위는 오른쪽에 가로 타일 */
+html[data-theme="bento"] .medal-grid:has(.medal-card.diamond) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: auto; }
+html[data-theme="bento"] .medal-card.diamond:first-child { grid-row: span 2; display: flex; flex-direction: column; }
+html[data-theme="bento"] .medal-card.diamond:first-child .thumb { flex: 1; min-height: 260px; aspect-ratio: auto; margin-bottom: 14px; }
+html[data-theme="bento"] .medal-card.diamond:first-child .card-title { font-size: 2.1rem; }
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) {
+  display: grid; grid-template-columns: 42% minmax(0, 1fr); column-gap: 16px; align-content: start;
+  grid-template-areas: "thumb head" "thumb name" "thumb title" "thumb views"; grid-template-rows: auto auto 1fr auto;
+}
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) .thumb { grid-area: thumb; margin: 0; height: 100%; aspect-ratio: auto; min-height: 130px; }
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) .medal-head { grid-area: head; margin: 2px 0 6px; }
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) .card-name { grid-area: name; margin: 0 0 4px; }
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) .card-title { grid-area: title; margin: 0; font-size: 1.35rem; }
+html[data-theme="bento"] .medal-card.diamond:not(:first-child) .card-views { grid-area: views; position: static; justify-content: flex-start; margin-top: 8px; }
+@media (max-width: 760px) {
+  html[data-theme="bento"] .medal-grid:has(.medal-card.diamond) { grid-template-columns: minmax(0, 1fr); }
+  html[data-theme="bento"] .medal-card.diamond:first-child { grid-row: auto; }
+}
+
+/* 표 */
+html[data-theme="bento"] .table-wrap { border-radius: 18px; background: var(--card); }
+html[data-theme="bento"] th { letter-spacing: .06em; text-transform: none; font-weight: 500; }
+html[data-theme="bento"] td.rank-cell, html[data-theme="bento"] td.views-cell, html[data-theme="bento"] .school-cell, html[data-theme="bento"] .id-cell { font-family: var(--mono); }
+html[data-theme="bento"] td.views-cell { color: var(--accent); font-weight: 500; }
+html[data-theme="bento"] tbody tr { border-bottom-color: #1c2029; }
+html[data-theme="bento"] td a.work-title { font-weight: 700; letter-spacing: -.01em; }
+
+/* 버튼·칩 */
+html[data-theme="bento"] .class-chips { padding: 0; }
+html[data-theme="bento"] .class-chip { font-family: var(--mono); font-size: .82rem; font-weight: 500; padding: 8px 16px; background: #181b23; }
+html[data-theme="bento"] .class-chip.active { background: var(--accent2); }
+html[data-theme="bento"] .class-hint { border-radius: 18px; }
+html[data-theme="bento"] .example-item { border: 0; border-radius: 14px; box-shadow: 0 0 0 1px var(--border); padding: 16px 18px; }
+html[data-theme="bento"] .example-item .ex-icon { color: var(--accent); }
+html[data-theme="bento"] .rating-soon-banner { border-radius: 14px; }
