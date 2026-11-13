@@ -263,7 +263,7 @@ $("btn-check").addEventListener("click", async () => {
   if (!t) { say($("st-conn"), "토큰을 먼저 붙여넣어 주세요.", "warn"); return; }
   say($("st-conn"), "확인하는 중…");
   try {
-    const r = await fetch(apiUrl(""), { headers: headers(true) });
+    const r = await fetch(apiUrl("").replace(/\/$/, ""), { headers: headers(true) });
     if (!r.ok) throw new Error(r.status === 401 ? "토큰이 올바르지 않거나 만료되었습니다." : r.status === 404 ? "저장소에 접근할 수 없습니다. 토큰의 저장소 선택을 확인하세요." : "오류 " + r.status);
     const j = await r.json();
     if (!j.permissions || !j.permissions.push) throw new Error("읽기만 가능합니다. 토큰에 Contents: Read and write 권한이 필요합니다.");
