@@ -46,16 +46,6 @@
       z-index: 0;
     }
 
-    /* 배경 빛줄기 효과 (내용 뒤에 위치, 클릭 방해 없음) */
-    #bg-rain {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 1;
-    }
-
     header {
       position: relative;
       z-index: 10;
@@ -306,8 +296,6 @@
   </style>
 </head>
 <body>
-
-<canvas id="bg-rain" aria-hidden="true"></canvas>
 
 <header>
   <div class="title-main">AI를 활용한 나만의 프로그램 만들기</div>
@@ -965,69 +953,6 @@ document.addEventListener("click", async e => {
   markViewed(key);
   try { await incrementViews(key); } catch (err) { console.warn(err); }
 });
-
-/* ═══════════════════════════════════════════════════════
-   배경 효과: 가늘고 희미한 빛줄기가 눈처럼 천천히 내려옴
-   (캔버스는 내용 뒤에 깔리며, 밀도·속도·밝기는 아래 값으로 조절)
-═══════════════════════════════════════════════════════ */
-(function bgLightRain() {
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const cv = document.getElementById("bg-rain");
-  const ctx = cv.getContext("2d");
-
-  const STREAK_LEN   = 200;     // 빛줄기 길이(px)
-  const DENSITY_PX   = 170;     // 화면 가로 몇 px 당 1줄 (클수록 더 드물게)
-  const SPEED_MIN    = 18;      // 낙하 속도(px/초)
-  const SPEED_MAX    = 40;
-  const ALPHA_MIN    = 0.06;    // 밝기 (0~1)
-  const ALPHA_MAX    = 0.16;
-  const COLOR        = "150,185,255";
-
-  let W = 0, H = 0, streaks = [];
-
-  const make = initial => ({
-    x: Math.random() * W,
-    y: initial ? Math.random() * (H + STREAK_LEN) - STREAK_LEN
-               : -STREAK_LEN - Math.random() * H * 0.5,
-    len: STREAK_LEN * (0.85 + Math.random() * 0.3),
-    speed: SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN),
-    drift: (Math.random() - 0.5) * 4,
-    alpha: ALPHA_MIN + Math.random() * (ALPHA_MAX - ALPHA_MIN),
-  });
-
-  function resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth; H = window.innerHeight;
-    cv.width = W * dpr; cv.height = H * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.max(5, Math.round(W / DENSITY_PX));
-    while (streaks.length < n) streaks.push(make(true));
-    streaks.length = n;
-  }
-  resize();
-  window.addEventListener("resize", resize);
-
-  let last = performance.now();
-  function frame(t) {
-    const dt = Math.min(0.05, (t - last) / 1000);
-    last = t;
-    ctx.clearRect(0, 0, W, H);
-    for (let i = 0; i < streaks.length; i++) {
-      const s = streaks[i];
-      s.y += s.speed * dt;
-      s.x += s.drift * dt;
-      if (s.y > H) { streaks[i] = make(false); continue; }
-      const g = ctx.createLinearGradient(0, s.y, 0, s.y + s.len);
-      g.addColorStop(0,   `rgba(${COLOR},0)`);
-      g.addColorStop(0.5, `rgba(${COLOR},${s.alpha})`);
-      g.addColorStop(1,   `rgba(${COLOR},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(s.x, s.y, 1.2, s.len);
-    }
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-})();
 
 /* ═══════════════════════════════════════════════════════
    초기 로드
