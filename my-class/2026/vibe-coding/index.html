@@ -353,8 +353,8 @@ const RATINGS_TABLE = "ratings";
 /* 명예의 전당 등급 (위에서부터 순서대로 인원 배정: 다이아 3 → 금 6 → 은 9) */
 const TIERS = [
   { cls: "diamond", icon: "💎", label: "다이아", count: 3 },
-  { cls: "gold",    icon: "🥇", label: "금",     count: 6 },
-  { cls: "silver",  icon: "🥈", label: "은",     count: 9 },
+  { cls: "gold",    icon: "🥇", label: "골드",     count: 6 },
+  { cls: "silver",  icon: "🥈", label: "실버",     count: 9 },
 ];
 const HALL_SIZE = TIERS.reduce((n, t) => n + t.count, 0);   // 18
 
