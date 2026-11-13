@@ -150,7 +150,7 @@ let connected = false;
 function say(el, msg, kind) { el.textContent = msg; el.className = "status" + (kind ? " " + kind : ""); }
 const apiUrl = path => `https://api.github.com/repos/${OWNER}/${REPO}/${path}`;
 function headers(auth) {
-  const h = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  const h = {};
   const t = $("token").value.replace(/[^\x21-\x7e]/g, "");
   if (auth && t) h["Authorization"] = "Bearer " + t;
   return h;
