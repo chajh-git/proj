@@ -1,0 +1,86 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>사람 vs AI 업무 카드 대결</title><meta name="color-scheme" content="dark">
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#14123a;--bg2:#33236b;--tx:#fff;--hu:#ff8fb1;--ai:#6fe3ff;--ok:#7dffb3;--no:#ffd36f;--ink:#2b2250;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html,body{min-height:100%;margin:0}
+body{background:radial-gradient(circle at 50% 0,var(--bg2),var(--bg) 65%) var(--bg);color:var(--tx);font:20px/1.4 Jua,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;overflow-x:hidden;user-select:none;touch-action:manipulation}
+button{font:inherit;cursor:pointer;border:0;color:var(--ink)}button:focus-visible{outline:4px solid #fff;outline-offset:3px}
+#mute{position:absolute;right:12px;top:12px;background:#ffffff22;color:#fff;border-radius:50%;width:48px;height:48px;font-size:24px;z-index:5}
+#vs{display:none;align-items:center;gap:10px;padding:14px 66px 6px 14px;max-width:760px;margin:auto}
+#vs .side{font-size:34px;text-align:center;line-height:1.1}#vs small{display:block;font-size:15px}
+#bar{flex:1;display:flex;height:34px;border-radius:20px;overflow:hidden;background:#ffffff1a;font-size:20px}
+#bar div{display:flex;align-items:center;justify-content:center;color:var(--ink);transition:flex-grow .5s cubic-bezier(.3,1.6,.5,1)}
+#hb{background:var(--hu);flex-grow:1}#ab{background:var(--ai);flex-grow:1}
+.pop{animation:pop .5s}@keyframes pop{30%{transform:scale(1.5) rotate(-12deg)}60%{transform:scale(.9) rotate(8deg)}}
+main{max-width:760px;margin:auto;padding:10px 16px 28px;text-align:center}
+h1{font-size:clamp(44px,13vw,76px);margin:18px 0 4px;line-height:1.05;text-shadow:0 5px 0 #0006}
+.vsb{font-size:clamp(60px,18vw,110px);display:flex;justify-content:center;align-items:center;gap:6px;margin-top:20px}
+.vsb span{animation:fl 2.4s ease-in-out infinite}.vsb span:nth-child(2){font-size:.5em;color:var(--no);animation-delay:.4s}.vsb span:nth-child(3){animation-delay:.8s}
+@keyframes fl{50%{transform:translateY(-14px) rotate(5deg)}}
+.sub{font-size:26px;margin:10px 0 20px}
+.lv{display:block;width:100%;max-width:440px;margin:12px auto;padding:18px;font-size:28px;border-radius:26px;box-shadow:0 8px 0 #0005;transition:transform .15s}.lv:active{transform:translateY(5px);box-shadow:0 3px 0 #0005}
+.stage{perspective:1100px;height:min(56vh,430px);display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+.card{transform-style:preserve-3d;width:min(86vw,420px);min-height:320px;background:linear-gradient(145deg,#fff8,#fff0),var(--c);color:var(--ink);border-radius:32px;padding:26px 22px;display:flex;flex-direction:column;justify-content:center;gap:16px;box-shadow:0 22px 40px #0008,inset 0 0 0 5px #fffa;cursor:grab;animation:enter .7s cubic-bezier(.2,.9,.3,1.15);position:relative}
+.card:active{cursor:grabbing}.card>*{transform:translateZ(40px)}
+.chip{align-self:center;background:#fff;border-radius:20px;padding:4px 16px;font-size:24px}
+.q{font-size:clamp(28px,7.4vw,38px);line-height:1.3;word-break:keep-all}.hint{font-size:20px;opacity:.7}.cnt{position:absolute!important;right:18px;top:12px;font-size:18px;opacity:.6}
+@keyframes enter{from{transform:translateZ(-800px) rotateY(75deg) rotateX(25deg);opacity:0}}
+.btns{display:flex;gap:12px;justify-content:center;margin-top:8px}
+.btns button{flex:1;max-width:260px;padding:18px 6px;font-size:26px;border-radius:24px;box-shadow:0 7px 0 #0005}.btns button:active{transform:translateY(4px)}
+.bh{background:var(--hu)}.ba{background:var(--ai)}
+.tags{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:16px}.tags button{padding:16px 22px;font-size:26px;border-radius:22px;background:#fff;box-shadow:0 6px 0 #0005;animation:enter .45s backwards}
+.mini{font-size:28px;margin:30px 0 4px;word-break:keep-all}
+.res{background:linear-gradient(145deg,#fff9,#fff0),#ffe08a;color:var(--ink);border-radius:34px;padding:26px 18px;box-shadow:0 20px 40px #0008,inset 0 0 0 6px #fffa;animation:enter .9s cubic-bezier(.2,.9,.3,1.15)}
+.res .big{font-size:clamp(40px,11vw,60px);line-height:1.1}.res .tt{display:inline-block;background:var(--ink);color:#fff;border-radius:24px;padding:6px 20px;font-size:30px;margin:12px 0}
+.res .jb{font-size:34px;letter-spacing:4px}.res .gz{font-size:28px;margin:6px 0}.res .nt{font-size:18px;opacity:.75}
+.rv{text-align:left;margin-top:20px}.rv .it{background:#ffffff18;border-radius:20px;padding:14px 16px;margin:10px 0;font-size:20px}.rv b{font-size:22px}.rv .ex{color:var(--no)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<button id="mute" aria-label="효과음 켜기/끄기">🔊</button>
+<header id="vs"><div class="side" id="hs">🧑<small>사람 몫</small></div><div id="bar"><div id="hb">0</div><div id="ab">0</div></div><div class="side" id="as">🤖<small>AI 몫</small></div></header>
+<main id="main"></main>
+<script>
+// 카드 데이터: [업무, 기준 답(H=사람, A=AI), 이유 태그 번호]  ← 선생님이 여기서 수정/추가하세요
+const T=["반복·정리","공감·소통","현장·몸","책임·판단","아이디어"];
+const E={A:"빠르게 찾고 정리하는 일은 AI가 잘 도와줘요",A4:"후보를 많이 만드는 건 AI가 잘해요",H1:"마음을 읽고 공감하는 일은 사람의 강점이에요",H2:"몸으로 현장에서 하는 일은 아직 사람 몫이에요",H3:"결과에 책임지는 판단은 사람이 해야 해요",H4:"내 경험에서 나온 생각은 사람만 낼 수 있어요"};
+const J=[
+["의사","🩺","#ffb3c7",[["엑스레이에서 이상한 부분 찾기","A",0],["불안해하는 환자의 이야기 듣고 안심시키기","H",1],["수술실에서 손으로 직접 수술하기","H",2],["진료 기록 정리해서 문서 만들기","A",0],["치료 방법을 최종 결정하고 책임지기","H",3]]],
+["교사","🍎","#ffd9a0",[["시험 문제 초안 여러 개 만들기","A",0],["힘들어 보이는 학생에게 먼저 말 걸기","H",1],["출석과 점수 자동으로 계산하기","A",0],["교실 분위기를 보고 수업 방식 바꾸기","H",1],["학생 갈등의 지도 방향 결정하기","H",3]]],
+["요리사","🍳","#fff3a0",[["재료 재고와 주문량 계산하기","A",0],["불 앞에서 팬을 돌려 요리하기","H",2],["손님 표정을 보고 맛 조절하기","H",1],["새 메뉴 아이디어 100개 쓰기","A",4],["위생 점검 기록표 정리하기","A",0]]],
+["운동선수","⚽","#b9f0c8",[["경기 영상에서 움직임 통계 뽑기","A",0],["경기장에서 몸으로 직접 뛰기","H",2],["위기 순간에 판단해서 패스하기","H",3],["한 달 훈련 일정표 짜기","A",0],["지친 팀원을 힘내게 이끌기","H",1]]],
+["웹툰 작가","✏️","#d9c2ff",[["배경 그림 밑그림 여러 장 뽑기","A",4],["내 경험에서 이야기 주제 정하기","H",4],["독자 댓글 모아서 정리하기","A",0],["독자 마음을 울릴 장면 최종 선택하기","H",1],["마감 날짜까지 일정 계산하기","A",0]]],
+["소프트웨어 개발자","💻","#a8e4ff",[["반복되는 코드 자동 완성하기","A",0],["오류 메시지 읽고 원인 후보 찾기","A",0],["사용자를 만나 진짜 불편함 알아내기","H",1],["서비스 사고가 났을 때 책임지고 결정하기","H",3],["팀원들 의견을 조율해 방향 합의하기","H",1]]],
+["변호사","⚖️","#ffc2e8",[["판례와 법 조항 자료 찾아 정리하기","A",0],["계약서 초안 문장 만들기","A",0],["억울한 의뢰인 이야기 듣고 신뢰 쌓기","H",1],["법정에서 직접 변론하기","H",3],["사건 진행 방향을 최종 결정하고 책임지기","H",3]]],
+["경찰관","🚓","#c4d0ff",[["CCTV 영상에서 차량 번호 찾기","A",0],["사건 현장에 직접 출동해 사람 구하기","H",2],["신고 접수 내용을 문서로 정리하기","A",0],["놀란 피해자를 차분히 진정시키기","H",1],["위험한 현장에서 순간 판단 내리기","H",3]]]
+];
+const ex=c=>c.a=="A"?(c.g==4?E.A4:E.A):E["H"+c.g];
+const $=id=>document.getElementById(id),M=$("main"),sh=a=>a.sort(()=>Math.random()-.5);
+let on=true,ac,deck,i,pk,tg;
+$("mute").onclick=()=>{on=!on;$("mute").textContent=on?"🔊":"🔇"};
+function beep(f,d=.12,t="triangle",w=0){if(!on)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain(),s=ac.currentTime+w;o.type=t;o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(.09,s);g.gain.exponentialRampToValueAtTime(.0001,s+d);o.start(s);o.stop(s+d)}catch(e){}}
+function home(){$("vs").style.display="none";M.innerHTML=`<h1>사람 vs AI</h1><div class="vsb"><span>🧑</span><span>⚡</span><span>🤖</span></div><div class="sub">업무 카드는 누구 몫일까?<br>사람 몫과 AI 몫으로 나눠 보자!</div>
+<button class="lv" style="background:#b9f0c8" data-n="5">쉬움 · 카드 5장</button><button class="lv" style="background:#ffe08a" data-n="10">보통 · 카드 10장</button><button class="lv" style="background:#ff9ec0" data-n="15">어려움 · 카드 15장</button>`;
+M.querySelectorAll(".lv").forEach(b=>b.onclick=()=>start(+b.dataset.n))}
+function start(n){beep(660,.1);const js=sh([...J]).slice(0,n/5);deck=[];js.forEach(j=>sh([...j[3]]).forEach(c=>deck.push({j,t:c[0],a:c[1],g:c[2]})));i=0;pk=[];tg=[];$("vs").style.display="flex";gauge();show()}
+function gauge(side){const h=pk.filter(x=>x=="H").length,a=pk.length-h;$("hb").textContent=h;$("ab").textContent=a;$("hb").style.flexGrow=h+1;$("ab").style.flexGrow=a+1;if(side){const e=$(side=="H"?"hs":"as");e.classList.remove("pop");void e.offsetWidth;e.classList.add("pop")}return[h,a]}
+function show(){const c=deck[i];M.innerHTML=`<div class="stage"><div class="card" id="card" style="--c:${c.j[2]}"><div class="chip">${c.j[1]} ${c.j[0]}</div><div class="q">${c.t}</div><div class="hint">이 일은 누구 몫일까?</div><div class="cnt">${i+1}/${deck.length}</div></div></div><div class="btns"><button class="bh">⬅ 사람 몫</button><button class="ba">AI 몫 ➡</button></div>`;
+const cd=$("card");let x0=null,dx=0;
+cd.onpointerdown=e=>{x0=e.clientX;cd.style.animation="none";cd.setPointerCapture(e.pointerId)};
+cd.onpointermove=e=>{if(x0===null)return;dx=e.clientX-x0;cd.style.transform=`translateX(${dx}px) rotateZ(${dx/14}deg) rotateY(${dx/6}deg)`};
+cd.onpointerup=()=>{if(x0===null)return;x0=null;if(Math.abs(dx)>90)pick(dx<0?"H":"A");else{cd.style.transition="transform .3s";cd.style.transform="";setTimeout(()=>cd.style.transition="",300)}dx=0};
+M.querySelector(".bh").onclick=()=>pick("H");M.querySelector(".ba").onclick=()=>pick("A")}
+function pick(s){const cd=$("card");if(!cd||cd.dataset.d)return;cd.dataset.d=1;pk[i]=s;beep(s=="H"?440:700,.15);const d=s=="H"?-1:1;
+cd.style.transition="transform .55s cubic-bezier(.5,0,.9,.5),opacity .55s";cd.style.transform=`translate3d(${d*130}vw,-12vh,250px) rotateZ(${d*40}deg) rotateY(${d*140}deg)`;cd.style.opacity=0;gauge(s);setTimeout(tag,480)}
+function tag(){const c=deck[i];M.innerHTML=`<div class="mini">${c.j[1]} ${c.t}</div><div class="sub">${pk[i]=="H"?"사람 몫":"AI 몫"}으로 정한 이유는?</div><div class="tags">${T.map((t,k)=>`<button data-k="${k}" style="animation-delay:${k*.06}s">${t}</button>`).join("")}</div>`;
+M.querySelectorAll(".tags button").forEach(b=>b.onclick=()=>{tg[i]=+b.dataset.k;beep(880,.08);i++;i<deck.length?show():result()})}
+function result(){const [h,a]=gauge();let ok=0,wa=0,wh=0,bad=[];deck.forEach((c,k)=>{if(pk[k]==c.a)ok++;else{bad.push(k);pk[k]=="A"?wa++:wh++}});
+const r=ok/deck.length,lv=r>=.9?5:r>=.75?4:r>=.6?3:r>=.4?2:1,tt=!bad.length?"완벽 관찰자":wa>wh?"AI 기대 탐험가":wh>wa?"사람 가치 수호자":"균형 잡힌 관찰자";
+const jobs=[...new Set(deck.map(c=>c.j[1]+c.j[0]))];[523,659,784,1047].forEach((f,k)=>beep(f,.2,"triangle",k*.13));
+M.innerHTML=`<div class="res"><div class="jb">${[...new Set(deck.map(c=>c.j[1]))].join(" ")}</div><div class="nt">${jobs.map(x=>x.slice(2)).join(" · ")}</div><div class="big">AI 관찰자 Lv.${lv}</div><div class="tt">${tt}</div><div class="gz">🧑 사람 몫 ${h} : AI 몫 ${a} 🤖</div><div class="gz">기준 답과 ${ok} / ${deck.length}장 일치</div><div class="nt">칭호는 좋고 나쁨이 아니라 생각의 방향이에요</div></div>
+${bad.length?`<div class="rv"><b>🔎 기준 답과 달랐던 카드</b>${bad.map(k=>{const c=deck[k];return`<div class="it">${c.j[1]} ${c.t}<br>내 선택 ${pk[k]=="H"?"사람":"AI"} → 기준 답 <b>${c.a=="H"?"사람":"AI"}</b> (내가 고른 이유: ${T[tg[k]]})<div class="ex">${ex(c)}. 지금은 그렇지만 바뀔 수 있어요.</div></div>`}).join("")}</div>`:""}
+<button class="lv" style="background:#ffe08a" id="re">다시 도전하기</button>`;$("re").onclick=home;scrollTo(0,0)}
+document.onkeydown=e=>{if($("card")&&!$("card").dataset.d){if(e.key=="ArrowLeft")pick("H");if(e.key=="ArrowRight")pick("A")}};
+home();
+</script></body></html>

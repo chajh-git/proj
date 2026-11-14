@@ -1,0 +1,597 @@
+/* ================================================================
+   🎨 style.css — 주식 게임 전체 스타일
+   ================================================================ */
+
+/* ================================================================
+   📐 기본 리셋 & 변수
+   ================================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+:root {
+  --bg-0:       #0d0f14;
+  --bg-1:       #13161e;
+  --bg-2:       #1a1e2a;
+  --bg-3:       #222738;
+  --border:     #2e3448;
+  --accent:     #4f8aff;
+  --green:      #3ddc84;
+  --red:        #ff5c6a;
+  --yellow:     #ffc245;
+  --orange:     #ff8c42;
+  --text-1:     #e8eaf0;
+  --text-2:     #8a90a8;
+  --text-3:     #555d7a;
+  --radius:     8px;
+  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100vh;
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ================================================================
+   📺 화면 전환
+   ================================================================ */
+.screen { display: none; }
+
+/* ================================================================
+   🃏 카드
+   ================================================================ */
+.card {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ================================================================
+   🔘 버튼
+   ================================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-primary { background: var(--accent);  color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #6a9fff; }
+
+.btn-success { background: var(--green);   color: #000; }
+.btn-success:hover:not(:disabled) { filter: brightness(1.1); }
+
+.btn-danger  { background: var(--red);     color: #fff; }
+.btn-danger:hover:not(:disabled)  { filter: brightness(1.1); }
+
+.btn-ghost   {
+  background: var(--bg-3);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover:not(:disabled)   { background: var(--border); color: var(--text-1); }
+
+.btn-buy  { background: var(--green);  color: #000; padding: 4px 10px; font-size: 12px; }
+.btn-sell { background: var(--red);    color: #fff; padding: 4px 10px; font-size: 12px; }
+.btn-sm   { padding: 4px 10px; font-size: 12px; }
+.btn-lg   { padding: 12px 28px; font-size: 15px; }
+.btn-full { width: 100%; }
+
+/* ================================================================
+   📝 폼 요소
+   ================================================================ */
+.form-group { margin-bottom: 14px; }
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 5px;
+}
+
+input[type=text],
+input[type=number],
+select {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border .15s;
+}
+input:focus, select:focus { border-color: var(--accent); }
+
+/* ================================================================
+   🏠 입장 화면 (index / join)
+   ================================================================ */
+.join-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.join-box {
+  width: 100%;
+  max-width: 400px;
+}
+
+.join-title {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.join-sub {
+  text-align: center;
+  color: var(--text-2);
+  margin-bottom: 28px;
+  font-size: 13px;
+}
+
+/* ================================================================
+   🎛️ 진행자 레이아웃
+   ================================================================ */
+.host-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+  gap: 0;
+  max-width: 1300px;   /* 기존 대비 약 100px 확장 */
+  margin: 0 auto;      /* 중앙 정렬 */
+  width: 100%;
+}
+
+.host-header {
+  grid-column: 1 / -1;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.host-header h1 { font-size: 16px; font-weight: 700; }
+
+.info-badge {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-2);
+}
+
+.info-badge span { color: var(--text-1); font-weight: 700; }
+
+.host-sidebar {
+  background: var(--bg-1);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.host-main {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* ================================================================
+   👤 학생 레이아웃
+   ================================================================ */
+.player-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+   width: 100%; 
+}
+
+.player-header {
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.player-name-badge {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.player-cash-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--yellow);
+  font-weight: 700;
+}
+
+.player-body {
+  flex: 1;
+  padding: 12px 8px;   /* 좌우 패딩 축소 */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;          /* 추가 */
+  box-sizing: border-box;
+}
+
+/* ================================================================
+   📊 테이블
+   ================================================================ */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--bg-3);
+  vertical-align: middle;
+}
+
+.data-table tr:last-child td { border-bottom: none; }
+
+.data-table tr:hover td { background: var(--bg-2); }
+
+.clickable-row { cursor: pointer; }
+.clickable-row:hover td { background: var(--bg-2); }
+
+.delisted-row { opacity: .5; }
+
+/* 테이블 내 편집 입력 (종목 편집) */
+.tbl-input {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.tbl-input.number { font-family: 'JetBrains Mono', monospace; }
+.tbl-input:focus  { border-color: var(--accent); outline: none; }
+
+/* ================================================================
+   📈 색상 — 상승/하락
+   ================================================================ */
+.up       { color: var(--green); font-weight: 600; }
+.down     { color: var(--red);   font-weight: 600; }
+.delisted { color: var(--text-3); text-decoration: line-through; }
+.muted    { color: var(--text-3); font-size: 12px; }
+
+/* ================================================================
+   📰 뉴스
+   ================================================================ */
+.news-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.news-list li {
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border-radius: 4px;
+  border-left: 3px solid var(--border);
+  line-height: 1.5;
+}
+
+.news-list li:first-child { border-left-color: var(--accent); color: var(--text-1); }
+
+/* 거래 후 뉴스 */
+#h-news-post li,
+#p-news-post li {
+  border-left-color: var(--yellow);
+  color: var(--text-1);
+}
+
+/* ================================================================
+   💰 자산 요약 (학생)
+   ================================================================ */
+.asset-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.asset-item {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+
+.asset-item .asset-label {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.asset-item .asset-value {
+  font-size: 15px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--yellow);
+}
+
+.asset-item.total { border-color: var(--accent); }
+.asset-item.total .asset-value { color: var(--accent); font-size: 17px; }
+
+/* ================================================================
+   🏆 순위표
+   ================================================================ */
+.rank-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rank-table th {
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.rank-table td { padding: 8px 10px; border-bottom: 1px solid var(--bg-3); }
+.rank-table tr:last-child td { border-bottom: none; }
+.my-row td { background: rgba(79,138,255,.08); color: var(--accent); font-weight: 600; }
+
+/* ================================================================
+   💱 매수/매도 모달
+   ================================================================ */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+
+.modal-box {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.modal-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.modal-info-row span:last-child {
+  color: var(--text-1);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.modal-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 14px 0;
+}
+
+.modal-cost-preview {
+  text-align: right;
+  font-size: 13px;
+  color: var(--yellow);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  min-height: 20px;
+}
+
+.modal-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.modal-btn-cancel {
+  grid-column: 1 / -1;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  border-radius: var(--radius);
+  padding: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 4px;
+  transition: all .15s;
+}
+.modal-btn-cancel:hover { border-color: var(--text-2); color: var(--text-1); }
+
+/* ================================================================
+   🍞 토스트
+   ================================================================ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+  max-width: 90vw;
+  text-align: center;
+}
+.toast.show { opacity: 1; }
+
+/* ================================================================
+   🏗️ 게임 설정 화면
+   ================================================================ */
+.setup-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.setup-box {
+  width: 100%;
+  max-width: 480px;
+}
+
+.setup-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.setup-sub {
+  color: var(--text-2);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+/* 방 코드 표시 */
+.room-code-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .15em;
+  text-align: center;
+  padding: 16px;
+  background: var(--bg-2);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  margin: 12px 0 20px;
+}
+
+/* ================================================================
+   🔘 다음 라운드 버튼 (진행자)
+   ================================================================ */
+.next-round-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 12px;
+}
+.next-round-btn:hover:not(:disabled) { background: #6a9fff; }
+.next-round-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ================================================================
+   📱 반응형 (모바일)
+   ================================================================ */
+@media (max-width: 768px) {
+  .host-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto 1fr;
+  }
+  .host-sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .asset-summary { grid-template-columns: 1fr 1fr; }
+  .asset-item.total { grid-column: 1 / -1; }
+  .modal-btns { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 480px) {
+  .asset-summary { grid-template-columns: 1fr; }
+  .room-code-display { font-size: 28px; }
+}
+
+/* ================================================================
+   🎨 스크롤바
+   ================================================================ */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
