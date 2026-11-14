@@ -1,0 +1,13 @@
+{
+  "theme": "holo",
+  "card": "default",
+  "hover": "default",
+  "font": "auto",
+  "motion": {
+    "title": "typing",
+    "stars": true,
+    "fadeup": true,
+    "btn": true
+  },
+  "updated": "2026-11-14T23:08:31.965Z"
+}
