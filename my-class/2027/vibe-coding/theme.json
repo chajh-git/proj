@@ -1,7 +1,7 @@
 {
   "theme": "holo",
-  "card": "default",
-  "hover": "default",
+  "card": "frame",
+  "hover": "glow",
   "font": "auto",
   "motion": {
     "title": "typing",
@@ -9,5 +9,5 @@
     "fadeup": true,
     "btn": true
   },
-  "updated": "2026-11-14T23:08:31.965Z"
+  "updated": "2026-11-14T23:08:53.273Z"
 }
