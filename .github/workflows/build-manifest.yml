@@ -7,7 +7,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "**/20??/vibe-coding/**"
+      - "**/vibe-coding/**"
+      - ".github/workflows/build-manifest.yml"
   workflow_dispatch:
 
 permissions:
