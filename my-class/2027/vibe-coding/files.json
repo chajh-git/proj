@@ -1,0 +1,57 @@
+{
+  "examples": [
+    {
+      "dir": "검 강화 게임",
+      "entry": "Sword Upgrade.html"
+    },
+    {
+      "dir": "경제의 신",
+      "entry": "index.html"
+    },
+    {
+      "dir": "기억의 물방울",
+      "entry": "Memory Droplets.html"
+    },
+    {
+      "dir": "대칭축 찾기",
+      "entry": "대칭축 찾기.html"
+    },
+    {
+      "dir": "마인크래프트+FPS",
+      "entry": "FPS2.0+마인크래프트.html"
+    },
+    {
+      "dir": "벽돌깨기(Brick Nova)",
+      "entry": "Brick Nova.html"
+    },
+    {
+      "dir": "복싱+8번출구",
+      "entry": "8번출구 아저씨와 복싱.html"
+    },
+    {
+      "dir": "사람 vs AI",
+      "entry": "AI vs Job.html"
+    },
+    {
+      "dir": "저팔계 폐교 탈출",
+      "entry": "저팔게 폐교 탈출.html"
+    },
+    {
+      "dir": "지렁이 게임",
+      "entry": "Neon Snake Game.html"
+    },
+    {
+      "dir": "쿨낚시",
+      "entry": "Cool Fishing.html"
+    },
+    {
+      "dir": "탱크",
+      "entry": "Tank.html"
+    },
+    {
+      "dir": "폭탄 돌리기",
+      "entry": "index.html"
+    }
+  ],
+  "schools": {}
+}
