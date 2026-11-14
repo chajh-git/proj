@@ -75,3 +75,9 @@ html[data-theme="neon"] .class-hint { border-radius: 0; }
 html[data-theme="neon"] .example-item { border-radius: 0; border-width: 2px; }
 html[data-theme="neon"] .example-item .ex-icon { color: #38f3ff; }
 html[data-theme="neon"] .rating-soon-banner { border-radius: 0; }
+
+/* 메인 메시지 (AI 바이브 랩 : 창작 전시관) */
+html[data-theme="neon"] .lab-lead strong { color: #38f3ff; }
+html[data-theme="neon"] .lab-steps li { border-radius: 0; border-width: 2px; box-shadow: 4px 4px 0 rgba(255,61,242,.25); }
+html[data-theme="neon"] .lab-steps .no { font-family: var(--px); font-size: .6rem; letter-spacing: 0; }
+html[data-theme="neon"] .lab-steps b { font-family: var(--gg); font-weight: 400; }

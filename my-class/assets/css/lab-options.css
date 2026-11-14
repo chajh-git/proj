@@ -1,0 +1,188 @@
+/* ═══════════════════════════════════════════════════════════════
+   AI 바이브 랩 : 창작 전시관 — 공통 디자인 옵션
+   테마와 별개로 고르는 카드 형태 · 호버 · 타이포그래피 · 모션.
+   assets/js/lab-ui.js 가 <html> 의 data-card / data-hover / data-font / data-m-* 값을 바꿔서 켭니다.
+   값이 없으면 아무 것도 바뀌지 않습니다.
+═══════════════════════════════════════════════════════════════ */
+
+/* ───────────── 1. 전시 액자 카드 (data-card="frame") ───────────── */
+html[data-card="frame"] #app { counter-reset: exh; }
+html[data-card="frame"] .medal-grid { gap: 28px; }
+html[data-card="frame"] .medal-card {
+  counter-increment: exh;
+  --fc: var(--border);
+  padding: 22px 22px 24px;
+  border-radius: 3px;
+  border: 7px solid var(--fc);
+  background: var(--card);
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,.45),
+    inset 0 0 0 16px color-mix(in srgb, var(--text) 6%, transparent),
+    inset 0 0 26px rgba(0,0,0,.30),
+    0 18px 38px rgba(0,0,0,.34);
+}
+html[data-card="frame"] .medal-card.diamond { --fc: var(--diamond); box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), inset 0 0 0 16px color-mix(in srgb, var(--text) 6%, transparent), inset 0 0 26px rgba(0,0,0,.30), 0 18px 38px rgba(0,0,0,.34), 0 0 26px var(--glow-dia); }
+html[data-card="frame"] .medal-card.gold    { --fc: var(--gold);    box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), inset 0 0 0 16px color-mix(in srgb, var(--text) 6%, transparent), inset 0 0 26px rgba(0,0,0,.30), 0 18px 38px rgba(0,0,0,.34), 0 0 22px var(--glow-gold); }
+html[data-card="frame"] .medal-card.silver  { --fc: var(--silver);  box-shadow: inset 0 0 0 2px rgba(0,0,0,.45), inset 0 0 0 16px color-mix(in srgb, var(--text) 6%, transparent), inset 0 0 26px rgba(0,0,0,.30), 0 18px 38px rgba(0,0,0,.34), 0 0 16px var(--glow-sil); }
+html[data-card="frame"] .medal-card .thumb {
+  border-radius: 1px;
+  border: 1px solid color-mix(in srgb, var(--text) 30%, transparent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--bg) 70%, transparent), 0 6px 16px rgba(0,0,0,.4);
+  margin-bottom: 22px;
+}
+/* 전시 번호 (NO. 001) — 작품 옆 명패 */
+html[data-card="frame"] .medal-card .card-name::before {
+  content: "NO. " counter(exh, decimal-leading-zero);
+  display: block;
+  font-size: .66rem; letter-spacing: .22em; font-weight: 700;
+  color: var(--fc); margin-bottom: 4px;
+}
+html[data-card="frame"] .medal-card .card-title { margin-bottom: 40px; }
+html[data-card="frame"] .example-item {
+  border-radius: 2px;
+  border: 3px double var(--border);
+  padding: 14px 18px;
+}
+html[data-card="frame"] .thumb { border-radius: 1px; border-width: 2px; border-style: double; }
+
+/* ───────────── 2. 마우스 호버 효과 (data-hover) ───────────── */
+html[data-hover="none"] :is(.medal-card, .example-item):hover { transform: none !important; }
+
+html[data-hover="glow"] :is(.medal-card, .example-item) { transition: transform .25s, box-shadow .3s, border-color .3s, color .2s; }
+html[data-hover="glow"] :is(.medal-card, .example-item):hover {
+  transform: translateY(-3px);
+  border-color: var(--accent) !important;
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 30px color-mix(in srgb, var(--accent) 60%, transparent),
+    0 0 84px color-mix(in srgb, var(--accent) 26%, transparent) !important;
+}
+
+html:is([data-hover="spotlight"], [data-hover="tilt"]) .example-item { position: relative; overflow: hidden; }
+html:is([data-hover="spotlight"], [data-hover="tilt"]) :is(.medal-card, .example-item)::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  opacity: 0; transition: opacity .25s;
+  background: radial-gradient(280px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%);
+}
+html:is([data-hover="spotlight"], [data-hover="tilt"]) :is(.medal-card, .example-item):hover::after { opacity: 1; }
+html[data-hover="spotlight"] :is(.medal-card, .example-item):hover {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border)) !important;
+}
+html[data-hover="tilt"] :is(.medal-card, .example-item) {
+  transition: transform .12s ease-out, box-shadow .3s, border-color .3s;
+  will-change: transform;
+}
+html[data-hover="tilt"] :is(.medal-card, .example-item):hover {
+  box-shadow: 0 22px 44px rgba(0,0,0,.4), 0 0 26px color-mix(in srgb, var(--accent) 35%, transparent) !important;
+}
+
+/* ───────────── 3. 타이포그래피 (data-font) ───────────── */
+html[data-font="lab"] {
+  --lab-title: 'Space Grotesk', 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  --lab-body:  'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  --lab-mono:  'JetBrains Mono', ui-monospace, 'D2Coding', monospace;
+  --lab-tw: 800; --lab-ls: -.02em;
+}
+html[data-font="orbit"] {
+  --lab-title: 'Orbitron', 'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  --lab-body:  'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  --lab-mono:  'JetBrains Mono', ui-monospace, 'D2Coding', monospace;
+  --lab-tw: 800; --lab-ls: .01em;
+}
+html[data-font="mono"] {
+  --lab-title: 'JetBrains Mono', 'Pretendard Variable', Pretendard, ui-monospace, monospace;
+  --lab-body:  'Pretendard Variable', Pretendard, 'Noto Sans KR', sans-serif;
+  --lab-mono:  'JetBrains Mono', ui-monospace, 'D2Coding', monospace;
+  --lab-tw: 800; --lab-ls: -.03em;
+}
+/* 본문 — 가독성 좋은 Pretendard */
+html[data-font][data-font]:not([data-font="auto"]) :is(
+  body, .title-sub, .lab-lead, .lab-steps .d, .card-name, th, .class-chip, .grade-label,
+  .example-item, .back-link, .name-cell, .rating-soon-banner, .class-hint, .state-msg, td a
+) { font-family: var(--lab-body); }
+/* 제목 — 기하학적 산세리프 / 미래형 / 모노 (한글은 Pretendard 굵게) */
+html[data-font][data-font]:not([data-font="auto"]) :is(
+  .title-main, .section-label, .tier-label, .card-title, td a.work-title, .lab-steps b
+) { font-family: var(--lab-title); font-weight: var(--lab-tw); letter-spacing: var(--lab-ls); }
+html[data-font][data-font]:not([data-font="auto"]) :is(.section-label, .tier-label, .card-title, td a.work-title, .lab-steps b) { font-weight: 700; }
+/* 번호 · 코드 · 태그 — 모노스페이스 */
+html[data-font][data-font]:not([data-font="auto"]) :is(
+  .rk, td.rank-cell, td.views-cell, .school-cell, .id-cell, .card-views, .medal-rank,
+  .lab-steps .no, .star-avg, .tier-label span
+) { font-family: var(--lab-mono); }
+html[data-font][data-font]:not([data-font="auto"])[data-card="frame"] .card-name::before { font-family: var(--lab-mono); }
+
+/* ───────────── 4. 모션 · 인터랙션 (data-m-*) ───────────── */
+
+/* 4-1. 타이틀 등장 — 타이핑 */
+.fx-caret {
+  display: inline-block; width: 0; height: .92em; margin-left: 3px;
+  border-right: .09em solid var(--accent); vertical-align: -.08em;
+  animation: fxBlink .8s steps(1) infinite;
+}
+@keyframes fxBlink { 50% { opacity: 0; } }
+
+/* 4-1. 타이틀 등장 — 글리치 */
+html[data-m-title] .title-main { position: relative; }
+.title-main.fx-glitch { animation: fxFlicker 1.2s steps(1, end) 1; }
+.title-main.fx-glitch::before,
+.title-main.fx-glitch::after {
+  content: attr(data-text);
+  position: absolute; left: 0; right: 0; top: 0;
+  background: none; pointer-events: none;
+  mix-blend-mode: screen;
+}
+.title-main.fx-glitch::before { color: #38f3ff; -webkit-text-fill-color: #38f3ff; animation: fxGl1 1.2s steps(14, end) 1 both; }
+.title-main.fx-glitch::after  { color: #ff3df2; -webkit-text-fill-color: #ff3df2; animation: fxGl2 1.2s steps(14, end) 1 both; }
+@keyframes fxFlicker { 0% { opacity: 0; } 8% { opacity: 1; } 14% { opacity: .15; } 20% { opacity: 1; } 52% { opacity: .55; } 58% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes fxGl1 {
+  0%   { clip-path: inset(0 0 85% 0);   transform: translate(-5px, 0); }
+  20%  { clip-path: inset(40% 0 35% 0); transform: translate(5px, 0); }
+  40%  { clip-path: inset(10% 0 70% 0); transform: translate(-4px, 1px); }
+  60%  { clip-path: inset(60% 0 15% 0); transform: translate(4px, -1px); }
+  80%  { clip-path: inset(25% 0 55% 0); transform: translate(-2px, 0); }
+  100% { clip-path: inset(0 0 100% 0);  transform: translate(0, 0); }
+}
+@keyframes fxGl2 {
+  0%   { clip-path: inset(70% 0 10% 0); transform: translate(5px, 0); }
+  25%  { clip-path: inset(5% 0 75% 0);  transform: translate(-5px, 0); }
+  45%  { clip-path: inset(50% 0 30% 0); transform: translate(4px, 1px); }
+  65%  { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+  85%  { clip-path: inset(80% 0 5% 0);  transform: translate(2px, 0); }
+  100% { clip-path: inset(100% 0 0 0);  transform: translate(0, 0); }
+}
+
+/* 4-2. 배경 별빛 파티클 */
+.fx-stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+
+/* 4-3. 작품 카드 페이드업 + 글로우 */
+html[data-m-fadeup] .fx-up:not(.fx-show) { opacity: 0; transform: translateY(22px); }
+html[data-m-fadeup] .fx-up.fx-show {
+  animation:
+    fxUp .65s cubic-bezier(.2, .7, .2, 1) var(--fx-d, 0ms) backwards,
+    fxGlow 1.5s ease-out var(--fx-d, 0ms) backwards;
+}
+@keyframes fxUp { from { opacity: 0; transform: translateY(22px); } }
+@keyframes fxGlow { 40% { box-shadow: 0 0 34px 2px color-mix(in srgb, var(--accent) 55%, transparent); } }
+
+/* 4-4. 버튼 호버 빛 번짐 */
+html[data-m-btn] :is(.class-chip, .back-link) {
+  transition: box-shadow .25s, border-color .25s, color .2s, background-color .2s;
+}
+html[data-m-btn] :is(.class-chip, .back-link):hover {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+html[data-m-btn] :is(.class-chip:not(.active), .back-link):hover {
+  background-image: radial-gradient(circle 80px at var(--bx, 50%) var(--by, 50%),
+    color-mix(in srgb, var(--accent) 36%, transparent), transparent 75%);
+}
+
+/* 운영체제의 '동작 줄이기' 설정을 존중 */
+@media (prefers-reduced-motion: reduce) {
+  html[data-m-fadeup] .fx-up:not(.fx-show) { opacity: 1; transform: none; }
+  html[data-m-fadeup] .fx-up.fx-show,
+  .title-main.fx-glitch, .title-main.fx-glitch::before, .title-main.fx-glitch::after { animation: none; }
+  .fx-caret { animation: none; }
+  .fx-stars { display: none; }
+}

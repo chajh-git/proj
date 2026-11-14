@@ -110,3 +110,10 @@ html[data-theme="editorial"] .rating-soon-banner { background: transparent; bord
 html[data-theme="editorial"] .rating-soon-banner strong { color: #0e0e0e; }
 html[data-theme="editorial"] .rating-soon-banner .banner-date { color: #d93a12; }
 html[data-theme="editorial"] .state-msg { color: #4a4a4a; }
+
+/* 메인 메시지 (AI 바이브 랩 : 창작 전시관) — 왼쪽 정렬 헤더에 맞춤 */
+html[data-theme="editorial"] .lab-lead { margin-left: 0; margin-right: 0; max-width: 760px; color: #0e0e0e; opacity: 1; }
+html[data-theme="editorial"] .lab-lead strong { color: #d93a12; }
+html[data-theme="editorial"] .lab-steps { margin-left: 0; margin-right: 0; max-width: none; margin-top: 26px; }
+html[data-theme="editorial"] .lab-steps li { background: transparent; border: 0; border-top: 2px solid #0e0e0e; border-radius: 0; padding: 12px 0 0; }
+html[data-theme="editorial"] .lab-steps .no { color: #d93a12; }

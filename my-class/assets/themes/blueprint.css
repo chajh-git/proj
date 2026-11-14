@@ -1,0 +1,81 @@
+/* 테마: 사이버 블루프린트 — 어두운 청색 배경에 가는 격자선·좌표·모서리 표식, 설계도/실험 노트 느낌 */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap");
+
+html[data-theme="blueprint"] {
+  --bg: #06121f; --card: #0a1b2e; --border: #1f4a73;
+  --accent: #5ec8ff; --accent2: #ffd166;
+  --text: #dff0ff; --muted: #7fa3c4;
+  --diamond: #5ec8ff; --gold: #ffd166; --silver: #a8c4dc;
+  --glow-dia: #5ec8ff44; --glow-gold: #ffd16644; --glow-sil: #a8c4dc2a;
+  --bm: 'JetBrains Mono', 'Noto Sans KR', ui-monospace, monospace;
+}
+
+html[data-theme="blueprint"] body {
+  background: var(--bg);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+/* 작은 격자 24px + 큰 격자 120px */
+html[data-theme="blueprint"] body::before {
+  background-image:
+    linear-gradient(rgba(94, 200, 255, .22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 200, 255, .22) 1px, transparent 1px),
+    linear-gradient(rgba(94, 200, 255, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 200, 255, .08) 1px, transparent 1px);
+  background-size: 120px 120px, 120px 120px, 24px 24px, 24px 24px;
+  opacity: 1;
+}
+
+html[data-theme="blueprint"] .title-main {
+  font-family: var(--bm); font-weight: 700; letter-spacing: -.03em;
+  background: none; -webkit-text-fill-color: #eaf6ff; color: #eaf6ff;
+  text-shadow: 0 0 20px rgba(94, 200, 255, .45);
+}
+html[data-theme="blueprint"] .title-sub { font-family: var(--bm); color: var(--accent); letter-spacing: .12em; font-weight: 400; font-size: .9rem; }
+html[data-theme="blueprint"] .title-sub::before { content: '// '; color: var(--accent2); }
+html[data-theme="blueprint"] header::after { height: 2px; width: 160px; background: repeating-linear-gradient(90deg, #5ec8ff 0 10px, transparent 10px 16px); }
+html[data-theme="blueprint"] .lab-lead strong { color: var(--accent2); }
+html[data-theme="blueprint"] .back-link { border-radius: 0; border-style: dashed; font-family: var(--bm); }
+
+html[data-theme="blueprint"] .section-label { font-family: var(--bm); font-size: .82rem; letter-spacing: .08em; color: var(--accent); text-transform: none; }
+html[data-theme="blueprint"] .section-label::before { content: '[ ]'; color: var(--accent2); }
+html[data-theme="blueprint"] .section-label::after { height: 0; background: none; border-top: 1px dashed var(--border); }
+html[data-theme="blueprint"] .tier-label { font-family: var(--bm); font-weight: 500; }
+
+/* 카드: 점선 테두리 + 네 모서리 표식 */
+html[data-theme="blueprint"] :is(.medal-card, .lab-steps li, .example-item, .class-hint, .rating-soon-banner) {
+  border-radius: 0; border: 1px dashed var(--border); background: rgba(8, 24, 42, .82);
+}
+html[data-theme="blueprint"] .medal-card::before,
+html[data-theme="blueprint"] .lab-steps li::before {
+  content: ''; position: absolute; inset: 5px; pointer-events: none; opacity: .9;
+  background:
+    linear-gradient(#5ec8ff, #5ec8ff) left top / 12px 1px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) left top / 1px 12px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) right top / 12px 1px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) right top / 1px 12px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) left bottom / 12px 1px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) left bottom / 1px 12px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) right bottom / 12px 1px no-repeat,
+    linear-gradient(#5ec8ff, #5ec8ff) right bottom / 1px 12px no-repeat !important;
+}
+html[data-theme="blueprint"] .lab-steps li { position: relative; }
+html[data-theme="blueprint"] .medal-card.diamond { border-color: #5ec8ff; box-shadow: 0 0 22px var(--glow-dia); }
+html[data-theme="blueprint"] .medal-card.gold    { border-color: #ffd166; box-shadow: 0 0 20px var(--glow-gold); }
+html[data-theme="blueprint"] .medal-card.silver  { border-color: #a8c4dc; box-shadow: 0 0 16px var(--glow-sil); }
+html[data-theme="blueprint"] .medal-card.gold::before, html[data-theme="blueprint"] .medal-card.silver::before { filter: hue-rotate(0deg); }
+html[data-theme="blueprint"] .thumb { border-radius: 0; border: 1px solid var(--border); }
+html[data-theme="blueprint"] .medal-rank { background: none; padding: 0; font-family: var(--bm); font-size: 1rem; }
+html[data-theme="blueprint"] .medal-rank .rn::before { content: 'No.'; font-size: .62em; margin-right: 3px; opacity: .8; }
+html[data-theme="blueprint"] .card-name, html[data-theme="blueprint"] .card-views { font-family: var(--bm); }
+html[data-theme="blueprint"] .card-title { font-weight: 700; }
+
+html[data-theme="blueprint"] .table-wrap { border-radius: 0; border: 1px dashed var(--border); background: rgba(8, 24, 42, .82); }
+html[data-theme="blueprint"] th { font-family: var(--bm); letter-spacing: .06em; text-transform: none; }
+html[data-theme="blueprint"] td.rank-cell, html[data-theme="blueprint"] td.views-cell, html[data-theme="blueprint"] .id-cell, html[data-theme="blueprint"] .school-cell { font-family: var(--bm); }
+html[data-theme="blueprint"] tbody tr:hover { background: rgba(94, 200, 255, .06); }
+html[data-theme="blueprint"] .lab-steps .no { font-family: var(--bm); color: var(--accent2); }
+html[data-theme="blueprint"] .lab-steps .no::before { content: 'STEP '; opacity: .7; }
+
+html[data-theme="blueprint"] .class-chip { border-radius: 0; border-style: dashed; font-family: var(--bm); font-size: .82rem; }
+html[data-theme="blueprint"] .class-chip.active { background: var(--accent); color: #04121f; border-style: solid; box-shadow: 0 0 18px rgba(94, 200, 255, .5); }
+html[data-theme="blueprint"] .grade-label { font-family: var(--bm); font-size: .78rem; }

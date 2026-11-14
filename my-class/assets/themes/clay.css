@@ -86,3 +86,8 @@ html[data-theme="clay"] .example-item .ex-icon { display: inline-flex; align-ite
 html[data-theme="clay"] .rating-soon-banner { background: #fff; border: 0; border-radius: 22px; box-shadow: 0 14px 24px -14px rgba(31,58,54,.3), var(--puff); color: var(--muted); }
 html[data-theme="clay"] .rating-soon-banner strong { color: var(--text); }
 html[data-theme="clay"] .rating-soon-banner .banner-date { color: #ff7a59; }
+
+/* 메인 메시지 (AI 바이브 랩 : 창작 전시관) */
+html[data-theme="clay"] .lab-lead strong { color: #ff7a59; }
+html[data-theme="clay"] .lab-steps li { border: 0; border-radius: 26px; background: #fff; padding: 16px 20px 20px; box-shadow: 0 16px 26px -14px rgba(31,58,54,.3), inset 0 6px 10px rgba(255,255,255,.95); }
+html[data-theme="clay"] .lab-steps .no { color: #ff7a59; }

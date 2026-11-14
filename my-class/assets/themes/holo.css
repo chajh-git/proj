@@ -1,0 +1,71 @@
+/* 테마: 홀로그램 연구소 — 반투명 유리 패널 위에 빛나는 UI가 떠 있는 느낌 (글래스모피즘 + 은은한 글로우) */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap");
+
+html[data-theme="holo"] {
+  --bg: #070b16; --card: rgba(22, 34, 64, .55); --border: rgba(110, 231, 255, .26);
+  --accent: #6ee7ff; --accent2: #a78bfa;
+  --text: #eaf4ff; --muted: #8ea3c4;
+  --diamond: #7ff3ff; --gold: #ffd36e; --silver: #c8d6ee;
+  --glow-dia: #6ee7ff55; --glow-gold: #ffd36e44; --glow-sil: #c8d6ee33;
+  --hg: 'Space Grotesk', 'Noto Sans KR', sans-serif;
+}
+
+html[data-theme="holo"] body {
+  background:
+    radial-gradient(900px 520px at 12% -6%, rgba(110, 231, 255, .20), transparent 62%),
+    radial-gradient(820px 560px at 92% 0, rgba(167, 139, 250, .22), transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+}
+html[data-theme="holo"] body::before {
+  background-image:
+    linear-gradient(rgba(110, 231, 255, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(110, 231, 255, .08) 1px, transparent 1px);
+  background-size: 64px 64px; opacity: 1;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0, #000, transparent 80%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0, #000, transparent 80%);
+}
+
+html[data-theme="holo"] .title-main {
+  font-family: var(--hg); font-weight: 700; letter-spacing: -.02em;
+  background: linear-gradient(120deg, #ffffff 15%, #6ee7ff 52%, #a78bfa 90%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 22px rgba(110, 231, 255, .35));
+}
+html[data-theme="holo"] .title-sub { color: var(--accent); letter-spacing: .2em; font-weight: 500; }
+html[data-theme="holo"] header::after { background: linear-gradient(90deg, transparent, #6ee7ff, #a78bfa, transparent); width: 220px; box-shadow: 0 0 18px #6ee7ff99; }
+html[data-theme="holo"] .lab-lead strong { color: #bff4ff; text-shadow: 0 0 14px rgba(110, 231, 255, .5); }
+html[data-theme="holo"] .back-link { border-radius: 999px; background: rgba(255,255,255,.04); border-color: var(--border); }
+
+/* 유리 패널 */
+html[data-theme="holo"] :is(.medal-card, .table-wrap, .example-item, .class-hint, .rating-soon-banner, .lab-steps li, .class-chip:not(.active)) {
+  background: linear-gradient(160deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02) 60%), var(--card);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16);
+}
+html[data-theme="holo"] .lab-steps li { position: relative; border-radius: 14px; }
+html[data-theme="holo"] .lab-steps li::before {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, #6ee7ff, transparent); opacity: .8;
+}
+html[data-theme="holo"] .lab-steps .no { color: var(--accent); }
+
+html[data-theme="holo"] .section-label { color: #bcd2ee; letter-spacing: .16em; }
+html[data-theme="holo"] .section-label::before { content: ''; width: 8px; height: 8px; flex: none; background: var(--accent); transform: rotate(45deg); box-shadow: 0 0 12px var(--accent); }
+html[data-theme="holo"] .section-label::after { background: linear-gradient(90deg, rgba(110,231,255,.4), transparent); }
+
+html[data-theme="holo"] .medal-card { border-radius: 16px; }
+html[data-theme="holo"] .medal-card.diamond { border-color: rgba(127, 243, 255, .6); box-shadow: 0 0 34px var(--glow-dia), inset 0 1px 0 rgba(255,255,255,.2); }
+html[data-theme="holo"] .medal-card.gold    { border-color: rgba(255, 211, 110, .55); box-shadow: 0 0 30px var(--glow-gold), inset 0 1px 0 rgba(255,255,255,.18); }
+html[data-theme="holo"] .medal-card.silver  { border-color: rgba(200, 214, 238, .45); box-shadow: 0 0 22px var(--glow-sil), inset 0 1px 0 rgba(255,255,255,.16); }
+html[data-theme="holo"] .thumb { border-radius: 10px; border-color: rgba(110, 231, 255, .25); }
+html[data-theme="holo"] .card-title { text-shadow: 0 0 18px rgba(110, 231, 255, .18); }
+
+html[data-theme="holo"] .table-wrap { border-radius: 16px; }
+html[data-theme="holo"] thead tr { background: rgba(110, 231, 255, .07); }
+html[data-theme="holo"] tbody tr:hover { background: rgba(110, 231, 255, .06); }
+
+html[data-theme="holo"] .class-chip { border-color: var(--border); }
+html[data-theme="holo"] .class-chip.active { color: #04111a; background: linear-gradient(135deg, #6ee7ff, #a78bfa); box-shadow: 0 0 22px rgba(110, 231, 255, .5); }
+html[data-theme="holo"] .example-item:hover { box-shadow: 0 0 22px var(--glow-dia); }

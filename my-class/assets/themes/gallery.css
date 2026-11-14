@@ -1,0 +1,72 @@
+/* 테마: 어두운 갤러리 — 검은 전시장 벽, 위에서 떨어지는 스포트라이트, 조명받는 작품 카드 */
+@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700;900&family=Noto+Sans+KR:wght@400;500;700&display=swap");
+
+html[data-theme="gallery"] {
+  --bg: #0a0a0c; --card: #121214; --border: #34302a;
+  --accent: #e9c883; --accent2: #f4eee0;
+  --text: #f1ede4; --muted: #8f897c;
+  --diamond: #f4eee0; --gold: #e9c883; --silver: #a9a499;
+  --glow-dia: #f4eee033; --glow-gold: #e9c88344; --glow-sil: #a9a49922;
+  --gs: 'Noto Serif KR', 'Noto Sans KR', serif;
+}
+
+html[data-theme="gallery"] body {
+  background:
+    radial-gradient(ellipse 60% 460px at 50% -40px, rgba(255, 244, 214, .20), rgba(255, 244, 214, 0) 72%),
+    linear-gradient(#0c0c0e, #070708);
+  background-attachment: fixed;
+}
+/* 벽면의 은은한 질감 대신, 바닥에서 올라오는 어둠 */
+html[data-theme="gallery"] body::before {
+  background-image: none;
+  background: linear-gradient(to top, rgba(0,0,0,.55), transparent 35%);
+  opacity: 1;
+}
+/* 천장 레일 조명 */
+html[data-theme="gallery"] header::before {
+  content: ''; position: absolute; left: 50%; top: 0; width: min(520px, 70%); height: 3px; transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, #e9c883, transparent); box-shadow: 0 0 24px 4px rgba(233, 200, 131, .45);
+}
+
+html[data-theme="gallery"] .title-main {
+  font-family: var(--gs); font-weight: 900; letter-spacing: .02em;
+  background: linear-gradient(180deg, #fffaf0 30%, #e9c883);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 24px rgba(233, 200, 131, .25));
+}
+html[data-theme="gallery"] .title-sub { color: #b9b2a2; letter-spacing: .3em; font-weight: 400; }
+html[data-theme="gallery"] header::after { height: 1px; width: 160px; background: #e9c883; }
+html[data-theme="gallery"] .lab-lead strong { color: #e9c883; }
+html[data-theme="gallery"] .back-link { border-radius: 0; border-color: #e9c88366; }
+
+html[data-theme="gallery"] .section-label { font-family: var(--gs); font-size: 1rem; letter-spacing: .12em; text-transform: none; color: #d8d1c0; font-weight: 500; }
+html[data-theme="gallery"] .section-label::after { background: linear-gradient(90deg, #e9c88344, transparent); }
+html[data-theme="gallery"] .tier-label { font-family: var(--gs); font-weight: 500; letter-spacing: .1em; }
+
+/* 작품 카드: 어둠 속에서 위쪽 조명을 받는 액자 */
+html[data-theme="gallery"] .medal-card {
+  border-radius: 2px; border-width: 1px; background: linear-gradient(180deg, #1a1915, #0e0e10 55%);
+}
+html[data-theme="gallery"] .medal-card::before {
+  background: radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255, 240, 200, .20), transparent 70%) !important;
+}
+html[data-theme="gallery"] .medal-card.diamond { border-color: #f4eee0aa; box-shadow: 0 -10px 40px -8px var(--glow-dia), 0 18px 30px rgba(0,0,0,.6); }
+html[data-theme="gallery"] .medal-card.gold    { border-color: #e9c883aa; box-shadow: 0 -10px 40px -8px var(--glow-gold), 0 18px 30px rgba(0,0,0,.6); }
+html[data-theme="gallery"] .medal-card.silver  { border-color: #a9a499aa; box-shadow: 0 -10px 34px -8px var(--glow-sil), 0 18px 30px rgba(0,0,0,.6); }
+html[data-theme="gallery"] .medal-card:hover { transform: translateY(-3px); }
+html[data-theme="gallery"] .thumb { border-radius: 0; border: 1px solid #3a352c; box-shadow: 0 8px 22px rgba(0,0,0,.6); }
+html[data-theme="gallery"] .medal-rank { background: none; padding: 0; font-family: var(--gs); font-size: .95rem; letter-spacing: .08em; }
+html[data-theme="gallery"] .card-title { font-family: var(--gs); font-weight: 700; }
+html[data-theme="gallery"] .card-name { letter-spacing: .08em; }
+
+html[data-theme="gallery"] .table-wrap { border-radius: 2px; background: #0f0f11; }
+html[data-theme="gallery"] th { font-family: var(--gs); letter-spacing: .14em; font-weight: 500; }
+html[data-theme="gallery"] tbody tr:hover { background: rgba(233, 200, 131, .05); }
+html[data-theme="gallery"] td a.work-title { font-family: var(--gs); font-weight: 500; }
+html[data-theme="gallery"] .lab-steps li { border-radius: 2px; background: linear-gradient(180deg, #17160f, #0e0e10); }
+html[data-theme="gallery"] .lab-steps .no { color: #e9c883; font-family: var(--gs); }
+html[data-theme="gallery"] .lab-steps b { font-family: var(--gs); }
+
+html[data-theme="gallery"] .class-chip { border-radius: 2px; background: #121214; }
+html[data-theme="gallery"] .class-chip.active { background: #e9c883; color: #15120a; box-shadow: 0 0 20px rgba(233, 200, 131, .4); }
+html[data-theme="gallery"] .example-item, html[data-theme="gallery"] .class-hint, html[data-theme="gallery"] .rating-soon-banner { border-radius: 2px; }

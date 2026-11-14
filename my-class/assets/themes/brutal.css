@@ -85,3 +85,11 @@ html[data-theme="brutal"] .example-item .ex-icon { display: inline-flex; align-i
 html[data-theme="brutal"] .rating-soon-banner { background: #fff; border: 3px solid #111; border-left-width: 8px; border-radius: 0; color: #111; }
 html[data-theme="brutal"] .rating-soon-banner strong, html[data-theme="brutal"] .rating-soon-banner .banner-date { color: #111; }
 html[data-theme="brutal"] .state-msg { color: #111; }
+
+/* 메인 메시지 (AI 바이브 랩 : 창작 전시관) — 왼쪽 정렬 헤더에 맞춤 */
+html[data-theme="brutal"] .lab-lead { margin-left: 0; margin-right: 0; max-width: 760px; color: #111; opacity: 1; font-weight: 500; }
+html[data-theme="brutal"] .lab-lead strong { color: #111; background: #fff; padding: 0 4px; box-shadow: 3px 3px 0 #111; }
+html[data-theme="brutal"] .lab-steps { margin-left: 0; margin-right: 0; max-width: none; }
+html[data-theme="brutal"] .lab-steps li { background: #fff; color: #111; border: 3px solid #111; border-radius: 0; box-shadow: 6px 6px 0 #111; }
+html[data-theme="brutal"] .lab-steps .no { color: #ff5d8f; }
+html[data-theme="brutal"] .lab-steps .d { color: #333; }
