@@ -2,12 +2,12 @@
   "theme": "holo",
   "card": "frame",
   "hover": "glow",
-  "font": "auto",
+  "font": "lab",
   "motion": {
-    "title": "typing",
+    "title": "glitch",
     "stars": true,
     "fadeup": true,
     "btn": true
   },
-  "updated": "2026-11-14T23:08:53.273Z"
+  "updated": "2026-11-15T00:46:26.382Z"
 }
