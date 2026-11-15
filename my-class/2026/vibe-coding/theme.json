@@ -1,0 +1,13 @@
+{
+  "theme": "holo",
+  "card": "frame",
+  "hover": "glow",
+  "font": "lab",
+  "motion": {
+    "title": "glitch",
+    "stars": true,
+    "fadeup": true,
+    "btn": true
+  },
+  "updated": "2026-11-15T00:46:22.466Z"
+}
