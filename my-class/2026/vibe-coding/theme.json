@@ -1,6 +1,6 @@
 {
   "theme": "holo",
-  "card": "frame",
+  "card": "default",
   "hover": "glow",
   "font": "lab",
   "motion": {
@@ -9,5 +9,5 @@
     "fadeup": true,
     "btn": true
   },
-  "updated": "2026-11-15T10:27:58.706Z"
+  "updated": "2026-11-15T10:40:04.318Z"
 }
