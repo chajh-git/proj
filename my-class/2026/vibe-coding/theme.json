@@ -1,5 +1,5 @@
 {
-  "theme": "default",
+  "theme": "holo",
   "card": "frame",
   "hover": "glow",
   "font": "lab",
@@ -7,7 +7,7 @@
     "title": "typing",
     "stars": false,
     "fadeup": true,
-    "btn": false
+    "btn": true
   },
-  "updated": "2026-11-15T10:25:30.738Z"
+  "updated": "2026-11-15T10:27:58.706Z"
 }
