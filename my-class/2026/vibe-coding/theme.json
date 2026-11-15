@@ -4,10 +4,10 @@
   "hover": "tilt",
   "font": "lab",
   "motion": {
-    "title": "glitch",
+    "title": "typing",
     "stars": false,
-    "fadeup": true,
+    "fadeup": false,
     "btn": true
   },
-  "updated": "2026-11-15T10:22:04.106Z"
+  "updated": "2026-11-15T10:23:49.315Z"
 }
