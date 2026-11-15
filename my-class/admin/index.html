@@ -505,18 +505,23 @@ function updateApply() { $("btn-apply").disabled = !(connected && picked.size); 
 
 async function putTheme(year, c) {
   const path = `${BASE}/${year}/${PAGE}/theme.json`;
-  let sha;
-  const g = await fetch(apiUrl(`contents/${path}?ref=${BRANCH}`), { headers: headers(true) });
-  if (g.ok) sha = (await g.json()).sha;
   const data = { ...c, updated: new Date().toISOString() };
-  const body = {
-    message: `${year}: 디자인 설정 변경 (${nameOf(c.theme)})`,
-    content: btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2) + "\n"))),
-    branch: BRANCH,
-  };
-  if (sha) body.sha = sha;
-  const r = await fetch(apiUrl(`contents/${path}`), { method: "PUT", headers: { ...headers(true), "Content-Type": "application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${year}: 저장 실패 (${r.status}) ${(await r.json().catch(() => ({}))).message || ""}`);
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2) + "\n")));
+  let lastMsg = "";
+  /* sha 가 오래된 값이면(409) 최신 sha 를 다시 받아 최대 4번 재시도 */
+  for (let attempt = 0; attempt < 4; attempt++) {
+    let sha;
+    const g = await fetch(apiUrl(`contents/${path}?ref=${BRANCH}&_=${Date.now()}`), { headers: headers(true), cache: "no-store" });
+    if (g.ok) sha = (await g.json()).sha;
+    const body = { message: `${year}: 디자인 설정 변경 (${nameOf(c.theme)})`, content, branch: BRANCH };
+    if (sha) body.sha = sha;
+    const r = await fetch(apiUrl(`contents/${path}`), { method: "PUT", headers: { ...headers(true), "Content-Type": "application/json" }, body: JSON.stringify(body), cache: "no-store" });
+    if (r.ok) return;
+    lastMsg = (await r.json().catch(() => ({}))).message || "";
+    if (r.status !== 409 && r.status !== 422) throw new Error(`${year}: 저장 실패 (${r.status}) ${lastMsg}`);
+    await new Promise(res => setTimeout(res, 700 * (attempt + 1)));
+  }
+  throw new Error(`${year}: 저장 실패 (409) ${lastMsg}`);
 }
 
 $("btn-apply").addEventListener("click", async () => {
