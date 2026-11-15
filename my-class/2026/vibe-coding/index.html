@@ -299,6 +299,15 @@
     .example-item:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
     .example-item .ex-icon { font-size: 1.1rem; flex-shrink: 0; }
 
+    /* ── 추천 배지 · 작품 메모 · 예시 분류 (admin 의 '작품 관리'에서 지정) ── */
+    .feat-badge {
+      display: inline-block; margin-left: 8px; padding: 1px 9px; vertical-align: middle;
+      font-size: .66rem; font-weight: 700; letter-spacing: .08em; line-height: 1.6;
+      color: #2a1c00; background: linear-gradient(135deg, #ffd36e, #f5a623); border-radius: 999px;
+    }
+    .work-note { margin-top: 4px; font-size: .78rem; color: var(--muted); font-weight: 400; }
+    .ex-cat { margin-left: auto; padding-left: 8px; font-size: .68rem; font-weight: 700; color: var(--muted); letter-spacing: .06em; white-space: nowrap; }
+
     /* 로딩 / 에러 */
     .state-msg { text-align: center; padding: 60px 20px; color: var(--muted); font-size: .9rem; }
     .spinner {
@@ -877,7 +886,7 @@ function renderClassList() {
             <tr>
               <td class="id-cell">${esc(s.id || "-")}</td>
               <td class="name-cell">${esc(s.name || "-")}</td>
-              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
+              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a>${featBadge(s)}${noteHTML(s)}</td>
               <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
               ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
             </tr>`).join("")}
@@ -907,14 +916,18 @@ function bindClassChips() {
    표시 이름에서는 .html 을 생략
 ═══════════════════════════════════════════════════════ */
 function exampleSectionHTML() {
-  const items = TREE.examples.slice().sort((x, y) => cmp(x.dir, y.dir));
+  const exCur = CURATION.examples;
+  const orderIdx = d => { const i = exCur.order.indexOf(d); return i === -1 ? 1e9 : i; };
+  const items = TREE.examples
+    .filter(e => !exCur.hidden.includes(e.dir))
+    .sort((x, y) => (orderIdx(x.dir) - orderIdx(y.dir)) || cmp(x.dir, y.dir));
   const body = items.length
     ? `<div class="example-list">${items.map(e => {
         const open = /^index\.html?$/i.test(e.entry) ? "" : encodeURIComponent(e.entry);
         const shown = e.dir.replace(/\.html?$/i, "");
         return `
         <a class="example-item" href="${ROOT_REL}${EXAMPLES_DIR}/${encodeURIComponent(e.dir)}/${open}" target="_blank" rel="noopener">
-          <span class="ex-icon">▶</span><span>${esc(shown)}</span>
+          <span class="ex-icon">▶</span><span>${esc(shown)}</span>${exCur.category[e.dir] ? `<span class="ex-cat">${esc(exCur.category[e.dir])}</span>` : ""}
         </a>`;
       }).join("")}</div>`
     : `<div class="class-hint">${EXAMPLES_DIR}/ 폴더에 예시 작품 폴더가 없습니다.</div>`;
@@ -956,7 +969,7 @@ function render() {
               <div class="medal-rank"><b class="rn">${offset + j + 1}</b><span class="ru">위</span></div>
             </div>
             <div class="card-name">${multi ? esc(schoolLabel(s.school)) + " · " : ""}${esc(s.name || s.id || "")}</div>
-            <div class="card-title">${esc(s.title)}</div>
+            <div class="card-title">${esc(s.title)}${featBadge(s)}</div>
             <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
           </a>`).join("")}
       </div>`;
@@ -991,7 +1004,7 @@ function render() {
               ${multi ? `<td class="school-cell">${esc(schoolLabel(s.school))}</td>` : ""}
               <td class="id-cell">${esc(s.id || "-")}</td>
               ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
-              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a></td>
+              <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a>${featBadge(s)}${noteHTML(s)}</td>
               <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
               ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
             </tr>`;
@@ -1003,7 +1016,7 @@ function render() {
   const emptyNote = sorted.length ? "" :
     `<div class="state-msg">📂 아직 제출된 학생 작품이 없습니다.</div>`;
 
-  app.innerHTML = medalHTML + emptyNote + classSectionHTML() + exampleSectionHTML() + tableHTML;
+  app.innerHTML = medalHTML + emptyNote + featuredSectionHTML() + classSectionHTML() + exampleSectionHTML() + tableHTML;
 
   bindClassChips();
   renderClassList();
@@ -1062,6 +1075,66 @@ async function applyTheme() {
 }
 
 /* ═══════════════════════════════════════════════════════
+   작품 관리 (curation.json) — admin 페이지의 "작품 관리" 탭에서 저장
+   · 파일이 없거나 비어 있으면 모든 작품이 그대로 보입니다.
+   {
+     "hidden":   ["school-x/파일명.html"],                      // 숨길 학생 작품
+     "featured": ["school-x/파일명.html"],                      // 선생님 추천(⭐ 추천 구역 + 배지)
+     "meta":     { "school-x/파일명.html": { "title": "표시 제목", "note": "한 줄 메모" } },
+     "examples": { "hidden": ["폴더명"], "order": ["폴더명", ...], "category": { "폴더명": "게임" } }
+   }
+═══════════════════════════════════════════════════════ */
+let CURATION = { hidden: [], featured: [], meta: {}, examples: { hidden: [], order: [], category: {} } };
+
+async function loadCuration() {
+  const empty = { hidden: [], featured: [], meta: {}, examples: { hidden: [], order: [], category: {} } };
+  try {
+    const r = await fetch(ROOT_REL + "curation.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return empty;
+    const j = await r.json();
+    const arr = v => Array.isArray(v) ? v.filter(x => typeof x === "string") : [];
+    const ex = j && typeof j.examples === "object" && j.examples ? j.examples : {};
+    return {
+      hidden:   arr(j.hidden),
+      featured: arr(j.featured),
+      meta:     j.meta && typeof j.meta === "object" ? j.meta : {},
+      examples: {
+        hidden:   arr(ex.hidden),
+        order:    arr(ex.order),
+        category: ex.category && typeof ex.category === "object" ? ex.category : {},
+      },
+    };
+  } catch { return empty; }
+}
+
+const curKey = s => `${s.school}/${s.file}`;
+
+function applyCuration(list) {
+  const hidden = new Set(CURATION.hidden), featured = new Set(CURATION.featured);
+  return list
+    .filter(s => !hidden.has(curKey(s)))
+    .map(s => {
+      const m = CURATION.meta[curKey(s)] || {};
+      if (typeof m.title === "string" && m.title.trim()) s.title = m.title.trim();
+      s.note = typeof m.note === "string" ? m.note.trim() : "";
+      s.featured = featured.has(curKey(s));
+      return s;
+    });
+}
+const featBadge = s => s.featured ? `<span class="feat-badge">★ 추천</span>` : "";
+const noteHTML  = s => s.note ? `<div class="work-note">${esc(s.note)}</div>` : "";
+
+function featuredSectionHTML() {
+  const list = ALL_STUDENTS.filter(s => s.featured).sort(rankCompare);
+  if (!list.length) return "";
+  return `<div class="section-label">⭐ 선생님 추천</div>
+    <div class="example-list">${list.map(s => `
+      <a class="example-item" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">
+        <span class="ex-icon">★</span><span>${esc(s.title)}${s.note ? `<span class="work-note" style="display:block">${esc(s.note)}</span>` : ""}</span>
+      </a>`).join("")}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════════
    초기 로드
 ═══════════════════════════════════════════════════════ */
 (async () => {
@@ -1092,13 +1165,14 @@ async function applyTheme() {
         .forEach(n => students.push(parseStudent(n, code)));
     });
 
-    const [viewMap, ratingMap] = await Promise.all([loadAllViews(), loadAllRatings()]);
+    const [viewMap, ratingMap, cur] = await Promise.all([loadAllViews(), loadAllRatings(), loadCuration()]);
+    CURATION = cur;
     students.forEach(s => {
       s.views     = viewMap[s.key]   ?? 0;
       s.avgRating = ratingMap[s.key] ?? null;
     });
 
-    ALL_STUDENTS = students;
+    ALL_STUDENTS = applyCuration(students);
     render();
   } catch (err) {
     document.getElementById("app").innerHTML = `

@@ -1,6 +1,8 @@
 name: Build vibe-coding manifest
 
-# (어느 경로든) 20XX/vibe-coding 폴더에 파일이 올라올 때마다 files.json 을 자동으로 만듭니다.
+# (어느 경로든) 20XX/vibe-coding 폴더에 파일이 올라올 때마다 아래 두 파일을 자동으로 만듭니다.
+#   · files.json — 갤러리 페이지가 읽는 작품 목록
+#   · meta.json  — 파일별 마지막 업로드(커밋) 시각. admin 페이지의 '최근 업로드'가 읽음
 # 위치: 저장소 루트의 .github/workflows/build-manifest.yml
 
 on:
@@ -19,11 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # meta.json 에 파일별 커밋 시각을 넣으려면 전체 기록이 필요
 
       - name: Generate files.json
         run: |
           python3 - <<'PY'
-          import glob, json, os
+          import glob, json, os, subprocess
 
           def html_files(d):
               if not os.path.isdir(d):
@@ -48,6 +52,19 @@ jobs:
                   out.append({"dir": name, "entry": entry})
               return out
 
+          # 파일별 마지막 커밋 시각 (최신 커밋부터 읽어 처음 나온 값을 사용)
+          def commit_times(root):
+              out = subprocess.run(
+                  ["git", "-c", "core.quotepath=off", "log", "--format=@%cI", "--name-only", "--", root],
+                  capture_output=True, text=True, encoding="utf-8").stdout
+              times, cur = {}, None
+              for line in out.splitlines():
+                  if line.startswith("@"):
+                      cur = line[1:]
+                  elif line.strip() and cur and line not in times:
+                      times[line] = cur
+              return times
+
           for root in sorted(glob.glob("**/20??/vibe-coding", recursive=True)):
               schools = {}
               for d in sorted(glob.glob(os.path.join(root, "school-*/"))):
@@ -60,6 +77,16 @@ jobs:
               with open(os.path.join(root, "files.json"), "w", encoding="utf-8") as fp:
                   json.dump(data, fp, ensure_ascii=False, indent=2)
                   fp.write("\n")
+
+              # meta.json: root 기준 상대 경로 → 마지막 커밋 시각
+              prefix = root.rstrip("/") + "/"
+              files = {}
+              for path, t in commit_times(root).items():
+                  if path.startswith(prefix) and path.lower().endswith((".html", ".htm")):
+                      files[path[len(prefix):]] = t
+              with open(os.path.join(root, "meta.json"), "w", encoding="utf-8") as fp:
+                  json.dump({"files": dict(sorted(files.items()))}, fp, ensure_ascii=False, indent=2)
+                  fp.write("\n")
               print("generated", root)
           PY
 
@@ -67,9 +94,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          find . -path ./.git -prune -o -type f -name files.json -path "*/20??/vibe-coding/*" -print0 | xargs -0 -r git add -A --
+          find . -path ./.git -prune -o -type f \( -name files.json -o -name meta.json \) -path "*/20??/vibe-coding/*" -print0 | xargs -0 -r git add -A --
           if ! git diff --cached --quiet; then
-            git commit -m "chore: update files.json"
+            git commit -m "chore: update files.json, meta.json"
             git pull --rebase
             git push
           fi
