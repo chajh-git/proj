@@ -8,7 +8,9 @@
          "hover":  "glow",        // default | glow | spotlight | tilt | none
          "font":   "lab",         // auto | lab | orbit | mono
          "motion": { "title": "typing",   // off | typing | glitch
-                     "stars": true, "fadeup": true, "btn": true }
+                     "stars": true, "fadeup": true, "btn": true },
+         "texts":  { "title": "", "lead": "", "body": "",          // 비워 두면 페이지의 기본 문구 그대로
+                     "steps": [ { "t": "상상하기", "d": "설명" }, ... ] }   // 활동 3단계(최대 3개)
        }
    · 주소 끝에 ?theme=holo&card=frame&hover=glow&font=lab&motion=title:typing,stars,fadeup,btn
      을 붙이면 저장하지 않고 미리보기만 됩니다. (motion= 만 쓰면 모션 모두 끔)
@@ -38,6 +40,16 @@
   let assetsDir = "";
   let current = null;
 
+  /* ── 문구 정리 (길이 제한, 문자열만 허용) ── */
+  function cleanTexts(t) {
+    const r = t && typeof t === "object" ? t : {};
+    const str = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+    const steps = Array.isArray(r.steps)
+      ? r.steps.slice(0, 3).map(x => ({ t: str(x && x.t, 40), d: str(x && x.d, 160) }))
+      : [];
+    return { title: str(r.title, 60), lead: str(r.lead, 80), body: str(r.body, 200), steps };
+  }
+
   /* ── 설정 정리 ── */
   function normalize(raw) {
     const r = raw && typeof raw === "object" ? raw : {};
@@ -53,6 +65,7 @@
         fadeup: m.fadeup === true,
         btn:    m.btn === true,
       },
+      texts:  cleanTexts(r.texts),
     };
   }
 
@@ -235,21 +248,30 @@
     });
   }
 
-  /* ═══ 마우스 효과 (스포트라이트 · 기울기 · 버튼 빛) ═══ */
+  /* ═══ 마우스 효과 (스포트라이트 · 3D 기울기 · 버튼 빛) ═══ */
+  const TILT_MAX = 12;       // 최대 기울기(도)
+  const CARD_SEL = ".medal-card, .example-item";
+  function resetTilt(el) {
+    el.style.transform = "";
+    el.style.removeProperty("--tx"); el.style.removeProperty("--ty");
+  }
   document.addEventListener("pointermove", e => {
     const t = e.target;
     if (!t || !t.closest) return;
     const hv = root.getAttribute("data-hover");
     if (hv === "spotlight" || hv === "tilt") {
-      const el = t.closest(".medal-card, .example-item");
+      const el = t.closest(CARD_SEL);
       if (el) {
         const r = el.getBoundingClientRect();
         const x = e.clientX - r.left, y = e.clientY - r.top;
         el.style.setProperty("--mx", x + "px");
         el.style.setProperty("--my", y + "px");
         if (hv === "tilt" && !reduced() && r.width && r.height) {
-          const rx = (y / r.height - .5) * -9, ry = (x / r.width - .5) * 9;
-          el.style.transform = `perspective(720px) rotateX(${rx.toFixed(2)}deg) rotateY(${ry.toFixed(2)}deg) translateY(-4px)`;
+          const px = x / r.width - .5, py = y / r.height - .5;        // -.5 ~ .5
+          const rx = (-py * 2 * TILT_MAX).toFixed(2), ry = (px * 2 * TILT_MAX).toFixed(2);
+          el.style.setProperty("--tx", px.toFixed(3));
+          el.style.setProperty("--ty", py.toFixed(3));
+          el.style.transform = `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-6px) scale3d(1.03, 1.03, 1.03)`;
         }
       }
     }
@@ -263,11 +285,47 @@
     }
   }, { passive: true });
   document.addEventListener("pointerout", e => {
-    const el = e.target && e.target.closest ? e.target.closest(".medal-card, .example-item") : null;
-    if (el && el.style.transform && !el.contains(e.relatedTarget)) el.style.transform = "";
+    const el = e.target && e.target.closest ? e.target.closest(CARD_SEL) : null;
+    if (el && el.style.transform && !el.contains(e.relatedTarget)) resetTilt(el);
   });
   function clearInlineTilt() {
-    document.querySelectorAll(".medal-card, .example-item").forEach(el => { el.style.transform = ""; });
+    document.querySelectorAll(CARD_SEL).forEach(resetTilt);
+  }
+
+  /* ═══ 문구 바꾸기 (theme.json 의 texts) ═══ */
+  function applyTexts(t) {
+    let titleChanged = false;
+    const title = document.querySelector(".title-main");
+    if (title) {
+      if (!title.dataset.orig) title.dataset.orig = (title.dataset.full || title.textContent).trim();
+      const want = t.title || title.dataset.orig;
+      if ((title.dataset.full || "") !== want) { title.dataset.full = want; titleChanged = true; }
+    }
+    const lead = document.querySelector(".lab-lead");
+    if (lead) {
+      if (lead.dataset.orig === undefined) lead.dataset.orig = lead.innerHTML;
+      if (t.lead || t.body) {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = lead.dataset.orig;
+        const st0 = tmp.querySelector("strong");
+        const origLead = st0 ? st0.textContent.trim() : "";
+        const origBody = tmp.textContent.replace(origLead, "").trim();
+        lead.textContent = "";
+        const st = document.createElement("strong");
+        st.textContent = t.lead || origLead;
+        lead.appendChild(st);
+        lead.appendChild(document.createElement("br"));
+        lead.appendChild(document.createTextNode(t.body || origBody));
+      } else if (lead.innerHTML !== lead.dataset.orig) {
+        lead.innerHTML = lead.dataset.orig;
+      }
+    }
+    document.querySelectorAll(".lab-steps li").forEach((li, i) => {
+      const b = li.querySelector("b"), d = li.querySelector(".d");
+      if (b) { if (b.dataset.orig === undefined) b.dataset.orig = b.textContent; b.textContent = (t.steps[i] && t.steps[i].t) || b.dataset.orig; }
+      if (d) { if (d.dataset.orig === undefined) d.dataset.orig = d.textContent; d.textContent = (t.steps[i] && t.steps[i].d) || d.dataset.orig; }
+    });
+    return titleChanged;
   }
 
   /* ═══ 적용 ═══ */
@@ -292,9 +350,10 @@
     setAttr("data-m-btn",    cfg.motion.btn);
 
     clearInlineTilt();
+    const titleChanged = applyTexts(cfg.texts);
     cfg.motion.stars ? startStars() : stopStars();
     cfg.motion.fadeup ? startFadeup() : stopFadeup();
-    if (!prev || prev.motion.title !== cfg.motion.title) playTitle(cfg.motion.title);
+    if (!prev || prev.motion.title !== cfg.motion.title || titleChanged) playTitle(cfg.motion.title);
     return cfg;
   }
 
