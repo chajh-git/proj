@@ -1,0 +1,75 @@
+{
+  "_notice": "형식 예시용 가짜 레시피입니다. 실제 융합·변신 레시피는 이 저장소에 절대 넣지 않습니다. 실제 레시피는 Supabase의 recipes_secret 테이블 또는 비공개 서버 저장소에만 둡니다. 아래 조건은 일부러 달성할 수 없는 값(태그 99개 등)으로 되어 있습니다.",
+  "_schemaVersion": 1,
+  "_fields": {
+    "id": "레시피 ID",
+    "name": "이름",
+    "kind": "fusion(융합) | awaken(숨은 각성 변신)",
+    "members": "구성원 수 1~3 (awaken은 1)",
+    "memberConditions": "구성원별 조건 목록. tags={태그ID:최소개수}, form='A'|'B'|'any', requiredParts=[파츠ID], hpRange=[최소,최대](0~1)",
+    "common": "공통 조건. spiritMin, gaugeMin, distanceMax(m), mapIds(허용 전장, 비우면 전체), signalWindowSeconds(융합 신호 유효 시간)",
+    "result": "결과. hpMult, attackMult, speedMult, reduceMult, cooldownMult, grants[], appearancePreset, cinematicId, durationSeconds, endEnergyZero(종료 후 에너지 0)",
+    "codexPublic": "발견 시 도감 공개 여부"
+  },
+  "recipes": [
+    {
+      "id": "SAMPLE-1",
+      "name": "(예시) 가짜 융합",
+      "kind": "fusion",
+      "members": 2,
+      "memberConditions": [
+        { "tags": { "machine": 99 }, "form": "any", "requiredParts": [], "hpRange": [0, 1] },
+        { "tags": { "machine": 99 }, "form": "any", "requiredParts": [], "hpRange": [0, 1] }
+      ],
+      "common": {
+        "spiritMin": 100,
+        "gaugeMin": 100,
+        "distanceMax": 1,
+        "mapIds": ["m1"],
+        "signalWindowSeconds": 2
+      },
+      "result": {
+        "hpMult": 1.0,
+        "attackMult": 1.0,
+        "speedMult": 1.0,
+        "reduceMult": 1.0,
+        "cooldownMult": 1.0,
+        "grants": [],
+        "appearancePreset": "sample",
+        "cinematicId": "fusion_common",
+        "durationSeconds": 10,
+        "endEnergyZero": false
+      },
+      "codexPublic": false
+    },
+    {
+      "id": "SAMPLE-2",
+      "name": "(예시) 가짜 각성 변신",
+      "kind": "awaken",
+      "members": 1,
+      "memberConditions": [
+        { "tags": { "space": 99 }, "form": "A", "requiredParts": ["core1"], "hpRange": [0, 0.05] }
+      ],
+      "common": {
+        "spiritMin": 100,
+        "gaugeMin": 0,
+        "distanceMax": 999,
+        "mapIds": [],
+        "signalWindowSeconds": 2
+      },
+      "result": {
+        "hpMult": 1.0,
+        "attackMult": 1.0,
+        "speedMult": 1.0,
+        "reduceMult": 1.0,
+        "cooldownMult": 1.0,
+        "grants": [],
+        "appearancePreset": "sample",
+        "cinematicId": "fusion_common",
+        "durationSeconds": 10,
+        "endEnergyZero": true
+      },
+      "codexPublic": false
+    }
+  ]
+}
