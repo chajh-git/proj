@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>깨끗하게 청소하기!</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            cursor: default;
+        }
+
+        #game-container {
+            width: 800px;
+            height: 650px;
+            background-color: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #38bdf8;
+        }
+
+        /* 상단 UI 헤더 */
+        header {
+            background-color: #f0f9ff;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e0f2fe;
+        }
+        .stage-info {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0369a1;
+        }
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .progress-bar-bg {
+            width: 200px;
+            height: 22px;
+            background-color: #e2e8f0;
+            border-radius: 11px;
+            overflow: hidden;
+            border: 2px solid #cbd5e1;
+        }
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #38bdf8, #4ade80);
+            transition: width 0.1s linear;
+        }
+        .progress-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0f172a;
+            width: 50px;
+        }
+
+        /* 메인 청소 영역 */
+        #cleaning-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8fafc;
+        }
+        .item-wrapper {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        /* 깨끗한 배경 캔버스 */
+        #clean-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        /* 더러운 마스크 캔버스 */
+        #dirty-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        /* 하단 도구 영역 */
+        footer {
+            height: 110px;
+            background-color: #f1f5f9;
+            border-top: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 30px;
+        }
+        #soap-bottle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: #ffffff;
+            border: 3px dashed #0284c7;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        #soap-bottle.highlight {
+            animation: pulse 1s infinite alternate;
+            background-color: #e0f2fe;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); border-color: #0284c7; }
+            100% { transform: scale(1.05); border-color: #f43f5e; box-shadow: 0 0 12px rgba(244,63,94,0.4); }
+        }
+
+        .guide-text {
+            font-size: 15px;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        /* 다음 단계 / 완료 버튼 */
+        #next-btn {
+            padding: 12px 28px;
+            font-size: 18px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(34,197,94,0.3);
+            display: none;
+            transition: all 0.2s;
+        }
+        #next-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(34,197,94,0.4);
+        }
+
+        /* 커스텀 수세미 마우스 커서 */
+        #custom-cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-30px, -20px);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        #custom-cursor img {
+            width: 85px;
+            height: auto;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3));
+        }
+        .foam-indicator {
+            position: absolute;
+            top: -25px;
+            background: rgba(15, 23, 42, 0.75);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        /* 완료 모달 창 */
+        #complete-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+        #complete-modal h1 {
+            font-size: 44px;
+            color: #4ade80;
+            margin-bottom: 10px;
+        }
+        #complete-modal p {
+            font-size: 20px;
+            color: #e2e8f0;
+            margin-bottom: 25px;
+        }
+        #restart-btn {
+            padding: 14px 36px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #0f172a;
+            background-color: #38bdf8;
+            border: none;
+            border-radius: 35px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #restart-btn:hover {
+            background-color: #7dd3fc;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <header>
+        <div class="stage-info" id="stage-title">1단계: 더러운 그릇</div>
+        <div class="progress-container">
+            <span>청소 진행률:</span>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+    </header>
+
+    <main id="cleaning-area">
+        <div class="item-wrapper">
+            <canvas id="clean-canvas" width="400" height="400"></canvas>
+            <canvas id="dirty-canvas" width="400" height="400"></canvas>
+        </div>
+    </main>
+
+    <footer>
+        <div id="soap-bottle" class="highlight">
+            <svg width="36" height="48" viewBox="0 0 36 48">
+                <rect x="10" y="2" width="16" height="8" rx="2" fill="#0284c7"/>
+                <rect x="14" y="10" width="8" height="6" fill="#94a3b8"/>
+                <path d="M 6 16 L 30 16 C 33 16 34 18 34 22 L 34 42 C 34 46 32 48 28 48 L 8 48 C 4 48 2 46 2 42 L 2 22 C 2 18 3 16 6 16 Z" fill="#38bdf8"/>
+                <circle cx="18" cy="32" r="6" fill="#ffffff" opacity="0.8"/>
+            </svg>
+            <div>
+                <div style="font-weight:bold; font-size:14px; color:#0369a1;">주방 세제 디스펜서</div>
+                <div style="font-size:12px; color:#64748b;" id="soap-status-text">수세미를 올려 거품을 묻히세요!</div>
+            </div>
+        </div>
+        
+        <div class="guide-text" id="guide-text">💡 수세미에 세제를 묻혀 닦아보세요!</div>
+
+        <button id="next-btn">다음 단계로 ▶</button>
+    </footer>
+
+    <!-- 게임 완료 모달 -->
+    <div id="complete-modal">
+        <h1>✨ 청소 완료! ✨</h1>
+        <p>모든 주방용품을 깨끗하게 닦아내셨습니다!</p>
+        <button id="restart-btn" onclick="restartGame()">다시 시작하기 🔄</button>
+    </div>
+</div>
+
+<!-- 마우스 커서용 수세미 요소 -->
+<div id="custom-cursor">
+    <div class="foam-indicator" id="foam-indicator">거품 없음 (세제 필요)</div>
+    <svg id="sponge-svg" width="70" height="45" viewBox="0 0 100 65">
+        <!-- 기본 일반 수세미 (초록+노랑) -->
+        <g id="sponge-clean">
+            <rect x="5" y="25" width="90" height="35" rx="6" fill="#facc15" stroke="#ca8a04" stroke-width="2"/>
+            <rect x="5" y="5" width="90" height="23" rx="6" fill="#15803d" stroke="#166534" stroke-width="2"/>
+        </g>
+        <!-- 거품 수세미 -->
+        <g id="sponge-foamy" style="display:none;">
+            <rect x="5" y="25" width="90" height="35" rx="6" fill="#facc15" stroke="#ca8a04" stroke-width="2"/>
+            <rect x="5" y="5" width="90" height="23" rx="6" fill="#15803d" stroke="#166534" stroke-width="2"/>
+            <circle cx="20" cy="10" r="10" fill="#ffffff" opacity="0.9"/>
+            <circle cx="45" cy="8" r="12" fill="#ffffff" opacity="0.9"/>
+            <circle cx="75" cy="12" r="9" fill="#ffffff" opacity="0.9"/>
+            <circle cx="32" cy="22" r="8" fill="#ffffff" opacity="0.85"/>
+            <circle cx="60" cy="20" r="11" fill="#ffffff" opacity="0.85"/>
+        </g>
+    </svg>
+</div>
+
+<script>
+    // 게임 상태 관리 변수
+    let currentStage = 0;
+    let hasFoam = false;
+    let foamPower = 0; // 거품 잔여량 (최대 100)
+    let isCleaning = false;
+    let cleanedPercent = 0;
+    let lastX = 0, lastY = 0;
+
+    const stages = [
+        { name: '1단계: 더러운 그릇', type: 'dish', color: '#ffffff' },
+        { name: '2단계: 더러운 컵', type: 'cup', color: '#ffffff' },
+        { name: '3단계: 더러운 프라이팬', type: 'pan', color: '#1e293b' },
+        { name: '4단계: 더러운 싱크대', type: 'sink', color: '#94a3b8' }
+    ];
+
+    // DOM 요소 참조
+    const cleanCanvas = document.getElementById('clean-canvas');
+    const cleanCtx = cleanCanvas.getContext('2d');
+    const dirtyCanvas = document.getElementById('dirty-canvas');
+    const dirtyCtx = dirtyCanvas.getContext('2d');
+    
+    const cursor = document.getElementById('custom-cursor');
+    const spongeClean = document.getElementById('sponge-clean');
+    const spongeFoamy = document.getElementById('sponge-foamy');
+    const foamIndicator = document.getElementById('foam-indicator');
+    
+    const soapBottle = document.getElementById('soap-bottle');
+    const soapStatusText = document.getElementById('soap-status-text');
+    const guideText = document.getElementById('guide-text');
+    const nextBtn = document.getElementById('next-btn');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const stageTitle = document.getElementById('stage-title');
+    const completeModal = document.getElementById('complete-modal');
+
+    // 마우스 커서 추적
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.display = 'flex';
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+
+        // 세제 수세미 충돌 체크
+        checkSoapCollision(e.clientX, e.clientY);
+        
+        // 청소 동작 진행
+        if (isCleaning) {
+            cleanDirtyLayer(e);
+        }
+    });
+
+    document.addEventListener('mouseleave', () => {
+        cursor.style.display = 'none';
+    });
+
+    // 세제 충돌 검사
+    function checkSoapCollision(mouseX, mouseY) {
+        const rect = soapBottle.getBoundingClientRect();
+        if (
+            mouseX >= rect.left &&
+            mouseX <= rect.right &&
+            mouseY >= rect.top &&
+            mouseY <= rect.bottom
+        ) {
+            if (!hasFoam || foamPower < 40) {
+                hasFoam = true;
+                foamPower = 100;
+                updateFoamUI();
+            }
+        }
+    }
+
+    function updateFoamUI() {
+        if (hasFoam && foamPower > 0) {
+            spongeClean.style.display = 'none';
+            spongeFoamy.style.display = 'block';
+            foamIndicator.innerText = `거품 충전됨 (${Math.round(foamPower)}%)`;
+            foamIndicator.style.background = '#0284c7';
+            soapBottle.classList.remove('highlight');
+            soapStatusText.innerText = '거품 충전 완료!';
+            guideText.innerText = '✨ 더러운 물건 위를 문질러 닦으세요!';
+        } else {
+            hasFoam = false;
+            foamPower = 0;
+            spongeClean.style.display = 'block';
+            spongeFoamy.style.display = 'none';
+            foamIndicator.innerText = '거품 없음 (세제 필요)';
+            foamIndicator.style.background = '#ef4444';
+            soapBottle.classList.add('highlight');
+            soapStatusText.innerText = '수세미를 가져다 대세요!';
+            guideText.innerText = '🧼 거품이 부족합니다! 세제를 다시 묻히세요!';
+        }
+    }
+
+    // 단계별 깨끗한/더러운 레이어 드로잉 (Canvas Fallback Graphic)
+    function loadStage(stageIdx) {
+        currentStage = stageIdx;
+        stageTitle.innerText = stages[stageIdx].name;
+        cleanedPercent = 0;
+        updateProgress(0);
+        nextBtn.style.display = 'none';
+
+        const type = stages[stageIdx].type;
+
+        // 1. 깨끗한 레이어 그리기
+        cleanCtx.clearRect(0, 0, 400, 400);
+        drawCleanItem(cleanCtx, type);
+
+        // 2. 더러운 레이어 그리기 (위에 덮어씌움)
+        dirtyCtx.globalCompositeOperation = 'source-over';
+        dirtyCtx.clearRect(0, 0, 400, 400);
+        drawDirtyItem(dirtyCtx, type);
+    }
+
+    // 깨끗한 주방용품 베이스 그리기
+    function drawCleanItem(ctx, type) {
+        ctx.save();
+        if (type === 'dish') {
+            // 접시
+            ctx.beginPath();
+            ctx.arc(200, 200, 160, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.1)';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(200, 200, 110, 0, Math.PI * 2);
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+        } else if (type === 'cup') {
+            // 머그컵
+            ctx.beginPath();
+            ctx.roundRect(100, 80, 180, 240, 20);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.1)';
+            ctx.shadowBlur = 15;
+            ctx.fill();
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+
+            // 손잡이
+            ctx.beginPath();
+            ctx.arc(290, 200, 45, -Math.PI/2, Math.PI/2);
+            ctx.lineWidth = 18;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.stroke();
+        } else if (type === 'pan') {
+            // 프라이팬
+            ctx.beginPath();
+            ctx.arc(200, 180, 150, 0, Math.PI * 2);
+            ctx.fillStyle = '#1e293b';
+            ctx.fill();
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+
+            // 손잡이
+            ctx.beginPath();
+            ctx.roundRect(175, 330, 50, 60, 10);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+        } else if (type === 'sink') {
+            // 싱크대
+            ctx.beginPath();
+            ctx.roundRect(40, 40, 320, 320, 30);
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fill();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // 배수구
+            ctx.beginPath();
+            ctx.arc(200, 200, 45, 0, Math.PI * 2);
+            ctx.fillStyle = '#64748b';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(200, 200, 25, 0, Math.PI * 2);
+            ctx.fillStyle = '#334155';
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // 더러운 찌꺼기/얼룩 오버레이 그리기
+    function drawDirtyItem(ctx, type) {
+        // 먼저 깨끗한 배경 형태 복사
+        drawCleanItem(ctx, type);
+
+        // 지저분한 오염 물질 레이어 추가
+        ctx.save();
+        if (type === 'dish') {
+            // 음식 양념 자국
+            ctx.fillStyle = '#b45309';
+            ctx.beginPath(); ctx.arc(160, 170, 45, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.arc(220, 210, 55, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath(); ctx.arc(190, 140, 15, 0, Math.PI*2); ctx.fill();
+        } else if (type === 'cup') {
+            // 커피/차 때
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.arc(170, 150, 40, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(210, 220, 50, 0, Math.PI*2); ctx.fill();
+            ctx.fillRect(120, 240, 120, 30);
+        } else if (type === 'pan') {
+            // 탄 기름때
+            ctx.fillStyle = '#451a03';
+            ctx.beginPath(); ctx.arc(200, 180, 120, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath(); ctx.arc(180, 160, 70, 0, Math.PI*2); ctx.fill();
+        } else if (type === 'sink') {
+            // 음식물 찌꺼기 & 물때
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath(); ctx.arc(140, 120, 50, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(260, 260, 65, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#475569';
+            ctx.beginPath(); ctx.arc(200, 200, 40, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    // 마우스 청소 이벤트 처리 (Destination-Out 실시간 마스킹)
+    const dirtyCanvasRect = dirtyCanvas.getBoundingClientRect();
+
+    dirtyCanvas.addEventListener('mousedown', (e) => {
+        if (!hasFoam) return;
+        isCleaning = true;
+        const pos = getCanvasPos(e);
+        lastX = pos.x;
+        lastY = pos.y;
+        erase(pos.x, pos.y);
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isCleaning) {
+            isCleaning = false;
+            calculateProgress();
+        }
+    });
+
+    function getCanvasPos(e) {
+        const rect = dirtyCanvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) * (dirtyCanvas.width / rect.width),
+            y: (e.clientY - rect.top) * (dirtyCanvas.height / rect.height)
+        };
+    }
+
+    function cleanDirtyLayer(e) {
+        const rect = dirtyCanvas.getBoundingClientRect();
+        if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom
+        ) {
+            const pos = getCanvasPos(e);
+            erase(pos.x, pos.y);
+        }
+    }
+
+    function erase(x, y) {
+        if (!hasFoam || foamPower <= 0) {
+            isCleaning = false;
+            updateFoamUI();
+            return;
+        }
+
+        dirtyCtx.save();
+        dirtyCtx.globalCompositeOperation = 'destination-out';
+        dirtyCtx.beginPath();
+        dirtyCtx.arc(x, y, 35, 0, Math.PI * 2);
+        dirtyCtx.fill();
+        dirtyCtx.restore();
+
+        // 닦을 때마다 거품 소모
+        foamPower -= 0.35;
+        if (foamPower <= 0) {
+            hasFoam = false;
+            updateFoamUI();
+        } else {
+            foamIndicator.innerText = `거품 잔여량 (${Math.round(foamPower)}%)`;
+        }
+
+        calculateProgress();
+    }
+
+    // 실시간 청소 면적 퍼센트 계산
+    function calculateProgress() {
+        const imgData = dirtyCtx.getImageData(0, 0, 400, 400);
+        const pixels = imgData.data;
+        let transparentPixels = 0;
+
+        for (let i = 3; i < pixels.length; i += 4) {
+            if (pixels[i] === 0) {
+                transparentPixels++;
+            }
+        }
+
+        const totalPixels = 400 * 400;
+        cleanedPercent = Math.min(100, Math.round((transparentPixels / totalPixels) * 100));
+        updateProgress(cleanedPercent);
+
+        if (cleanedPercent >= 90) {
+            nextBtn.style.display = 'block';
+            guideText.innerText = '🎉 90% 이상 깨끗해졌어요! 다음 단계로 넘어가세요!';
+        }
+    }
+
+    function updateProgress(percent) {
+        progressFill.style.width = percent + '%';
+        progressText.innerText = percent + '%';
+    }
+
+    // 다음 단계 버튼 클릭
+    nextBtn.addEventListener('click', () => {
+        if (currentStage < stages.length - 1) {
+            loadStage(currentStage + 1);
+        } else {
+            completeModal.style.display = 'flex';
+        }
+    });
+
+    function restartGame() {
+        completeModal.style.display = 'none';
+        loadStage(0);
+    }
+
+    // 최초 1단계 게임 로드
+    loadStage(0);
+</script>
+
+</body>
+</html>
