@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIGHT SHIFT 6.0</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080b10;color:#e9edf5;font-family:system-ui,sans-serif}
+#game{max-width:900px;margin:20px auto;background:#141b27;border-radius:12px;overflow:hidden}
+header,footer{padding:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+canvas{display:block;width:100%;height:auto;background:#030405;touch-action:none}
+#stage{position:relative}button{background:#34445a;color:white;border:0;border-radius:8px;padding:10px 15px;cursor:pointer}
+#start{position:absolute;inset:0;background:#020408ed;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#msg{font-size:13px;color:#cbd2df}small{color:#9aa5b5}
+</style>
+</head>
+<body>
+<div id="game">
+<header><b>NIGHT SHIFT 6.0</b><span id="status">준비 중</span></header>
+<div id="stage">
+<canvas id="cv" width="800" height="500"></canvas>
+<div id="start"><h1>NIGHT SHIFT</h1><p>열쇠 3개를 찾아 출구로 탈출하라.</p><button id="begin">게임 시작</button><small>WASD 이동 · 마우스 회전 · E 상호작용</small></div>
+</div>
+<footer><span id="msg">게임을 시작해.</span><div><button id="lock">마우스 조작</button> <button id="restart">다시 시작</button></div><small>ESC를 누르면 마우스 잠금이 풀려.</small></footer>
+</div>
+<script>
+(()=>{
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const status=document.getElementById('status'),msg=document.getElementById('msg'),start=document.getElementById('start');
+const W=800,H=500,N=35,FOV=Math.PI/3;
+let map,p,monster,keys,closets,exit,got,hidden,active,dead,won,angle,down={},zbuf=[],last=0,pathTimer=0,path=[];
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+const id=(x,y)=>x+','+y,cell=(x,y)=>({x:x+.5,y:y+.5}),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function generate(){
+ map=Array.from({length:N},()=>Array(N).fill(1));
+ let stack=[[1,1]];map[1][1]=0;
+ while(stack.length){
+  let [x,y]=stack[stack.length-1],opts=[];
+  for(let [dx,dy] of [[2,0],[-2,0],[0,2],[0,-2]]){
+   let nx=x+dx,ny=y+dy;
+   if(nx>0&&ny>0&&nx<N-1&&ny<N-1&&map[ny][nx]===1)opts.push([nx,ny,dx,dy]);
+  }
+  if(!opts.length){stack.pop();continue;}
+  let [nx,ny,dx,dy]=rnd(opts);map[y+dy/2][x+dx/2]=0;map[ny][nx]=0;stack.push([nx,ny]);
+ }
+ for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++){
+  if(map[y][x]!==1)continue;
+  let h=map[y][x-1]===0&&map[y][x+1]===0;
+  let v=map[y-1]?.[x]===0&&map[y+1]?.[x]===0;
+  if((h||v)&&Math.random()<.32)map[y][x]=0;
+ }
+ for(let i=0;i<8;i++){
+  let x=2+Math.floor(Math.random()*(N-5)),y=2+Math.floor(Math.random()*(N-5));
+  if(map[y][x]===0)for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)
+   if(x+dx>0&&y+dy>0&&x+dx<N-1&&y+dy<N-1)map[y+dy][x+dx]=0;
+ }
+}
+function floorCells(){let a=[];for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++)if(map[y][x]===0)a.push({x,y});return a;}
+function distances(sx,sy){
+ let q=[[sx,sy]],d=new Map([[id(sx,sy),0]]);
+ for(let i=0;i<q.length;i++){let [x,y]=q[i];for(let [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){let nx=x+dx,ny=y+dy,k=id(nx,ny);if(map[ny]?.[nx]===0&&!d.has(k)){d.set(k,d.get(id(x,y))+1);q.push([nx,ny]);}}}
+ return d;
+}
+function reset(){
+ generate();p={x:1.5,y:1.5};angle=0;got=0;hidden=false;dead=false;won=false;active=false;down={};path=[];pathTimer=0;
+ let ds=distances(1,1),all=floorCells().filter(v=>(ds.get(id(v.x,v.y))||0)>5);
+ let far=[...all].sort((a,b)=>(ds.get(id(b.x,b.y))||0)-(ds.get(id(a.x,a.y))||0));
+ exit=cell(far[0].x,far[0].y);let used=new Set(['1,1',id(far[0].x,far[0].y)]);
+ function pick(min=0){let opts=all.filter(v=>!used.has(id(v.x,v.y))&&(ds.get(id(v.x,v.y))||0)>=min);let v=rnd(opts.length?opts:all.filter(v=>!used.has(id(v.x,v.y))));used.add(id(v.x,v.y));return cell(v.x,v.y);}
+ keys=[pick(12),pick(12),pick(12)].map(v=>({...v,got:false}));
+ closets=[];for(let tries=0;tries<300&&closets.length<12;tries++){let v=pick(0);if(dist(v,p)<4||dist(v,exit)<3||keys.some(k=>dist(k,v)<2.5)||closets.some(c=>dist(c,v)<2.3))continue;closets.push(v);}
+ monster=pick(12);status.textContent='열쇠 0 / 3';msg.textContent='대형 미로를 탐색해 열쇠를 찾아라.';start.style.display='flex';render();
+}
+function closetAt(x,y){return closets.some(c=>Math.floor(c.x)===x&&Math.floor(c.y)===y);}
+function solid(x,y){let tx=Math.floor(x),ty=Math.floor(y);return !map[ty]||map[ty][tx]!==0||closetAt(tx,ty);}
+function lineClear(a,b){let d=dist(a,b),steps=Math.ceil(d*16);for(let i=1;i<steps;i++){let t=i/steps;if(solid(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t))return false;}return true;}
+function move(e,dx,dy,r=.17){
+ let count=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/.035));
+ for(let i=0;i<count;i++){let sx=dx/count,sy=dy/count;
+  if(!solid(e.x+sx+Math.sign(sx)*r,e.y)&&!solid(e.x+sx-Math.sign(sx)*r,e.y))e.x+=sx;
+  if(!solid(e.x,e.y+sy+Math.sign(sy)*r)&&!solid(e.x,e.y+sy-Math.sign(sy)*r))e.y+=sy;
+ }
+}
+function update(){status.textContent=`열쇠 ${got}/3　${hidden?'옷장 안':'탐색 중'}`;}
+function say(t){msg.textContent=t;}
+function exitCloset(){
+ let sx=Math.floor(p.x),sy=Math.floor(p.y),q=[[sx,sy]],seen=new Set();
+ for(let i=0;i<q.length;i++){let [x,y]=q[i],k=id(x,y);if(seen.has(k))continue;seen.add(k);
+  if(map[y]?.[x]===0&&!closetAt(x,y)){p.x=x+.5;p.y=y+.5;hidden=false;update();say('옷장에서 나왔어.');return;}
+  for(let [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(map[y+dy]?.[x+dx]===0)q.push([x+dx,y+dy]);
+ }
+ hidden=false;update();
+}
+function interact(){
+ if(!active||dead||won)return;
+ if(hidden){exitCloset();return;}
+ let c=closets.find(v=>dist(p,v)<1.2);
+ if(c){hidden=true;p.x=c.x;p.y=c.y;update();say('옷장 안에 숨었어. E를 눌러 나가기.');return;}
+ let k=keys.find(v=>!v.got&&dist(p,v)<.95&&lineClear(p,v));
+ if(k){k.got=true;got++;update();say(`열쇠 획득! ${got}/3`);return;}
+ if(dist(p,exit)<1.1&&lineClear(p,exit)){if(got===3){won=true;say('탈출 성공!');}else say(`출구가 잠겨 있어. 열쇠 ${3-got}개가 더 필요해.`);return;}
+ say('가까이에 상호작용할 물체가 없어.');
+}
+function cast(a){
+ let rx=Math.cos(a),ry=Math.sin(a),mx=Math.floor(p.x),my=Math.floor(p.y);
+ let ddx=Math.abs(1/(rx||1e-8)),ddy=Math.abs(1/(ry||1e-8));
+ let sx=rx<0?-1:1,sy=ry<0?-1:1;
+ let sxD=(rx<0?p.x-mx:mx+1-p.x)*ddx,syD=(ry<0?p.y-my:my+1-p.y)*ddy,side=0;
+ for(let i=0;i<100;i++){if(sxD<syD){sxD+=ddx;mx+=sx;side=0;}else{syD+=ddy;my+=sy;side=1;}if(!map[my]||map[my][mx]!==0)break;}
+ return {d:Math.max(.05,(side===0?sxD-ddx:syD-ddy)*Math.cos(a-angle)),side};
+}
+function sprite(s){
+ let dx=s.obj.x-p.x,dy=s.obj.y-p.y,a=Math.atan2(dy,dx)-angle;
+ while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;
+ if(Math.abs(a)>FOV*.68)return;
+ let d=s.d*Math.cos(a);if(d<.15)return;
+ let sx=W/2+Math.tan(a)/Math.tan(FOV/2)*(W/2),size=Math.min(320,H/(d+.12)*.6);
+ let left=Math.max(0,Math.floor(sx-size*.35)),right=Math.min(W,Math.ceil(sx+size*.35));
+ for(let x=left;x<right;x++){
+  if(d>=zbuf[x])continue;
+  let rel=(x-sx)/(size*.35);
+  if(s.type==='key'){
+   let power=Math.max(0,1-s.d/3.5),r=size*(.1+power*.06);
+   ctx.save();ctx.globalAlpha=.8;ctx.shadowColor='#ffe16b';ctx.shadowBlur=10+power*35;ctx.strokeStyle='#fff0a0';ctx.lineWidth=Math.max(2,size*.025);
+   ctx.beginPath();ctx.arc(sx,H/2-size*.12,r*.55,0,Math.PI*2);ctx.moveTo(sx,H/2-size*.12+r*.55);ctx.lineTo(sx,H/2+size*.22);ctx.lineTo(sx+size*.13,H/2+size*.22);ctx.stroke();ctx.restore();
+   let gg=ctx.createRadialGradient(sx,H/2,1,sx,H/2,r*5);gg.addColorStop(0,`rgba(255,225,100,${.16+power*.3})`);gg.addColorStop(1,'rgba(255,210,60,0)');ctx.fillStyle=gg;ctx.fillRect(sx-r*5,H/2-r*5,r*10,r*10);break;
+  }
+  if(s.type==='monster'){
+   if(Math.abs(rel)<.45){ctx.save();ctx.fillStyle='#050407';ctx.shadowColor='#080006';ctx.shadowBlur=8;ctx.beginPath();ctx.ellipse(sx,H/2+size*.08,size*.12,size*.43,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(sx,H/2-size*.36,size*.18,0,Math.PI*2);ctx.fill();if(Math.abs(rel)<.12){ctx.shadowColor='#ff1616';ctx.shadowBlur=15;ctx.fillStyle='#ff2525';ctx.beginPath();ctx.arc(sx-size*.065,H/2-size*.38,size*.018,0,Math.PI*2);ctx.arc(sx+size*.065,H/2-size*.38,size*.018,0,Math.PI*2);ctx.fill();}ctx.restore();}
+   break;
+  }
+  if(s.type==='closet'){
+   if(Math.abs(rel)<.48){ctx.save();ctx.fillStyle='#241b18';ctx.fillRect(sx-size*.22,H/2-size*.42,size*.44,size*.82);ctx.strokeStyle='#685044';ctx.lineWidth=Math.max(2,size*.018);ctx.strokeRect(sx-size*.22,H/2-size*.42,size*.44,size*.82);ctx.beginPath();ctx.moveTo(sx,H/2-size*.4);ctx.lineTo(sx,H/2+size*.39);ctx.stroke();ctx.fillStyle='#c5a477';ctx.beginPath();ctx.arc(sx+size*.08,H/2,Math.max(1,size*.012),0,Math.PI*2);ctx.fill();ctx.restore();}
+   break;
+  }
+ }
+}
+function render(){
+ ctx.fillStyle='#080b12';ctx.fillRect(0,0,W,H);
+ let g=ctx.createLinearGradient(0,0,0,H/2);g.addColorStop(0,'#070a10');g.addColorStop(1,'#222832');ctx.fillStyle=g;ctx.fillRect(0,0,W,H/2);
+ g=ctx.createLinearGradient(0,H/2,0,H);g.addColorStop(0,'#191a1f');g.addColorStop(1,'#020304');ctx.fillStyle=g;ctx.fillRect(0,H/2,W,H/2);
+ zbuf=new Array(W);
+ for(let x=0;x<W;x++){let r=cast(angle+(x/W-.5)*FOV),d=r.d;zbuf[x]=d;let h=Math.min(H,H/(d+.001)),v=Math.max(8,112-d*11-(r.side?20:0));ctx.fillStyle=`rgb(${v*.58},${v*.68},${v*.82})`;ctx.fillRect(x,(H-h)/2,1,h);}
+ if(!hidden){let sprites=[];for(let c of closets)if(dist(p,c)<9&&lineClear(p,c))sprites.push({type:'closet',obj:c,d:dist(p,c)});for(let k of keys)if(!k.got&&dist(p,k)<3.5&&lineClear(p,k))sprites.push({type:'key',obj:k,d:dist(p,k)});if(dist(p,monster)<11&&lineClear(p,monster))sprites.push({type:'monster',obj:monster,d:dist(p,monster)});sprites.sort((a,b)=>b.d-a.d);for(let s of sprites)sprite(s);}
+ ctx.strokeStyle='rgba(230,235,245,.5)';ctx.beginPath();ctx.moveTo(392,250);ctx.lineTo(408,250);ctx.moveTo(400,242);ctx.lineTo(400,258);ctx.stroke();
+ if(hidden){ctx.fillStyle='rgba(0,0,0,.95)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#dce1e9';ctx.textAlign='center';ctx.font='bold 22px system-ui';ctx.fillText('옷장 안에 숨어 있다',W/2,H/2);ctx.font='14px system-ui';ctx.fillText('E를 눌러 밖으로 나오기',W/2,H/2+30);}
+ if(dead||won){ctx.fillStyle='#000c';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle=won?'#ffe58a':'#f2d6d6';ctx.font='bold 36px system-ui';ctx.fillText(won?'탈출 성공!':'붙잡혔다',W/2,H/2);ctx.font='15px system-ui';ctx.fillText('다시 시작 버튼을 눌러 재도전',W/2,H/2+35);}
+}
+function findPath(){
+ let sx=Math.floor(monster.x),sy=Math.floor(monster.y),tx=Math.floor(p.x),ty=Math.floor(p.y);
+ let blocked=new Set(closets.map(c=>id(Math.floor(c.x),Math.floor(c.y))));
+ let q=[[sx,sy]],prev=new Map([[id(sx,sy),null]]);
+ for(let i=0;i<q.length;i++){let [x,y]=q[i];if(x===tx&&y===ty)break;for(let [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){let nx=x+dx,ny=y+dy,k=id(nx,ny);if(map[ny]?.[nx]===0&&!blocked.has(k)&&!prev.has(k)){prev.set(k,id(x,y));q.push([nx,ny]);}}}
+ let cur=id(tx,ty);if(!prev.has(cur))return [];let out=[];while(cur){let [x,y]=cur.split(',').map(Number);out.push(cell(x,y));cur=prev.get(cur);}return out.reverse();
+}
+function tick(t){
+ let dt=Math.min(.04,(t-last)/1000||0);last=t;
+ if(active&&!hidden&&!dead&&!won){
+  let f=(down.KeyW?1:0)-(down.KeyS?1:0),s=(down.KeyD?1:0)-(down.KeyA?1:0),speed=2.8*dt;
+  move(p,(Math.cos(angle)*f-Math.sin(angle)*s)*speed,(Math.sin(angle)*f+Math.cos(angle)*s)*speed);
+  if(down.ArrowLeft)angle-=2.1*dt;if(down.ArrowRight)angle+=2.1*dt;
+  pathTimer-=dt;if(pathTimer<=0){path=findPath();pathTimer=.35;}
+  if(path.length>1){let target=path[1],dx=target.x-monster.x,dy=target.y-monster.y,d=Math.hypot(dx,dy);if(d>.07)move(monster,dx/d*2*dt,dy/d*2*dt,.12);}
+  if(dist(p,monster)<.42){dead=true;say('괴물에게 붙잡혔어.');}
+ }
+ render();requestAnimationFrame(tick);
+}
+function interact(){
+ if(!active||dead||won)return;
+ if(hidden){exitCloset();return;}
+ let c=closets.find(v=>dist(p,v)<1.2);
+ if(c){hidden=true;p.x=c.x;p.y=c.y;update();say('옷장 안에 숨었어. E를 눌러 나가기.');return;}
+ let k=keys.find(v=>!v.got&&dist(p,v)<.95&&lineClear(p,v));
+ if(k){k.got=true;got++;update();say(`열쇠 획득! ${got}/3`);return;}
+ if(dist(p,exit)<1.1&&lineClear(p,exit)){if(got===3){won=true;say('탈출 성공!');}else say(`열쇠 ${3-got}개가 더 필요해.`);return;}
+ say('가까이에 상호작용할 물체가 없어.');
+}
+function begin(){active=true;start.style.display='none';say('열쇠 3개를 찾아 출구로 가!');update();}
+document.getElementById('begin').addEventListener('click',begin);
+document.getElementById('restart').addEventListener('click',()=>{reset();begin();});
+document.getElementById('lock').addEventListener('click',()=>{if(cv.requestPointerLock)cv.requestPointerLock();});
+cv.addEventListener('click',()=>{if(active&&cv.requestPointerLock)cv.requestPointerLock();});
+window.addEventListener('keydown',e=>{if(['KeyW','KeyA','KeyS','KeyD','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();down[e.code]=true;if(e.code==='KeyE'&&!e.repeat)interact();});
+window.addEventListener('keyup',e=>down[e.code]=false);
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement===cv&&active&&!hidden)angle+=e.movementX*.0025;});
+reset();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
