@@ -5,9 +5,9 @@
 // 배포 후 아래 빈칸 세 곳만 채우면 됩니다.
 
 export const ENV = Object.freeze({
-  supabaseUrl: '', // 예: 'https://abcdxyz.supabase.co'
-  supabaseAnonKey: '', // Supabase 프로젝트 설정 → API → anon public
-  serverUrl: '', // 예: 'wss://codingmeca-server.onrender.com'
+  supabaseUrl: 'https://lxtvsxqdfcqqoihfgtxa.supabase.co', // 예: 'https://abcdxyz.supabase.co'
+  supabaseAnonKey: 'sb_publishable_97nYK-bgPlL5JFD6ILIzbA_sK9-K0Kj', // Supabase 프로젝트 설정 → API → anon public
+  serverUrl: 'wss://codingmeca-server.onrender.com', // 예: 'wss://codingmeca-server.onrender.com'
   supabaseEsm: 'https://esm.sh/@supabase/supabase-js@2.45.4', // Supabase 클라이언트 라이브러리 위치
 });
 
