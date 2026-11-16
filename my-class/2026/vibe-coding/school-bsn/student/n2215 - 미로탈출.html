@@ -1,0 +1,810 @@
+<html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>심야의 미로</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #050609;
+    color: #d9e0e8;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+h1 {
+    letter-spacing: 5px;
+    color: #cbd5e1;
+}
+
+#game {
+    position: relative;
+    width: min(960px, 96vw);
+    margin: auto;
+    border: 1px solid #28313b;
+    box-shadow: 0 0 40px #101b26;
+}
+
+canvas {
+    width: 100%;
+    display: block;
+}
+
+#hud {
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    text-shadow: 0 2px 5px black;
+    pointer-events: none;
+}
+
+#menu {
+    position: absolute;
+    inset: 0;
+    background: #000c;
+    display: grid;
+    place-items: center;
+}
+
+button {
+    background: #263442;
+    color: white;
+    border: 1px solid #526273;
+    border-radius: 8px;
+    padding: 12px 18px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+#controls {
+    margin: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>심야의 미로</h1>
+
+<div id="game">
+
+<canvas id="screen" width="480" height="270"></canvas>
+
+<div id="hud">
+    <span id="keys">열쇠 0 / 3</span>
+    <span id="light">손전등 ON</span>
+    <span id="timer">00:00</span>
+</div>
+
+<div id="menu">
+    <div>
+        <h2>폐쇄된 지하 미로</h2>
+        <p>세 개의 열쇠를 찾아 출구로 탈출하세요.</p>
+        <p>어둠 속에서 무언가 당신을 쫓고 있습니다.</p>
+        <button id="start">게임 시작</button>
+    </div>
+</div>
+
+</div>
+
+<div id="controls">
+    <button data-key="w">전진</button>
+    <button data-key="s">후진</button>
+    <button data-key="a">왼쪽</button>
+    <button data-key="d">오른쪽</button>
+    <button data-key="shift">달리기</button>
+    <button id="flash">손전등 F</button>
+</div>
+
+<p>WASD 이동 · 방향키 회전 · Shift 달리기 · F 손전등</p>
+
+<script>
+const canvas = document.getElementById("screen");
+const ctx = canvas.getContext("2d");
+
+const W = canvas.width;
+const H = canvas.height;
+
+const MW = 17;
+const MH = 17;
+
+let map = [];
+
+let player = {
+    x: 1.5,
+    y: 1.5,
+    a: 0
+};
+
+let ghost = {
+    x: 0,
+    y: 0,
+    active: true
+};
+
+let keys = [];
+let collected = 0;
+
+let flash = true;
+let started = false;
+let dead = false;
+let won = false;
+
+let held = new Set();
+
+let startTime = 0;
+let lastTime = 0;
+
+function randomInt(n) {
+    return Math.floor(Math.random() * n);
+}
+
+// 미로 생성
+function generateMaze() {
+
+    map = Array.from({ length: MH }, (_, y) =>
+        Array.from({ length: MW }, (_, x) =>
+            x === 0 || y === 0 ||
+            x === MW - 1 || y === MH - 1
+            ? 1 : 1
+        )
+    );
+
+    let stack = [[1, 1]];
+    map[1][1] = 0;
+
+    while (stack.length > 0) {
+
+        let [x, y] = stack[stack.length - 1];
+
+        let directions = [
+            [0, -2],
+            [2, 0],
+            [0, 2],
+            [-2, 0]
+        ];
+
+        directions.sort(() => Math.random() - 0.5);
+
+        let found = false;
+
+        for (let [dx, dy] of directions) {
+
+            let nx = x + dx;
+            let ny = y + dy;
+
+            if (
+                nx > 0 && ny > 0 &&
+                nx < MW - 1 && ny < MH - 1 &&
+                map[ny][nx] === 1
+            ) {
+
+                map[y + dy / 2][x + dx / 2] = 0;
+                map[ny][nx] = 0;
+
+                stack.push([nx, ny]);
+
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            stack.pop();
+        }
+    }
+
+    // 일부 벽을 열어 미로 변형
+    for (let i = 0; i < 12; i++) {
+
+        let x = 1 + randomInt(MW - 2);
+        let y = 1 + randomInt(MH - 2);
+
+        if (
+            map[y][x] === 1 &&
+            map[y - 1][x] === 0 &&
+            map[y + 1][x] === 0
+        ) {
+            map[y][x] = 0;
+        }
+    }
+
+    let floors = [];
+
+    for (let y = 1; y < MH - 1; y++) {
+        for (let x = 1; x < MW - 1; x++) {
+
+            if (
+                map[y][x] === 0 &&
+                Math.hypot(x - 1, y - 1) > 4
+            ) {
+                floors.push({
+                    x: x + 0.5,
+                    y: y + 0.5
+                });
+            }
+        }
+    }
+
+    floors.sort(() => Math.random() - 0.5);
+
+    keys = floors.splice(0, 3);
+
+    let exit = floors.pop() || {
+        x: MW - 1.5,
+        y: MH - 1.5
+    };
+
+    map[Math.floor(exit.y)][Math.floor(exit.x)] = 2;
+
+    let g = floors.pop() || {
+        x: MW - 1.5,
+        y: 1.5
+    };
+
+    ghost.x = g.x;
+    ghost.y = g.y;
+    ghost.active = true;
+}
+
+// 벽 확인
+function isWall(x, y) {
+
+    let ix = Math.floor(x);
+    let iy = Math.floor(y);
+
+    return (
+        ix < 0 || iy < 0 ||
+        ix >= MW || iy >= MH ||
+        map[iy][ix] === 1
+    );
+}
+
+// 이동 충돌 처리
+function move(dx, dy) {
+
+    let radius = 0.18;
+
+    let nx = player.x + dx;
+    let ny = player.y + dy;
+
+    if (
+        !isWall(nx + radius, player.y) &&
+        !isWall(nx - radius, player.y)
+    ) {
+        player.x = nx;
+    }
+
+    if (
+        !isWall(player.x, ny + radius) &&
+        !isWall(player.x, ny - radius)
+    ) {
+        player.y = ny;
+    }
+}
+
+// 손전등
+function toggleFlash() {
+
+    flash = !flash;
+
+    document.getElementById("light").textContent =
+        flash ? "손전등 ON" : "손전등 OFF";
+}
+
+document.getElementById("flash").onclick = toggleFlash;
+
+// 키 입력
+window.addEventListener("keydown", e => {
+
+    let k = e.key.toLowerCase();
+
+    if ([
+        "w", "a", "s", "d",
+        "arrowleft", "arrowright",
+        "shift", "f"
+    ].includes(k)) {
+
+        e.preventDefault();
+        held.add(k);
+
+        if (k === "f") {
+            toggleFlash();
+        }
+    }
+});
+
+window.addEventListener("keyup", e => {
+    held.delete(e.key.toLowerCase());
+});
+
+// 모바일 버튼
+document.querySelectorAll("[data-key]").forEach(button => {
+
+    let key = button.dataset.key;
+
+    button.addEventListener("pointerdown", e => {
+        e.preventDefault();
+        held.add(key);
+    });
+
+    ["pointerup", "pointercancel", "pointerleave"]
+        .forEach(event => {
+            button.addEventListener(event, () => {
+                held.delete(key);
+            });
+        });
+});
+
+// 게임 업데이트
+function update(dt) {
+
+    let rotation = 0;
+
+    if (held.has("arrowleft")) rotation -= 1;
+    if (held.has("arrowright")) rotation += 1;
+
+    player.a += rotation * 1.8 * dt;
+
+    let speed = held.has("shift") ? 2.25 : 1.45;
+
+    speed *= dt;
+
+    let forward =
+        (held.has("w") ? 1 : 0) -
+        (held.has("s") ? 1 : 0);
+
+    let side =
+        (held.has("d") ? 1 : 0) -
+        (held.has("a") ? 1 : 0);
+
+    move(
+        Math.cos(player.a) * forward * speed +
+        Math.cos(player.a + Math.PI / 2) * side * speed,
+
+        Math.sin(player.a) * forward * speed +
+        Math.sin(player.a + Math.PI / 2) * side * speed
+    );
+
+    // 열쇠 획득
+    for (let i = keys.length - 1; i >= 0; i--) {
+
+        if (
+            Math.hypot(
+                keys[i].x - player.x,
+                keys[i].y - player.y
+            ) < 0.42
+        ) {
+
+            keys.splice(i, 1);
+
+            collected++;
+
+            document.getElementById("keys").textContent =
+                `열쇠 ${collected} / 3`;
+        }
+    }
+
+    // 귀신 AI
+    let dx = player.x - ghost.x;
+    let dy = player.y - ghost.y;
+
+    let distance = Math.hypot(dx, dy);
+
+    if (ghost.active && distance < 7) {
+
+        let speed = distance < 2.7 ? 1.15 : 0.72;
+
+        let pace = speed * dt;
+
+        let nx = ghost.x + dx / (distance || 1) * pace;
+        let ny = ghost.y + dy / (distance || 1) * pace;
+
+        if (!isWall(nx, ghost.y)) {
+            ghost.x = nx;
+        }
+
+        if (!isWall(ghost.x, ny)) {
+            ghost.y = ny;
+        }
+    }
+
+    // 귀신에게 붙잡힘
+    if (ghost.active && distance < 0.48) {
+
+        dead = true;
+
+        finish("귀신에게 붙잡혔습니다!");
+    }
+
+    // 출구 도착
+    let px = Math.floor(player.x);
+    let py = Math.floor(player.y);
+
+    if (map[py]?.[px] === 2 && collected === 3) {
+
+        won = true;
+
+        finish("탈출 성공!");
+    }
+}
+
+// 종료
+function finish(title) {
+
+    document.getElementById("menu").style.display = "grid";
+
+    document.getElementById("menu").innerHTML = `
+        <div>
+            <h2>${title}</h2>
+            <p>열쇠 수집: ${collected}/3</p>
+            <button onclick="location.reload()">다시 시작</button>
+        </div>
+    `;
+}
+
+// 3D 렌더링
+function render() {
+
+    let gradient = ctx.createLinearGradient(0, 0, 0, H);
+
+    gradient.addColorStop(0, "#070b11");
+    gradient.addColorStop(0.48, "#111820");
+    gradient.addColorStop(0.5, "#151513");
+    gradient.addColorStop(1, "#030404");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, W, H);
+
+    let zBuffer = new Float32Array(W);
+
+    // 벽 렌더링
+    for (let sx = 0; sx < W; sx++) {
+
+        let angle =
+            player.a + (sx / W - 0.5) * Math.PI * 0.42;
+
+        let rx = Math.cos(angle);
+        let ry = Math.sin(angle);
+
+        let mx = Math.floor(player.x);
+        let my = Math.floor(player.y);
+
+        let ddx = Math.abs(1 / (rx || 1e-9));
+        let ddy = Math.abs(1 / (ry || 1e-9));
+
+        let stepX = rx < 0 ? -1 : 1;
+        let stepY = ry < 0 ? -1 : 1;
+
+        let sideX =
+            (rx < 0 ? player.x - mx : mx + 1 - player.x) * ddx;
+
+        let sideY =
+            (ry < 0 ? player.y - my : my + 1 - player.y) * ddy;
+
+        let side = 0;
+        let hit = false;
+        let distance = 0;
+
+        for (let i = 0; i < 60 && !hit; i++) {
+
+            if (sideX < sideY) {
+
+                sideX += ddx;
+                mx += stepX;
+                side = 0;
+
+                distance = sideX - ddx;
+
+            } else {
+
+                sideY += ddy;
+                my += stepY;
+                side = 1;
+
+                distance = sideY - ddy;
+            }
+
+            if (
+                mx < 0 || my < 0 ||
+                mx >= MW || my >= MH ||
+                map[my][mx] === 1
+            ) {
+                hit = true;
+            }
+        }
+
+        distance = Math.max(
+            0.05,
+            distance * Math.cos(angle - player.a)
+        );
+
+        zBuffer[sx] = distance;
+
+        let wallHeight = Math.min(H * 2, H / distance);
+
+        let top = (H - wallHeight) / 2;
+
+        let hitX = player.x + rx * distance;
+        let hitY = player.y + ry * distance;
+
+        let texture = (side === 0 ? hitY : hitX) % 1;
+
+        if (texture < 0) texture++;
+
+        let shade = Math.max(0.13, 1 - distance / 9);
+
+        if (side === 1) {
+            shade *= 0.68;
+        }
+
+        let beam =
+            Math.max(0, 1 - Math.abs(sx - W / 2) / (W * 0.48));
+
+        shade *= flash
+            ? 0.23 + 0.95 * beam * Math.max(0, 1 - distance / 8)
+            : 0.24;
+
+        ctx.globalAlpha = Math.min(1, shade);
+
+        ctx.fillStyle =
+            Math.floor(texture * 8) % 2 === 0
+            ? "#56616a"
+            : "#46515b";
+
+        ctx.fillRect(sx, top, 1, wallHeight);
+
+        // 벽의 낡은 흔적
+        if (Math.floor(texture * 16) % 4 === 0) {
+
+            ctx.fillStyle = "#202a31";
+
+            ctx.fillRect(
+                sx,
+                top + wallHeight * 0.28,
+                1,
+                wallHeight * 0.025
+            );
+        }
+
+        ctx.globalAlpha = 1;
+    }
+
+    // 귀신 및 열쇠
+    function drawSprite(x, y, type) {
+
+        let dx = x - player.x;
+        let dy = y - player.y;
+
+        let distance = Math.hypot(dx, dy);
+
+        let angle = Math.atan2(dy, dx) - player.a;
+
+        while (angle > Math.PI) angle -= Math.PI * 2;
+        while (angle < -Math.PI) angle += Math.PI * 2;
+
+        if (Math.abs(angle) > 0.55 || distance < 0.1) {
+            return;
+        }
+
+        let sx =
+            W / 2 + Math.tan(angle) * W * 0.95;
+
+        let size =
+            H / (distance * Math.cos(angle));
+
+        size *= type === "ghost" ? 0.8 : 0.22;
+
+        if (sx < 0 || sx >= W) {
+            return;
+        }
+
+        let top = H / 2 - size * 0.5;
+
+        let index = Math.floor(sx);
+
+        if (distance > zBuffer[index] - 0.15) {
+            return;
+        }
+
+        if (type === "ghost") {
+
+            let bob = Math.sin(performance.now() / 260) * size * 0.025;
+
+            ctx.save();
+
+            ctx.globalAlpha = Math.min(
+                0.96,
+                Math.max(0.25, 1 - distance / 9)
+            );
+
+            ctx.shadowColor = "#c7e4ef";
+            ctx.shadowBlur = size * 0.13;
+
+            // 귀신 몸체
+            ctx.fillStyle = "#cbd8df";
+
+            ctx.beginPath();
+
+            ctx.moveTo(sx - size * 0.35, top + size * 0.55 + bob);
+
+            ctx.quadraticCurveTo(
+                sx - size * 0.48,
+                top + size * 0.15,
+                sx,
+                top + size * 0.08
+            );
+
+            ctx.quadraticCurveTo(
+                sx + size * 0.48,
+                top + size * 0.15,
+                sx + size * 0.35,
+                top + size * 0.55
+            );
+
+            ctx.lineTo(sx + size * 0.3, top + size * 0.88);
+
+            ctx.quadraticCurveTo(
+                sx + size * 0.18,
+                top + size * 0.72,
+                sx + size * 0.08,
+                top + size * 0.9
+            );
+
+            ctx.quadraticCurveTo(
+                sx,
+                top + size * 0.72,
+                sx - size * 0.1,
+                top + size * 0.9
+            );
+
+            ctx.quadraticCurveTo(
+                sx - size * 0.2,
+                top + size * 0.72,
+                sx - size * 0.3,
+                top + size * 0.88
+            );
+
+            ctx.closePath();
+            ctx.fill();
+
+            // 귀신의 눈
+            ctx.shadowBlur = 0;
+
+            ctx.fillStyle = "#101820";
+
+            ctx.beginPath();
+
+            ctx.ellipse(
+                sx - size * 0.13,
+                top + size * 0.43,
+                size * 0.055,
+                size * 0.09,
+                0,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.ellipse(
+                sx + size * 0.13,
+                top + size * 0.43,
+                size * 0.055,
+                size * 0.09,
+                0,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+
+            ctx.restore();
+
+        } else {
+
+            // 열쇠
+            ctx.save();
+
+            ctx.fillStyle = "#d5b45a";
+            ctx.shadowColor = "#ffcf55";
+            ctx.shadowBlur = 12;
+
+            ctx.beginPath();
+
+            ctx.arc(
+                sx,
+                top + size * 0.4,
+                size * 0.14,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+
+            ctx.fillRect(
+                sx - size * 0.04,
+                top + size * 0.48,
+                size * 0.08,
+                size * 0.35
+            );
+
+            ctx.restore();
+        }
+    }
+
+    if (ghost.active) {
+        drawSprite(ghost.x, ghost.y, "ghost");
+    }
+
+    keys.forEach(key => {
+        drawSprite(key.x, key.y, "key");
+    });
+
+    // 화면 가장자리 어둠
+    let vignette = ctx.createRadialGradient(
+        W / 2, H * 0.53, 20,
+        W / 2, H * 0.53, H * 0.7
+    );
+
+    vignette.addColorStop(0, "#0000");
+    vignette.addColorStop(0.65, "#0004");
+    vignette.addColorStop(1, "#000e");
+
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, W, H);
+}
+
+// 게임 루프
+function loop(time) {
+
+    if (!started || won || dead) {
+        return;
+    }
+
+    let dt = Math.min(
+        0.035,
+        (time - lastTime) / 1000 || 0.016
+    );
+
+    lastTime = time;
+
+    update(dt);
+    render();
+
+    let elapsed = (time - startTime) / 1000;
+
+    document.getElementById("timer").textContent =
+        String(Math.floor(elapsed / 60)).padStart(2, "0") +
+        ":" +
+        String(Math.floor(elapsed % 60)).padStart(2, "0");
+
+    requestAnimationFrame(loop);
+}
+
+// 시작
+document.getElementById("start").onclick = () => {
+
+    if (!started) {
+
+        started = true;
+
+        startTime = performance.now();
+
+        document.getElementById("menu").style.display = "none";
+
+        requestAnimationFrame(loop);
+    }
+};
+
+generateMaze();
+
+</script>
+
+</body>
+</html>
