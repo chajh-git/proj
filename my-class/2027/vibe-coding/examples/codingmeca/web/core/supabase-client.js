@@ -1,6 +1,6 @@
 // web/core/supabase-client.js  (51번)
 // Supabase 연결: 아이디+비밀번호 로그인(가상 이메일 방식), 프로필, 기체 저장·불러오기, 밸런스 버전 읽기.
-//  - 아이디 → `아이디@codingmeca.invalid` 로 바꿔 Supabase 이메일 로그인에 넣는다. (config/constants.js account)
+//  - 아이디 → `아이디@gmail.com` 로 바꿔 Supabase 이메일 로그인에 넣는다. (config/constants.js account)
 //  - Supabase 프로젝트에서 "이메일 확인(Confirm email)"을 꺼 두어야 가입 즉시 로그인된다.
 //  - 역할(role)은 DB의 profiles 에서 읽는다. 화면 안내용일 뿐, 실제 권한은 서버와 DB 정책이 검증한다.
 //  - 테이블 이름은 TABLES 에 모았고, supabase/schema.sql(85번)이 이 이름·열을 따른다.
@@ -137,9 +137,15 @@ export async function createSupabaseClient({ env = ENV, loader = null } = {}) {
       },
       async save({ id = null, name, design, tactics }) {
         const row = { name: String(name || design?.name || '이름 없는 기체').slice(0, 40), design, tactics, updated_at: new Date().toISOString() };
-        const q = id
-          ? sb.from(TABLES.robots).update(row).eq('id', id).select('id').single()
-          : sb.from(TABLES.robots).insert(row).select('id').single();
+        let q;
+        if (id) q = sb.from(TABLES.robots).update(row).eq('id', id).select('id').single();
+        else {
+          // 새 기체는 주인(owner)을 내 계정으로 적어야 RLS(행 수준 보안)가 허용한다
+          const { data: ses } = await sb.auth.getSession();
+          const uid = ses?.session?.user?.id;
+          if (!uid) return { ok: false, error: '로그인이 필요합니다' };
+          q = sb.from(TABLES.robots).insert({ ...row, owner: uid }).select('id').single();
+        }
         const { data, error } = await q;
         return error ? fail(error) : { ok: true, id: data.id };
       },
