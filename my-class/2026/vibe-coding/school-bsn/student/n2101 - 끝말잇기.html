@@ -1,825 +1,1481 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>끝말잇기 온라인</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>끝말잇기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --yellow: #FFD400; --yellow-deep: #EFC200; --yellow-soft: #FFF7D6;
+    --ink: #141414; --gray: #9B9B9B; --gray-2: #C6C6C6;
+    --line: #EFEFEF; --surface: #F6F6F6;
+    --bounce: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-weight: 600; color: var(--ink); background: #fff;
+    -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent;
+  }
+  strong { font-weight: 600; }
+  input, button { font-family: inherit; font-weight: 600; }
+  iconify-icon { display: block; }
 
-    <!-- Pixelarticons Icon Library -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pixelarticons@1.8.0/pixelarticons.css">
-    
-    <!-- Supabase JS Client Library -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  .app { position: relative; width: 100%; max-width: 430px; height: 100vh; height: 100dvh;
+    margin: 0 auto; display: flex; flex-direction: column; overflow: hidden; }
+  .stage { position: relative; flex: 1; min-height: 0; }
 
-    <style>
-        @import url('https://cdn.jsdelivr.net/npm/galmuri@latest/dist/galmuri.css');
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+    padding: 0 26px 28px; overflow-y: auto; opacity: 0; visibility: hidden; pointer-events: none; }
+  .screen::-webkit-scrollbar { display: none; }
+  .screen.active { opacity: 1; visibility: visible; pointer-events: auto; }
 
-        @font-face {
-            font-family: 'Galmuri11';
-            src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2506-1@1.0/Galmuri11-Bold.woff2') format('woff2');
-            font-weight: 700;
-            font-display: swap;
-        }
+  .btn { height: 56px; border: 0; border-radius: 8px; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }
+  .btn iconify-icon { font-size: 20px; }
+  .btn--primary { background: var(--yellow); color: var(--ink); }
+  .btn--primary:active { transform: scale(.93); background: var(--yellow-deep); }
+  .btn--ghost { background: var(--surface); color: var(--ink); }
+  .btn--ghost:active { transform: scale(.93); background: #EAEAEA; }
+  .btn[disabled] { background: var(--yellow-soft); color: var(--yellow-deep); pointer-events: none; }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            user-select: none;
-            font-family: 'Galmuri11', 'Galmuri9', sans-serif !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-            outline: none;
-        }
+  .icon-btn { width: 40px; height: 40px; flex: 0 0 40px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--ink); display: grid; place-items: center;
+    font-size: 22px; cursor: pointer; }
+  .icon-btn:active { transform: scale(.85); background: var(--surface); }
 
-        body {
-            width: 100vw;
-            height: 100vh;
-            background: #08090c;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
+  .page-head { display: flex; align-items: center; gap: 10px; padding-top: 18px; }
+  .page-head h1 { flex: 1; text-align: center; font-size: 17px; letter-spacing: -.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .page-head .spacer { width: 40px; flex: 0 0 40px; }
 
-        .bg-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('https://i.redd.it/rkx6ciyfzii71.png') no-repeat center center;
-            background-size: cover;
-            filter: brightness(0.2) contrast(1.2);
-            z-index: 1;
-        }
+  .mini-avatar { width: 40px; height: 40px; flex: 0 0 40px; border: 0; border-radius: 50%;
+    background: var(--surface); color: var(--gray); display: grid; place-items: center;
+    font-size: 14px; cursor: pointer; overflow: hidden; }
+  .mini-avatar:active { transform: scale(.88); }
+  .mini-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-        .scanline-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                rgba(18, 16, 16, 0) 50%, 
-                rgba(0, 0, 0, 0.3) 50%
-            );
-            background-size: 100% 4px;
-            z-index: 2;
-            pointer-events: none;
-        }
+  .field { position: relative; }
+  .field input { width: 100%; border: 0; background: transparent; outline: none;
+    font-size: 17px; line-height: 1.2; color: var(--ink); padding: 24px 0 12px; }
+  .field input::placeholder { color: transparent; }
+  .field label { position: absolute; left: 0; top: 24px; font-size: 16px; color: var(--gray);
+    pointer-events: none; transform-origin: left top;
+    transition: top .32s var(--bounce), transform .32s var(--bounce), color .18s; }
+  .field input:focus + label, .field input:not(:placeholder-shown) + label {
+    top: -2px; transform: scale(.74); color: var(--yellow-deep); }
+  .field .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+    border-radius: 2px; background: var(--line); overflow: hidden; }
+  .field .bar::after { content: ''; position: absolute; inset: 0; border-radius: 2px;
+    background: var(--yellow); transform: scaleX(0); transform-origin: left center;
+    transition: transform .38s var(--bounce); }
+  .field input:focus ~ .bar::after { transform: scaleX(1); }
 
-        #app {
-            position: relative;
-            z-index: 10;
-            width: 880px;
-            height: 640px;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+  .screen--entry { justify-content: center; }
+  .brand { text-align: center; }
+  .brand h1 { font-size: 30px; letter-spacing: -.03em; }
+  .brand p { margin-top: 8px; font-size: 14px; color: var(--gray); }
+  .identity { margin-top: 52px; display: flex; align-items: center; gap: 16px; }
+  .avatar { width: 58px; height: 58px; flex: 0 0 58px; border: 0; border-radius: 50%;
+    background: var(--surface); color: var(--gray-2); display: grid; place-items: center;
+    font-size: 25px; cursor: pointer; overflow: hidden; }
+  .avatar:active { transform: scale(.88); }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .identity .field { flex: 1; }
+  .actions { margin-top: 44px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 12px;
-        }
+  .rooms-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+  .action-card { height: 84px; border: 0; border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; font-size: 14px; cursor: pointer; }
+  .action-card iconify-icon { font-size: 24px; }
+  .action-card--primary { background: var(--yellow); color: var(--ink); }
+  .action-card--primary:active { background: var(--yellow-deep); transform: scale(.95); }
+  .action-card--ghost { background: var(--surface); color: var(--ink); }
+  .action-card--ghost:active { background: #EAEAEA; transform: scale(.95); }
 
-        .logo-box {
-            display: flex;
-            flex-direction: column;
-            line-height: 1;
-        }
+  .rooms-label { margin-top: 28px; margin-bottom: 10px; font-size: 13px; color: var(--gray);
+    display: flex; align-items: center; justify-content: space-between; }
+  .refresh-btn { border: 0; background: transparent; color: var(--yellow-deep);
+    font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .refresh-btn:active { opacity: .6; }
+  .refresh-btn iconify-icon { font-size: 16px; }
 
-        .logo-sub {
-            font-size: 14px;
-            color: #ffe600;
-            letter-spacing: 2px;
-            margin-bottom: 4px;
-        }
+  .room-list { list-style: none; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; }
+  .room-card { display: flex; align-items: center; gap: 14px; padding: 14px;
+    border-radius: 8px; background: var(--surface); cursor: pointer; }
+  .room-card:active { transform: scale(.97); background: var(--yellow-soft); }
 
-        .logo-main {
-            font-size: 36px;
-            color: #ffffff;
-            letter-spacing: 2px;
-        }
+  .room-ico { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 8px;
+    background: var(--yellow); color: var(--ink); display: grid; place-items: center; font-size: 21px; }
+  .room-info { flex: 1; min-width: 0; }
+  .room-info strong { display: block; font-size: 15px; letter-spacing: -.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .room-info span { display: block; margin-top: 3px; font-size: 12px; color: var(--gray); }
+  .chev { font-size: 18px; color: var(--gray-2); }
 
-        .user-hud {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #ffe600;
-            padding: 8px 14px;
-            color: #ffffff;
-            font-size: 14px;
-        }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--gray); font-size: 14px; }
 
-        .pixel-btn {
-            background-color: #ffe600;
-            border: none;
-            color: #000;
-            font-weight: bold;
-            padding: 10px 18px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            font-size: 15px;
-            clip-path: polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
-                4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)
-            );
-        }
+  .waiting-code { display: flex; align-items: center; gap: 10px;
+    padding: 14px 18px; margin-top: 22px; border-radius: 8px; background: var(--yellow-soft); }
+  .waiting-code > span { font-size: 13px; color: var(--yellow-deep); }
+  .waiting-code > strong { flex: 1; font-size: 18px; letter-spacing: .12em; color: var(--ink); }
+  .copy-btn { width: 36px; height: 36px; border: 0; border-radius: 8px; background: transparent;
+    color: var(--yellow-deep); display: grid; place-items: center; font-size: 18px; cursor: pointer; }
+  .copy-btn:active { transform: scale(.85); background: rgba(0,0,0,.05); }
 
-        .pixel-btn:hover { background-color: #ffff66; }
-        .pixel-btn:active { transform: translateY(2px); background-color: #cca300; }
-        .pixel-btn.danger { background-color: #ff3344; color: #ffffff; }
+  .waiting-label { margin-top: 28px; margin-bottom: 12px; font-size: 13px; color: var(--gray);
+    display: flex; justify-content: space-between; align-items: center; }
+  .waiting-label strong { color: var(--ink); font-weight: 600; }
 
-        .pixel-input {
-            background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: #ffffff;
-            padding: 12px 16px;
-            font-size: 16px;
-            clip-path: polygon(
-                0 4px, 4px 4px, 4px 0,
-                calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px,
-                100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
-                4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px)
-            );
-        }
+  .waiting-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .player-slot { display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 8px; border-radius: 8px; background: var(--surface); }
+  .slot-avatar { width: 48px; height: 48px; border-radius: 50%;
+    background: var(--yellow); color: var(--ink); display: grid; place-items: center;
+    font-size: 18px; overflow: hidden; position: relative; }
+  .slot-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .slot-crown { position: absolute; top: -6px; right: -6px; font-size: 18px;
+    filter: drop-shadow(0 1px 0 white); }
+  .slot-name { font-size: 13px; color: var(--ink);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .slot-status { display: flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--gray); }
+  .slot-status::before { content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gray-2); }
+  .player-slot.ready .slot-status::before { background: var(--yellow); }
+  .player-slot.ready .slot-status { color: var(--yellow-deep); }
+  .player-slot.me { background: var(--yellow-soft); }
+  .player-slot.empty { background: transparent; border: 2px dashed var(--line); }
+  .player-slot.empty .slot-avatar { background: transparent; color: var(--gray-2); }
+  .player-slot.empty .slot-name { color: var(--gray-2); }
+  .player-slot.empty .slot-status { color: var(--gray-2); }
 
-        .pixel-input:focus { border-color: #ffe600; }
+  .waiting-foot { margin-top: auto; padding-top: 24px;
+    display: flex; flex-direction: column; gap: 10px; }
 
-        .view-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
+  .game-players { display: flex; gap: 10px; margin-top: 22px; justify-content: center;
+    flex-wrap: wrap; }
+  .game-player { width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface); color: var(--gray);
+    display: grid; place-items: center; font-size: 15px;
+    position: relative; overflow: hidden; transition: opacity .2s; }
+  .game-player.me { background: var(--yellow); color: var(--ink); }
+  .game-player img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .game-player.current::after { content: ''; position: absolute; inset: -3px;
+    border: 2px solid var(--yellow); border-radius: 50%; pointer-events: none;
+    animation: ring 1.4s ease-in-out infinite; }
+  @keyframes ring {
+    0%, 100% { opacity: .5; transform: scale(1); }
+    50%      { opacity: 1; transform: scale(1.04); }
+  }
+  .game-player.eliminated { opacity: .35; }
+  .game-player.eliminated::before { content: '✕'; position: absolute; inset: 0;
+    display: grid; place-items: center; background: rgba(20,20,20,.4);
+    color: #fff; font-size: 18px; z-index: 2; }
 
-        .lobby-toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
+  .play-area { flex: 1; min-height: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: 26px; padding: 20px 0 16px; }
 
-        .room-grid {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            overflow-y: auto;
-        }
+  .chain { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+  .chain::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; padding: 9px 14px; border-radius: 8px;
+    background: var(--surface); color: var(--gray); font-size: 14px; white-space: nowrap; }
+  .chip.recent { background: var(--yellow-soft); color: var(--yellow-deep); }
 
-        .room-card {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            padding: 14px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #ffffff;
-        }
+  .word-wrap { text-align: center; }
+  .word { display: inline-block; font-size: 46px; letter-spacing: -.035em; }
+  .word.swap { animation: wordSwap .55s var(--bounce); }
+  @keyframes wordSwap {
+    0%   { transform: scale(.4) translateY(20px) rotate(-3deg); opacity: 0; }
+    55%  { transform: scale(1.12) translateY(-4px) rotate(1.5deg); opacity: 1; }
+    100% { transform: scale(1) translateY(0) rotate(0deg); opacity: 1; }
+  }
+  .hint { display: block; margin-top: 12px; font-size: 14px; color: var(--gray); }
+  .hint b { color: var(--yellow-deep); }
 
-        .room-card:hover { border-color: #ffe600; }
+  .timer { height: 6px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .timer-fill { height: 100%; width: 100%; border-radius: 4px; background: var(--yellow);
+    transition: width .1s linear; }
+  .timer-fill.danger { background: #FF6B4A; }
 
-        #game-view {
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-        }
+  .composer { display: flex; align-items: center; gap: 12px; }
+  .composer .field { flex: 1; }
+  .composer.locked .field input { color: var(--gray); cursor: not-allowed; }
+  .send { width: 54px; height: 54px; flex: 0 0 54px;
+    border: 0; border-radius: 8px; background: var(--yellow); color: var(--ink);
+    display: grid; place-items: center; font-size: 23px; cursor: pointer; }
+  .send:active { transform: scale(.86); background: var(--yellow-deep); }
+  .send[disabled] { background: var(--yellow-soft); color: var(--yellow-deep); pointer-events: none; }
 
-        /* 체력바 및 타이머 HUD */
-        .battle-hud {
-            display: flex;
-            justify-content: space-between;
-            gap: 16px;
-        }
+  .screen--result { justify-content: center; text-align: center; }
+  .result-inner { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .result-icon { font-size: 80px; line-height: 1; }
+  .result-title { font-size: 32px; letter-spacing: -.03em; }
+  .result-sub { font-size: 15px; color: var(--gray); }
+  .result-actions { margin-top: 32px; display: flex; flex-direction: column;
+    gap: 10px; width: 100%; max-width: 300px; }
 
-        .player-status-card {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.75);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 14px;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
+  .backdrop { position: fixed; inset: 0; z-index: 30;
+    background: rgba(20,20,20,.3); opacity: 0; visibility: hidden;
+    transition: opacity .25s ease, visibility .25s; }
+  .backdrop.on { opacity: 1; visibility: visible; }
 
-        .player-status-card.active {
-            border-color: #ffe600;
-            background: rgba(255, 230, 0, 0.08);
-        }
+  .sheet { position: fixed; left: 50%; bottom: 0; z-index: 31;
+    width: 100%; max-width: 430px; max-height: 82dvh;
+    display: flex; flex-direction: column; padding: 10px 26px 30px;
+    border-radius: 8px 8px 0 0; background: #fff;
+    transform: translate(-50%, 105%); transition: transform .48s var(--bounce); }
+  .sheet.on { transform: translate(-50%, 0); }
+  .sheet--profile { z-index: 41; }
+  .backdrop--pf { z-index: 40; }
 
-        .hp-bar-bg {
-            width: 100%;
-            height: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            position: relative;
-        }
+  .sheet-handle { width: 40px; height: 4px; border-radius: 4px;
+    background: var(--line); margin: 0 auto 18px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .sheet-head h2 { font-size: 19px; letter-spacing: -.02em; }
+  .sheet-body { display: flex; flex-direction: column; gap: 20px; padding: 8px 0 20px; }
+  .sheet-label { font-size: 13px; color: var(--gray); margin-top: 4px; }
+  .sheet-help { font-size: 13px; color: var(--gray); }
 
-        .hp-bar-fill {
-            height: 100%;
-            background: #ff3344;
-            width: 100%;
-            transition: width 0.3s ease;
-        }
+  .pill-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+  .pill-row::-webkit-scrollbar { display: none; }
+  .pill { flex: 1; min-width: 44px; height: 44px; border: 0; border-radius: 8px;
+    background: var(--surface); color: var(--ink); font-size: 14px; cursor: pointer; }
+  .pill:active { background: #EAEAEA; }
+  .pill.active { background: var(--yellow); color: var(--ink); }
 
-        .timer-center {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #ff3344;
-            padding: 8px 16px;
-            color: #ff3344;
-            min-width: 120px;
-        }
+  .pf-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .pf-scroll::-webkit-scrollbar { display: none; }
+  .pf-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 4px 2px 6px; }
+  .pf-item { display: block; width: 100%; border: 0; padding: 0;
+    border-radius: 8px; background: var(--surface); overflow: hidden;
+    cursor: pointer; aspect-ratio: 1 / 1; position: relative; }
+  .pf-item:active { transform: scale(.92); }
+  .pf-item img { position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: block; }
 
-        .timer-value {
-            font-size: 26px;
-            font-weight: bold;
-        }
+  .toast { position: fixed; left: 50%; bottom: 40px; transform: translate(-50%, 20px);
+    padding: 12px 20px; border-radius: 8px; background: rgba(20,20,20,.9);
+    color: #fff; font-size: 14px; z-index: 100;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    max-width: 90vw; text-align: center; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-        .arena-box {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px dashed rgba(255, 230, 0, 0.4);
-            position: relative;
-            min-height: 150px;
-        }
+  #connBanner { display: none; position: fixed; top: 0; left: 0; right: 0; z-index: 999;
+    padding: 12px 16px; background: #FF6B4A; color: #fff;
+    font-size: 13px; line-height: 1.4; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  #connBanner button { margin-left: 8px; border: 0; background: rgba(255,255,255,.25);
+    color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
 
-        .current-word-display {
-            font-size: 44px;
-            color: #ffe600;
-            letter-spacing: 4px;
-        }
-
-        .chat-stream {
-            height: 100px;
-            background: rgba(0, 0, 0, 0.75);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            padding: 10px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .chat-line {
-            font-size: 13px;
-            color: rgba(255, 255, 255, 0.85);
-        }
-
-        .toast-message {
-            position: absolute;
-            bottom: 85px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ff3344;
-            color: #ffffff;
-            padding: 8px 18px;
-            font-size: 14px;
-            border: 2px solid #ffffff;
-            display: none;
-            z-index: 100;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-card {
-            background: #000000;
-            border: 3px solid #ffe600;
-            padding: 26px;
-            width: 380px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            text-align: center;
-        }
-    </style>
+  .dict-badge { display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--gray); margin-left: 6px; }
+  .dict-badge.loading::before { content: '⏳'; }
+  .dict-badge.ready::before { content: '✅'; }
+  .dict-badge.failed::before { content: '⚠️'; }
+</style>
 </head>
 <body>
 
-    <div class="bg-layer"></div>
-    <div class="scanline-overlay"></div>
+<div id="connBanner">
+  <span id="connBannerText"></span>
+  <button onclick="document.getElementById('connBanner').style.display='none'">닫기</button>
+</div>
 
-    <!-- 닉네임 입력 모달 -->
-    <div id="nickname-modal" class="modal-overlay">
-        <div class="modal-card">
-            <div style="font-size: 20px; color: #ffe600;">
-                <i class="pixelarticons-user"></i> 닉네임 설정
-            </div>
-            <p style="color: #aaa; font-size: 13px;">게임에서 사용할 이름을 입력하세요.</p>
-            <input type="text" id="nickname-input" class="pixel-input" placeholder="닉네임..." maxlength="10" onkeydown="if(event.key==='Enter') setNickname()">
-            <button class="pixel-btn" onclick="setNickname()">접속하기</button>
+<div class="app">
+  <div class="stage">
+
+    <!-- 1. 입장 -->
+    <section class="screen screen--entry active" data-screen="entry">
+      <div class="brand">
+        <h1>끝말잇기</h1>
+        <p>닉네임만 정하면 바로 시작할 수 있어요</p>
+      </div>
+      <div class="identity">
+        <button class="avatar" id="avatarBtn" type="button" aria-label="프로필 사진 선택">
+          <iconify-icon icon="solar:camera-bold" id="avatarIcon"></iconify-icon>
+          <img id="avatarImg" alt="" style="display:none" />
+        </button>
+        <div class="field">
+          <input id="nickname" type="text" placeholder=" " autocomplete="off" maxlength="10" />
+          <label for="nickname">닉네임</label>
+          <span class="bar"></span>
         </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn--primary" data-nav="rooms">
+          <iconify-icon icon="solar:play-bold"></iconify-icon>
+          바로 시작하기
+        </button>
+        <button class="btn btn--ghost" data-nav="rooms">
+          <iconify-icon icon="solar:users-group-rounded-bold"></iconify-icon>
+          방 조회하기
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. 방 목록 -->
+    <section class="screen screen--rooms" data-screen="rooms">
+      <header class="page-head">
+        <button class="icon-btn" data-nav="entry" aria-label="뒤로">
+          <iconify-icon icon="solar:alt-arrow-left-bold"></iconify-icon>
+        </button>
+        <h1>방 목록</h1>
+        <button class="mini-avatar" id="miniAvatarBtn" aria-label="프로필 변경">
+          <span id="miniAvatarText">나</span>
+          <img id="miniAvatarImg" alt="" style="display:none" />
+        </button>
+      </header>
+
+      <div class="rooms-actions">
+        <button class="action-card action-card--primary" id="openCreate">
+          <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+          <span>방 만들기</span>
+        </button>
+        <button class="action-card action-card--ghost" id="openJoin">
+          <iconify-icon icon="solar:key-bold"></iconify-icon>
+          <span>코드로 입장</span>
+        </button>
+      </div>
+
+      <div class="rooms-label">
+        <span>참여 가능한 방</span>
+        <button class="refresh-btn" id="refreshRooms">
+          <iconify-icon icon="solar:refresh-bold"></iconify-icon>
+          새로고침
+        </button>
+      </div>
+
+      <ul class="room-list" id="roomList">
+        <li class="empty-state">불러오는 중...</li>
+      </ul>
+    </section>
+
+    <!-- 3. 대기방 -->
+    <section class="screen screen--waiting" data-screen="waiting">
+      <header class="page-head">
+        <button class="icon-btn" id="leaveWaiting" aria-label="나가기">
+          <iconify-icon icon="solar:alt-arrow-left-bold"></iconify-icon>
+        </button>
+        <h1 id="waitingRoomName">-</h1>
+        <div class="spacer"></div>
+      </header>
+
+      <div class="waiting-code">
+        <span>방 코드</span>
+        <strong id="waitingCode">------</strong>
+        <button class="copy-btn" id="copyCode" aria-label="복사">
+          <iconify-icon icon="solar:copy-bold"></iconify-icon>
+        </button>
+      </div>
+
+      <div class="waiting-label">
+        <span>참가자</span>
+        <strong id="waitingCount">0/0</strong>
+      </div>
+
+      <div class="waiting-grid" id="waitingGrid"></div>
+
+      <div class="waiting-foot">
+        <button class="btn btn--ghost" id="readyBtn">준비하기</button>
+        <button class="btn btn--primary" id="startBtn" style="display:none">게임 시작</button>
+      </div>
+    </section>
+
+    <!-- 4. 게임 -->
+    <section class="screen screen--game" data-screen="game">
+      <header class="page-head">
+        <button class="icon-btn" id="gameBackBtn" aria-label="나가기">
+          <iconify-icon icon="solar:alt-arrow-left-bold"></iconify-icon>
+        </button>
+        <h1 id="gameRoomName">-</h1>
+        <div class="spacer"></div>
+      </header>
+
+      <div class="game-players" id="gamePlayers"></div>
+
+      <div class="play-area">
+        <div class="chain" id="chain"></div>
+
+        <div class="word-wrap">
+          <span class="word" id="word">-</span>
+          <span class="hint" id="hint"></span>
+          <span class="dict-badge loading" id="dictBadge">사전 로딩 중</span>
+        </div>
+
+        <div class="timer"><div class="timer-fill" id="timerFill"></div></div>
+
+        <div class="composer" id="composer">
+          <div class="field">
+            <input type="text" id="wordInput" placeholder=" " autocomplete="off" maxlength="15" />
+            <label id="wordLabel">단어 입력</label>
+            <span class="bar"></span>
+          </div>
+          <button class="send" id="sendBtn" aria-label="입력">
+            <iconify-icon icon="solar:arrow-right-bold"></iconify-icon>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 결과 -->
+    <section class="screen screen--result" data-screen="result">
+      <div class="result-inner">
+        <div class="result-icon" id="resultIcon">🏆</div>
+        <h1 class="result-title" id="resultTitle">우승!</h1>
+        <p class="result-sub" id="resultSub">-</p>
+        <div class="result-actions">
+          <button class="btn btn--primary" id="rematchBtn">다시 하기</button>
+          <button class="btn btn--ghost" id="leaveResult">나가기</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- 방 만들기 시트 -->
+<div class="backdrop" data-sheet="create"></div>
+<aside class="sheet" data-sheet="create">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h2>방 만들기</h2>
+    <button class="icon-btn" data-sheet-close="create" aria-label="닫기">
+      <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <input id="createName" type="text" placeholder=" " autocomplete="off" maxlength="20" />
+      <label for="createName">방 이름</label>
+      <span class="bar"></span>
     </div>
-
-    <!-- 방 만들기 모달 -->
-    <div id="create-room-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
-            <div style="font-size: 20px; color: #ffe600;">
-                <i class="pixelarticons-plus"></i> 방 생성하기
-            </div>
-            <input type="text" id="room-title-input" class="pixel-input" placeholder="방 제목을 입력하세요..." maxlength="20">
-            <div style="display: flex; gap: 8px;">
-                <button class="pixel-btn" style="flex: 1;" onclick="createRoom()">생성</button>
-                <button class="pixel-btn danger" style="flex: 1;" onclick="closeCreateRoomModal()">취소</button>
-            </div>
-        </div>
+    <div>
+      <div class="sheet-label">최대 인원</div>
+      <div class="pill-row" id="maxPlayersRow" style="margin-top:8px">
+        <button class="pill" data-max="2">2</button>
+        <button class="pill" data-max="3">3</button>
+        <button class="pill" data-max="4">4</button>
+        <button class="pill" data-max="5">5</button>
+        <button class="pill active" data-max="6">6</button>
+        <button class="pill" data-max="7">7</button>
+        <button class="pill" data-max="8">8</button>
+      </div>
     </div>
+  </div>
+  <button class="btn btn--primary" id="createBtn">
+    <iconify-icon icon="solar:add-circle-bold"></iconify-icon>
+    만들기
+  </button>
+</aside>
 
-    <div id="app">
-        <!-- 상단 헤더 -->
-        <header>
-            <div class="logo-box">
-                <span class="logo-sub">실시간 1대1</span>
-                <span class="logo-main">끝말잇기</span>
-            </div>
-            <div class="user-hud">
-                <i class="pixelarticons-user"></i>
-                <span id="hud-username">대기 중...</span>
-            </div>
-        </header>
-
-        <div id="toast" class="toast-message">알림 메세지</div>
-
-        <!-- 로비 화면 -->
-        <div id="lobby-view" class="view-panel">
-            <div class="lobby-toolbar">
-                <span style="color: #ffffff; font-size: 16px;">방 목록</span>
-                <button class="pixel-btn" onclick="openCreateRoomModal()">
-                    <i class="pixelarticons-plus"></i> 방 만들기
-                </button>
-            </div>
-            <div class="room-grid" id="room-list">
-                <!-- 방 목록 -->
-            </div>
-        </div>
-
-        <!-- 게임 화면 -->
-        <div id="game-view" class="view-panel">
-            <!-- 배틀 HUD (HP & 타이머) -->
-            <div class="battle-hud">
-                <div class="player-status-card" id="p1-card">
-                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                        <span id="p1-name" style="color: #ffe600;">1P</span>
-                        <span id="p1-hp-text">100 HP</span>
-                    </div>
-                    <div class="hp-bar-bg">
-                        <div class="hp-bar-fill" id="p1-hp-bar"></div>
-                    </div>
-                </div>
-
-                <div class="timer-center">
-                    <span style="font-size: 11px; color: #aaa;">남은 시간</span>
-                    <span class="timer-value" id="timer-count">15.0</span>
-                </div>
-
-                <div class="player-status-card" id="p2-card">
-                    <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                        <span id="p2-name" style="color: #ffe600;">2P</span>
-                        <span id="p2-hp-text">100 HP</span>
-                    </div>
-                    <div class="hp-bar-bg">
-                        <div class="hp-bar-fill" id="p2-hp-bar"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="arena-box">
-                <div style="position: absolute; top: 10px; left: 14px; font-size: 12px; color: #888;" id="turn-indicator">상대방 대기 중...</div>
-                <div class="current-word-display" id="current-word">대기 중</div>
-            </div>
-
-            <div class="chat-stream" id="word-history">
-                <!-- 게임 로그 -->
-            </div>
-
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="word-input" class="pixel-input" placeholder="단어 입력..." style="flex: 1;" onkeydown="handleKeyPress(event)" disabled>
-                <button class="pixel-btn" id="submit-btn" onclick="submitWord()" disabled>입력</button>
-                <button class="pixel-btn danger" onclick="leaveRoom()">나가기</button>
-            </div>
-        </div>
+<!-- 코드로 입장 시트 -->
+<div class="backdrop" data-sheet="join"></div>
+<aside class="sheet" data-sheet="join">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h2>코드로 입장</h2>
+    <button class="icon-btn" data-sheet-close="join" aria-label="닫기">
+      <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+    </button>
+  </div>
+  <div class="sheet-body">
+    <div class="field">
+      <input id="joinCode" type="text" placeholder=" " autocomplete="off" maxlength="6"
+             style="text-transform:uppercase;letter-spacing:.18em;font-size:24px" />
+      <label for="joinCode">방 코드</label>
+      <span class="bar"></span>
     </div>
+    <p class="sheet-help">방장에게 받은 6자리 코드를 입력하세요</p>
+  </div>
+  <button class="btn btn--primary" id="joinBtn">
+    <iconify-icon icon="solar:login-2-bold"></iconify-icon>
+    입장
+  </button>
+</aside>
 
-    <script>
-        const SUPABASE_URL = "https://alimbllldqphxjbnirra.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsaW1ibGxsZHFwaHhqYm5pcnJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NDE1NTcsImV4cCI6MjEwNjExNzU1N30.I7SH8lD0xSC9N2xmHHl_hpLxasgNe0nyYEKlUd8NmJk";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<!-- 프로필 사진 시트 -->
+<div class="backdrop backdrop--pf" data-sheet="profile"></div>
+<aside class="sheet sheet--profile" data-sheet="profile">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head">
+    <h2>프로필 사진 선택</h2>
+    <button class="icon-btn" data-sheet-close="profile" aria-label="닫기">
+      <iconify-icon icon="solar:close-circle-bold"></iconify-icon>
+    </button>
+  </div>
+  <div class="pf-scroll"><div class="pf-grid" id="pfGrid"></div></div>
+</aside>
 
-        let myUserId = "";
-        let currentRoomId = null;
-        let isMyTurn = false;
-        let currentLastWord = "";
-        let usedWordsSet = new Set();
-        let dictionaryArray = [];
-        let dictionarySet = new Set();
-        let isDictLoaded = false;
-        
-        // 타이머 및 게임 상태
-        let turnTimer = null;
-        let maxTurnTime = 15.0; // 턴당 제한시간 (점점 줄어듦)
-        let timeRemaining = 15.0;
-        let p1Hp = 100;
-        let p2Hp = 100;
-        let p1User = "";
-        let p2User = "";
+<div class="toast" id="toast"></div>
 
-        async function loadDictionary() {
-            try {
-                const response = await fetch("https://raw.githubusercontent.com/open-korean-text/open-korean-text/master/src/main/resources/org/openkoreantext/processor/util/noun/nouns.txt");
-                const text = await response.text();
-                dictionaryArray = text.split('\n').map(w => w.trim()).filter(w => w.length >= 2 && w.length <= 4);
-                dictionarySet = new Set(dictionaryArray);
-                isDictLoaded = true;
-            } catch (err) {
-                console.error("단어 로드 오류:", err);
-            }
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIG & CLIENT
+═══════════════════════════════════════════════════ */
+const SUPABASE_URL = 'https://alimbllldqphxjbnirra.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFsaW1ibGxsZHFwaHhqYm5pcnJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NDE1NTcsImV4cCI6MjEwNjExNzU1N30.I7SH8lD0xSC9N2xmHHl_hpLxasgNe0nyYEKlUd8NmJk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const DICT_URL = 'https://raw.githubusercontent.com/open-korean-text/open-korean-text/master/src/main/resources/org/openkoreantext/processor/util/noun/nouns.txt';
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+const app = {
+  profile: {
+    clientId: localStorage.getItem('kk_cid') || crypto.randomUUID(),
+    nickname: localStorage.getItem('kk_nick') || '',
+    avatar: localStorage.getItem('kk_avatar') || null,
+  },
+  room: null,
+  player: null,
+  players: [],
+  words: [],
+  channels: {},
+  gameTimer: null,
+  timeoutLocked: false,
+  cleanupTimer: null,
+  submitting: false,
+};
+localStorage.setItem('kk_cid', app.profile.clientId);
+
+/* 라운드별 턴 제한시간(초) — 진행할수록 감소 */
+const TURN_DURATIONS = [15, 15, 15, 12, 12, 12, 10, 10, 10, 8];
+function getTurnDuration(round) {
+  const idx = Math.min(Math.max(round, 0), TURN_DURATIONS.length - 1);
+  return TURN_DURATIONS[idx];
+}
+
+/* ═══════════════════════════════════════════════════
+   사전
+═══════════════════════════════════════════════════ */
+let DICT = null;
+let dictStatus = 'loading';
+async function loadDictionary() {
+  const badge = document.getElementById('dictBadge');
+  try {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 15000);
+    const res = await fetch(DICT_URL, { cache: 'force-cache', signal: ctrl.signal });
+    clearTimeout(to);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    if (!text || text.length < 100) throw new Error('사전 데이터 비어있음');
+    const HANGUL = /^[가-힣]{2,15}$/;
+    const set = new Set();
+    for (const line of text.split('\n')) {
+      const w = line.trim();
+      if (HANGUL.test(w)) set.add(w);
+    }
+    if (set.size === 0) throw new Error('유효 단어 0개');
+    DICT = set;
+    dictStatus = 'ready';
+    if (badge) { badge.className = 'dict-badge ready'; badge.textContent = `${set.size.toLocaleString()}단어 사전`; }
+    console.log('📖 사전 로드 완료:', set.size, '단어');
+  } catch (e) {
+    dictStatus = 'failed';
+    if (badge) { badge.className = 'dict-badge failed'; badge.textContent = '사전 로드 실패 (기본 룰만 적용)'; }
+    console.warn('사전 로드 실패:', e);
+  }
+}
+loadDictionary();
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+
+function toast(msg, ms = 1800) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('on');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('on'), ms);
+}
+
+function showBanner(msg) {
+  $('connBannerText').textContent = msg;
+  $('connBanner').style.display = 'block';
+}
+
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(s =>
+    s.classList.toggle('active', s.dataset.screen === screen));
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[m]));
+}
+
+/* ═══════════════════════════════════════════════════
+   연결 진단 (시작 시 1회)
+═══════════════════════════════════════════════════ */
+async function healthCheck() {
+  try {
+    const { error } = await sb.from('rooms').select('id').limit(1);
+    if (!error) return;
+    if (error.status === 401 || error.code === '401' || /JWT|Unauthorized/i.test(error.message)) {
+      showBanner('⚠️ Supabase 인증 실패 — 대시보드에서 anon key를 재발급하거나, 프로젝트 일시정지 여부를 확인하세요.');
+    } else if (error.code === '42P01') {
+      showBanner('⚠️ 테이블이 없습니다. Supabase SQL Editor에서 스키마를 먼저 실행하세요.');
+    } else if (error.code === 'PGRST301' || /JWT expired/i.test(error.message)) {
+      showBanner('⚠️ 인증 토큰 만료 — anon key를 재발급하세요.');
+    } else {
+      showBanner('⚠️ DB 오류: ' + error.message);
+    }
+  } catch (e) {
+    showBanner('⚠️ 네트워크 연결 오류: ' + e.message);
+  }
+}
+healthCheck();
+
+/* ═══════════════════════════════════════════════════
+   REALTIME
+═══════════════════════════════════════════════════ */
+function unsub(key) {
+  if (app.channels[key]) {
+    try { sb.removeChannel(app.channels[key]); } catch (e) {}
+    delete app.channels[key];
+  }
+}
+function unsubAll() {
+  Object.keys(app.channels).forEach(unsub);
+  clearInterval(app.gameTimer);
+  clearTimeout(app.cleanupTimer);
+  app.timeoutLocked = false;
+}
+
+/* ═══════════════════════════════════════════════════
+   네비게이션
+═══════════════════════════════════════════════════ */
+document.querySelectorAll('[data-nav]').forEach(el => {
+  el.addEventListener('click', () => {
+    const dest = el.dataset.nav;
+    if (dest === 'rooms') {
+      const nick = $('nickname').value.trim();
+      if (!nick) { $('nickname').focus(); toast('닉네임을 입력하세요'); return; }
+      app.profile.nickname = nick;
+      localStorage.setItem('kk_nick', nick);
+      $('miniAvatarText').textContent = nick.charAt(0);
+      if (app.profile.avatar) {
+        $('miniAvatarImg').src = app.profile.avatar;
+        $('miniAvatarImg').style.display = 'block';
+        $('miniAvatarText').style.display = 'none';
+      }
+      navToRooms();
+    } else {
+      unsubAll();
+      go(dest);
+    }
+  });
+});
+
+/* ═══════════════════════════════════════════════════
+   시트
+═══════════════════════════════════════════════════ */
+function openSheet(name) {
+  document.querySelectorAll(`[data-sheet="${name}"]`).forEach(el => el.classList.add('on'));
+}
+function closeSheet(name) {
+  document.querySelectorAll(`[data-sheet="${name}"]`).forEach(el => el.classList.remove('on'));
+}
+document.querySelectorAll('[data-sheet-close]').forEach(el =>
+  el.addEventListener('click', () => closeSheet(el.dataset.sheetClose)));
+document.querySelectorAll('.backdrop').forEach(bd =>
+  bd.addEventListener('click', () => closeSheet(bd.dataset.sheet)));
+
+/* ═══════════════════════════════════════════════════
+   프로필 그리드 (맨 처음 webp 이미지 제거됨)
+═══════════════════════════════════════════════════ */
+const BASE = 'https://raw.githubusercontent.com/Samyc2002/Anime-Wallpapers/main/';
+const FILES = [
+  '1.png','10.png','1000024.jpg','1005301.png','1007550.jpg',
+  '1030088.jpg','1041922.jpg','1064648.png','106932.jpg','109726.jpg','11.png','1120777.jpg','112131.jpg',
+  '1125177.png','1127378.jpg','1133948.jpg','1141589.jpg','1142818.jpg','1143187.jpg','1151242.jpg',
+  '1151243.jpg','1162743.jpg','1169017.jpg','1187134.png','12.png','1202672.png','1207853.png','1214933.jpg',
+  '1219390.jpg','1227407.jpg','1228831.jpg','1229743.png','1229914.jpg','1229931.png','1231615.jpg',
+  '1237928.png','1242797.jpg','1245251.jpg','1246191.jpg','1247624.jpg','1247695.jpg','1248267.png',
+  '1248386.jpg','1262160.png','12889.jpg','12890.jpg','12893.jpg','12919.jpg','12935.jpg','12940.jpg',
+  '1299471.jpg','1311994.jpeg','1314707.jpg','1314909.jpeg','1316829.png','1317004.jpeg','1318295.jpeg',
+  '1319305.jpeg','1319847.jpeg','1320718.jpeg','1321655.jpeg','1323164.jpeg','1323418.png','1323621.jpeg',
+  '1324831.jpeg','1324858.jpeg','1325143.png','1325208.png','1325607.jpeg'
+];
+
+let pfBuilt = false;
+function buildPfGrid() {
+  if (pfBuilt) return;
+  pfBuilt = true;
+  const frag = document.createDocumentFragment();
+  FILES.forEach(file => {
+    const url = BASE + file;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pf-item';
+    btn.dataset.src = url;
+    const img = document.createElement('img');
+    img.src = url; img.alt = '';
+    img.loading = 'lazy'; img.decoding = 'async';
+    img.onerror = () => { btn.style.opacity = '.3'; };
+    btn.appendChild(img);
+    frag.appendChild(btn);
+  });
+  $('pfGrid').appendChild(frag);
+}
+
+const openProfile = () => { buildPfGrid(); openSheet('profile'); };
+$('avatarBtn').addEventListener('click', openProfile);
+$('miniAvatarBtn').addEventListener('click', openProfile);
+
+$('pfGrid').addEventListener('click', (e) => {
+  const item = e.target.closest('.pf-item');
+  if (!item) return;
+  const src = item.dataset.src;
+  app.profile.avatar = src;
+  localStorage.setItem('kk_avatar', src);
+  $('avatarImg').src = src;
+  $('avatarImg').style.display = 'block';
+  $('avatarIcon').style.display = 'none';
+  $('miniAvatarImg').src = src;
+  $('miniAvatarImg').style.display = 'block';
+  $('miniAvatarText').style.display = 'none';
+  closeSheet('profile');
+});
+
+if (app.profile.nickname) $('nickname').value = app.profile.nickname;
+if (app.profile.avatar) {
+  $('avatarImg').src = app.profile.avatar;
+  $('avatarImg').style.display = 'block';
+  $('avatarIcon').style.display = 'none';
+  $('miniAvatarImg').src = app.profile.avatar;
+  $('miniAvatarImg').style.display = 'block';
+  $('miniAvatarText').style.display = 'none';
+}
+if (app.profile.nickname) $('miniAvatarText').textContent = app.profile.nickname.charAt(0);
+
+/* ═══════════════════════════════════════════════════
+   방 목록
+═══════════════════════════════════════════════════ */
+function navToRooms() {
+  unsubAll();
+  go('rooms');
+  loadRooms();
+  app.channels.rooms = sb.channel('rooms-list')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => loadRooms())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, () => loadRooms())
+    .subscribe();
+}
+
+async function loadRooms() {
+  const list = $('roomList');
+  try {
+    const [{ data: rooms, error: e1 }, { data: allPlayers, error: e2 }] = await Promise.all([
+      sb.from('rooms').select('*').eq('status', 'waiting')
+        .order('created_at', { ascending: false }).limit(50),
+      sb.from('players').select('room_id'),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+
+    const counts = {};
+    (allPlayers || []).forEach(p => counts[p.room_id] = (counts[p.room_id] || 0) + 1);
+
+    list.innerHTML = '';
+    const visible = (rooms || []).filter(r => (counts[r.id] || 0) < r.max_players);
+
+    if (visible.length === 0) {
+      list.innerHTML = '<li class="empty-state">아직 대기 중인 방이 없어요.<br>첫 방을 만들어 보세요!</li>';
+      return;
+    }
+
+    visible.forEach(room => {
+      const count = counts[room.id] || 0;
+      const li = document.createElement('li');
+      li.className = 'room-card';
+      li.dataset.roomId = room.id;
+      li.innerHTML = `
+        <div class="room-ico"><iconify-icon icon="solar:gamepad-bold"></iconify-icon></div>
+        <div class="room-info">
+          <strong>${escapeHtml(room.name)}</strong>
+          <span>${count} / ${room.max_players}명 · 대기 중</span>
+        </div>
+        <iconify-icon class="chev" icon="solar:alt-arrow-right-bold"></iconify-icon>`;
+      li.addEventListener('click', () => joinByCode(room.code));
+      list.appendChild(li);
+    });
+  } catch (err) {
+    list.innerHTML = `<li class="empty-state">불러오기 실패: ${escapeHtml(err.message || err)}</li>`;
+  }
+}
+
+$('refreshRooms').addEventListener('click', loadRooms);
+
+/* ═══════════════════════════════════════════════════
+   방 만들기
+═══════════════════════════════════════════════════ */
+let selectedMax = 6;
+document.querySelectorAll('#maxPlayersRow .pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('#maxPlayersRow .pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    selectedMax = parseInt(pill.dataset.max);
+  });
+});
+$('openCreate').addEventListener('click', () => {
+  $('createName').value = '';
+  openSheet('create');
+});
+
+$('createBtn').addEventListener('click', async () => {
+  const name = $('createName').value.trim() || '새 방';
+  const btn = $('createBtn');
+  if (!app.profile.nickname) { toast('닉네임을 먼저 설정하세요'); return; }
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.rpc('create_room', {
+      p_code: genCode(),
+      p_name: name,
+      p_max: selectedMax,
+      p_client_id: app.profile.clientId,
+      p_nickname: app.profile.nickname,
+      p_avatar_url: app.profile.avatar,
+    });
+    if (error) throw error;
+    if (!data || !data.ok) throw new Error(data?.error || '방 생성 실패');
+    closeSheet('create');
+    await enterRoom(data.room_id, data.player_id);
+  } catch (err) {
+    toast('방 생성 실패: ' + (err.message || err));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   코드로 입장
+═══════════════════════════════════════════════════ */
+$('openJoin').addEventListener('click', () => {
+  $('joinCode').value = '';
+  openSheet('join');
+});
+$('joinCode').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+
+async function joinByCode(code) {
+  if (!app.profile.nickname) { toast('닉네임을 먼저 설정하세요'); return; }
+  try {
+    const { data, error } = await sb.rpc('join_room', {
+      p_code: code,
+      p_client_id: app.profile.clientId,
+      p_nickname: app.profile.nickname,
+      p_avatar_url: app.profile.avatar,
+    });
+    if (error) throw error;
+    if (!data || !data.ok) {
+      const msg = {
+        room_not_found: '방을 찾을 수 없어요',
+        not_waiting: '이미 게임이 시작된 방이에요',
+        full: '방이 가득 찼어요',
+      }[data?.error] || (data?.error || '입장 실패');
+      throw new Error(msg);
+    }
+    closeSheet('join');
+    await enterRoom(data.room_id, data.player_id);
+  } catch (err) {
+    toast(err.message);
+  }
+}
+
+$('joinBtn').addEventListener('click', () => {
+  const code = $('joinCode').value.trim();
+  if (code.length !== 6) { toast('6자리 코드를 입력하세요'); return; }
+  joinByCode(code);
+});
+
+/* ═══════════════════════════════════════════════════
+   방 진입
+═══════════════════════════════════════════════════ */
+async function enterRoom(roomId, playerId) {
+  try {
+    unsubAll();
+    app.room = null;
+    app.player = { id: playerId };
+
+    const [{ data: room, error: e1 }, { data: me, error: e2 }] = await Promise.all([
+      sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
+      sb.from('players').select('*').eq('id', playerId).maybeSingle(),
+    ]);
+    if (e1) throw e1;
+    if (e2) throw e2;
+    if (!room) { toast('방이 삭제되었어요'); navToRooms(); return; }
+    if (!me) { toast('플레이어 정보를 찾을 수 없어요'); navToRooms(); return; }
+
+    app.room = room;
+    app.player = me;
+
+    if (room.status === 'playing') await gotoGame(roomId);
+    else if (room.status === 'finished') await gotoResult(roomId);
+    else navToWaiting();
+  } catch (err) {
+    console.error('enterRoom error:', err);
+    toast('방 입장 실패: ' + (err.message || err));
+    navToRooms();
+  }
+}
+
+function navToWaiting() {
+  unsubAll();
+  go('waiting');
+  renderWaiting();
+  subscribeWaiting();
+}
+
+function subscribeWaiting() {
+  const rid = app.room.id;
+  app.channels.waiting = sb.channel('waiting-' + rid)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${rid}` },
+      () => reloadWaitingPlayers())
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${rid}` },
+      (payload) => {
+        app.room = payload.new;
+        if (payload.new.status === 'playing') gotoGame(rid);
+        else if (payload.new.status === 'finished') gotoResult(rid);
+      })
+    .on('postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'rooms', filter: `id=eq.${rid}` },
+      () => { unsubAll(); toast('방이 삭제되었어요'); navToRooms(); })
+    .subscribe();
+}
+
+async function reloadWaitingPlayers() {
+  if (!app.room) return;
+  try {
+    const { data } = await sb.from('players').select('*')
+      .eq('room_id', app.room.id).order('joined_at');
+    app.players = data || [];
+    renderWaiting();
+  } catch (e) {
+    console.warn('reloadWaitingPlayers:', e);
+  }
+}
+
+async function renderWaiting() {
+  if (!app.room) return;
+  try {
+    $('waitingRoomName').textContent = app.room.name;
+    $('waitingCode').textContent = app.room.code;
+
+    if (app.players.length === 0) { await reloadWaitingPlayers(); return; }
+
+    
+('waitingCount').textContent=`{app.players.length}/${app.room.max_players}`;
+
+    const grid = $('waitingGrid');
+    grid.innerHTML = '';
+
+    app.players.forEach(p => {
+      const isMe = p.id === app.player.id;
+      const slot = document.createElement('div');
+      slot.className = 'player-slot' + (isMe ? ' me' : '') + (p.is_ready ? ' ready' : '');
+
+      const av = document.createElement('div');
+      av.className = 'slot-avatar';
+      if (p.avatar_url) {
+        const im = document.createElement('img');
+        im.src = p.avatar_url; im.alt = '';
+        im.onerror = () => { im.replaceWith(document.createTextNode(p.nickname.charAt(0))); };
+        av.appendChild(im);
+      } else {
+        av.textContent = p.nickname.charAt(0);
+      }
+      if (p.is_host) {
+        const crown = document.createElement('span');
+        crown.className = 'slot-crown';
+        crown.textContent = '👑';
+        av.appendChild(crown);
+      }
+      slot.appendChild(av);
+
+      const nm = document.createElement('div');
+      nm.className = 'slot-name';
+      nm.textContent = p.nickname + (isMe ? ' (나)' : '');
+      slot.appendChild(nm);
+
+      const st = document.createElement('div');
+      st.className = 'slot-status';
+      st.textContent = p.is_ready ? '준비 완료' : '대기 중';
+      slot.appendChild(st);
+      grid.appendChild(slot);
+    });
+
+    const emptyCount = Math.max(0, app.room.max_players - app.players.length);
+    for (let i = 0; i < emptyCount; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'player-slot empty';
+      slot.innerHTML = `
+        <div class="slot-avatar"><iconify-icon icon="solar:user-plus-rounded-bold"></iconify-icon></div>
+        <div class="slot-name">빈 자리</div>
+        <div class="slot-status">대기 중</div>`;
+      grid.appendChild(slot);
+    }
+
+    const isHost = app.room.host_player_id === app.player.id;
+    const me = app.players.find(p => p.id === app.player.id);
+    const readyBtn = $('readyBtn');
+    const startBtn = $('startBtn');
+
+    readyBtn.textContent = me?.is_ready ? '준비 취소' : '준비하기';
+    readyBtn.style.display = isHost ? 'none' : '';
+
+    if (isHost) {
+      startBtn.style.display = '';
+      const canStart = app.players.length >= 2;
+      startBtn.disabled = !canStart;
+      startBtn.innerHTML = canStart
+        ? '<iconify-icon icon="solar:play-bold"></iconify-icon> 게임 시작'
+        : `인원 부족 (${app.players.length}/2)`;
+    } else {
+      startBtn.style.display = 'none';
+    }
+  } catch (err) {
+    console.error('renderWaiting error:', err);
+  }
+}
+
+$('readyBtn').addEventListener('click', async () => {
+  if (!app.player) return;
+  const me = app.players.find(p => p.id === app.player.id);
+  const next = !me?.is_ready;
+  try {
+    const { error } = await sb.rpc('toggle_ready', { p_player_id: app.player.id, p_ready: next });
+    if (error) throw error;
+  } catch (e) {
+    toast('준비 상태 변경 실패: ' + (e.message || e));
+  }
+});
+
+$('startBtn').addEventListener('click', async () => {
+  if (!app.room) return;
+  try {
+    const { data, error } = await sb.rpc('start_game', {
+      p_room_id: app.room.id, p_player_id: app.player.id,
+    });
+    if (error) throw error;
+    if (!data || !data.ok) {
+      const msg = { not_host: '방장만 시작할 수 있어요', need_players: '2명 이상 필요해요' }[data?.error] || (data?.error || '시작 실패');
+      toast(msg);
+    }
+  } catch (e) {
+    toast('게임 시작 실패: ' + (e.message || e));
+  }
+});
+
+$('copyCode').addEventListener('click', () => {
+  navigator.clipboard?.writeText(app.room.code)
+    .then(() => toast('코드 복사됨'))
+    .catch(() => toast('복사 실패'));
+});
+
+$('leaveWaiting').addEventListener('click', async () => {
+  await leaveCurrentRoom();
+  navToRooms();
+});
+
+async function leaveCurrentRoom() {
+  if (!app.room || !app.player) return;
+  const roomId = app.room.id;
+  const playerId = app.player.id;
+  const isHost = app.room.host_player_id === playerId;
+  try {
+    await sb.rpc('leave_room', { p_room_id: roomId, p_player_id: playerId });
+    if (isHost) {
+      const { data: remain } = await sb.from('players').select('id').eq('room_id', roomId);
+      if (!remain || remain.length === 0) {
+        await sb.rpc('delete_room', { p_room_id: roomId }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.warn('leave_room fail:', e);
+  } finally {
+    unsubAll();
+    app.room = null; app.player = null; app.players = []; app.words = [];
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   게임
+═══════════════════════════════════════════════════ */
+async function gotoGame(roomId) {
+  try {
+    unsubAll();
+    const { data: room, error } = await sb.from('rooms').select('*').eq('id', roomId).maybeSingle();
+    if (error) throw error;
+    if (!room) { toast('방이 없어졌어요'); navToRooms(); return; }
+    app.room = room;
+    go('game');
+    await loadGameData();
+    subscribeGame();
+    startTimerLoop();
+  } catch (err) {
+    console.error('gotoGame error:', err);
+    toast('게임 진입 실패');
+    navToRooms();
+  }
+}
+
+async function loadGameData() {
+  if (!app.room) return;
+  try {
+    const rid = app.room.id;
+    const [{ data: players, error: ep }, { data: words, error: ew }] = await Promise.all([
+      sb.from('players').select('*').eq('room_id', rid).order('joined_at'),
+      sb.from('words').select('*').eq('room_id', rid).order('created_at'),
+    ]);
+    if (ep) console.warn(ep);
+    if (ew) console.warn(ew);
+    app.players = players || [];
+    app.words = words || [];
+    renderGame();
+  } catch (err) {
+    console.error('loadGameData error:', err);
+  }
+}
+
+function subscribeGame() {
+  const rid = app.room.id;
+  app.channels.game = sb.channel('game-' + rid)
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${rid}` },
+      () => loadGameData())
+    .on('postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'words', filter: `room_id=eq.${rid}` },
+      () => loadGameData())
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${rid}` },
+      (payload) => {
+        app.room = payload.new;
+        renderGame();
+        if (payload.new.status === 'finished') {
+          clearInterval(app.gameTimer);
+          gotoResult(rid);
         }
+      })
+    .on('postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'rooms', filter: `id=eq.${rid}` },
+      () => { unsubAll(); toast('방이 삭제되었어요'); navToRooms(); })
+    .subscribe();
+}
 
-        function setNickname() {
-            const input = document.getElementById('nickname-input').value.trim();
-            if (!input) {
-                alert("닉네임을 입력하세요!");
-                return;
-            }
-            myUserId = input;
-            document.getElementById('hud-username').innerText = myUserId;
-            document.getElementById('nickname-modal').style.display = 'none';
+function getActivePlayers() {
+  return app.players.filter(p => !p.eliminated)
+    .sort((a, b) => new Date(a.joined_at) - new Date(b.joined_at));
+}
+function getCurrentPlayer() {
+  const active = getActivePlayers();
+  if (active.length === 0) return null;
+  return active[app.room.current_turn_index % active.length];
+}
 
-            fetchRooms();
-            subscribeRoomList();
-            loadDictionary();
-        }
+function renderGame() {
+  if (!app.room) return;
+  try {
+    $('gameRoomName').textContent = app.room.name;
 
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 2000);
-        }
+    const gp = $('gamePlayers');
+    gp.innerHTML = '';
+    app.players.forEach(p => {
+      const isMe = p.id === app.player.id;
+      const isCurrent = getCurrentPlayer()?.id === p.id;
+      const el = document.createElement('div');
+      el.className = 'game-player'
+        + (isMe ? ' me' : '')
+        + (isCurrent ? ' current' : '')
+        + (p.eliminated ? ' eliminated' : '');
+      el.title = p.nickname;
+      if (p.avatar_url) {
+        const im = document.createElement('img');
+        im.src = p.avatar_url; im.alt = '';
+        im.onerror = () => { el.textContent = p.nickname.charAt(0); };
+        el.appendChild(im);
+      } else {
+        el.textContent = p.nickname.charAt(0);
+      }
+      gp.appendChild(el);
+    });
 
-        function openCreateRoomModal() {
-            document.getElementById('create-room-modal').style.display = 'flex';
-        }
+    const chain = $('chain');
+    chain.innerHTML = '';
+    app.words.forEach((w, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (i >= app.words.length - 2 ? ' recent' : '');
+      chip.textContent = w.word;
+      chain.appendChild(chip);
+    });
+    chain.scrollLeft = chain.scrollWidth;
 
-        function closeCreateRoomModal() {
-            document.getElementById('create-room-modal').style.display = 'none';
-        }
+    const wordEl = $('word');
+    const newWord = app.room.current_word || '-';
+    if (wordEl.textContent !== newWord) {
+      wordEl.classList.remove('swap');
+      void wordEl.offsetWidth;
+      wordEl.textContent = newWord;
+      if (app.room.status === 'playing') wordEl.classList.add('swap');
+    }
 
-        // 실시간 턴 타이머
-        function startTimer() {
-            clearInterval(turnTimer);
-            timeRemaining = maxTurnTime;
-            updateTimerDisplay();
+    const me = app.players.find(p => p.id === app.player.id);
+    const current = getCurrentPlayer();
+    const myTurn = current && current.id === app.player.id && !me?.eliminated && app.room.status === 'playing';
 
-            turnTimer = setInterval(() => {
-                timeRemaining -= 0.1;
-                updateTimerDisplay();
+    const composer = $('composer');
+    const input = $('wordInput');
+    const sendBtn = $('sendBtn');
+    const label = $('wordLabel');
 
-                if (timeRemaining <= 0) {
-                    clearInterval(turnTimer);
-                    handleTimeOut();
-                }
-            }, 100);
-        }
+    if (me?.eliminated) {
+      composer.classList.add('locked');
+      input.disabled = true; sendBtn.disabled = true;
+      label.textContent = '탈락했어요';
+      input.value = '';
+    } else if (myTurn) {
+      composer.classList.remove('locked');
+      input.disabled = false; sendBtn.disabled = false;
+      label.textContent = '단어 입력';
+    } else {
+      composer.classList.add('locked');
+      input.disabled = true; sendBtn.disabled = true;
+      label.textContent = current ? `${current.nickname}님의 차례` : '대기 중';
+      input.value = '';
+    }
+  } catch (err) {
+    console.error('renderGame error:', err);
+  }
+}
 
-        function updateTimerDisplay() {
-            document.getElementById('timer-count').innerText = Math.max(0, timeRemaining).toFixed(1);
-        }
+/* 🔽 라운드별 감소 타이머 */
+function startTimerLoop() {
+  clearInterval(app.gameTimer);
+  app.timeoutLocked = false;
 
-        // 시간 초과 처리 (HP 차감)
-        async function handleTimeOut() {
-            if (isMyTurn) {
-                showToast("시간 초과! 체력이 차감됩니다.");
-                await applyPenalty(myUserId);
-            }
-        }
+  app.gameTimer = setInterval(() => {
+    try {
+      if (!app.room || app.room.status !== 'playing' || !app.room.turn_started_at) {
+        $('timerFill').style.width = '0%';
+        return;
+      }
+      const round = app.room.turn_count || 0;
+      const TOTAL = getTurnDuration(round);
+      const started = new Date(app.room.turn_started_at).getTime();
+      if (!Number.isFinite(started)) { $('timerFill').style.width = '0%'; return; }
 
-        // 페널티 적용 (HP 20 감소 및 턴 넘김)
-        async function applyPenalty(targetUser) {
-            let nextP1Hp = p1Hp;
-            let nextP2Hp = p2Hp;
+      const elapsed = (Date.now() - started) / 1000;
+      const remain = Math.max(0, TOTAL - elapsed);
+      const fill = $('timerFill');
+      fill.style.width = (remain / TOTAL * 100) + '%';
+      fill.classList.toggle('danger', remain <= Math.min(5, TOTAL * 0.35));
 
-            if (targetUser === p1User) nextP1Hp = Math.max(0, p1Hp - 20);
-            else if (targetUser === p2User) nextP2Hp = Math.max(0, p2Hp - 20);
+      const hintEl = $('hint');
+      if (hintEl && app.room.current_word) {
+        const lastChar = app.room.current_word.slice(-1);
+        hintEl.innerHTML =
+          `<b>‘lastChar’</b>로시작·<spanstyle="color:{remain<=5?'#FF6B4A':'var(--yellow-deep)'}">${Math.ceil(remain)}초</span> · ${TOTAL}초 제한`;
+      }
 
-            // 제한시간 0.5초 감소 (최소 5초까지)
-            maxTurnTime = Math.max(5.0, maxTurnTime - 0.5);
+      if (remain <= 0 && !app.timeoutLocked) {
+        app.timeoutLocked = true;
+        sb.rpc('handle_timeout', { p_room_id: app.room.id })
+          .then(({ error }) => { if (error) console.warn('timeout rpc:', error.message); })
+          .catch(e => console.warn('timeout rpc fail:', e));
+        setTimeout(() => { app.timeoutLocked = false; }, 1200);
+      }
+    } catch (err) {
+      console.error('timerLoop error:', err);
+    }
+  }, 100);
+}
 
-            const nextTurnUser = (targetUser === p1User) ? p2User : p1User;
+async function submitWord() {
+  if (app.submitting) return;
+  if (!app.room || !app.player) return;
 
-            await supabaseClient.from('rooms').update({
-                current_turn: nextTurnUser,
-                p1_hp: nextP1Hp,
-                p2_hp: nextP2Hp
-            }).eq('id', currentRoomId);
-        }
+  const input = $('wordInput');
+  const word = input.value.trim().replace(/\s+/g, '');
+  if (!word) return;
 
-        async function fetchRooms() {
-            const { data, error } = await supabaseClient
-                .from('rooms')
-                .select('*')
-                .eq('status', 'waiting')
-                .order('created_at', { ascending: false });
+  if (word.length < 2) { toast('2글자 이상 입력하세요'); return; }
+  if (!/^[가-힣]+$/.test(word)) { toast('한글만 입력할 수 있어요'); return; }
+  if (word.length > 15) { toast('너무 긴 단어예요'); return; }
 
-            if (error) return;
+  if (dictStatus === 'loading') {
+    toast('사전을 불러오는 중이에요. 잠시만요');
+    return;
+  }
+  if (dictStatus === 'ready' && DICT && !DICT.has(word)) {
+    toast('사전에 없는 단어예요');
+    return;
+  }
 
-            const roomListEl = document.getElementById('room-list');
-            roomListEl.innerHTML = '';
+  app.submitting = true;
+  $('sendBtn').disabled = true;
+  try {
+    const { data, error } = await sb.rpc('submit_word', {
+      p_room_id: app.room.id, p_player_id: app.player.id, p_word: word,
+    });
+    if (error) { toast('오류: ' + error.message); return; }
+    if (!data || !data.ok) {
+      const msg = {
+        too_short: '2글자 이상 입력하세요',
+        duplicate: '이미 사용된 단어예요',
+        wrong_char: `'${data?.expected ?? '?'}'(으)로 시작해야 해요`,
+        not_your_turn: '당신의 차례가 아니에요',
+        not_playing: '게임이 진행 중이 아니에요',
+        game_over: '게임이 종료되었어요',
+        not_in_dictionary: '사전에 없는 단어예요',
+      }[data?.error] || (data?.error || '알 수 없는 오류');
+      toast(msg);
+      return;
+    }
+    input.value = '';
+  } catch (err) {
+    console.error('submitWord error:', err);
+    toast('네트워크 오류: ' + (err.message || err));
+  } finally {
+    app.submitting = false;
+    $('sendBtn').disabled = false;
+  }
+}
 
-            if (data.length === 0) {
-                roomListEl.innerHTML = '<div style="text-align:center; padding:30px; color:rgba(255,255,255,0.4);">현재 개설된 방이 없습니다.</div>';
-                return;
-            }
+$('sendBtn').addEventListener('click', submitWord);
+$('wordInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); submitWord(); }
+});
 
-            data.forEach(room => {
-                const item = document.createElement('div');
-                item.className = 'room-card';
-                item.innerHTML = `
-                    <div>
-                        <span style="font-size:16px;">${room.title}</span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="color:#ffe600; font-size:13px;">${room.player2_id ? '게임 중' : '대기 중'}</span>
-                        <button class="pixel-btn" onclick="joinRoom('
-room.id','{room.player1_id}')">입장</button>
-                    </div>
-                `;
-                roomListEl.appendChild(item);
-            });
-        }
+$('gameBackBtn').addEventListener('click', async () => {
+  if (!confirm('방에서 나갈까요?')) return;
+  await leaveCurrentRoom();
+  navToRooms();
+});
 
-        function subscribeRoomList() {
-            supabaseClient
-                .channel('public:rooms')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms' }, () => {
-                    fetchRooms();
-                })
-                .subscribe();
-        }
+/* ═══════════════════════════════════════════════════
+   결과 + 다한 방 자동 삭제
+═══════════════════════════════════════════════════ */
+async function gotoResult(roomId) {
+  try {
+    unsubAll();
+    go('result');
 
-        async function createRoom() {
-            const titleInput = document.getElementById('room-title-input');
-            const title = titleInput.value.trim();
+    const [{ data: players, error: ep }, { data: room, error: er }] = await Promise.all([
+      sb.from('players').select('*').eq('room_id', roomId).order('joined_at'),
+      sb.from('rooms').select('*').eq('id', roomId).maybeSingle(),
+    ]);
+    if (ep) console.warn(ep);
+    if (er) console.warn(er);
+    if (!room) { toast('방이 종료되었어요'); navToRooms(); return; }
 
-            if (!title) {
-                showToast("방 제목을 입력해주세요!");
-                return;
-            }
+    app.room = room;
+    app.players = players || [];
 
-            closeCreateRoomModal();
+    const winner = app.players.find(p => !p.eliminated);
+    const isWinner = winner?.id === app.player?.id;
+    const isHost = room.host_player_id === app.player?.id;
 
-            // 랜덤 시작어 선택
-            const startWord = isDictLoaded ? dictionaryArray[Math.floor(Math.random() * dictionaryArray.length)] : "끝말잇기";
+    $('resultIcon').textContent = isWinner ? '🏆' : '😅';
+    $('resultTitle').textContent = isWinner ? '우승!' : '탈락!';
+    $('resultSub').textContent = isWinner
+      ? '마지막까지 살아남았어요'
+      : `우승: ${winner?.nickname || '없음'}`;
 
-            const { data, error } = await supabaseClient
-                .from('rooms')
-                .insert([{ 
-                    title: title, 
-                    player1_id: myUserId, 
-                    current_turn: myUserId, 
-                    status: 'waiting',
-                    last_word: startWord,
-                    p1_hp: 100,
-                    p2_hp: 100
-                }])
-                .select();
+    $('rematchBtn').style.display = isHost ? '' : 'none';
 
-            if (error) {
-                showToast("방 생성 실패!");
-                return;
-            }
+    /* 다한 방 자동 삭제: 5분 뒤 finished 상태면 정리 */
+    clearTimeout(app.cleanupTimer);
+    app.cleanupTimer = setTimeout(async () => {
+      if (app.room?.id === roomId && app.room?.status === 'finished') {
+        try {
+          await sb.rpc('delete_room', { p_room_id: roomId });
+        } catch (e) { console.warn('auto cleanup fail:', e); }
+      }
+    }, 5 * 60 * 1000);
 
-            enterGameView(data[0].id);
-        }
+    app.channels.result = sb.channel('result-' + roomId)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        (payload) => {
+          if (payload.new.status === 'waiting') {
+            app.room = payload.new;
+            clearTimeout(app.cleanupTimer);
+            navToWaiting();
+          }
+        })
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        () => { unsubAll(); toast('방이 정리되었어요'); navToRooms(); })
+      .subscribe();
 
-        async function joinRoom(roomId, player1Id) {
-            if (player1Id === myUserId) {
-                enterGameView(roomId);
-                return;
-            }
+    $('rematchBtn').onclick = async () => {
+      if (!isHost) { toast('방장만 다시 시작할 수 있어요'); return; }
+      $('rematchBtn').disabled = true;
+      try {
+        const { data, error } = await sb.rpc('reset_room', {
+          p_room_id: roomId, p_player_id: app.player.id,
+        });
+        if (error || !data?.ok) throw new Error(error?.message || data?.error || '재대결 실패');
+        clearTimeout(app.cleanupTimer);
+      } catch (err) {
+        toast(err.message);
+      } finally {
+        $('rematchBtn').disabled = false;
+      }
+    };
 
-            const { error } = await supabaseClient
-                .from('rooms')
-                .update({ player2_id: myUserId, status: 'playing' })
-                .eq('id', roomId);
+    $('leaveResult').onclick = async () => {
+      await leaveCurrentRoom();
+      navToRooms();
+    };
+  } catch (err) {
+    console.error('gotoResult error:', err);
+    toast('결과 화면 오류');
+    navToRooms();
+  }
+}
 
-            if (error) {
-                showToast("입장 실패!");
-                return;
-            }
-
-            enterGameView(roomId);
-        }
-
-        function enterGameView(roomId) {
-            currentRoomId = roomId;
-            usedWordsSet.clear();
-            maxTurnTime = 15.0;
-            document.getElementById('word-history').innerHTML = '';
-            document.getElementById('lobby-view').style.display = 'none';
-            document.getElementById('game-view').style.display = 'flex';
-
-            subscribeGameRoom(roomId);
-            subscribeGameLogs(roomId);
-        }
-
-        function subscribeGameRoom(roomId) {
-            supabaseClient
-                .channel(`game_${roomId}`)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` }, payload => {
-                    const room = payload.new;
-                    if (!room) return;
-                    
-                    p1User = room.player1_id || '';
-                    p2User = room.player2_id || '';
-                    p1Hp = room.p1_hp ?? 100;
-                    p2Hp = room.p2_hp ?? 100;
-
-                    // UI 업데이트
-                    document.getElementById('p1-name').innerText = p1User || '1P';
-                    document.getElementById('p2-name').innerText = p2User || '대기 중...';
-
-                    document.getElementById('p1-hp-text').innerText = `${p1Hp} HP`;
-                    document.getElementById('p2-hp-text').innerText = `${p2Hp} HP`;
-                    document.getElementById('p1-hp-bar').style.width = `${p1Hp}%`;
-                    document.getElementById('p2-hp-bar').style.width = `${p2Hp}%`;
-
-                    // 승패 판정
-                    if (p1Hp <= 0 || p2Hp <= 0) {
-                        clearInterval(turnTimer);
-                        const winner = p1Hp > 0 ? p1User : p2User;
-                        document.getElementById('turn-indicator').innerText = "게임 종료!";
-                        document.getElementById('current-word').innerText = `${winner} 승리!`;
-                        document.getElementById('word-input').disabled = true;
-                        document.getElementById('submit-btn').disabled = true;
-                        return;
-                    }
-
-                    // 대기 중인지 승부 중인지 판별
-                    if (room.status === 'waiting' || !room.player2_id) {
-                        document.getElementById('turn-indicator').innerText = "상대방 접속 대기 중...";
-                        document.getElementById('current-word').innerText = "대기 중";
-                        document.getElementById('word-input').disabled = true;
-                        document.getElementById('submit-btn').disabled = true;
-                        clearInterval(turnTimer);
-                        return;
-                    }
-
-                    // 정상 플레이 상태
-                    isMyTurn = (room.current_turn === myUserId);
-                    document.getElementById('turn-indicator').innerText = isMyTurn ? "내 차례입니다!" : "상대방 차례입니다...";
-                    document.getElementById('word-input').disabled = !isMyTurn;
-                    document.getElementById('submit-btn').disabled = !isMyTurn;
-
-                    if (room.last_word) {
-                        currentLastWord = room.last_word;
-                        document.getElementById('current-word').innerText = currentLastWord;
-                    }
-
-                    startTimer();
-                })
-                .subscribe();
-        }
-
-        function subscribeGameLogs(roomId) {
-            supabaseClient
-                .channel(`logs_${roomId}`)
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'game_logs', filter: `room_id=eq.${roomId}` }, payload => {
-                    const log = payload.new;
-                    usedWordsSet.add(log.word);
-
-                    const historyEl = document.getElementById('word-history');
-                    const line = document.createElement('div');
-                    line.className = 'chat-line';
-                    line.innerHTML = `<span style="color:#ffe600;">[${log.player_id}]</span> ${log.word}`;
-                    historyEl.appendChild(line);
-                    historyEl.scrollTop = historyEl.scrollHeight;
-                })
-                .subscribe();
-        }
-
-        function getPhoneticVariants(char) {
-            const code = char.charCodeAt(0) - 0xAC00;
-            if (code < 0 || code > 11172) return [char];
-
-            const initialIdx = Math.floor(code / 588);
-            const medialIdx = Math.floor((code % 588) / 28);
-            const finalIdx = code % 28;
-
-            let variants = [char];
-
-            if (initialIdx === 2 && [12, 17, 18, 20].includes(medialIdx)) {
-                const newCode = 0xAC00 + (11 * 588) + (medialIdx * 28) + finalIdx;
-                variants.push(String.fromCharCode(newCode));
-            }
-            if (initialIdx === 5) {
-                if ([2, 4, 12, 17, 18, 20].includes(medialIdx)) {
-                    const newCode = 0xAC00 + (11 * 588) + (medialIdx * 28) + finalIdx;
-                    variants.push(String.fromCharCode(newCode));
-                } else {
-                    const newCode = 0xAC00 + (2 * 588) + (medialIdx * 28) + finalIdx;
-                    variants.push(String.fromCharCode(newCode));
-                }
-            }
-
-            return variants;
-        }
-
-        async function submitWord() {
-            const inputEl = document.getElementById('word-input');
-            const word = inputEl.value.trim();
-
-            if (!word) return;
-
-            if (!isMyTurn) {
-                showToast("상대방 차례입니다!");
-                return;
-            }
-
-            // 잘못된 단어 입력 시 HP 감점 규칙
-            if (usedWordsSet.has(word)) {
-                showToast("이미 사용된 단어입니다! (-20 HP)");
-                inputEl.value = '';
-                await applyPenalty(myUserId);
-                return;
-            }
-
-            if (isDictLoaded && !dictionarySet.has(word)) {
-                showToast("사전에 없는 명사입니다! (-20 HP)");
-                inputEl.value = '';
-                await applyPenalty(myUserId);
-                return;
-            }
-
-            if (currentLastWord !== "") {
-                const lastChar = currentLastWord.slice(-1);
-                const validFirstChars = getPhoneticVariants(lastChar);
-                const inputFirstChar = word.charAt(0);
-
-                if (!validFirstChars.includes(inputFirstChar)) {
-                    showToast(`'${lastChar}'(으)로 시작해야 합니다! (-20 HP)`);
-                    inputEl.value = '';
-                    await applyPenalty(myUserId);
-                    return;
-                }
-            }
-
-            inputEl.value = '';
-
-            // 정상 성공 처리
-            maxTurnTime = Math.max(5.0, maxTurnTime - 0.5); // 입력 성공 시 제한시간 축소
-            const nextTurnUser = (myUserId === p1User) ? p2User : p1User;
-
-            await supabaseClient.from('game_logs').insert([{ room_id: currentRoomId, player_id: myUserId, word: word }]);
-
-            await supabaseClient.from('rooms').update({
-                last_word: word,
-                current_turn: nextTurnUser
-            }).eq('id', currentRoomId);
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter') submitWord();
-        }
-
-        async function leaveRoom() {
-            clearInterval(turnTimer);
-            if (currentRoomId) {
-                await supabaseClient.from('rooms').delete().eq('id', currentRoomId);
-            }
-            location.reload();
-        }
-    </script>
+/* ═══════════════════════════════════════════════════
+   beforeunload
+═══════════════════════════════════════════════════ */
+window.addEventListener('beforeunload', () => {
+  if (app.room && app.player) {
+    const url = `${SUPABASE_URL}/rest/v1/rpc/leave_room`;
+    try {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ p_room_id: app.room.id, p_player_id: app.player.id }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (e) {}
+  }
+});
+</script>
 </body>
 </html>
