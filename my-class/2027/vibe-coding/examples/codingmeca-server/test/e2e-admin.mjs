@@ -1,0 +1,18 @@
+import { startServer } from '../index.js';
+import WebSocket from 'ws';
+process.env.DEV_AUTH='1'; process.env.DEV_MEMORY_DB='1';
+const app = await startServer({ port: 0, log:{info(){},warn:console.warn,error:console.error} });
+const open=(tok)=>new Promise(res=>{const ws=new WebSocket(`ws://localhost:${app.port}/ws`);ws.msgs=[];ws.on('message',d=>ws.msgs.push(JSON.parse(d)));ws.on('open',()=>{ws.send(JSON.stringify({type:'auth',token:tok}));setTimeout(()=>res(ws),100)})});
+let id=0; const cmd=(ws,op,a={})=>new Promise(res=>{const i=++id;const h=d=>{const m=JSON.parse(d);if(m.type==='res'&&m.id===i){ws.off('message',h);res(m)}};ws.on('message',h);ws.send(JSON.stringify({type:'cmd',...a,rid:i,op}))});
+const cm=await open('dev:commander:boss:지휘'); const mc=await open('dev:mechanic:m1:a');
+const show=(n,r)=>console.log(n,r.ok,r.ok?JSON.stringify(r.data).slice(0,90):r.error);
+show('team.save',await cmd(cm,'team.save',{id:'t1',name:'가팀',color:'#f00'}));
+show('account.create',await cmd(cm,'account.create',{accounts:[{loginId:'mech1',nickname:'하나',password:'abcd1234'}],teamId:'t1'}));
+show('account.list',await cmd(cm,'account.list'));
+show('recipes.list',await cmd(cm,'recipes.list'));
+show('recipes.reload',await cmd(cm,'recipes.reload'));
+show('leagues.all',await cmd(cm,'leagues.all'));
+show('leagues.list',await cmd(cm,'leagues.list'));
+show('mech recipes.list',await cmd(mc,'recipes.list'));
+show('mech account.list',await cmd(mc,'account.list'));
+await app.stop(); process.exit(0);
