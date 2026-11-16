@@ -686,7 +686,7 @@ function attachStarEvents(root = document) {
 
 /* ═══════════════════════════════════════════════════════
    썸네일 — 작품 페이지를 iframe 으로 불러와 축소해서 표시 (소리 없음)
-   · 화면에 보일 때만 불러옴(지연 로딩)
+   · 화면 근처에 있을 때만 실행하고, 벗어나면 해제 (아래 '미리보기 실행 관리' 참고)
    · 클릭/키보드 조작은 막혀 있어 미리보기로만 동작
 ═══════════════════════════════════════════════════════ */
 function thumbHTML(href) {
@@ -736,21 +736,64 @@ const THUMB_MUTE_JS = "(" + function () {
   try { if (window.speechSynthesis) window.speechSynthesis.speak = function () {}; } catch (e) {}
 }.toString() + ")();";
 
+/* ── 미리보기 실행 관리 ──────────────────────────────────
+   작품을 실제로 실행하는 iframe 이 화면 밖에서도 계속 돌면 페이지가 점점 느려지므로
+   · 화면 근처에 있을 때만 실행하고, 벗어나면 비움(about:blank)
+   · 동시에 실행되는 미리보기는 THUMB_LIVE_MAX 개까지만 (넘으면 화면에서 먼 것부터 비움)
+   · 탭이 가려지면 모두 비우고, 다시 보이면 보이는 것만 다시 불러옴 */
+const THUMB_LIVE_MAX = 12;
+const liveThumbs = new Set();      // 현재 실행 중인 iframe
+const watchedBoxes = new Set();    // 관찰 중인 .thumb 상자
+
+function unloadThumb(fr) {
+  liveThumbs.delete(fr);
+  fr.dataset.gen = String((+fr.dataset.gen || 0) + 1);   // 진행 중이던 불러오기를 무효화
+  delete fr.dataset.loading;
+  fr.classList.remove("loaded");
+  if (fr.hasAttribute("srcdoc")) { fr.removeAttribute("srcdoc"); fr.src = "about:blank"; }
+}
+
+function distFromView(fr) {
+  const r = fr.parentElement.getBoundingClientRect();
+  return Math.abs((r.top + r.bottom) / 2 - innerHeight / 2);
+}
+
+function enforceThumbLimit(keep) {
+  for (const f of [...liveThumbs]) if (!f.isConnected) liveThumbs.delete(f);
+  while (liveThumbs.size > THUMB_LIVE_MAX) {
+    let far = null, d = -1;
+    for (const f of liveThumbs) {
+      if (f === keep) continue;
+      const x = distFromView(f);
+      if (x > d) { d = x; far = f; }
+    }
+    if (!far) break;
+    unloadThumb(far);
+  }
+}
+
 async function loadThumb(fr) {
   if (fr.dataset.loading) return;
   fr.dataset.loading = "1";
+  const gen = fr.dataset.gen || "0";
   const url = new URL(fr.dataset.src, location.href).href;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("HTTP " + res.status);
     let html = await res.text();
+    /* 기다리는 사이 화면을 벗어났거나 목록이 다시 그려졌으면 실행하지 않음 */
+    if (!fr.isConnected || (fr.dataset.gen || "0") !== gen) return;
     const inject = `<base href="${url}"><script>${THUMB_MUTE_JS}<\/script>`;
     if (/<head[^>]*>/i.test(html))      html = html.replace(/<head[^>]*>/i, m => m + inject);
     else if (/<html[^>]*>/i.test(html)) html = html.replace(/<html[^>]*>/i, m => m + inject);
     else                                html = html.replace(/^(\s*<!doctype[^>]*>)?/i, m => m + inject);
+    fr.addEventListener("load", () => { if (fr.hasAttribute("srcdoc")) fr.classList.add("loaded"); }, { once: true });
     fr.srcdoc = html;
+    liveThumbs.add(fr);
+    enforceThumbLimit(fr);
   } catch (err) {
-    console.warn("썸네일을 불러오지 못했습니다:", url, err);   /* 실패하면 빈 칸으로 둠 (소리 방지) */
+    delete fr.dataset.loading;   /* 실패하면 빈 칸으로 두고, 다시 보일 때 재시도 */
+    console.warn("썸네일을 불러오지 못했습니다:", url, err);
   }
 }
 
@@ -766,17 +809,34 @@ function fitThumb(box) {
 const thumbLoader = "IntersectionObserver" in window
   ? new IntersectionObserver(entries => {
       entries.forEach(en => {
-        if (!en.isIntersecting) return;
-        const fr = en.target.firstElementChild;
-        thumbLoader.unobserve(en.target);
-        if (!fr || fr.dataset.loading) return;
-        fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true });
-        loadThumb(fr);
+        const box = en.target, fr = box.firstElementChild;
+        if (!fr) return;
+        box._vis = en.isIntersecting;
+        if (en.isIntersecting) { if (!document.hidden) loadThumb(fr); }
+        else unloadThumb(fr);
       });
-    }, { rootMargin: "200px" })
+    }, { rootMargin: "150px" })
   : null;
 
+document.addEventListener("visibilitychange", () => {
+  if (!thumbLoader) return;
+  watchedBoxes.forEach(box => {
+    const fr = box.firstElementChild;
+    if (!fr) return;
+    if (document.hidden) unloadThumb(fr);
+    else if (box._vis) loadThumb(fr);
+  });
+});
+
 function initThumbs(root = document) {
+  /* 목록이 다시 그려져 사라진 상자는 관찰 해제 (메모리 누수 방지) */
+  watchedBoxes.forEach(box => {
+    if (box.isConnected) return;
+    watchedBoxes.delete(box);
+    thumbLoader && thumbLoader.unobserve(box);
+    thumbResizer && thumbResizer.unobserve(box);
+    const f = box.firstElementChild; if (f) liveThumbs.delete(f);
+  });
   root.querySelectorAll(".thumb").forEach(box => {
     const fr = box.firstElementChild;
     if (!fr || fr.dataset.bound) return;
@@ -785,7 +845,7 @@ function initThumbs(root = document) {
     fr.style.height = THUMB_H + "px";
     fitThumb(box);
     thumbResizer && thumbResizer.observe(box);
-    if (thumbLoader) thumbLoader.observe(box);
+    if (thumbLoader) { watchedBoxes.add(box); thumbLoader.observe(box); }
     else { fr.addEventListener("load", () => fr.classList.add("loaded"), { once: true }); loadThumb(fr); }
   });
 }
