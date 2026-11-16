@@ -1,6 +1,10 @@
 {
   "examples": [
     {
+      "dir": "codingmeca",
+      "entry": "index.html"
+    },
+    {
       "dir": "검 강화 게임",
       "entry": "Sword Upgrade.html"
     },
