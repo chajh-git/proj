@@ -99,11 +99,13 @@ export function createAssemblyUI({ root, scene, renderer, audio = null, presets 
     onDragStart: (id) => { setHeld(id, false); },
     onDragMove: (id, x, y) => { hover(nearestMarker(x, y, 90)); },
     onDrop: (id, x, y) => {
-      const over = document.elementFromPoint(x, y);
-      const m = over === canvas || over === document.querySelector('.cm-ui') ? nearestMarker(x, y, 90) : null;
+      // 작업대 영역(가운데 3D 화면) 안이면 놓은 것으로 본다. 그 위에 겹친 화면 요소가 있어도 상관없다.
+      const r = mid.getBoundingClientRect();
+      const inWork = x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+      const m = inWork ? nearestMarker(x, y, 90) : null;
       if (getPart(id).category === 'core') { setHeld(null); return; }
       if (m) doAttach(id, m.slot);
-      else if (over === canvas) flashHint(mid, '연결점(●) 가까이에 놓아 주세요');
+      else if (inWork) flashHint(mid, '연결점(●) 가까이에 놓아 주세요');
       setHeld(null);
     },
     onDragCancel: () => setHeld(null),
