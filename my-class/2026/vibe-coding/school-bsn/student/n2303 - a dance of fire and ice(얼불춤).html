@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Dance of Fire and Ice Web Edition</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0c0d14; font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif; user-select: none; }
+        #canvas { display: block; width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        .overlay { 
+            position: fixed; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(12, 13, 20, 0.92); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; 
+            z-index: 999; 
+            overflow-y: auto;
+            padding: 30px 20px;
+        }
+        
+        .title { color: #fef3c7; font-size: 2.2rem; font-weight: 900; margin-bottom: 8px; letter-spacing: 2px; text-align: center; text-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+        .sub { color: #fde68a; margin-bottom: 24px; text-align: center; font-size: 0.95rem; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; max-width: 720px; width: 100%; margin-bottom: 24px; }
+        
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .btn { 
+            background: rgba(255, 255, 255, 0.08); 
+            border: 1.5px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 12px; 
+            padding: 14px 18px; 
+            color: #ffffff; 
+            text-align: left; 
+            cursor: pointer; 
+            transition: all 0.2s ease;
+        }
+        .btn:hover { 
+            background: rgba(245, 158, 11, 0.25); 
+            border-color: #fbbf24; 
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.2);
+        }
+
+        .custom-box {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            padding: 18px;
+            max-width: 720px;
+            width: 100%;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .custom-row {
+            display: flex;
+            gap: 10px;
+        }
+        .custom-box input {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 8px;
+            padding: 10px 12px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .custom-box input:focus { border-color: #fbbf24; }
+        .custom-box button {
+            background: #d97706;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .custom-box button:hover { background: #f59e0b; }
+
+        .hud { position: fixed; top: 20px; left: 20px; right: 20px; display: none; justify-content: space-between; pointer-events: none; z-index: 100; }
+        .back-btn { pointer-events: auto; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .back-btn:hover { background: rgba(255,255,255,0.25); }
+        .prompt { position: fixed; bottom: 60px; left: 0; right: 0; text-align: center; color: #fef3c7; font-size: 1.2rem; font-weight: bold; pointer-events: none; z-index: 100; display: none; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+        
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #fbbf24;
+            color: #fef3c7;
+            padding: 20px 36px;
+            border-radius: 16px;
+            font-size: 1.4rem;
+            font-weight: 900;
+            z-index: 500;
+            display: none;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div id="stageMenu" class="overlay">
+        <h1 class="title">A DANCE OF FIRE AND ICE</h1>
+        <p class="sub">1단계부터 8단계까지 원하는 스테이지를 선택하세요</p>
+        <div id="stageButtons" class="grid"></div>
+        
+        <div class="custom-box">
+            <div style="font-weight: bold; color: #fbbf24; font-size: 1.05rem;">🛠 커스텀 맵 직접 생성</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1;">방향 코드: <b>0</b>(오른쪽), <b>1</b>(아래), <b>2</b>(왼쪽), <b>3</b>(위) — 겹치지 않게 이어서 입력하세요.</div>
+            <div class="custom-row">
+                <input type="text" id="customPattern" style="flex: 3;" value="0011003300103000" placeholder="패턴 입력 (예: 0011003300)">
+                <input type="number" id="customBpm" style="flex: 1; min-width: 90px;" value="140" min="60" max="300" placeholder="BPM">
+            </div>
+            <button id="btnCustomStart">커스텀 맵 시작하기</button>
+        </div>
+    </div>
+
+    <div id="hud" class="hud">
+        <div>
+            <button id="btnBack" class="back-btn">← 스테이지 목록</button>
+            <div id="stageTitle" style="color: white; font-size: 1.4rem; font-weight: 900; margin-top: 12px;">Stage 1</div>
+        </div>
+        <div style="text-align: right;">
+            <div id="progressText" style="color: #fbbf24; font-size: 2.1rem; font-weight: 900;">0%</div>
+            <div id="bpmText" style="color: rgba(255,255,255,0.85); font-size: 0.95rem; margin-top: 4px;">115 BPM</div>
+        </div>
+    </div>
+
+    <div id="startPrompt" class="prompt">스페이스바 또는 화면을 클릭하여 시작하세요!</div>
+    <div id="toastMsg" class="toast"></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const stageMenu = document.getElementById('stageMenu');
+        const stageButtons = document.getElementById('stageButtons');
+        const hud = document.getElementById('hud');
+        const stageTitle = document.getElementById('stageTitle');
+        const progressText = document.getElementById('progressText');
+        const bpmText = document.getElementById('bpmText');
+        const startPrompt = document.getElementById('startPrompt');
+        const btnBack = document.getElementById('btnBack');
+        const toastMsg = document.getElementById('toastMsg');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const TILE_SIZE = 54;
+        const BALL_RADIUS = TILE_SIZE / 2;
+        const ORBIT_RADIUS = TILE_SIZE;
+        const HIT_MARGIN = 0.42;
+        const AUTO_MISS_ANGLE = Math.PI * 1.18;
+
+        const DIRS = [
+            { x: 1, y: 0, angle: 0 },
+            { x: 0, y: 1, angle: Math.PI / 2 },
+            { x: -1, y: 0, angle: Math.PI },
+            { x: 0, y: -1, angle: -Math.PI / 2 }
+        ];
+
+        const STAGES = [
+            { id: 1, name: "1단계: 첫걸음 (Straight)", baseBpm: 115, pattern: "0000000000000000" },
+            { id: 2, name: "2단계: 직각 리듬 (Corners)", baseBpm: 125, pattern: "000110003300011000" },
+            { id: 3, name: "3단계: 계단 오르내리기", baseBpm: 132, pattern: "0101010030303000" },
+            { id: 4, name: "4단계: 파도타기 (Wave)", baseBpm: 140, pattern: "00110033001100330000" },
+            { id: 5, name: "5단계: 엇박자 스텝 (Syncopation)", baseBpm: 148, pattern: "010030011003301000" },
+            { id: 6, name: "6단계: 딥 밸리 (Deep Valley)", baseBpm: 155, pattern: "0011100333001110033300" },
+            { id: 7, name: "7단계: 질주하는 뱀 (Viper)", baseBpm: 165, pattern: "010301030011003301030000" },
+            { id: 8, name: "8단계: 불꽃과 얼음의 춤 (Master)", baseBpm: 175, pattern: "0010300110033010300111003330000" }
+        ];
+
+        let gameState = 'MENU';
+        let currentStage = null;
+        let path = [];
+        let tileIndex = 0;
+        let currentBpm = 115;
+        let orbitDir = 1;
+        let orbitAngle = 0;
+        let pivotPlanet = 'red';
+        let lastTimestamp = 0;
+        let cameraX = 0, cameraY = 0;
+        let redPos = { x: 0, y: 0 };
+        let bluePos = { x: 0, y: 0 };
+        let pulseTimer = 0;
+        let stateTimeout = null;
+
+        STAGES.forEach((stg) => {
+            const btn = document.createElement('button');
+            btn.className = "btn";
+            btn.innerHTML = `<div style="font-size: 0.78rem; color: #fbbf24; font-weight: bold;">STAGE ${stg.id}</div>
+                             <div style="font-size: 1.05rem; font-weight: bold; margin: 4px 0;">${stg.name}</div>
+                             <div style="font-size: 0.78rem; color: rgba(255,255,255,0.65);">${stg.baseBpm} BPM • ${stg.pattern.length} Tiles</div>`;
+            btn.onclick = () => startStage(stg);
+            stageButtons.appendChild(btn);
+        });
+
+        buildTrack(STAGES[0].pattern);
+        initStageState();
+
+        function showToast(text, duration, callback) {
+            toastMsg.innerText = text;
+            toastMsg.style.display = 'block';
+            if (stateTimeout) clearTimeout(stateTimeout);
+            stateTimeout = setTimeout(() => {
+                toastMsg.style.display = 'none';
+                if (callback) callback();
+            }, duration);
+        }
+
+        btnBack.onclick = () => {
+            if (stateTimeout) clearTimeout(stateTimeout);
+            toastMsg.style.display = 'none';
+            gameState = 'MENU';
+            stageMenu.style.display = 'flex';
+            hud.style.display = 'none';
+            startPrompt.style.display = 'none';
+        };
+
+        document.getElementById('btnCustomStart').onclick = () => {
+            const rawPattern = document.getElementById('customPattern').value.trim();
+            const cleanPattern = rawPattern.replace(/[^0-3]/g, '');
+            const bpm = Math.max(60, Math.min(300, parseInt(document.getElementById('customBpm').value) || 140));
+            if (cleanPattern.length < 2) {
+                showToast("0~3 사이의 방향 숫자를 2개 이상 입력하세요!", 1500);
+                return;
+            }
+            startStage({ id: 'Custom', name: "커스텀 스테이지", baseBpm: bpm, pattern: cleanPattern });
+        };
+
+        function initStageState() {
+            tileIndex = 0;
+            pivotPlanet = 'red';
+            orbitDir = 1;
+            orbitAngle = DIRS[path[0].dir].angle + Math.PI;
+            cameraX = path[0].x;
+            cameraY = path[0].y;
+            redPos = { x: path[0].x, y: path[0].y };
+            bluePos = { 
+                x: path[0].x + Math.cos(orbitAngle) * ORBIT_RADIUS, 
+                y: path[0].y + Math.sin(orbitAngle) * ORBIT_RADIUS 
+            };
+        }
+
+        function startStage(stage) {
+            if (stateTimeout) clearTimeout(stateTimeout);
+            toastMsg.style.display = 'none';
+            currentStage = stage;
+            currentBpm = stage.baseBpm;
+            gameState = 'READY';
+            stageMenu.style.display = 'none';
+            hud.style.display = 'flex';
+            startPrompt.style.display = 'block';
+            stageTitle.innerText = stage.name;
+            bpmText.innerText = `${currentBpm} BPM`;
+            progressText.innerText = '0%';
+            
+            buildTrack(stage.pattern);
+            initStageState();
+        }
+
+        function buildTrack(patternStr) {
+            path = [];
+            let gridX = 0, gridY = 0;
+
+            for (let i = 0; i < patternStr.length; i++) {
+                const dirIndex = parseInt(patternStr[i]) % 4 || 0;
+                path.push({ 
+                    x: gridX * TILE_SIZE, 
+                    y: gridY * TILE_SIZE, 
+                    dir: dirIndex, 
+                    targetAngle: 0 
+                });
+
+                const dir = DIRS[dirIndex];
+                gridX += dir.x;
+                gridY += dir.y;
+            }
+
+            for (let i = 0; i < path.length - 1; i++) {
+                path[i].targetAngle = Math.atan2(path[i+1].y - path[i].y, path[i+1].x - path[i].x);
+            }
+        }
+
+        function triggerGameOver() {
+            if (gameState === 'GAMEOVER') return;
+            gameState = 'GAMEOVER';
+            showToast("박자를 놓쳤습니다! 다시 시도합니다...", 900, () => {
+                startStage(currentStage);
+            });
+        }
+
+        function handleTap() {
+            if (gameState === 'READY') {
+                gameState = 'PLAYING';
+                startPrompt.style.display = 'none';
+                return;
+            }
+            if (gameState !== 'PLAYING') return;
+
+            const targetTile = path[tileIndex + 1];
+            if (!targetTile) return;
+
+            const currentTile = path[tileIndex];
+            let diff = Math.abs(normalizeAngle(orbitAngle - currentTile.targetAngle));
+
+            if (diff <= HIT_MARGIN) {
+                tileIndex++;
+                pivotPlanet = (pivotPlanet === 'red') ? 'blue' : 'red';
+
+                if (tileIndex < path.length - 1) {
+                    orbitAngle = Math.atan2(
+                        (pivotPlanet === 'red' ? bluePos.y : redPos.y) - path[tileIndex].y,
+                        (pivotPlanet === 'red' ? bluePos.x : redPos.x) - path[tileIndex].x
+                    );
+                } else {
+                    gameState = 'CLEAR';
+                    progressText.innerText = "100%";
+                    showToast("🎉 스테이지 클리어!", 1400, () => {
+                        btnBack.click();
+                    });
+                }
+            } else {
+                triggerGameOver();
+            }
+        }
+
+        function normalizeAngle(a) {
+            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            return a;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (['Space', 'KeyZ', 'KeyX', 'Enter'].includes(e.code)) {
+                if (gameState === 'READY' || gameState === 'PLAYING') {
+                    e.preventDefault();
+                    handleTap();
+                }
+            }
+        });
+        window.addEventListener('pointerdown', (e) => {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
+            handleTap();
+        });
+
+        function loop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+            lastTimestamp = timestamp;
+            pulseTimer += dt * 8;
+
+            if (gameState === 'PLAYING') {
+                orbitAngle += (currentBpm / 60) * Math.PI * orbitDir * dt;
+                const currentTile = path[tileIndex];
+                if (currentTile) {
+                    let angleDiff = orbitDir * normalizeAngle(orbitAngle - currentTile.targetAngle);
+                    if (angleDiff > AUTO_MISS_ANGLE) {
+                        triggerGameOver();
+                    }
+                }
+            }
+
+            if (path.length > 0) {
+                const curTile = path[tileIndex] || path[0];
+                if (pivotPlanet === 'red') {
+                    redPos = { x: curTile.x, y: curTile.y };
+                    bluePos = { x: curTile.x + Math.cos(orbitAngle) * ORBIT_RADIUS, y: curTile.y + Math.sin(orbitAngle) * ORBIT_RADIUS };
+                } else {
+                    bluePos = { x: curTile.x, y: curTile.y };
+                    redPos = { x: curTile.x + Math.cos(orbitAngle) * ORBIT_RADIUS, y: curTile.y + Math.sin(orbitAngle) * ORBIT_RADIUS };
+                }
+
+                cameraX += (curTile.x - cameraX) * 0.12;
+                cameraY += (curTile.y - cameraY) * 0.12;
+
+                if (gameState === 'PLAYING' || gameState === 'READY') {
+                    const prog = Math.floor((tileIndex / (path.length - 1)) * 100);
+                    progressText.innerText = `${Math.min(100, prog)}%`;
+                }
+            }
+
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        function render() {
+            ctx.fillStyle = "#0c0d14";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(canvas.width / 2 - cameraX, canvas.height / 2 - cameraY);
+
+            const HALF = TILE_SIZE / 2;
+            path.forEach((tile, idx) => {
+                const isTarget = (idx === tileIndex + 1);
+                const isPassed = (idx <= tileIndex);
+
+                ctx.fillStyle = isTarget ? "#ffffff" : (isPassed ? "#d97706" : "#e5c388");
+                ctx.fillRect(tile.x - HALF, tile.y - HALF, TILE_SIZE, TILE_SIZE);
+                ctx.strokeStyle = "rgba(120, 80, 40, 0.65)";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(tile.x - HALF, tile.y - HALF, TILE_SIZE, TILE_SIZE);
+
+                if (isTarget && gameState !== 'MENU') {
+                    const glowBlur = 18 + Math.sin(pulseTimer) * 8;
+                    ctx.shadowColor = "#fbbf24";
+                    ctx.shadowBlur = glowBlur;
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(tile.x - HALF + 3, tile.y - HALF + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                    
+                    ctx.strokeStyle = "#fbbf24";
+                    ctx.lineWidth = 2.5;
+                    ctx.strokeRect(tile.x - HALF - 2, tile.y - HALF - 2, TILE_SIZE + 4, TILE_SIZE + 4);
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            if (path.length > 0 && gameState !== 'MENU') {
+                const curTile = path[tileIndex] || path[0];
+                ctx.beginPath();
+                ctx.arc(curTile.x, curTile.y, ORBIT_RADIUS, 0, Math.PI * 2);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.14)";
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 5]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.beginPath();
+            ctx.arc(redPos.x, redPos.y, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = "#ef4444";
+            ctx.shadowColor = "#ef4444";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.beginPath();
+            ctx.arc(bluePos.x, bluePos.y, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = "#3b82f6";
+            ctx.shadowColor = "#3b82f6";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.restore();
+        }
+
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>
