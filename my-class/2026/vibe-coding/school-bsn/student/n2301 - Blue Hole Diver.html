@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Blue Hole Diver - 2.5D Ocean Adventure</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js for 2.5D Depth Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+        body {
+            font-family: 'VT323', monospace;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            overflow: hidden;
+            background-color: #010409;
+            color: #f8fafc;
+        }
+
+        .font-pixel-title {
+            font-family: 'Press Start 2P', monospace;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .pixel-card {
+            background: rgba(10, 18, 38, 0.92);
+            border: 3px solid #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3), inset 0 0 15px rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+        }
+
+        .btn-pixel {
+            font-family: 'Press Start 2P', monospace;
+            transition: all 0.12s ease;
+            box-shadow: 0 4px 0 #0284c7;
+        }
+        .btn-pixel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 #0284c7;
+        }
+        .btn-pixel:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #0284c7;
+        }
+
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #0b1329;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #38bdf8;
+            border-radius: 3px;
+        }
+
+        @keyframes mapPulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 4px #38bdf8); }
+            50% { transform: scale(1.18); filter: drop-shadow(0 0 14px #38bdf8); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 4px #38bdf8); }
+        }
+        .map-pin {
+            animation: mapPulse 2.2s infinite ease-in-out;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.pointer-events-auto{pointer-events:auto}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.inset-0{inset:0px}.bottom-16{bottom:4rem}.left-1\/2{left:50%}.left-\[25\%\]{left:25%}.left-\[27\%\]{left:27%}.left-\[48\%\]{left:48%}.left-\[60\%\]{left:60%}.left-\[62\%\]{left:62%}.top-\[22\%\]{top:22%}.top-\[42\%\]{top:42%}.top-\[52\%\]{top:52%}.top-\[62\%\]{top:62%}.top-\[75\%\]{top:75%}.z-0{z-index:0}.z-10{z-index:10}.z-20{z-index:20}.my-3{margin-top:0.75rem;margin-bottom:0.75rem}.mb-0\.5{margin-bottom:0.125rem}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-3{margin-bottom:0.75rem}.mb-6{margin-bottom:1.5rem}.me-1{margin-inline-end:0.25rem}.me-1\.5{margin-inline-end:0.375rem}.me-2{margin-inline-end:0.5rem}.ms-1{margin-inline-start:0.25rem}.ms-2{margin-inline-start:0.5rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-2\.5{height:0.625rem}.h-3\.5{height:0.875rem}.h-4{height:1rem}.h-
+88vh
+{height:88vh}.h-\[calc\(100\%-2rem\)\]{height:calc(100% - 2rem)}.h-full{height:100%}.h-screen{height:100vh}.w-64{width:16rem}.w-full{width:100%}.w-screen{width:100vw}.max-w-5xl{max-width:64rem}.max-w-7xl{max-width:80rem}.max-w-lg{max-width:32rem}.max-w-xl{max-width:36rem}.flex-1{flex:1 1 0%}.-translate-x-1\/2{--tw-translate-x:-50%;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@keyframes bounce{0%, 100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(0.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,0.2,1)}}.animate-bounce{animation:bounce 1s infinite}.cursor-not-allowed{cursor:not-allowed}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.space-x-1 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.25rem * var(--tw-space-x-reverse));margin-left:calc(0.25rem * calc(1 - var(--tw-space-x-reverse)))}.space-x-3 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.75rem * var(--tw-space-x-reverse));margin-left:calc(0.75rem * calc(1 - var(--tw-space-x-reverse)))}.space-x-4 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(1rem * var(--tw-space-x-reverse));margin-left:calc(1rem * calc(1 - var(--tw-space-x-reverse)))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-lg{border-radius:0.5rem}.rounded-md{border-radius:0.375rem}.rounded-sm{border-radius:0.125rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-4{border-width:4px}.border-b-2{border-bottom-width:2px}.border-t-2{border-top-width:2px}.border-amber-200{--tw-border-opacity:1;border-color:rgb(253 230 138 / var(--tw-border-opacity, 1))}.border-amber-500\/60{border-color:rgb(245 158 11 / 0.6)}.border-cyan-200{--tw-border-opacity:1;border-color:rgb(165 243 252 / var(--tw-border-opacity, 1))}.border-cyan-300{--tw-border-opacity:1;border-color:rgb(103 232 249 / var(--tw-border-opacity, 1))}.border-cyan-400{--tw-border-opacity:1;border-color:rgb(34 211 238 / var(--tw-border-opacity, 1))}.border-cyan-500\/60{border-color:rgb(6 182 212 / 0.6)}.border-cyan-900\/80{border-color:rgb(22 78 99 / 0.8)}.border-emerald-400{--tw-border-opacity:1;border-color:rgb(52 211 153 / var(--tw-border-opacity, 1))}.border-emerald-500\/60{border-color:rgb(16 185 129 / 0.6)}.border-indigo-500\/60{border-color:rgb(99 102 241 / 0.6)}.border-purple-500{--tw-border-opacity:1;border-color:rgb(168 85 247 / var(--tw-border-opacity, 1))}.border-rose-500{--tw-border-opacity:1;border-color:rgb(244 63 94 / var(--tw-border-opacity, 1))}.border-rose-500\/60{border-color:rgb(244 63 94 / 0.6)}.border-slate-500{--tw-border-opacity:1;border-color:rgb(100 116 139 / var(--tw-border-opacity, 1))}.border-slate-600{--tw-border-opacity:1;border-color:rgb(71 85 105 / var(--tw-border-opacity, 1))}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.bg-amber-500{--tw-bg-opacity:1;background-color:rgb(245 158 11 / var(--tw-bg-opacity, 1))}.bg-cyan-500{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.bg-cyan-600{--tw-bg-opacity:1;background-color:rgb(8 145 178 / var(--tw-bg-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/90{background-color:rgb(15 23 42 / 0.9)}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23 / var(--tw-bg-opacity, 1))}.bg-slate-950\/85{background-color:rgb(2 6 23 / 0.85)}.bg-slate-950\/90{background-color:rgb(2 6 23 / 0.9)}.bg-slate-950\/95{background-color:rgb(2 6 23 / 0.95)}.bg-gradient-to-r{background-image:linear-gradient(to right, var(--tw-gradient-stops))}.from-amber-400{--tw-gradient-from:#fbbf24 var(--tw-gradient-from-position);--tw-gradient-to:rgb(251 191 36 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-cyan-400{--tw-gradient-from:#22d3ee var(--tw-gradient-from-position);--tw-gradient-to:rgb(34 211 238 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-emerald-500{--tw-gradient-from:#10b981 var(--tw-gradient-from-position);--tw-gradient-to:rgb(16 185 129 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.from-rose-600{--tw-gradient-from:#e11d48 var(--tw-gradient-from-position);--tw-gradient-to:rgb(225 29 72 / 0) var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), var(--tw-gradient-to)}.via-red-500{--tw-gradient-to:rgb(239 68 68 / 0)  var(--tw-gradient-to-position);--tw-gradient-stops:var(--tw-gradient-from), #ef4444 var(--tw-gradient-via-position), var(--tw-gradient-to)}.to-amber-500{--tw-gradient-to:#f59e0b var(--tw-gradient-to-position)}.to-blue-500{--tw-gradient-to:#3b82f6 var(--tw-gradient-to-position)}.to-green-400{--tw-gradient-to:#4ade80 var(--tw-gradient-to-position)}.to-orange-500{--tw-gradient-to:#f97316 var(--tw-gradient-to-position)}.object-cover{object-fit:cover}.p-0\.5{padding:0.125rem}.p-1{padding:0.25rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-2\.5{padding-left:0.625rem;padding-right:0.625rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-5{padding-left:1.25rem;padding-right:1.25rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.px-8{padding-left:2rem;padding-right:2rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-3{padding-bottom:0.75rem}.pb-4{padding-bottom:1rem}.pr-1{padding-right:0.25rem}.pt-3{padding-top:0.75rem}.pt-4{padding-top:1rem}.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-4xl{font-size:2.25rem;line-height:2.5rem}.text-6xl{font-size:3.75rem;line-height:1}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.leading-tight{line-height:1.25}.tracking-wide{letter-spacing:0.025em}.text-amber-200{--tw-text-opacity:1;color:rgb(253 230 138 / var(--tw-text-opacity, 1))}.text-amber-300{--tw-text-opacity:1;color:rgb(252 211 77 / var(--tw-text-opacity, 1))}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-cyan-200{--tw-text-opacity:1;color:rgb(165 243 252 / var(--tw-text-opacity, 1))}.text-cyan-300{--tw-text-opacity:1;color:rgb(103 232 249 / var(--tw-text-opacity, 1))}.text-cyan-400{--tw-text-opacity:1;color:rgb(34 211 238 / var(--tw-text-opacity, 1))}.text-emerald-200{--tw-text-opacity:1;color:rgb(167 243 208 / var(--tw-text-opacity, 1))}.text-emerald-300{--tw-text-opacity:1;color:rgb(110 231 183 / var(--tw-text-opacity, 1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-indigo-300{--tw-text-opacity:1;color:rgb(165 180 252 / var(--tw-text-opacity, 1))}.text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}.text-purple-300{--tw-text-opacity:1;color:rgb(216 180 254 / var(--tw-text-opacity, 1))}.text-purple-400{--tw-text-opacity:1;color:rgb(192 132 252 / var(--tw-text-opacity, 1))}.text-rose-200{--tw-text-opacity:1;color:rgb(254 205 211 / var(--tw-text-opacity, 1))}.text-rose-300{--tw-text-opacity:1;color:rgb(253 164 175 / var(--tw-text-opacity, 1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133 / var(--tw-text-opacity, 1))}.text-rose-500{--tw-text-opacity:1;color:rgb(244 63 94 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.opacity-0{opacity:0}.opacity-90{opacity:0.9}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color), 0 8px 10px -6px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-rose-900\/60{--tw-shadow-color:rgb(136 19 55 / 0.6);--tw-shadow:var(--tw-shadow-colored)}.drop-shadow-lg{--tw-drop-shadow:drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.drop-shadow-md{--tw-drop-shadow:drop-shadow(0 4px 3px rgb(0 0 0 / 0.07)) drop-shadow(0 2px 2px rgb(0 0 0 / 0.06));filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-blur-md{--tw-backdrop-blur:blur(12px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color, background-color, border-color, fill, stroke, opacity, box-shadow, transform, filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-text-decoration-color, -webkit-backdrop-filter;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-150{transition-duration:150ms}.duration-300{transition-duration:300ms}.hover\:bg-amber-400:hover{--tw-bg-opacity:1;background-color:rgb(251 191 36 / var(--tw-bg-opacity, 1))}.hover\:bg-cyan-400:hover{--tw-bg-opacity:1;background-color:rgb(34 211 238 / var(--tw-bg-opacity, 1))}.hover\:bg-cyan-500:hover{--tw-bg-opacity:1;background-color:rgb(6 182 212 / var(--tw-bg-opacity, 1))}.hover\:bg-emerald-400:hover{--tw-bg-opacity:1;background-color:rgb(52 211 153 / var(--tw-bg-opacity, 1))}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.group:hover .group-hover\:scale-110{--tw-scale-x:1.1;--tw-scale-y:1.1;transform:translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}@media (min-width: 640px){.sm\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.sm\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}}@media (min-width: 768px){.md\:w-80{width:20rem}.md\:grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}.md\:p-6{padding:1.5rem}.md\:p-8{padding:2rem}.md\:text-3xl{font-size:1.875rem;line-height:2.25rem}.md\:text-4xl{font-size:2.25rem;line-height:2.5rem}.md\:text-5xl{font-size:3rem;line-height:1}.md\:text-sm{font-size:0.875rem;line-height:1.25rem}.md\:text-xl{font-size:1.25rem;line-height:1.75rem}}</style></head>
+<body class="w-screen h-screen relative flex flex-col justify-between items-center text-white">
+
+    <!-- 3D & 2D Canvas Container -->
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0">
+        <canvas id="threeCanvas" class="absolute inset-0 w-full h-full" width="948" height="828" style="width: 948px; height: 828px;"></canvas>
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full z-10" width="948" height="828"></canvas>
+    </div>
+
+    <!-- HUD Overlay Header (During Diving) -->
+    <header id="hud" class="relative z-10 w-full max-w-7xl px-6 pt-4 flex justify-between items-start pointer-events-none opacity-0 transition-opacity duration-300">
+        <!-- Status Stats -->
+        <div class="flex flex-col gap-2 pointer-events-auto">
+            <!-- Diver HP Meter -->
+            <div class="pixel-card rounded-xl px-4 py-2 flex items-center space-x-3 w-64 md:w-80 border-emerald-400">
+                <i class="fa-solid fa-heart text-xl text-emerald-400"></i>
+                <div class="flex-1">
+                    <div class="flex justify-between text-xs text-emerald-200 font-bold mb-0.5">
+                        <span>DIVER HP</span>
+                        <span id="diverHpText">100 / 100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-2.5 border border-emerald-500/60 p-0.5 rounded-sm">
+                        <div id="diverHpBar" class="h-full bg-gradient-to-r from-emerald-500 to-green-400 transition-all duration-150" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Oxygen Meter -->
+            <div class="pixel-card rounded-xl px-4 py-2.5 flex items-center space-x-3 w-64 md:w-80">
+                <i class="fa-solid fa-lungs text-2xl text-cyan-400"></i>
+                <div class="flex-1">
+                    <div class="flex justify-between text-sm text-cyan-200 font-bold mb-1">
+                        <span>OXYGEN</span>
+                        <span id="oxygenText">100 / 100</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 border border-cyan-500/60 p-0.5 rounded-sm">
+                        <div id="oxygenBar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-150" style="width: 100%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cargo Weight -->
+            <div class="pixel-card rounded-xl px-4 py-2.5 flex items-center space-x-3 w-64 md:w-80">
+                <i class="fa-solid fa-weight-hanging text-2xl text-amber-400"></i>
+                <div class="flex-1">
+                    <div class="flex justify-between text-sm text-amber-200 font-bold mb-1">
+                        <span>CARGO</span>
+                        <span id="weightText">0.0 / 10.0 kg</span>
+                    </div>
+                    <div class="w-full bg-slate-950 h-3.5 border border-amber-500/60 p-0.5 rounded-sm">
+                        <div id="weightBar" class="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-150" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location, Depth & Gold -->
+        <div class="flex flex-col items-end gap-2 pointer-events-auto">
+            <div class="flex space-x-3">
+                <div class="pixel-card rounded-xl px-4 py-2 flex items-center space-x-3">
+                    <i class="fa-solid fa-compass text-xl text-cyan-300"></i>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">ZONE</div>
+                        <div id="zoneText" class="text-sm text-cyan-200 font-bold">Coral Shallows</div>
+                    </div>
+                </div>
+
+                <div class="pixel-card rounded-xl px-4 py-2 flex items-center space-x-3">
+                    <i class="fa-solid fa-arrows-up-down text-xl text-emerald-400"></i>
+                    <div class="text-right">
+                        <div class="text-xs text-slate-400">DEPTH</div>
+                        <div id="depthText" class="text-2xl text-emerald-300 font-bold">0 m</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pixel-card rounded-xl px-4 py-2 flex items-center space-x-3">
+                <i class="fa-solid fa-sack-dollar text-xl text-amber-400"></i>
+                <div class="text-right">
+                    <div class="text-xs text-slate-400">CASH</div>
+                    <div id="goldText" class="text-2xl text-amber-300 font-bold">$200</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Boss Health Bar HUD (Positioned at Bottom for Maximum Viewability) -->
+    <div id="bossHud" class="fixed bottom-16 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl px-4 flex flex-col items-center pointer-events-none opacity-0 transition-opacity duration-300">
+        <div class="pixel-card rounded-xl px-5 py-2.5 w-full flex flex-col items-center border-rose-500 bg-slate-950/95 shadow-rose-900/60 shadow-2xl">
+            <div class="flex justify-between w-full text-xs font-bold mb-1">
+                <span id="bossNameText" class="text-rose-400 font-pixel-title text-xs md:text-sm"><i class="fa-solid fa-dragon me-2"></i>카리브디스</span>
+                <span id="bossHpText" class="text-rose-200">100 / 100 HP</span>
+            </div>
+            <div class="w-full bg-slate-900 h-4 border border-rose-500 p-0.5 rounded-sm">
+                <div id="bossHpBar" class="h-full bg-gradient-to-r from-rose-600 via-red-500 to-amber-500 transition-all duration-150" style="width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls Bar Footer -->
+    <footer id="controls-bar" class="relative z-10 w-full max-w-lg px-4 pb-4 flex justify-center items-center gap-3 pointer-events-auto opacity-0 transition-opacity duration-300">
+        <button id="surfaceBtn" class="btn-pixel py-3 px-5 bg-amber-500 border-2 border-amber-200 rounded-lg text-xs md:text-sm text-slate-950 font-bold hover:bg-amber-400">
+            <i class="fa-solid fa-ship me-1.5"></i>수면 귀환 (Return)
+        </button>
+        <button id="openMapMidDiveBtn" class="btn-pixel py-3 px-5 bg-cyan-600 border-2 border-cyan-300 rounded-lg text-xs md:text-sm text-white font-bold hover:bg-cyan-500">
+            <i class="fa-solid fa-map me-1.5"></i>지도 (Map - M)
+        </button>
+    </footer>
+
+    <!-- Start Title Screen Overlay -->
+    <div id="startScreen" class="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+        <div class="pixel-card max-w-lg w-full rounded-2xl p-6 md:p-8 text-center shadow-2xl border-4 border-cyan-400">
+            <div class="mb-2 text-cyan-400 text-6xl drop-shadow-lg">
+                <i class="fa-solid fa-water-ladder"></i>
+            </div>
+            
+            <h1 class="font-pixel-title text-2xl md:text-3xl text-cyan-300 mb-2 leading-tight tracking-wide drop-shadow-md">
+                BLUE HOLE DIVER
+            </h1>
+            <p class="text-slate-300 text-base mb-6">2.5D 심해 공간과 섬 전체 생태계를 탐험하고 전설의 해양 생물 및 보스를 사냥하세요!</p>
+
+            <div class="bg-slate-950/90 p-4 rounded-xl border border-slate-700 text-left text-xs md:text-sm mb-6 space-y-2 text-slate-300">
+                <p class="text-amber-300 font-bold mb-1"><i class="fa-solid fa-gamepad me-2"></i>조작 설명:</p>
+                <p>• <b>[W][A][S][D] / 방향키:</b> 픽셀 다이버 자유 수영</p>
+                <p>• <b>[Shift]:</b> 부스트 수영 (산소 추가 소모)</p>
+                <p>• <b>[마우스/터치]:</b> 정밀 조준 및 클릭으로 작살 발사</p>
+                <p>• <b>[Spacebar]:</b> 정면 긴급 작살 발사</p>
+                <p>• <b>[M]:</b> 해양 상세 지도 토글</p>
+            </div>
+
+            <div class="space-y-3">
+                <button id="openMapBtn" class="btn-pixel w-full py-4 bg-cyan-500 border-2 border-cyan-200 text-slate-950 text-base font-bold rounded-xl hover:bg-cyan-400">
+                    해양 지도 열기 (World Map)
+                </button>
+                <button id="copySourceBtn" onclick="copyFullSourceCode()" class="btn-pixel w-full py-3 bg-slate-800 border-2 border-slate-500 text-amber-300 text-xs font-bold rounded-xl hover:bg-slate-700">
+                    <i class="fa-solid fa-copy me-1.5"></i>전체 소스 코드 복사하기 (Copy Code)
+                </button>
+            </div>
+            <div id="copyToast" class="mt-2 text-xs text-emerald-400 font-bold hidden">✅ 클립보드에 전체 소스 코드가 복사되었습니다!</div>
+        </div>
+    </div>
+
+    <!-- World Map Modal -->
+    <div id="mapScreen" class="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md hidden">
+        <div class="pixel-card max-w-5xl w-full rounded-2xl p-5 md:p-6 border-4 border-cyan-400 flex flex-col justify-between h-[88vh]">
+            <div class="flex justify-between items-center border-b-2 border-slate-700 pb-3">
+                <div>
+                    <h2 class="font-pixel-title text-lg md:text-xl text-cyan-300"><i class="fa-solid fa-map-location-dot me-2"></i>BLUE HOLE ARCHIPELAGO</h2>
+                    <p class="text-slate-400 text-xs">탐험할 해역을 선택하세요. 섬 중앙 블루홀과 연결된 각기 다른 수심 환경이 존재합니다.</p>
+                </div>
+                <button id="closeMapBtn" class="text-slate-400 hover:text-white text-2xl font-bold px-2">×</button>
+            </div>
+
+            <!-- Stylized Tactical Pixel Map Area -->
+            <div class="relative my-3 flex-1 bg-slate-950 border-2 border-cyan-900/80 rounded-xl overflow-hidden flex items-center justify-center">
+                <svg class="w-full h-full object-cover opacity-90" viewBox="0 0 900 550" preserveAspectRatio="none">
+                    <defs>
+                        <radialGradient id="blueHoleGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#01030a"></stop>
+                            <stop offset="40%" stop-color="#021d49"></stop>
+                            <stop offset="75%" stop-color="#0284c7"></stop>
+                            <stop offset="100%" stop-color="#0d9488"></stop>
+                        </radialGradient>
+                        <linearGradient id="mangroveGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#065f46"></stop>
+                            <stop offset="100%" stop-color="#0d9488"></stop>
+                        </linearGradient>
+                    </defs>
+
+                    <rect width="900" height="550" fill="#0369a1"></rect>
+                    <path d="M 50 100 C 200 20, 700 10, 850 120 C 890 300, 820 480, 700 520 C 450 560, 100 520, 30 380 Z" fill="#38bdf8" opacity="0.35"></path>
+                    <path d="M 90 120 C 240 50, 660 40, 800 140 C 840 280, 780 440, 660 480 C 420 510, 140 480, 70 340 Z" fill="#2dd4bf" opacity="0.45"></path>
+                    <path d="M 170 140 C 330 80, 620 90, 720 200 C 780 320, 650 430, 480 430 C 280 430, 130 360, 140 220 Z" fill="#15803d" stroke="#166534" stroke-width="6"></path>
+                    <path d="M 220 180 C 340 130, 560 140, 640 220 C 680 300, 580 380, 450 380 C 300 380, 190 320, 200 220 Z" fill="#166534"></path>
+                    <path d="M 230 200 C 290 170, 360 210, 320 280 C 270 330, 200 280, 230 200 Z" fill="url(#mangroveGrad)" stroke="#047857" stroke-width="4"></path>
+                    <path d="M 315 250 Q 380 265, 420 280" stroke="#0d9488" stroke-width="14" fill="none" stroke-linecap="round"></path>
+                    <circle cx="500" cy="290" r="115" fill="url(#blueHoleGrad)" stroke="#38bdf8" stroke-width="5"></circle>
+                    <circle cx="500" cy="290" r="60" fill="#01030a" opacity="0.85"></circle>
+                </svg>
+
+                <!-- Interactive Region Pins -->
+                <button onclick="selectZone('mangrove')" class="absolute top-[42%] left-[27%] group flex flex-col items-center">
+                    <div class="map-pin text-emerald-400 text-3xl md:text-4xl"><i class="fa-solid fa-tree"></i></div>
+                    <span class="bg-slate-950/95 text-emerald-300 text-xs px-2.5 py-1 rounded-md border border-emerald-500/60 mt-1 font-bold group-hover:scale-110 transition shadow-lg">1. 맹그로브 담수호 (0-20m)</span>
+                </button>
+
+                <button onclick="selectZone('coral')" class="absolute top-[22%] left-[62%] group flex flex-col items-center">
+                    <div class="map-pin text-cyan-300 text-3xl md:text-4xl"><i class="fa-solid fa-fish"></i></div>
+                    <span class="bg-slate-950/95 text-cyan-200 text-xs px-2.5 py-1 rounded-md border border-cyan-500/60 mt-1 font-bold group-hover:scale-110 transition shadow-lg">2. 연안 산호초 (0-50m)</span>
+                </button>
+
+                <button onclick="selectZone('twilight')" class="absolute top-[62%] left-[60%] group flex flex-col items-center">
+                    <div class="map-pin text-indigo-400 text-3xl md:text-4xl"><i class="fa-solid fa-water"></i></div>
+                    <span class="bg-slate-950/95 text-indigo-300 text-xs px-2.5 py-1 rounded-md border border-indigo-500/60 mt-1 font-bold group-hover:scale-110 transition shadow-lg">3. 트와일라잇 중층 (50-150m)</span>
+                </button>
+
+                <button onclick="selectZone('abyssal')" class="absolute top-[52%] left-[48%] group flex flex-col items-center">
+                    <div class="map-pin text-rose-500 text-4xl md:text-5xl"><i class="fa-solid fa-skull"></i></div>
+                    <span class="bg-slate-950/95 text-rose-300 text-xs px-2.5 py-1 rounded-md border border-rose-500/60 mt-1 font-bold group-hover:scale-110 transition shadow-lg">4. 블루홀 초심해 (150m+)</span>
+                </button>
+
+                <button onclick="selectZone('boss_charybdis')" class="absolute top-[75%] left-[25%] group flex flex-col items-center">
+                    <div class="map-pin text-purple-400 text-4xl md:text-5xl animate-bounce"><i class="fa-solid fa-hurricane text-purple-400"></i></div>
+                    <span class="bg-slate-950/95 text-purple-300 text-xs px-2.5 py-1.5 rounded-md border-2 border-purple-500 mt-1 font-bold group-hover:scale-110 transition shadow-xl">🌀 [대표 보스] 소용돌이 바다 (카리브디스)</span>
+                </button>
+            </div>
+
+            <!-- Map Footer Info -->
+            <div id="zoneInfoBox" class="bg-slate-950/90 p-4 rounded-xl border border-slate-700 flex justify-between items-center">
+                <div>
+                    <h3 id="selectedZoneTitle" class="font-bold text-amber-300 text-base">지역을 선택하세요</h3>
+                    <p id="selectedZoneDesc" class="text-slate-400 text-xs">지도의 핀을 클릭하면 난이도 및 출몰 서식 생물 정보를 확인할 수 있습니다.</p>
+                </div>
+                <button id="startSelectedDiveBtn" disabled="" class="btn-pixel px-6 py-3 bg-slate-700 text-slate-400 text-xs rounded-xl cursor-not-allowed">
+                    잠수 시작 <i class="fa-solid fa-anchor ms-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boat Hub Screen -->
+    <div id="boatScreen" class="absolute inset-0 z-20 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md hidden">
+        <div class="pixel-card max-w-5xl w-full h-[88vh] rounded-2xl p-5 md:p-6 flex flex-col justify-between border-4 border-cyan-400 relative overflow-hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b-2 border-slate-700 pb-3">
+                <div class="flex items-center space-x-4">
+                    <h2 class="font-pixel-title text-lg md:text-xl text-amber-300"><i class="fa-solid fa-ship me-2"></i>BANCHO BOAT HUB</h2>
+                    <div class="flex bg-slate-900 rounded-lg p-1 border border-slate-700 space-x-1">
+                        <button id="tabShopBtn" onclick="switchBoatTab('shop')" class="px-3 py-1 text-xs font-bold rounded bg-cyan-500 text-slate-950">상점 &amp; 업그레이드</button>
+                        <button id="tabGunsBtn" onclick="switchBoatTab('guns')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white"><i class="fa-solid fa-crosshairs me-1"></i>작살총 커스텀</button>
+                        <button id="tabLogBtn" onclick="switchBoatTab('logbook')" class="px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white">생물 도감</button>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400">소지금</span>
+                    <div id="shopGoldText" class="text-2xl md:text-3xl text-amber-400 font-bold">$200</div>
+                </div>
+            </div>
+
+            <!-- Tab 1: Shop & Upgrades -->
+            <div id="shopTabContent" class="grid grid-cols-1 md:grid-cols-2 gap-4 my-3 flex-1 overflow-hidden">
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex flex-col h-full overflow-hidden">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-cyan-300 text-sm"><i class="fa-solid fa-fish me-2"></i>이번 잠수 수확물</h3>
+                        <button id="sellAllBtn" class="btn-pixel px-3 py-1 bg-emerald-500 text-slate-950 text-xs rounded hover:bg-emerald-400">
+                            전부 판매
+                        </button>
+                    </div>
+                    <div id="catchList" class="flex-1 overflow-y-auto scrollbar-thin space-y-2 pr-1"></div>
+                </div>
+
+                <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex flex-col h-full overflow-hidden">
+                    <h3 class="font-bold text-amber-300 text-sm mb-3"><i class="fa-solid fa-screwdriver-wrench me-2"></i>장비 업그레이드</h3>
+                    <div id="upgradeList" class="flex-1 overflow-y-auto scrollbar-thin space-y-2 pr-1"></div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Speargun Custom -->
+            <div id="gunsTabContent" class="my-3 flex-1 overflow-hidden hidden bg-slate-900/90 p-4 rounded-xl border border-slate-700 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-bold text-amber-300 text-sm"><i class="fa-solid fa-gun me-2"></i>작살총 커스텀 워크숍</h3>
+                    <span class="text-xs text-slate-400">다양한 성능과 픽셀 디자인의 작살총을 구입하고 장착하세요!</span>
+                </div>
+                <div id="speargunGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 flex-1 overflow-y-auto scrollbar-thin pr-1"></div>
+            </div>
+
+            <!-- Tab 3: Fish Logbook -->
+            <div id="logbookTabContent" class="my-3 flex-1 overflow-hidden hidden bg-slate-900/90 p-4 rounded-xl border border-slate-700">
+                <h3 class="font-bold text-cyan-300 text-sm mb-3"><i class="fa-solid fa-book-bookmark me-2"></i>블루홀 수생 생물 도감</h3>
+                <div id="logbookGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 h-[calc(100%-2rem)] overflow-y-auto scrollbar-thin pr-1"></div>
+            </div>
+
+            <!-- Footer Action -->
+            <div class="pt-3 border-t-2 border-slate-700 flex justify-between items-center">
+                <button id="backToMapBtn" class="btn-pixel px-6 py-3 bg-slate-800 border-2 border-slate-600 text-slate-200 text-xs font-bold rounded-xl hover:bg-slate-700">
+                    <i class="fa-solid fa-map me-2"></i>지도 화면으로
+                </button>
+                <button id="nextDiveBtn" class="btn-pixel px-8 py-3 bg-cyan-500 border-2 border-cyan-200 text-slate-950 text-xs md:text-sm font-bold rounded-xl hover:bg-cyan-400">
+                    재잠수 출발! <i class="fa-solid fa-water ms-2"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Copy Full Source Code Utility ---
+        window.copyFullSourceCode = function() {
+            const clonedDoc = document.documentElement.cloneNode(true);
+            clonedDoc.querySelectorAll('[data-bard-client-injected="true"]').forEach(el => el.remove());
+            const fullHtml = '<!DOCTYPE html>\n' + clonedDoc.outerHTML;
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = fullHtml;
+            tempTextarea.style.position = 'fixed';
+            tempTextarea.style.left = '-9999px';
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            try {
+                document.execCommand('copy');
+                const toast = document.getElementById('copyToast');
+                if (toast) {
+                    toast.classList.remove('hidden');
+                    setTimeout(() => toast.classList.add('hidden'), 3000);
+                }
+            } catch (err) {
+                console.error('Copy failed', err);
+            }
+            document.body.removeChild(tempTextarea);
+        };
+
+        // --- Sound Engine ---
+        class SoundFX {
+            constructor() { this.ctx = null; }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playShoot() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(420, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+            playCatch() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(520, now);
+                osc.frequency.exponentialRampToValueAtTime(980, now + 0.2);
+                gain.gain.setValueAtTime(0.25, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.2);
+            }
+            playCash() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc1 = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc1.type = 'sine'; osc2.type = 'sine';
+                osc1.frequency.setValueAtTime(987.77, now);
+                osc2.frequency.setValueAtTime(1318.51, now + 0.08);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.32);
+                osc1.connect(gain); osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc1.start(now); osc1.stop(now + 0.08);
+                osc2.start(now + 0.08); osc2.stop(now + 0.32);
+            }
+            playUpgrade() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(340, now);
+                osc.frequency.exponentialRampToValueAtTime(720, now + 0.24);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(now + 0.24);
+            }
+        }
+        const sound = new SoundFX();
+
+        // --- Three.js Background ---
+        let scene, camera, renderer, lightRaysMesh;
+        function init3DBackground() {
+            if (typeof THREE === 'undefined') return;
+            const threeCanvas = document.getElementById('threeCanvas');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 100;
+
+            renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const geom = new THREE.ConeGeometry(90, 220, 32, 1, true);
+            const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.14, side: THREE.DoubleSide });
+            lightRaysMesh = new THREE.Mesh(geom, mat);
+            lightRaysMesh.position.set(0, 40, -20);
+            lightRaysMesh.rotation.z = Math.PI;
+            scene.add(lightRaysMesh);
+        }
+
+        // --- 2D Game Engine ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const SPRITE_MATRICES = {
+            speargun_black: [
+                [0,-1,"#0f172a"],[1,-1,"#1e293b"],[2,-1,"#1e293b"],[3,-1,"#1e293b"],[4,-1,"#1e293b"],[5,-1,"#1e293b"],[6,-1,"#1e293b"],[7,-1,"#334155"],[8,-1,"#e2e8f0"],
+                [-1,0,"#020617"],[0,0,"#0f172a"],[1,0,"#334155"],[2,0,"#1e293b"],[3,0,"#334155"],[4,0,"#1e293b"],[5,0,"#334155"],[6,0,"#1e293b"],[7,0,"#334155"],[8,0,"#e2e8f0"],[9,0,"#94a3b8"],
+                [-1,1,"#020617"],[0,1,"#0f172a"]
+            ],
+            speargun_white_grip: [
+                [0,-1,"#f8fafc"],[1,-1,"#334155"],[2,-1,"#1e293b"],[3,-1,"#1e293b"],[4,-1,"#334155"],[5,-1,"#1e293b"],[6,-1,"#1e293b"],[7,-1,"#334155"],[8,-1,"#e2e8f0"],
+                [-1,0,"#f8fafc"],[0,0,"#f1f5f9"],[1,0,"#0f172a"],[2,0,"#334155"],[3,0,"#0f172a"],[4,0,"#334155"],[5,0,"#0f172a"],[6,0,"#334155"],[7,0,"#0f172a"],[8,0,"#e2e8f0"],[9,0,"#cbd5e1"],
+                [-1,1,"#f8fafc"],[0,1,"#e2e8f0"]
+            ],
+            speargun_red_trigger: [
+                [0,-1,"#0f172a"],[1,-1,"#1e293b"],[2,-1,"#1e293b"],[3,-1,"#1e293b"],[4,-1,"#1e293b"],[5,-1,"#1e293b"],[6,-1,"#1e293b"],[7,-1,"#334155"],[8,-1,"#e2e8f0"],
+                [-1,0,"#ef4444"],[0,0,"#dc2626"],[1,0,"#0f172a"],[2,0,"#334155"],[3,0,"#0f172a"],[4,0,"#334155"],[5,0,"#0f172a"],[6,0,"#334155"],[7,0,"#0f172a"],[8,0,"#e2e8f0"],[9,0,"#94a3b8"],
+                [-1,1,"#0f172a"],[0,1,"#ef4444"]
+            ],
+            speargun_lime: [
+                [0,-1,"#84cc16"],[1,-1,"#84cc16"],[2,-1,"#1e293b"],[3,-1,"#84cc16"],[4,-1,"#1e293b"],[5,-1,"#84cc16"],[6,-1,"#1e293b"],[7,-1,"#84cc16"],[8,-1,"#e2e8f0"],
+                [-1,0,"#65a30d"],[0,0,"#84cc16"],[1,0,"#4d7c0f"],[2,0,"#334155"],[3,0,"#4d7c0f"],[4,0,"#334155"],[5,0,"#4d7c0f"],[6,0,"#334155"],[7,0,"#84cc16"],[8,0,"#e2e8f0"],[9,0,"#bef264"],
+                [-1,1,"#65a30d"],[0,1,"#84cc16"]
+            ],
+            speargun_navy: [
+                [0,-1,"#1e3a8a"],[1,-1,"#1d4ed8"],[2,-1,"#1d4ed8"],[3,-1,"#1e3a8a"],[4,-1,"#1d4ed8"],[5,-1,"#1d4ed8"],[6,-1,"#1e3a8a"],[7,-1,"#3b82f6"],[8,-1,"#e2e8f0"],
+                [-1,0,"#172554"],[0,0,"#1e3a8a"],[1,0,"#1d4ed8"],[2,0,"#3b82f6"],[3,0,"#1d4ed8"],[4,0,"#3b82f6"],[5,0,"#1d4ed8"],[6,0,"#3b82f6"],[7,0,"#60a5fa"],[8,0,"#e2e8f0"],[9,0,"#93c5fd"],
+                [-1,1,"#172554"],[0,1,"#1e3a8a"]
+            ],
+            speargun_silver: [
+                [0,-1,"#94a3b8"],[1,-1,"#cbd5e1"],[2,-1,"#f8fafc"],[3,-1,"#cbd5e1"],[4,-1,"#f8fafc"],[5,-1,"#cbd5e1"],[6,-1,"#f8fafc"],[7,-1,"#94a3b8"],[8,-1,"#f8fafc"],
+                [-1,0,"#64748b"],[0,0,"#94a3b8"],[1,0,"#cbd5e1"],[2,0,"#e2e8f0"],[3,0,"#cbd5e1"],[4,0,"#e2e8f0"],[5,0,"#cbd5e1"],[6,0,"#e2e8f0"],[7,0,"#cbd5e1"],[8,0,"#f8fafc"],[9,0,"#ffffff"],
+                [-1,1,"#475569"],[0,1,"#64748b"]
+            ],
+            speargun_camo: [
+                [0,-1,"#0284c7"],[1,-1,"#78350f"],[2,-1,"#0284c7"],[3,-1,"#d97706"],[4,-1,"#0284c7"],[5,-1,"#78350f"],[6,-1,"#0284c7"],[7,-1,"#d97706"],[8,-1,"#e2e8f0"],
+                [-1,0,"#0f172a"],[0,0,"#78350f"],[1,0,"#0284c7"],[2,0,"#d97706"],[3,0,"#0284c7"],[4,0,"#78350f"],[5,0,"#0284c7"],[6,0,"#d97706"],[7,0,"#0284c7"],[8,0,"#e2e8f0"],[9,0,"#bae6fd"],
+                [-1,1,"#0f172a"],[0,1,"#78350f"]
+            ],
+            speargun_khaki: [
+                [0,-1,"#3f6212"],[1,-1,"#dc2626"],[2,-1,"#4d7c0f"],[3,-1,"#ffffff"],[4,-1,"#4d7c0f"],[5,-1,"#dc2626"],[6,-1,"#4d7c0f"],[7,-1,"#ef4444"],[8,-1,"#e2e8f0"],
+                [-1,0,"#1a2e05"],[0,0,"#3f6212"],[1,0,"#ef4444"],[2,0,"#65a30d"],[3,0,"#f8fafc"],[4,0,"#65a30d"],[5,0,"#ef4444"],[6,0,"#65a30d"],[7,0,"#ef4444"],[8,0,"#e2e8f0"],[9,0,"#fef08a"],
+                [-1,1,"#1a2e05"],[0,1,"#ef4444"]
+            ],
+            speargun_aquatekk: [
+                [0,-2,"#0f172a"],[1,-2,"#0284c7"],
+                [0,-1,"#ea580c"],[1,-1,"#0284c7"],[2,-1,"#f97316"],[3,-1,"#0284c7"],[4,-1,"#ea580c"],[5,-1,"#0284c7"],[6,-1,"#f97316"],[7,-1,"#0f172a"],
+                [0,0,"#0284c7"],[1,0,"#ea580c"],[2,0,"#0284c7"],[3,0,"#f97316"],[4,0,"#0284c7"],[5,0,"#ea580c"],[6,0,"#0284c7"],[7,0,"#0f172a"],[8,0,"#ea580c"],[9,0,"#cbd5e1"],
+                [-1,1,"#ea580c"],[0,1,"#0284c7"],[1,1,"#0f172a"]
+            ],
+            speargun_emerald: [
+                [0,-1,"#059669"],[1,-1,"#10b981"],[2,-1,"#059669"],[3,-1,"#34d399"],[4,-1,"#059669"],[5,-1,"#10b981"],[6,-1,"#059669"],[7,-1,"#6ee7b7"],[8,-1,"#e2e8f0"],
+                [-1,0,"#022c22"],[0,0,"#047857"],[1,0,"#059669"],[2,0,"#34d399"],[3,0,"#059669"],[4,0,"#34d399"],[5,0,"#059669"],[6,0,"#34d399"],[7,0,"#a7f3d0"],[8,0,"#e2e8f0"],[9,0,"#fef08a"],
+                [-1,1,"#022c22"],[0,1,"#047857"]
+            ],
+            catfishHead: [
+                [-2,-2,"#1e293b"],[-1,-2,"#334155"],[0,-2,"#334155"],[1,-2,"#1e293b"],
+                [-3,-1,"#1e293b"],[-2,-1,"#475569"],[-1,-1,"#cbd5e1"],[0,-1,"#000000"],[1,-1,"#475569"],[2,-1,"#1e293b"],
+                [-4,0,"#cbd5e1"],[-3,0,"#1e293b"],[-2,0,"#334155"],[-1,0,"#334155"],[0,0,"#334155"],[1,0,"#1e293b"],[2,0,"#cbd5e1"],
+                [-3,1,"#0f172a"],[-2,1,"#1e293b"],[-1,1,"#334155"],[0,1,"#334155"],[1,1,"#1e293b"]
+            ],
+            catfishBody: [
+                [-2,-2,"#334155"],[-1,-2,"#475569"],[0,-2,"#334155"],
+                [-3,-1,"#1e293b"],[-2,-1,"#334155"],[-1,-1,"#64748b"],[0,-1,"#334155"],[1,-1,"#1e293b"],
+                [-3,0,"#1e293b"],[-2,0,"#334155"],[-1,0,"#475569"],[0,0,"#334155"],[1,0,"#1e293b"],
+                [-2,1,"#0f172a"],[-1,1,"#1e293b"],[0,1,"#0f172a"]
+            ],
+            channaHead: [
+                [-1,-2,"#14532d"],[0,-2,"#166534"],[1,-2,"#14532d"],
+                [-2,-1,"#166534"],[-1,-1,"#86efac"],[0,-1,"#000000"],[1,-1,"#166534"],[2,-1,"#14532d"],
+                [-2,0,"#14532d"],[-1,0,"#15803d"],[0,0,"#15803d"],[1,0,"#166534"],
+                [-1,1,"#052e16"],[0,1,"#14532d"]
+            ],
+            channaBody: [
+                [-2,-2,"#166534"],[-1,-2,"#15803d"],[0,-2,"#166534"],
+                [-3,-1,"#14532d"],[-2,-1,"#facc15"],[-1,-1,"#15803d"],[0,-1,"#facc15"],[1,-1,"#14532d"],
+                [-3,0,"#14532d"],[-2,0,"#15803d"],[-1,0,"#facc15"],[0,0,"#15803d"],[1,0,"#14532d"],
+                [-2,1,"#052e16"],[-1,1,"#14532d"],[0,1,"#052e16"]
+            ],
+            garHead: [
+                [0,-1,"#3f6212"],[1,-1,"#4d7c0f"],[2,-1,"#3f6212"],[3,-1,"#fef08a"],[4,-1,"#3f6212"],
+                [-1,0,"#3f6212"],[0,0,"#fef08a"],[1,0,"#000000"],[2,0,"#65a30d"],[3,0,"#4d7c0f"],
+                [-1,1,"#1a2e05"],[0,1,"#3f6212"],[1,1,"#3f6212"],[2,1,"#3f6212"]
+            ],
+            garBody: [
+                [-3,-1,"#3f6212"],[-2,-1,"#fef08a"],[-1,-1,"#65a30d"],[0,-1,"#fef08a"],[1,-1,"#65a30d"],[2,-1,"#3f6212"],
+                [-3,0,"#3f6212"],[-2,0,"#65a30d"],[-1,0,"#fef08a"],[0,0,"#65a30d"],[1,0,"#fef08a"],[2,0,"#3f6212"],
+                [-2,1,"#1a2e05"],[-1,1,"#3f6212"],[0,1,"#3f6212"],[1,1,"#1a2e05"]
+            ],
+            eelHead: [
+                [-1,-2,"#1e1b4b"],[0,-2,"#312e81"],[1,-2,"#1e1b4b"],
+                [-2,-1,"#312e81"],[-1,-1,"#818cf8"],[0,-1,"#ffffff"],[1,-1,"#312e81"],[2,-1,"#1e1b4b"],
+                [-2,0,"#1e1b4b"],[-1,0,"#3730a3"],[0,0,"#3730a3"],[1,0,"#312e81"]
+            ],
+            eelBody: [
+                [-2,-2,"#1e1b4b"],[-1,-2,"#312e81"],[0,-2,"#1e1b4b"],
+                [-2,-1,"#312e81"],[-1,-1,"#4338ca"],[0,-1,"#312e81"],[1,-1,"#a5f3fc"],
+                [-2,0,"#1e1b4b"],[-1,0,"#312e81"],[0,0,"#1e1b4b"]
+            ],
+            tigerHead: [
+                [0,-2,"#d97706"],[1,-2,"#b45309"],
+                [-1,-1,"#d97706"],[0,-1,"#ffffff"],[1,-1,"#000000"],[2,-1,"#f59e0b"],[3,-1,"#ffffff"],
+                [-1,0,"#b45309"],[0,0,"#d97706"],[1,0,"#f59e0b"],[2,0,"#ffffff"],[3,0,"#ef4444"]
+            ],
+            tigerBody: [
+                [-2,-2,"#d97706"],[-1,-2,"#000000"],[0,-2,"#d97706"],[1,-2,"#000000"],
+                [-2,-1,"#f59e0b"],[-1,-1,"#d97706"],[0,-1,"#000000"],[1,-1,"#f59e0b"],[2,-1,"#d97706"],
+                [-2,0,"#d97706"],[-1,0,"#000000"],[0,0,"#d97706"],[1,0,"#000000"]
+            ],
+            tilapiaHead: [
+                [0,-2,"#f43f5e"],[1,-2,"#fb7185"],
+                [-1,-1,"#f43f5e"],[0,-1,"#fef08a"],[1,-1,"#000000"],[2,-1,"#38bdf8"],
+                [-1,0,"#fb7185"],[0,0,"#38bdf8"],[1,0,"#34d399"],[2,0,"#f43f5e"]
+            ],
+            tilapiaBody: [
+                [-2,-2,"#f43f5e"],[-1,-2,"#38bdf8"],[0,-2,"#34d399"],[1,-2,"#fb7185"],
+                [-2,-1,"#38bdf8"],[-1,-1,"#34d399"],[0,-1,"#f43f5e"],[1,-1,"#facc15"],[2,-1,"#38bdf8"],
+                [-2,0,"#34d399"],[-1,0,"#f43f5e"],[0,0,"#fb7185"],[1,0,"#34d399"]
+            ],
+            pirarucuHead: [
+                [-1,-2,"#15803d"],[0,-2,"#166534"],[1,-2,"#15803d"],
+                [-2,-1,"#166534"],[-1,-1,"#fef08a"],[0,-1,"#000000"],[1,-1,"#15803d"],[2,-1,"#166534"],
+                [-2,0,"#14532d"],[-1,0,"#15803d"],[0,0,"#166534"],[1,0,"#15803d"]
+            ],
+            pirarucuBody: [
+                [-3,-2,"#15803d"],[-2,-2,"#166534"],[-1,-2,"#ef4444"],[0,-2,"#dc2626"],[1,-2,"#166534"],
+                [-3,-1,"#166534"],[-2,-1,"#ef4444"],[-1,-1,"#b91c1c"],[0,-1,"#ef4444"],[1,-1,"#15803d"],[2,-1,"#dc2626"],
+                [-3,0,"#14532d"],[-2,0,"#dc2626"],[-1,0,"#b91c1c"],[0,0,"#ef4444"],[1,0,"#14532d"]
+            ],
+            greatwhiteHead: [
+                [0,-2,"#334155"],[1,-2,"#475569"],[2,-2,"#334155"],
+                [-1,-1,"#475569"],[0,-1,"#000000"],[1,-1,"#ffffff"],[2,-1,"#64748b"],[3,-1,"#cbd5e1"],
+                [-1,0,"#334155"],[0,0,"#ffffff"],[1,0,"#ffffff"],[2,0,"#f8fafc"],[3,0,"#94a3b8"]
+            ],
+            greatwhiteBody: [
+                [-3,-3,"#334155"],[-2,-3,"#475569"],[-1,-3,"#334155"],
+                [-3,-2,"#475569"],[-2,-2,"#64748b"],[-1,-2,"#475569"],[0,-2,"#64748b"],[1,-2,"#334155"],
+                [-3,-1,"#334155"],[-2,-1,"#ffffff"],[-1,-1,"#ffffff"],[0,-1,"#f8fafc"],[1,-1,"#cbd5e1"],
+                [-2,0,"#cbd5e1"],[-1,0,"#ffffff"],[0,0,"#ffffff"]
+            ],
+            hammerheadHead: [
+                [-3,-2,"#64748b"],[-2,-2,"#94a3b8"],[-1,-2,"#64748b"],[0,-2,"#94a3b8"],[1,-2,"#64748b"],[2,-2,"#94a3b8"],[3,-2,"#64748b"],
+                [-4,-1,"#000000"],[-3,-1,"#cbd5e1"],[-2,-1,"#94a3b8"],[-1,-1,"#64748b"],[0,-1,"#64748b"],[1,-1,"#64748b"],[2,-1,"#94a3b8"],[3,-1,"#cbd5e1"],[4,-1,"#000000"],
+                [-2,0,"#64748b"],[-1,0,"#94a3b8"],[0,0,"#cbd5e1"],[1,0,"#94a3b8"],[2,0,"#64748b"]
+            ],
+            hammerheadBody: [
+                [-2,-2,"#64748b"],[-1,-2,"#94a3b8"],[0,-2,"#64748b"],
+                [-3,-1,"#64748b"],[-2,-1,"#94a3b8"],[-1,-1,"#cbd5e1"],[0,-1,"#94a3b8"],[1,-1,"#64748b"],
+                [-2,0,"#475569"],[-1,0,"#e2e8f0"],[0,0,"#e2e8f0"],[1,0,"#475569"]
+            ],
+            barracudaHead: [
+                [0,-1,"#94a3b8"],[1,-1,"#cbd5e1"],[2,-1,"#e2e8f0"],[3,-1,"#ffffff"],
+                [-1,0,"#64748b"],[0,0,"#000000"],[1,0,"#cbd5e1"],[2,0,"#000000"],[3,0,"#ffffff"]
+            ],
+            barracudaBody: [
+                [-3,-1,"#475569"],[-2,-1,"#000000"],[-1,-1,"#cbd5e1"],[0,-1,"#000000"],[1,-1,"#e2e8f0"],
+                [-3,0,"#64748b"],[-2,0,"#94a3b8"],[-1,0,"#000000"],[0,0,"#cbd5e1"],[1,0,"#94a3b8"]
+            ],
+            blacktipHead: [
+                [0,-2,"#475569"],[1,-2,"#64748b"],
+                [-1,-1,"#475569"],[0,-1,"#000000"],[1,-1,"#94a3b8"],[2,-1,"#e2e8f0"],
+                [-1,0,"#334155"],[0,0,"#cbd5e1"],[1,0,"#f8fafc"]
+            ],
+            blacktipBody: [
+                [-2,-3,"#000000"],[-1,-3,"#000000"],
+                [-3,-2,"#475569"],[-2,-2,"#64748b"],[-1,-2,"#94a3b8"],[0,-2,"#475569"],
+                [-3,-1,"#475569"],[-2,-1,"#f8fafc"],[-1,-1,"#e2e8f0"],[0,-1,"#cbd5e1"]
+            ],
+            marlinHead: [
+                [0,-1,"#0284c7"],[1,-1,"#0284c7"],[2,-1,"#38bdf8"],[3,-1,"#0284c7"],[4,-1,"#38bdf8"],[5,-1,"#e0f2fe"],
+                [-1,0,"#0369a1"],[0,0,"#000000"],[1,0,"#38bdf8"],[2,0,"#bae6fd"],[3,0,"#ffffff"]
+            ],
+            marlinBody: [
+                [-2,-3,"#0369a1"],[-1,-3,"#0284c7"],[0,-3,"#0369a1"],
+                [-3,-2,"#0284c7"],[-2,-2,"#38bdf8"],[-1,-2,"#0284c7"],[0,-2,"#38bdf8"],[1,-2,"#0284c7"],
+                [-3,-1,"#0369a1"],[-2,-1,"#e0f2fe"],[-1,-1,"#ffffff"],[0,-1,"#e0f2fe"],[1,-1,"#bae6fd"]
+            ],
+            tunaHead: [
+                [0,-2,"#1e3a8a"],[1,-2,"#1d4ed8"],
+                [-1,-1,"#1e3a8a"],[0,-1,"#facc15"],[1,-1,"#000000"],[2,-1,"#60a5fa"],[3,-1,"#93c5fd"],
+                [-1,0,"#172554"],[0,0,"#60a5fa"],[1,0,"#e0f2fe"],[2,0,"#f8fafc"]
+            ],
+            tunaBody: [
+                [-3,-2,"#1e3a8a"],[-2,-2,"#1d4ed8"],[-1,-2,"#facc15"],[0,-2,"#1d4ed8"],[1,-2,"#facc15"],
+                [-3,-1,"#1d4ed8"],[-2,-1,"#3b82f6"],[-1,-1,"#facc15"],[0,-1,"#93c5fd"],[1,-1,"#f8fafc"],
+                [-3,0,"#172554"],[-2,0,"#60a5fa"],[-1,0,"#e0f2fe"],[0,0,"#ffffff"]
+            ],
+            makoHead: [
+                [0,-2,"#0369a1"],[1,-2,"#0284c7"],[2,-2,"#38bdf8"],
+                [-1,-1,"#0369a1"],[0,-1,"#000000"],[1,-1,"#38bdf8"],[2,-1,"#bae6fd"],[3,-1,"#ffffff"],
+                [-1,0,"#0f172a"],[0,0,"#bae6fd"],[1,0,"#ffffff"],[2,0,"#ffffff"]
+            ],
+            makoBody: [
+                [-3,-2,"#0369a1"],[-2,-2,"#0284c7"],[-1,-2,"#38bdf8"],[0,-2,"#0284c7"],
+                [-3,-1,"#0284c7"],[-2,-1,"#38bdf8"],[-1,-1,"#bae6fd"],[0,-1,"#ffffff"],[1,-1,"#e0f2fe"],
+                [-2,0,"#0f172a"],[-1,0,"#ffffff"],[0,0,"#ffffff"]
+            ],
+            charybdisHead: [
+                [-3,-5,"#3b0764"],[-2,-5,"#581c87"],[-1,-5,"#7e22ce"],[0,-5,"#7e22ce"],[1,-5,"#581c87"],[2,-5,"#3b0764"],
+                [-4,-4,"#581c87"],[-3,-4,"#ef4444"],[-2,-4,"#ffffff"],[-1,-4,"#dc2626"],[0,-4,"#dc2626"],[1,-4,"#ffffff"],[2,-4,"#ef4444"],[3,-4,"#581c87"],
+                [-5,-3,"#7e22ce"],[-4,-3,"#ffffff"],[-3,-3,"#000000"],[-2,-3,"#ef4444"],[-1,-3,"#ef4444"],[0,-3,"#ef4444"],[1,-3,"#ef4444"],[2,-3,"#000000"],[3,-3,"#ffffff"],[4,-3,"#7e22ce"],
+                [-5,-2,"#a855f7"],[-4,-2,"#7e22ce"],[-3,-2,"#581c87"],[-2,-2,"#b91c1c"],[-1,-2,"#991b1b"],[0,-2,"#991b1b"],[1,-2,"#b91c1c"],[2,-2,"#581c87"],[3,-2,"#7e22ce"],[4,-2,"#a855f7"],
+                [-4,-1,"#581c87"],[-3,-1,"#ffffff"],[-2,-1,"#dc2626"],[-1,-1,"#b91c1c"],[0,-1,"#b91c1c"],[1,-1,"#dc2626"],[2,-1,"#ffffff"],[3,-1,"#581c87"]
+            ],
+            charybdisMouth: [
+                [-6,-6,"#581c87"],[-5,-6,"#7e22ce"],[-4,-6,"#ef4444"],[4,-6,"#ef4444"],[5,-6,"#7e22ce"],[6,-6,"#581c87"],
+                [-7,-5,"#7e22ce"],[-6,-5,"#ffffff"],[-4,-5,"#b91c1c"],[-2,-5,"#ef4444"],[2,-5,"#ef4444"],[4,-5,"#b91c1c"],[6,-5,"#ffffff"],[7,-5,"#7e22ce"],
+                [-8,-4,"#a855f7"],[-6,-4,"#ef4444"],[-4,-4,"#dc2626"],[-2,-4,"#991b1b"],[0,-4,"#7f1d1d"],[2,-4,"#991b1b"],[4,-4,"#dc2626"],[6,-4,"#ef4444"],[8,-4,"#a855f7"],
+                [-7,-3,"#581c87"],[-5,-3,"#ffffff"],[-3,-3,"#b91c1c"],[-1,-3,"#7f1d1d"],[1,-3,"#7f1d1d"],[3,-3,"#b91c1c"],[5,-3,"#ffffff"],[7,-3,"#581c87"],
+                [-6,-2,"#7e22ce"],[-4,-2,"#ef4444"],[-2,-2,"#dc2626"],[0,-2,"#991b1b"],[2,-2,"#dc2626"],[4,-2,"#ef4444"],[6,-2,"#7e22ce"],
+                [-5,-1,"#581c87"],[-3,-1,"#ffffff"],[3,-1,"#ffffff"],[5,-1,"#581c87"]
+            ],
+            charybdisBodySegment: [
+                [-4,-3,"#3b0764"],[-3,-3,"#581c87"],[-2,-3,"#7e22ce"],[-1,-3,"#9333ea"],[0,-3,"#9333ea"],[1,-3,"#7e22ce"],[2,-3,"#581c87"],[3,-3,"#3b0764"],
+                [-5,-2,"#581c87"],[-4,-2,"#7e22ce"],[-3,-2,"#ef4444"],[-2,-2,"#ffffff"],[-1,-2,"#a855f7"],[0,-2,"#a855f7"],[1,-2,"#ffffff"],[2,-2,"#ef4444"],[3,-2,"#7e22ce"],[4,-2,"#581c87"],
+                [-5,-1,"#3b0764"],[-4,-1,"#581c87"],[-3,-1,"#7e22ce"],[-2,-1,"#a855f7"],[-1,-1,"#c084fc"],[0,-1,"#c084fc"],[1,-1,"#a855f7"],[2,-1,"#7e22ce"],[3,-1,"#581c87"],[4,-1,"#3b0764"],
+                [-4,0,"#2e1065"],[-3,0,"#3b0764"],[-2,0,"#581c87"],[-1,0,"#7e22ce"],[0,0,"#7e22ce"],[1,0,"#581c87"],[2,0,"#3b0764"],[3,0,"#2e1065"]
+            ],
+            clownfishHead: [
+                [0,-2,"#ea580c"],[1,-2,"#f97316"],[2,-2,"#fb923c"],
+                [-1,-1,"#ea580c"],[0,-1,"#ffffff"],[1,-1,"#000000"],[2,-1,"#f97316"],[3,-1,"#fed7aa"],
+                [-1,0,"#c2410c"],[0,0,"#ffffff"],[1,0,"#ea580c"],[2,0,"#f97316"],[3,0,"#fdba74"],
+                [0,1,"#c2410c"],[1,1,"#ea580c"],[2,1,"#f97316"]
+            ],
+            clownfishBody: [
+                [-2,-3,"#ea580c"],[-1,-3,"#f97316"],[0,-3,"#f97316"],
+                [-3,-2,"#c2410c"],[-2,-2,"#ffffff"],[-1,-2,"#0f172a"],[0,-2,"#f97316"],[1,-2,"#fdba74"],
+                [-3,-1,"#ea580c"],[-2,-1,"#ffffff"],[-1,-1,"#0f172a"],[0,-1,"#f97316"],[1,-1,"#f97316"],
+                [-3,0,"#c2410c"],[-2,0,"#ffffff"],[-1,0,"#0f172a"],[0,0,"#ea580c"],[1,0,"#f97316"],
+                [-2,1,"#ea580c"],[-1,1,"#c2410c"],[0,1,"#ea580c"]
+            ],
+            // 이미지 기반 고디테일 다이버 스프라이트 (노란 라인 잠수복, 노란 산소통, 주름 호스, 검은 후드/오리발)
+            diverFull: [
+                [6,-6,"#1e293b"],[7,-6,"#0f172a"],[8,-6,"#facc15"],[9,-6,"#0f172a"],
+                [5,-5,"#0f172a"],[6,-5,"#1e293b"],[7,-5,"#1e293b"],[8,-5,"#38bdf8"],[9,-5,"#bae6fd"],[10,-5,"#020617"],
+                [5,-4,"#0f172a"],[6,-4,"#1e293b"],[7,-4,"#fda4af"],[8,-4,"#38bdf8"],[9,-4,"#020617"],
+                [6,-3,"#0f172a"],[7,-3,"#f43f5e"],[8,-3,"#1e293b"],[9,-3,"#475569"],
+                [3,-5,"#94a3b8"],[4,-6,"#cbd5e1"],[5,-6,"#64748b"],
+                [4,-4,"#cbd5e1"],[5,-3,"#94a3b8"],[6,-2,"#cbd5e1"],[7,-2,"#64748b"],[8,-2,"#94a3b8"],
+                [2,-5,"#334155"],[3,-6,"#94a3b8"],
+                [0,-5,"#eab308"],[1,-5,"#facc15"],[2,-4,"#ca8a04"],
+                [-2,-4,"#eab308"],[-1,-4,"#facc15"],[0,-4,"#facc15"],[1,-3,"#ca8a04"],
+                [-4,-3,"#eab308"],[-3,-3,"#facc15"],[-2,-3,"#facc15"],[-1,-2,"#ca8a04"],
+                [-5,-2,"#0f172a"],[-4,-2,"#1e293b"],[-3,-2,"#0f172a"],
+                [2,-3,"#1e293b"],[3,-3,"#facc15"],[4,-3,"#1e293b"],[5,-2,"#1e293b"],
+                [0,-2,"#0f172a"],[1,-2,"#1e293b"],[2,-2,"#334155"],[3,-2,"#facc15"],[4,-2,"#1e293b"],[5,-1,"#0f172a"],
+                [-1,-1,"#0f172a"],[0,-1,"#1e293b"],[1,-1,"#334155"],[2,-1,"#1e293b"],[3,-1,"#0f172a"],[4,-1,"#facc15"],
+                [-2,0,"#0f172a"],[-1,0,"#1e293b"],[0,0,"#475569"],[1,0,"#1e293b"],[2,0,"#0f172a"],
+                [3,0,"#1e293b"],[4,0,"#334155"],[5,0,"#facc15"],
+                [4,1,"#1e293b"],[5,1,"#334155"],[6,1,"#1e293b"],
+                [6,2,"#1e293b"],[7,2,"#fda4af"],[8,2,"#fecdd3"],[9,2,"#fda4af"],
+                [-4,0,"#0f172a"],[-3,0,"#1e293b"],
+                [-6,1,"#0f172a"],[-5,1,"#1e293b"],[-4,1,"#facc15"],[-3,1,"#1e293b"],[-2,1,"#0f172a"],
+                [-8,2,"#0f172a"],[-7,2,"#1e293b"],[-6,2,"#facc15"],[-5,2,"#1e293b"],[-4,2,"#0f172a"],
+                [-10,3,"#0f172a"],[-9,3,"#1e293b"],[-8,3,"#facc15"],[-7,3,"#1e293b"],
+                [-12,4,"#0f172a"],[-11,4,"#1e293b"],[-10,4,"#facc15"],[-9,4,"#0f172a"],
+                [-14,5,"#020617"],[-13,5,"#1e293b"],[-12,5,"#0f172a"],
+                [-16,6,"#020617"],[-15,6,"#1e293b"],[-14,6,"#0f172a"],[-13,6,"#020617"],
+                [-18,7,"#020617"],[-17,7,"#1e293b"],[-16,7,"#0f172a"],[-15,7,"#020617"],
+                [-19,8,"#020617"],[-18,8,"#0f172a"],[-17,8,"#020617"]
+            ]
+        };
+
+        function renderPixelMatrix(ctx, matrix, pixelSize, shadowColor = null) {
+            if (!matrix || !Array.isArray(matrix)) return;
+            matrix.forEach(([dx, dy, color, alpha]) => {
+                ctx.save();
+                ctx.fillStyle = shadowColor || color;
+                if (alpha !== undefined) ctx.globalAlpha = alpha;
+                ctx.fillRect(dx * pixelSize, dy * pixelSize, pixelSize, pixelSize);
+                if (!shadowColor && color !== "#000000") {
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+                    ctx.fillRect(dx * pixelSize, dy * pixelSize, pixelSize * 0.4, pixelSize * 0.4);
+                }
+                ctx.restore();
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            init3DBackground();
+        });
+
+        // --- Spine Joints ---
+        class SpineChain {
+            constructor(segmentCount, segmentLength) {
+                this.segments = [];
+                for (let i = 0; i < segmentCount; i++) {
+                    this.segments.push({ x: 0, y: 0, angle: 0 });
+                }
+                this.segmentLength = segmentLength;
+            }
+            update(headX, headY, baseAngle, flexSpeed, flexAmount) {
+                this.segments[0].x = headX;
+                this.segments[0].y = headY;
+                this.segments[0].angle = baseAngle;
+                for (let i = 1; i < this.segments.length; i++) {
+                    const prev = this.segments[i - 1];
+                    const curr = this.segments[i];
+                    const wave = Math.sin(flexSpeed - i * 0.5) * flexAmount * (i / this.segments.length);
+                    const targetAngle = prev.angle + wave;
+                    const targetX = prev.x - Math.cos(targetAngle) * this.segmentLength;
+                    const targetY = prev.y - Math.sin(targetAngle) * this.segmentLength;
+                    curr.x += (targetX - curr.x) * 0.45;
+                    curr.y += (targetY - curr.y) * 0.45;
+                    curr.angle = Math.atan2(prev.y - curr.y, prev.x - curr.x);
+                }
+            }
+        }
+
+        // --- UI & State ---
+        const startScreen = document.getElementById('startScreen');
+        const mapScreen = document.getElementById('mapScreen');
+        const boatScreen = document.getElementById('boatScreen');
+        const openMapBtn = document.getElementById('openMapBtn');
+        const openMapMidDiveBtn = document.getElementById('openMapMidDiveBtn');
+        const closeMapBtn = document.getElementById('closeMapBtn');
+        const startSelectedDiveBtn = document.getElementById('startSelectedDiveBtn');
+        const surfaceBtn = document.getElementById('surfaceBtn');
+        const backToMapBtn = document.getElementById('backToMapBtn');
+        const nextDiveBtn = document.getElementById('nextDiveBtn');
+        const sellAllBtn = document.getElementById('sellAllBtn');
+        const hud = document.getElementById('hud');
+        const controlsBar = document.getElementById('controls-bar');
+
+        const oxygenText = document.getElementById('oxygenText');
+        const oxygenBar = document.getElementById('oxygenBar');
+        const weightText = document.getElementById('weightText');
+        const weightBar = document.getElementById('weightBar');
+        const depthText = document.getElementById('depthText');
+        const zoneText = document.getElementById('zoneText');
+        const goldText = document.getElementById('goldText');
+        const shopGoldText = document.getElementById('shopGoldText');
+        const catchList = document.getElementById('catchList');
+        const upgradeList = document.getElementById('upgradeList');
+
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let isGaming = false;
+        let selectedZoneKey = 'coral';
+
+        let gold = 200;
+        let caughtFishList = [];
+        let discoveredSpeciesMap = {};
+
+        const SPEARGUNS = [
+            { id: 'speargun_black', name: '클래식 블랙 (Basic)', price: 0, matrixKey: 'speargun_black', bonusDmg: 0, bonusRange: 0, desc: '표준형 입문용 매트 블랙 작살총' },
+            { id: 'speargun_white_grip', name: '클래식 화이트 그립', price: 150, matrixKey: 'speargun_white_grip', bonusDmg: 1, bonusRange: 20, desc: '화이트 그립 & 크롬 총신 조합' },
+            { id: 'speargun_red_trigger', name: '비유샤트 레드 트리거', price: 300, matrixKey: 'speargun_red_trigger', bonusDmg: 1, bonusRange: 40, desc: '강렬한 레트로 레드 방아쇠 커스텀' },
+            { id: 'speargun_lime', name: '라임 네온 텐션', price: 500, matrixKey: 'speargun_lime', bonusDmg: 2, bonusRange: 50, desc: '고탄성 라임 그린 네온 픽셀 고무줄' },
+            { id: 'speargun_navy', name: '살비마르 네이비 딥씨', price: 750, matrixKey: 'speargun_navy', bonusDmg: 2, bonusRange: 70, desc: '수심 저항을 낮춘 딥 블루 알루미늄' },
+            { id: 'speargun_silver', name: 'JBL 미니 실버 메탈', price: 1000, matrixKey: 'speargun_silver', bonusDmg: 3, bonusRange: 80, desc: '은빛 기계식 메탈 픽셀 바디' },
+            { id: 'speargun_camo', name: '카모 라스 마블', price: 1400, matrixKey: 'speargun_camo', bonusDmg: 3, bonusRange: 100, desc: '해저 위장 전용 샌드 마블 패턴' },
+            { id: 'speargun_khaki', name: '밀리터리 카키 바브', price: 2000, matrixKey: 'speargun_khaki', bonusDmg: 4, bonusRange: 120, desc: '밀리터리 카키 & 크로스 4갈래 작살' },
+            { id: 'speargun_aquatekk', name: '아쿠아텍 블루 카모', price: 2800, matrixKey: 'speargun_aquatekk', bonusDmg: 5, bonusRange: 150, desc: '화려한 딥블루 패턴 & 최고 레벨 피어싱' },
+            { id: 'speargun_emerald', name: '에메랄드 포스 전설', price: 3500, matrixKey: 'speargun_emerald', bonusDmg: 6, bonusRange: 180, desc: '전설의 해저 유물 그린 파이프 체결식 작살총' }
+        ];
+
+        let ownedGuns = ['speargun_black'];
+        let equippedGunId = 'speargun_black';
+
+        const ZONES = {
+            mangrove: { name: '맹그로브 담수호', desc: '산호초 섬 내부의 담수호. 무지개 티라피아와 가물치 등이 서식합니다.', startDepth: 0 },
+            coral: { name: '연안 산호초', desc: '햇살이 비치는 아름다운 연안 산호초 지대. 흰동가리와 쏠배감펭이 있습니다.', startDepth: 0 },
+            twilight: { name: '트와일라잇 중층', desc: '어두워지기 시작하는 중층 해역. 포식자인 바라쿠다와 귀상어가 출몰합니다.', startDepth: 50 },
+            abyssal: { name: '블루홀 초심해', desc: '빛이 닿지 않는 거대한 심해 구멍. 초롱아귀와 대왕오징어가 서식하는 위험 지역입니다.', startDepth: 150 },
+            boss_charybdis: { name: '🌀 소용돌이치는 바다 (보스전)', desc: '신화 속 심해 괴수 카리브디스가 다이버를 심연 소용돌이 속으로 흡입합니다! 약점을 사격하세요.', startDepth: 100 }
+        };
+
+        const upgrades = {
+            oxygenTank: { level: 1, maxLevel: 5, baseCost: 150, name: "산소 탱크 (Oxygen)", desc: "최대 산소 용량 증가" },
+            cargoBag: { level: 1, maxLevel: 5, baseCost: 120, name: "적재 가방 (Cargo)", desc: "최대 수용 무게 증가" },
+            harpoonGun: { level: 1, maxLevel: 5, baseCost: 200, name: "작살 총 (Harpoon)", desc: "작살 데미지 & 사거리 증가" },
+            divingSuit: { level: 1, maxLevel: 4, baseCost: 300, name: "잠수복 (Wetsuit)", desc: "심해 수압 저항 & 산소 소모 감소" },
+            flashlight: { level: 1, maxLevel: 3, baseCost: 250, name: "탐사 조명 (Light)", desc: "심해 시야 및 가시거리 확장" }
+        };
+
+        const SPECIES = [
+            { id: 'catfish', name: '맹그로브 메기', color: '#475569', size: 24, weight: 1.4, price: 50, speed: 60, zone: 'mangrove', hp: 1, segments: 4, segLen: 9, matrix: 'catfish' },
+            { id: 'channa', name: '맹그로브 가물치', color: '#166534', size: 26, weight: 1.6, price: 65, speed: 75, zone: 'mangrove', hp: 1, segments: 4, segLen: 10, matrix: 'channa' },
+            { id: 'gar', name: '엘리게이터 가아', color: '#65a30d', size: 38, weight: 3.8, price: 190, speed: 85, zone: 'mangrove', hp: 2, segments: 5, segLen: 11, matrix: 'gar' },
+            { id: 'eel', name: '전기뱀장어', color: '#4338ca', size: 42, weight: 4.2, price: 280, speed: 90, zone: 'mangrove', hp: 2, segments: 7, segLen: 12, matrix: 'eel', electric: true },
+            { id: 'tigerfish', name: '타이거 피쉬', color: '#d97706', size: 32, weight: 2.9, price: 160, speed: 110, zone: 'mangrove', hp: 2, segments: 4, segLen: 9, matrix: 'tiger' },
+            { id: 'tilapia', name: '무지개 틸라피아', color: '#f43f5e', size: 20, weight: 0.9, price: 40, speed: 70, zone: 'mangrove', hp: 1, segments: 3, segLen: 8, matrix: 'tilapia' },
+            { id: 'pirarucu', name: '피라루크', color: '#b91c1c', size: 58, weight: 7.8, price: 620, speed: 65, zone: 'mangrove', hp: 4, segments: 6, segLen: 14, matrix: 'pirarucu' },
+            { id: 'clownfish', name: '흰동가리', color: '#f97316', size: 18, weight: 0.8, price: 30, speed: 80, zone: 'coral', hp: 1, segments: 3, segLen: 7, matrix: 'clownfish' },
+            { id: 'queenangel', name: '퀸엔젤피쉬', color: '#06b6d4', size: 22, weight: 1.1, price: 50, speed: 90, zone: 'coral', hp: 1, segments: 3, segLen: 8, matrix: 'clownfish' },
+            { id: 'lionfish', name: '붉은 쏠배감펭', color: '#ef4444', size: 28, weight: 2.2, price: 95, speed: 70, zone: 'coral', hp: 2, segments: 4, segLen: 9, matrix: 'clownfish' },
+            { id: 'greatwhite', name: '백상아리', color: '#475569', size: 56, weight: 8.5, price: 850, speed: 120, zone: 'twilight', hp: 5, segments: 6, segLen: 14, matrix: 'greatwhite' },
+            { id: 'hammerhead', name: '큰귀상어', color: '#64748b', size: 52, weight: 6.8, price: 520, speed: 100, zone: 'twilight', hp: 4, segments: 5, segLen: 13, matrix: 'hammerhead' },
+            { id: 'barracuda', name: '대형 바라쿠다', color: '#94a3b8', size: 36, weight: 3.8, price: 210, speed: 140, zone: 'twilight', hp: 3, segments: 4, segLen: 11, matrix: 'barracuda' },
+            { id: 'blacktip', name: '흑기흉상어', color: '#475569', size: 44, weight: 4.8, price: 380, speed: 115, zone: 'twilight', hp: 3, segments: 5, segLen: 12, matrix: 'blacktip' },
+            { id: 'marlin', name: '청새치', color: '#0284c7', size: 58, weight: 7.2, price: 780, speed: 155, zone: 'twilight', hp: 4, segments: 6, segLen: 14, matrix: 'marlin' },
+            { id: 'tuna', name: '참다랑어', color: '#1d4ed8', size: 46, weight: 5.8, price: 490, speed: 130, zone: 'twilight', hp: 3, segments: 5, segLen: 12, matrix: 'tuna' },
+            { id: 'mako', name: '청상아리', color: '#0369a1', size: 50, weight: 6.2, price: 620, speed: 150, zone: 'twilight', hp: 4, segments: 5, segLen: 13, matrix: 'mako' },
+            { id: 'angler', name: '심해 아귀', color: '#fb923c', size: 44, weight: 5.5, price: 550, speed: 95, zone: 'abyssal', hp: 4, segments: 4, segLen: 12, matrix: 'clownfish', glow: true },
+            { id: 'squid', name: '대왕오징어', color: '#e11d48', size: 64, weight: 9.5, price: 1400, speed: 120, zone: 'abyssal', hp: 6, segments: 8, segLen: 16, matrix: 'clownfish', glow: true }
+        ];
+
+        // Boss Loot Items Database
+        const BOSS_LOOTS = {
+            charybdis_tooth: { id: 'charybdis_tooth', name: '🦷 카리브디스의 이빨', price: 500, weight: 2.0 },
+            charybdis_scale: { id: 'charybdis_scale', name: '🛡️ 카리브디스의 비늘', price: 800, weight: 1.5 },
+            charybdis_eye:   { id: 'charybdis_eye',   name: '👁️ 카리브디스의 눈알', price: 1500, weight: 1.0 }
+        };
+
+        let currentOxygen = 100, maxOxygen = 100;
+        let currentWeight = 0, maxWeight = 10;
+        let currentDepth = 0;
+
+        const keys = { w: false, a: false, s: false, d: false, shift: false };
+        let pointerPos = { x: 0, y: 0 };
+
+        let diver = {
+            x: 0, y: 0, vx: 0, vy: 0, speed: 230, facingRight: true, swimFrame: 0,
+            aimAngle: 0, spine: new SpineChain(3, 14), armAngle: 0
+        };
+
+        let diverHp = 100;
+        let maxDiverHp = 100;
+        let tentacleAttackTimer = 0;
+
+        let spear = { x: 0, y: 0, vx: 0, vy: 0, angle: 0, state: 'idle', length: 42, maxDist: 320, traveled: 0 };
+        let fishes = [], particles = [], floatingTexts = [];
+
+        function createSplashParticles(x, y, color = '#38bdf8', count = 6) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 60 + Math.random() * 140;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd,
+                    radius: 2 + Math.random() * 3,
+                    color: color,
+                    alpha: 1.0,
+                    life: 0.4 + Math.random() * 0.4,
+                    isTentacle: false
+                });
+            }
+        }
+
+        function createFloatingText(text, x, y, color = '#facc15') {
+            floatingTexts.push({
+                text: text,
+                x: x,
+                y: y,
+                color: color,
+                alpha: 1.0
+            });
+        }
+
+        function updateHUD() {
+            if (oxygenText) oxygenText.textContent = `${Math.ceil(currentOxygen)} / ${maxOxygen}`;
+            if (oxygenBar) {
+                const pct = Math.max(0, Math.min(100, (currentOxygen / maxOxygen) * 100));
+                oxygenBar.style.width = `${pct}%`;
+            }
+            if (weightText) weightText.textContent = `${currentWeight.toFixed(1)} / ${maxWeight.toFixed(1)} kg`;
+            if (weightBar) {
+                const pct = Math.max(0, Math.min(100, (currentWeight / maxWeight) * 100));
+                weightBar.style.width = `${pct}%`;
+            }
+            if (depthText) depthText.textContent = `${currentDepth} m`;
+            if (goldText) goldText.textContent = `$${gold}`;
+            if (shopGoldText) shopGoldText.textContent = `$${gold}`;
+            
+            const diverHpText = document.getElementById('diverHpText');
+            const diverHpBar = document.getElementById('diverHpBar');
+            if (diverHpText) diverHpText.textContent = `${Math.max(0, Math.ceil(diverHp))} / ${maxDiverHp}`;
+            if (diverHpBar) {
+                const pct = Math.max(0, Math.min(100, (diverHp / maxDiverHp) * 100));
+                diverHpBar.style.width = `${pct}%`;
+            }
+        }
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if (renderer && camera) {
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = true;
+            if (e.code === 'KeyM') toggleMapModal();
+            if (e.code === 'Space' && isGaming) launchSpear();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = false;
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = false;
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = false;
+            if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') keys.shift = false;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            pointerPos.x = e.clientX;
+            pointerPos.y = e.clientY;
+        });
+
+        window.addEventListener('pointerdown', (e) => {
+            if (!isGaming) return;
+            if (e.target.closest('#hud') || e.target.closest('#controls-bar')) return;
+            launchSpear();
+        });
+
+        openMapBtn.addEventListener('click', () => {
+            sound.init();
+            startScreen.classList.add('hidden');
+            mapScreen.classList.remove('hidden');
+        });
+
+        openMapMidDiveBtn.addEventListener('click', toggleMapModal);
+
+        function toggleMapModal() {
+            sound.init();
+            if (mapScreen.classList.contains('hidden')) {
+                mapScreen.classList.remove('hidden');
+            } else {
+                mapScreen.classList.add('hidden');
+            }
+        }
+
+        closeMapBtn.addEventListener('click', () => {
+            mapScreen.classList.add('hidden');
+            if (!isGaming) startScreen.classList.remove('hidden');
+        });
+
+        window.selectZone = function(key) {
+            selectedZoneKey = key;
+            const z = ZONES[key];
+            document.getElementById('selectedZoneTitle').textContent = z.name;
+            document.getElementById('selectedZoneDesc').textContent = z.desc;
+            startSelectedDiveBtn.disabled = false;
+            startSelectedDiveBtn.className = "btn-pixel px-6 py-3 bg-cyan-500 border-2 border-cyan-200 text-slate-950 text-xs font-bold rounded-xl hover:bg-cyan-400";
+        };
+
+        startSelectedDiveBtn.addEventListener('click', () => {
+            mapScreen.classList.add('hidden');
+            startDiveSession();
+        });
+
+        window.sellAllFish = function() {
+            if (caughtFishList.length === 0) return;
+            let earnings = 0;
+            caughtFishList.forEach(fish => earnings += fish.price);
+            gold += earnings;
+            sound.playCash();
+            createFloatingText(`+$${earnings}`, width / 2, height / 2, '#facc15');
+            caughtFishList = [];
+            currentWeight = 0;
+            updateHUD();
+            renderBoatShopUI();
+        };
+
+        window.sellSingleFish = function(index) {
+            if (index < 0 || index >= caughtFishList.length) return;
+            const fish = caughtFishList[index];
+            gold += fish.price;
+            currentWeight -= fish.weight;
+            if (currentWeight < 0) currentWeight = 0;
+            sound.playCash();
+            caughtFishList.splice(index, 1);
+            updateHUD();
+            renderBoatShopUI();
+        };
+
+        function renderBoatShopUI() {
+            catchList.innerHTML = '';
+            if (caughtFishList.length === 0) {
+                catchList.innerHTML = `<div class="text-slate-500 text-center py-6 text-xs">보관된 수확물이 없습니다.</div>`;
+            } else {
+                caughtFishList.forEach((fish, idx) => {
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between items-center p-2 bg-slate-950/80 rounded border border-slate-800 text-xs';
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-200">${fish.name}</span>
+                            <span class="text-[10px] text-slate-400">(${fish.weight}kg)</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-bold text-amber-400">$${fish.price}</span>
+                            <button onclick="sellSingleFish(${idx})" class="btn-pixel px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px]">판매</button>
+                        </div>
+                    `;
+                    catchList.appendChild(item);
+                });
+            }
+
+            upgradeList.innerHTML = '';
+            Object.keys(upgrades).forEach(key => {
+                const upg = upgrades[key];
+                const cost = upg.baseCost * upg.level;
+                const isMax = upg.level >= upg.maxLevel;
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-2.5 bg-slate-950/80 rounded border border-slate-800';
+                item.innerHTML = `
+                    <div>
+                        <div class="font-bold text-xs text-amber-300">upg.name<spanclass="text-cyan-400">(Lv.{upg.level})</span></div>
+                        <div class="text-[10px] text-slate-400">${upg.desc}</div>
+                    </div>
+                    <div>
+                        ${isMax ? `<span class="text-[10px] text-slate-500 font-bold px-2 py-1 bg-slate-800 rounded">MAX</span>` : `
+                            <button onclick="buyUpgrade('${key}')" class="btn-pixel px-3 py-1 bg-cyan-500 text-slate-950 text-xs font-bold rounded hover:bg-cyan-400">
+                                $${cost}
+                            </button>
+                        `}
+                    </div>
+                `;
+                upgradeList.appendChild(item);
+            });
+        }
+
+        window.buyUpgrade = function(key) {
+            const upg = upgrades[key];
+            if (!upg || upg.level >= upg.maxLevel) return;
+            const cost = upg.baseCost * upg.level;
+            if (gold >= cost) {
+                gold -= cost;
+                upg.level++;
+                sound.playUpgrade();
+                updateHUD();
+                renderBoatShopUI();
+            }
+        };
+
+        function renderLogbookUI() {
+            const grid = document.getElementById('logbookGrid');
+            grid.innerHTML = '';
+            SPECIES.forEach(sp => {
+                const isDiscovered = !!discoveredSpeciesMap[sp.id];
+                const card = document.createElement('div');
+                card.className = `p-2.5 rounded-xl border flex flex-col items-center text-center ${isDiscovered ? 'bg-slate-800/80 border-cyan-500/60' : 'bg-slate-950/80 border-slate-800 opacity-60'}`;
+                card.innerHTML = `
+                    <div class="w-10 h-10 mb-1 flex items-center justify-center text-2xl ${isDiscovered ? 'text-cyan-300' : 'text-slate-600'}">
+                        <i class="fa-solid ${isDiscovered ? 'fa-fish' : 'fa-question'}"></i>
+                    </div>
+                    <div class="font-bold text-xs isDiscovered?'text-amber-300':'text-slate-500'mb-0.5">{isDiscovered ? sp.name : '???'}</div>
+                    <div class="text-[10px] text-slate-400">${isDiscovered ? `가치: $${sp.price} / 체중: ${sp.weight}kg` : '미발견 생물'}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.returnToBoat = function() {
+            isGaming = false;
+            hud.classList.add('opacity-0');
+            controlsBar.classList.add('opacity-0');
+            document.getElementById('bossHud').classList.add('opacity-0');
+            boatScreen.classList.remove('hidden');
+            renderBoatShopUI();
+        };
+
+        surfaceBtn.addEventListener('click', returnToBoat);
+        backToMapBtn.addEventListener('click', () => {
+            boatScreen.classList.add('hidden');
+            mapScreen.classList.remove('hidden');
+        });
+        nextDiveBtn.addEventListener('click', () => {
+            boatScreen.classList.add('hidden');
+            startDiveSession();
+        });
+        sellAllBtn.addEventListener('click', sellAllFish);
+
+        window.switchBoatTab = function(tabName) {
+            const shopTab = document.getElementById('shopTabContent');
+            const gunsTab = document.getElementById('gunsTabContent');
+            const logTab = document.getElementById('logbookTabContent');
+            const tabShopBtn = document.getElementById('tabShopBtn');
+            const tabGunsBtn = document.getElementById('tabGunsBtn');
+            const tabLogBtn = document.getElementById('tabLogBtn');
+
+            shopTab.classList.add('hidden');
+            gunsTab.classList.add('hidden');
+            logTab.classList.add('hidden');
+
+            tabShopBtn.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+            tabGunsBtn.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+            tabLogBtn.className = "px-3 py-1 text-xs font-bold rounded text-slate-400 hover:text-white";
+
+            if (tabName === 'shop') {
+                shopTab.classList.remove('hidden');
+                tabShopBtn.className = "px-3 py-1 text-xs font-bold rounded bg-cyan-500 text-slate-950";
+            } else if (tabName === 'guns') {
+                gunsTab.classList.remove('hidden');
+                tabGunsBtn.className = "px-3 py-1 text-xs font-bold rounded bg-amber-500 text-slate-950";
+                renderSpeargunCustomUI();
+            } else {
+                logTab.classList.remove('hidden');
+                tabLogBtn.className = "px-3 py-1 text-xs font-bold rounded bg-cyan-500 text-slate-950";
+                renderLogbookUI();
+            }
+        };
+
+        function renderSpeargunCustomUI() {
+            const grid = document.getElementById('speargunGrid');
+            grid.innerHTML = '';
+            SPEARGUNS.forEach(gun => {
+                const isOwned = ownedGuns.includes(gun.id);
+                const isEquipped = equippedGunId === gun.id;
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl border flex flex-col justify-between ${isEquipped ? 'bg-amber-950/40 border-amber-400' : (isOwned ? 'bg-slate-800/90 border-slate-600' : 'bg-slate-950/70 border-slate-800')}`;
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-xs isEquipped?'text-amber-300':'text-slate-200'">{gun.name}</span>
+                            ${isEquipped ? '<span class="text-[10px] bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded">장착중</span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-2 leading-snug">${gun.desc}</p>
+                        <div class="text-[10px] text-cyan-300 space-y-0.5 mb-3">
+                            <div><i class="fa-solid fa-bolt me-1"></i>추가 데미지: +${gun.bonusDmg}</div>
+                            <div><i class="fa-solid fa-ruler me-1"></i>추가 사거리: +${gun.bonusRange}m</div>
+                        </div>
+                    </div>
+                    <div>
+                        ${isEquipped ? `
+                            <button disabled class="w-full py-1.5 bg-slate-700 text-slate-400 text-xs font-bold rounded cursor-not-allowed">사용 중</button>
+                        ` : isOwned ? `
+                            <button onclick="equipSpeargun('${gun.id}')" class="btn-pixel w-full py-1.5 bg-cyan-500 text-slate-950 text-xs font-bold rounded hover:bg-cyan-400">장착하기</button>
+                        ` : `
+                            <button onclick="buySpeargun('gun.id')"class="btn-pixelw-fullpy-1.5bg-amber-500text-slate-950text-xsfont-boldroundedhover:bg-amber-400">구매(${gun.price})</button>
+                        `}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.equipSpeargun = function(gunId) {
+            equippedGunId = gunId;
+            sound.playUpgrade();
+            renderSpeargunCustomUI();
+        };
+
+        window.buySpeargun = function(gunId) {
+            const gun = SPEARGUNS.find(g => g.id === gunId);
+            if (!gun) return;
+            if (gold >= gun.price) {
+                gold -= gun.price;
+                ownedGuns.push(gunId);
+                equippedGunId = gunId;
+                sound.playUpgrade();
+                updateHUD();
+                renderSpeargunCustomUI();
+            }
+        };
+
+        function startDiveSession() {
+            maxOxygen = 80 + upgrades.oxygenTank.level * 35;
+            currentOxygen = maxOxygen;
+            diverHp = 100;
+            maxDiverHp = 100;
+            maxWeight = 6 + upgrades.cargoBag.level * 5;
+            currentWeight = 0;
+            tentacleAttackTimer = 0;
+
+            const currentGun = SPEARGUNS.find(g => g.id === equippedGunId) || SPEARGUNS[0];
+            spear.maxDist = 300 + upgrades.harpoonGun.level * 60 + currentGun.bonusRange;
+
+            const z = ZONES[selectedZoneKey];
+            zoneText.textContent = z.name;
+
+            const bossHud = document.getElementById('bossHud');
+            const bossNameText = document.getElementById('bossNameText');
+            if (selectedZoneKey === 'boss_charybdis') {
+                bossHud.classList.remove('opacity-0');
+                bossNameText.innerHTML = `<i class="fa-solid fa-hurricane me-2"></i>카리브디스`;
+            } else {
+                bossHud.classList.add('opacity-0');
+            }
+
+            caughtFishList = [];
+            fishes = [];
+            particles = [];
+            floatingTexts = [];
+
+            diver.x = width / 2;
+            diver.y = 120;
+            spear.state = 'idle';
+
+            updateHUD();
+
+            hud.classList.remove('opacity-0');
+            controlsBar.classList.remove('opacity-0');
+
+            isGaming = true;
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function launchSpear() {
+            if (spear.state !== 'idle') return;
+            sound.playShoot();
+
+            spear.state = 'flying';
+            spear.x = diver.x;
+            spear.y = diver.y;
+
+            const dx = pointerPos.x - diver.x;
+            const dy = pointerPos.y - diver.y;
+            spear.angle = Math.atan2(dy, dx);
+            spear.traveled = 0;
+
+            const currentGun = SPEARGUNS.find(g => g.id === equippedGunId) || SPEARGUNS[0];
+            const flySpeed = 780 + upgrades.harpoonGun.level * 160 + currentGun.bonusDmg * 30;
+            spear.vx = Math.cos(spear.angle) * flySpeed;
+            spear.vy = Math.sin(spear.angle) * flySpeed;
+        }
+
+        function spawnFishes() {
+            if (selectedZoneKey === 'boss_charybdis') {
+                if (fishes.length === 0) {
+                    fishes.push({
+                        id: 'boss_charybdis',
+                        name: '카리브디스',
+                        color: '#7e22ce',
+                        size: 220,
+                        weight: 200,
+                        price: 5000,
+                        speed: 80,
+                        zone: 'boss_charybdis',
+                        hp: 100,
+                        currentHp: 100,
+                        maxHp: 100,
+                        isBoss: true,
+                        segments: 18,
+                        segLen: 24,
+                        matrix: 'charybdis',
+                        x: width / 2,
+                        y: 220,
+                        vx: 75,
+                        vy: 0,
+                        dir: 1,
+                        wiggle: 0,
+                        caught: false,
+                        chargeTimer: 0,
+                        isCharging: false,
+                        spine: new SpineChain(18, 24)
+                    });
+                }
+                return;
+            }
+
+            const zoneKey = selectedZoneKey;
+            const zoneSpecies = SPECIES.filter(sp => {
+                if (zoneKey === 'mangrove') return sp.zone === 'mangrove';
+                if (zoneKey === 'coral') return sp.zone === 'coral' || sp.zone === 'mangrove';
+                if (zoneKey === 'twilight') return sp.zone === 'twilight' || sp.zone === 'coral';
+                if (zoneKey === 'abyssal') return sp.zone === 'abyssal' || sp.zone === 'twilight';
+                return sp.zone === zoneKey;
+            });
+
+            if (zoneSpecies.length > 0 && fishes.length < 10) {
+                const spec = zoneSpecies[Math.floor(Math.random() * zoneSpecies.length)];
+                const fromLeft = Math.random() < 0.5;
+                fishes.push({
+                    ...spec,
+                    currentHp: spec.hp,
+                    maxHp: spec.hp,
+                    x: fromLeft ? -40 : width + 40,
+                    y: 100 + Math.random() * (height - 200),
+                    dir: fromLeft ? 1 : -1,
+                    wiggle: Math.random() * Math.PI * 2,
+                    caught: false,
+                    spine: new SpineChain(spec.segments || 4, spec.segLen || 10)
+                });
+            }
+        }
+
+        function update(dt) {
+            if (!isGaming) return;
+
+            spawnFishes();
+
+            if (selectedZoneKey !== 'boss_charybdis') {
+                fishes.forEach((fish, idx) => {
+                    if (fish.caught) return;
+                    fish.x += fish.speed * fish.dir * dt;
+                    fish.wiggle += dt * 3;
+                    if (fish.spine) {
+                        fish.spine.update(fish.x, fish.y, fish.dir > 0 ? 0 : Math.PI, fish.wiggle, 0.2);
+                    }
+                    if ((fish.dir > 0 && fish.x > width + 80) || (fish.dir < 0 && fish.x < -80)) {
+                        fishes.splice(idx, 1);
+                    }
+                });
+            }
+
+            const depthFactor = 1 + (diver.y / height) * 0.5;
+            currentDepth = Math.max(0, Math.floor((diver.y - 100) / 10));
+            const suitResistance = 1 - (upgrades.divingSuit.level * 0.12);
+
+            const speed = diver.speed * (keys.shift ? 1.45 : 1);
+            let moveX = 0, moveY = 0;
+            if (keys.w) moveY -= 1;
+            if (keys.s) moveY += 1;
+            if (keys.a) moveX -= 1;
+            if (keys.d) moveX += 1;
+
+            if (moveX !== 0 || moveY !== 0) {
+                const len = Math.hypot(moveX, moveY);
+                diver.x += (moveX / len) * speed * dt;
+                diver.y += (moveY / len) * speed * dt;
+                if (moveX !== 0) diver.facingRight = moveX > 0;
+            }
+
+            diver.x = Math.max(40, Math.min(width - 40, diver.x));
+            diver.y = Math.max(60, Math.min(height - 40, diver.y));
+
+            const dxAngle = pointerPos.x - diver.x;
+            const dyAngle = pointerPos.y - diver.y;
+            diver.aimAngle = Math.atan2(dyAngle, dxAngle);
+
+            currentOxygen -= (keys.shift ? 2.5 : 1.2) * dt * suitResistance * depthFactor;
+            if (currentOxygen <= 0 || diverHp <= 0) {
+                currentOxygen = 0;
+                diverHp = 0;
+                createFloatingText('산소/체력 고갈! 수면 귀환', diver.x, diver.y - 30, '#ef4444');
+                returnToBoat();
+                return;
+            }
+
+            if (selectedZoneKey === 'boss_charybdis' && fishes.length > 0) {
+                const boss = fishes[0];
+                if (boss && (boss.isBoss || boss.id === 'boss_charybdis') && !boss.caught) {
+                    document.getElementById('bossHpText').textContent = `${Math.max(0, boss.currentHp)} / ${boss.maxHp} HP`;
+                    document.getElementById('bossHpBar').style.width = `${Math.max(0, (boss.currentHp / boss.maxHp) * 100)}%`;
+
+                    boss.wiggle += dt * 3;
+
+                    if (boss.isCharging) {
+                        boss.x += boss.vx * dt * 1.8;
+                        boss.y += boss.vy * dt * 1.8;
+                        if (boss.x < 100 || boss.x > width - 100 || boss.y < 120 || boss.y > height - 120) {
+                            boss.isCharging = false;
+                        }
+                    } else {
+                        boss.x += Math.sin(boss.wiggle) * 110 * dt;
+                        boss.y += Math.cos(boss.wiggle * 0.7) * 40 * dt;
+                    }
+
+                    if (boss.spine) {
+                        boss.spine.update(boss.x, boss.y, Math.atan2(diver.y - boss.y, diver.x - boss.x), boss.wiggle * 1.8, 0.35);
+                    }
+
+                    const dxB = boss.x - diver.x;
+                    const dyB = boss.y - diver.y;
+                    const distB = Math.hypot(dxB, dyB);
+
+                    if (distB > 30) {
+                        const pullForce = 4500 / (distB + 50);
+                        diver.x += (dxB / distB) * pullForce * dt;
+                        diver.y += (dyB / distB) * pullForce * dt;
+                    }
+
+                    if (distB < 75) {
+                        diverHp -= 12 * dt;
+                        document.getElementById('diverHpText').textContent = `${Math.max(0, Math.ceil(diverHp))} / ${maxDiverHp}`;
+                        document.getElementById('diverHpBar').style.width = `${Math.max(0, (diverHp / maxDiverHp) * 100)}%`;
+                        createSplashParticles(diver.x, diver.y, '#ef4444', 2);
+                    }
+
+                    tentacleAttackTimer += dt;
+                    if (tentacleAttackTimer >= 3.8) {
+                        tentacleAttackTimer = 0;
+                        for (let t = -1; t <= 1; t += 2) {
+                            const angleToDiver = Math.atan2(diver.y - boss.y, diver.x - boss.x) + (t * 0.3);
+                            particles.push({
+                                x: boss.x + Math.cos(angleToDiver) * 60,
+                                y: boss.y + Math.sin(angleToDiver) * 60,
+                                vx: Math.cos(angleToDiver) * 280,
+                                vy: Math.sin(angleToDiver) * 280,
+                                radius: 18,
+                                color: '#a855f7',
+                                alpha: 0.95,
+                                life: 1.2,
+                                isTentacle: true
+                            });
+                        }
+                    }
+
+                    boss.chargeTimer += dt;
+                    if (boss.chargeTimer >= 7.5) {
+                        boss.chargeTimer = 0;
+                        boss.isCharging = true;
+                        const angleCharge = Math.atan2(diver.y - boss.y, diver.x - boss.x);
+                        boss.vx = Math.cos(angleCharge) * 280;
+                        boss.vy = Math.sin(angleCharge) * 280;
+                        createFloatingText('⚡ 카리브디스 돌진 준비!', boss.x, boss.y - 60, '#ef4444');
+                    }
+                }
+            }
+
+            if (spear.state === 'flying') {
+                spear.x += spear.vx * dt;
+                spear.y += spear.vy * dt;
+                spear.traveled += Math.hypot(spear.vx * dt, spear.vy * dt);
+
+                fishes.forEach((fish, idx) => {
+                    if (fish.caught) return;
+                    const distToFish = Math.hypot(spear.x - fish.x, spear.y - fish.y);
+                    if (distToFish < fish.size + 10) {
+                        const currentGun = SPEARGUNS.find(g => g.id === equippedGunId) || SPEARGUNS[0];
+                        const hitDmg = 1 + upgrades.harpoonGun.level + currentGun.bonusDmg;
+                        fish.currentHp -= hitDmg;
+                        sound.playCatch();
+                        createSplashParticles(spear.x, spear.y, '#ef4444', 8);
+
+                        if (fish.currentHp <= 0) {
+                            fish.caught = true;
+                            discoveredSpeciesMap[fish.id] = true;
+
+                            if (fish.isBoss || fish.id === 'boss_charybdis') {
+                                const lootList = [BOSS_LOOTS.charybdis_tooth, BOSS_LOOTS.charybdis_scale, BOSS_LOOTS.charybdis_eye];
+                                let totalLootWeight = lootList.reduce((acc, l) => acc + l.weight, 0);
+
+                                if (currentWeight + totalLootWeight <= maxWeight) {
+                                    lootList.forEach(item => {
+                                        currentWeight += item.weight;
+                                        caughtFishList.push({ ...item });
+                                    });
+                                    createFloatingText(`🎉 카리브디스 토벌 완료! 상점으로 이동합니다...`, fish.x, fish.y - 40, '#facc15');
+                                } else {
+                                    const mainLoot = lootList[0];
+                                    if (currentWeight + mainLoot.weight <= maxWeight) {
+                                        currentWeight += mainLoot.weight;
+                                        caughtFishList.push({ ...mainLoot });
+                                        createFloatingText(`💎 ${mainLoot.name} 획득! 상점으로 이동합니다...`, fish.x, fish.y, '#facc15');
+                                    }
+                                }
+                                fishes.splice(idx, 1);
+
+                                setTimeout(() => {
+                                    returnToBoat();
+                                }, 1500);
+                            } else if (currentWeight + fish.weight <= maxWeight) {
+                                currentWeight += fish.weight;
+                                caughtFishList.push(fish);
+                                createFloatingText(`+fish.name(${fish.price})`, fish.x, fish.y, '#facc15');
+                                fishes.splice(idx, 1);
+                            } else {
+                                createFloatingText('적재가방 가득참!', fish.x, fish.y, '#ef4444');
+                            }
+                        }
+                        spear.state = 'retracting';
+                    }
+                });
+
+                if (spear.traveled >= spear.maxDist) spear.state = 'retracting';
+            } else if (spear.state === 'retracting') {
+                const dxR = diver.x - spear.x;
+                const dyR = diver.y - spear.y;
+                const distR = Math.hypot(dxR, dyR);
+                if (distR < 25) {
+                    spear.state = 'idle';
+                } else {
+                    spear.x += (dxR / distR) * 850 * dt;
+                    spear.y += (dyR / distR) * 850 * dt;
+                }
+            }
+
+            particles.forEach((p, i) => {
+                p.x += p.vx * dt; p.y += p.vy * dt;
+                if (p.isTentacle) {
+                    const dTentacle = Math.hypot(p.x - diver.x, p.y - diver.y);
+                    if (dTentacle < 30) {
+                        diverHp -= 20;
+                        document.getElementById('diverHpText').textContent = `${Math.max(0, Math.ceil(diverHp))} / ${maxDiverHp}`;
+                        document.getElementById('diverHpBar').style.width = `${Math.max(0, (diverHp / maxDiverHp) * 100)}%`;
+                        createSplashParticles(diver.x, diver.y, '#dc2626', 10);
+                        createFloatingText('이빨 촉수 물기 피격! (-20 HP)', diver.x, diver.y - 20, '#ef4444');
+                        particles.splice(i, 1);
+                        return;
+                    }
+                }
+                p.alpha -= dt / p.life;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            });
+
+            floatingTexts.forEach((ft, i) => {
+                ft.y -= 25 * dt;
+                ft.alpha -= dt / 1.1;
+                if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+            });
+
+            updateHUD();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, width, height);
+
+            const depthGrad = ctx.createLinearGradient(0, 0, 0, height);
+            if (selectedZoneKey === 'mangrove') {
+                depthGrad.addColorStop(0, '#064e3b');
+                depthGrad.addColorStop(1, '#022c22');
+            } else if (selectedZoneKey === 'coral') {
+                depthGrad.addColorStop(0, '#0284c7');
+                depthGrad.addColorStop(1, '#0369a1');
+            } else if (selectedZoneKey === 'twilight') {
+                depthGrad.addColorStop(0, '#1e3a8a');
+                depthGrad.addColorStop(1, '#0f172a');
+            } else {
+                depthGrad.addColorStop(0, '#0f172a');
+                depthGrad.addColorStop(1, '#020617');
+            }
+            ctx.fillStyle = depthGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            fishes.forEach(fish => {
+                ctx.save();
+
+                if (fish.id === 'boss_charybdis' || fish.matrix === 'charybdis' || fish.isBoss) {
+                    if (fish.spine && fish.spine.segments) {
+                        const totalSegs = fish.spine.segments.length;
+                        for (let i = totalSegs - 1; i >= 1; i--) {
+                            const seg = fish.spine.segments[i];
+                            ctx.save();
+                            ctx.translate(seg.x, seg.y);
+                            ctx.rotate(seg.angle);
+                            const scaleFactor = 1.5 - (i / totalSegs) * 1.15;
+                            ctx.scale(scaleFactor, scaleFactor);
+                            renderPixelMatrix(ctx, SPRITE_MATRICES.charybdisBodySegment, 5, "#3b0764");
+                            renderPixelMatrix(ctx, SPRITE_MATRICES.charybdisBodySegment, 4);
+                            ctx.restore();
+                        }
+                    }
+
+                    ctx.save();
+                    ctx.translate(fish.x, fish.y);
+                    const headAngle = Math.atan2(diver.y - fish.y, diver.x - fish.x);
+                    ctx.rotate(headAngle);
+                    ctx.scale(2.1, 2.1);
+                    renderPixelMatrix(ctx, SPRITE_MATRICES.charybdisMouth, 7);
+                    ctx.save();
+                    ctx.translate(0, -32);
+                    renderPixelMatrix(ctx, SPRITE_MATRICES.charybdisHead, 6);
+                    ctx.restore();
+                    ctx.restore();
+                } else {
+                    ctx.translate(fish.x, fish.y);
+                    ctx.scale(fish.dir, 1);
+                    if (SPRITE_MATRICES[fish.matrix + 'Head']) {
+                        renderPixelMatrix(ctx, SPRITE_MATRICES[fish.matrix + 'Head'], 4);
+                    } else {
+                        renderPixelMatrix(ctx, SPRITE_MATRICES.clownfishHead, 3);
+                    }
+                }
+
+                ctx.restore();
+            });
+
+            // Render Diver
+            ctx.save();
+            ctx.translate(diver.x, diver.y);
+            ctx.scale(diver.facingRight ? 1 : -1, 1);
+
+            const swimTilt = Math.sin(performance.now() * 0.006) * 0.08;
+            ctx.rotate(swimTilt);
+            renderPixelMatrix(ctx, SPRITE_MATRICES.diverFull, 3.2);
+
+            const currentGun = SPEARGUNS.find(g => g.id === equippedGunId) || SPEARGUNS[0];
+            const gunMatrix = SPRITE_MATRICES[currentGun.matrixKey] || SPRITE_MATRICES.speargun_black;
+            ctx.save();
+            ctx.translate(18, 4);
+            ctx.rotate(diver.facingRight ? diver.aimAngle - swimTilt : -(diver.aimAngle + swimTilt));
+            renderPixelMatrix(ctx, gunMatrix, 3);
+            ctx.restore();
+            ctx.restore();
+
+            if (spear.state === 'flying' || spear.state === 'retracting') {
+                ctx.save();
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(diver.x, diver.y);
+                ctx.lineTo(spear.x, spear.y);
+                ctx.stroke();
+
+                ctx.translate(spear.x, spear.y);
+                ctx.rotate(spear.angle);
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillRect(-8, -2, 16, 4);
+                ctx.restore();
+            }
+
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (p.isTentacle) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(p.x - 4, p.y - 4, 8, 8);
+                }
+                ctx.restore();
+            });
+
+            floatingTexts.forEach(ft => {
+                ctx.save();
+                ctx.globalAlpha = ft.alpha;
+                ctx.font = 'bold 16px "Press Start 2P", monospace';
+                ctx.fillStyle = ft.color;
+                ctx.shadowColor = '#000000';
+                ctx.shadowBlur = 4;
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.restore();
+            });
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        let lastTime = performance.now();
+        function gameLoop(timestamp) {
+            const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+            lastTime = timestamp;
+
+            if (isGaming) {
+                update(dt);
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+
+</body></html>
