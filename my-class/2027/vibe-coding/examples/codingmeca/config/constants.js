@@ -209,7 +209,7 @@ export const CONSTANTS = deepFreeze({
 
   // ── 계정 ─────────────────────────────────────────────────
   account: {
-    virtualEmailDomain: 'codingmeca.invalid', // 아이디@도메인 형태로 내부 처리
+    virtualEmailDomain: 'gmail.com', // 아이디@도메인 형태로 내부 처리. Supabase 가 실제 있는 메일 도메인만 받아서 gmail.com 을 쓴다(메일은 보내지 않는다)
     loginIdPattern: '^[a-z0-9_]{3,16}$',
     passwordMinLength: 6,
     nicknameMaxLength: 12,
