@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>코딩메카 · 조율 센터</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07090f; font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; }
+    canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    #ui { position: fixed; inset: 0; pointer-events: none; }
+    #ui > * { pointer-events: auto; }
+    #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #9fb3c8; font-size: 14px; pointer-events: none; }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="ui"></div>
+  <div id="boot">불러오는 중…</div>
+  <noscript>이 게임은 자바스크립트가 필요합니다.</noscript>
+  <script type="module">
+    import { startEditor } from './web/editor-main.js';
+    startEditor().catch((err) => {
+      console.error(err);
+      const b = document.getElementById('boot');
+      if (b) b.textContent = '불러오지 못했습니다. 새로고침(F5) 해 주세요. (' + (err && err.message ? err.message : err) + ')';
+    });
+  </script>
+</body>
+</html>

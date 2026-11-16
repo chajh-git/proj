@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>코딩메카 · 격납고</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #07090f; font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; }
+    canvas#scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+    #ui { position: fixed; inset: 0; pointer-events: none; }
+    #ui > * { pointer-events: auto; }
+    #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #9fb3c8; font-size: 14px; pointer-events: none; }
+    /* 위쪽 공간 이동 막대 */
+    .hg-bar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; gap: 4px; align-items: center; padding: 4px 6px; border-radius: 999px; border: 1px solid var(--cm-panelEdge); background: color-mix(in srgb, var(--cm-panel) 85%, transparent); backdrop-filter: blur(8px); max-width: calc(100vw - 120px); overflow-x: auto; scrollbar-width: none; pointer-events: auto; }
+    .hg-bar button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 0; background: transparent; color: var(--cm-textDim); cursor: pointer; white-space: nowrap; }
+    .hg-bar button.on { background: var(--cm-primary); color: var(--cm-bg); font-weight: 700; }
+    .hg-bar .who { font-size: 12px; color: var(--cm-textDim); padding: 0 8px; white-space: nowrap; }
+    .hg-view { position: fixed; inset: 0; pointer-events: none; z-index: 12; display: none; box-sizing: border-box; }
+    .hg-view.on { display: block; }
+    .hg-view > * { pointer-events: auto; }
+    /* 신경 연산실 */
+    .hg-lab { padding: 52px 10px 10px; display: none; grid-template-columns: 260px minmax(340px, 560px) 1fr 320px; grid-template-rows: 1fr auto; gap: 10px; }
+    .hg-lab.on { display: grid; }
+    .hg-lab .c1 { grid-column: 1; min-height: 0; display: flex; flex-direction: column; }
+    .hg-lab .c2 { grid-column: 2; min-height: 0; display: flex; flex-direction: column; }
+    .hg-lab .c4 { grid-column: 4; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+    .hg-lab .c1 > *, .hg-lab .c2 > * { flex: 1; min-height: 0; }
+    .hg-lab .c4 .cm-smap { flex: none; }
+    .hg-lab .c4 .cm-sent { flex: 1; min-height: 0; }
+    .hg-lab .lbar { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; }
+    .hg-lab .lbar .sp { flex: 1; }
+    .hg-lab .lbar .st { font-size: 12px; color: var(--cm-textDim); }
+    .hg-mtabs { display: none; grid-column: 1 / -1; gap: 6px; }
+    @media (max-width: 1100px) {
+      .hg-lab { grid-template-columns: 230px minmax(300px, 1fr) 280px; }
+      .hg-lab .c4 { grid-column: 3; }
+      .hg-lab .c3 { display: none; }
+    }
+    @media (max-width: 800px) {
+      .hg-lab { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; padding-top: 52px; }
+      .hg-mtabs { display: flex; grid-row: 1; }
+      .hg-lab .c1, .hg-lab .c2, .hg-lab .c4 { grid-column: 1; grid-row: 2; display: none; }
+      .hg-lab[data-m="lib"] .c1, .hg-lab[data-m="board"] .c2, .hg-lab[data-m="map"] .c4 { display: flex; }
+      .hg-lab .lbar { grid-row: 3; }
+    }
+    /* 시험 사격장 */
+    .hg-range { padding: 56px 10px 10px; }
+    .hg-range .card { position: absolute; right: 10px; top: 56px; width: min(320px, calc(100vw - 20px)); padding: 0 0 12px; }
+    .hg-range .card .body { padding: 10px 12px; }
+    .hg-range .card select { width: 100%; box-sizing: border-box; }
+    .hg-range .card .brief { font-size: 12px; color: var(--cm-textDim); line-height: 1.6; }
+    .hg-range .card .brief b { color: var(--cm-text); }
+    /* 출전 등록 · 기록 */
+    .hg-panel { padding: 54px 10px 10px; background: rgba(2, 4, 10, .55); }
+    .hg-panel > .inner { height: 100%; max-width: 1100px; margin: 0 auto; }
+    /* 시험 경기 */
+    .hg-play .ctl { position: absolute; left: 10px; bottom: 10px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 6; }
+    #hudRoot { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
+  </style>
+  <script type="importmap">
+  { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="ui"></div>
+  <div id="hudRoot"></div>
+  <div id="boot">불러오는 중…</div>
+  <noscript>이 게임은 자바스크립트가 필요합니다.</noscript>
+  <script type="module">
+    import { startHangar } from './web/hangar-main.js';
+    startHangar().catch((err) => {
+      console.error(err);
+      const b = document.getElementById('boot');
+      if (b) b.textContent = '불러오지 못했습니다. 새로고침(F5) 해 주세요. (' + (err && err.message ? err.message : err) + ')';
+    });
+  </script>
+</body>
+</html>
