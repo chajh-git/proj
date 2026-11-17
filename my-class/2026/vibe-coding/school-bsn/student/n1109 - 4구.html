@@ -28,6 +28,7 @@ small{opacity:.7;text-align:center;max-width:880px}
  <div class="g">힘 <b id="pv">55</b><input type="range" id="pw" min="5" max="100" value="55"></div>
  <div class="g">당점 (회전)<canvas id="sp" width="96" height="96"></canvas></div>
  <div class="g">샷 종류<div class="md"><button data-m="n">일반</button><button data-m="f">밀어치기</button><button data-m="d">끌어치기</button><button data-m="l">마세 ↶ 좌</button><button data-m="r">마세 ↷ 우</button></div></div>
+ <div class="g">AI 난이도<div class="md"><button data-l="0">쉬움</button><button data-l="1">보통</button><button data-l="2">어려움</button></div></div>
  <div class="g"><button class="main" id="go">치기 (Space)</button><button id="rs">다시 시작</button></div>
 </div>
 <small>밀어치기·끌어치기·마세 버튼으로 샷을 고르거나 당점 원으로 직접 조절하세요. 마세는 공이 휘어서 가요. 내 흰 공으로 빨간 공 2개를 모두 맞히면 +1점(연속), 노란 공을 맞히거나 아무 공도 못 맞히면 -1점, 먼저 10점!</small>
@@ -36,7 +37,7 @@ const R=11,W=800,H=400,TARGET=10;
 const cv=document.getElementById('t'),g=cv.getContext('2d'),spc=document.getElementById('sp'),sg=spc.getContext('2d');
 const $=id=>document.getElementById(id);
 const COL=['#f8f8f2','#f5d90a','#d62828','#d62828'];
-let B,turn,sc,ang,pw=55,tx=0,ty=0,ms=0,moving,over,ev,cur,aiShow,msg;
+let B,turn,sc,ang,pw=55,tx=0,ty=0,ms=0,lvl=1,moving,over,ev,cur,aiShow,msg;
 function setup(){
  {let cx=450+Math.random()*270;const cy=90+Math.random()*220,rt=Math.random()*6.283,c=Math.cos(rt),s=Math.sin(rt);if(Math.random()<.5)cx=W-cx;
   const P=[[0,-11],[0,11],[19.1,0]].map(o=>[cx+o[0]*c-o[1]*s,cy+o[0]*s+o[1]*c]);
@@ -56,7 +57,7 @@ function step(bs,e,pl){
   for(const b of bs){
    b.x+=b.vx/4;b.y+=b.vy/4;
    const sp=Math.hypot(b.vx,b.vy);
-   if(sp>0){const n=Math.max(0,sp-.008)*.994/sp;b.vx*=n;b.vy*=n;if(sp<.04)b.vx=b.vy=0}
+   if(sp>0){const n=Math.max(0,sp-.005)*.9974/sp;b.vx*=n;b.vy*=n;if(sp<.04)b.vx=b.vy=0}
    if(b.ms){if(sp>.3){const w=b.ms*.055/4,cc=Math.cos(w),ss=Math.sin(w),vx0=b.vx;b.vx=vx0*cc-b.vy*ss;b.vy=vx0*ss+b.vy*cc}b.ms*=.9962}
    if(b.x<R){b.x=R;wall(b,0,1)}else if(b.x>W-R){b.x=W-R;wall(b,0,-1)}
    if(b.y<R){b.y=R;wall(b,1,1)}else if(b.y>H-R){b.y=H-R;wall(b,1,-1)}
@@ -78,7 +79,7 @@ function step(bs,e,pl){
  }
 }
 function launch(bs,pl,a,p,x,y,m){
- const b=bs[pl],s=1+p/100*23,aa=a-x*.025;
+ const b=bs[pl],s=1+p/100*24,aa=a-x*.025;
  b.vx=Math.cos(aa)*s;b.vy=Math.sin(aa)*s;b.tp=y;b.sd=x;b.ms=m||0;
 }
 function shoot(pl,a,p,x,y,m){if(m===undefined)m=ms;
@@ -115,7 +116,7 @@ function trace2(pl,a){
  for(let i=0;i<2400&&(b.vx||b.vy)&&bn<3&&!hit;i++){
   b.x+=b.vx/4;b.y+=b.vy/4;
   const sp=Math.hypot(b.vx,b.vy);
-  if(sp>0){const n=Math.max(0,sp-.008)*.994/sp;b.vx*=n;b.vy*=n;if(sp<.04)b.vx=b.vy=0}
+  if(sp>0){const n=Math.max(0,sp-.005)*.9974/sp;b.vx*=n;b.vy*=n;if(sp<.04)b.vx=b.vy=0}
   if(b.ms){if(sp>.3){const w=b.ms*.055/4,cc=Math.cos(w),ss=Math.sin(w),vx0=b.vx;b.vx=vx0*cc-b.vy*ss;b.vy=vx0*ss+b.vy*cc}b.ms*=.9962}
   let wl=0;
   if(b.x<R){b.x=R;wall(b,0,1);wl=1}else if(b.x>W-R){b.x=W-R;wall(b,0,-1);wl=1}
@@ -129,16 +130,16 @@ function trace2(pl,a){
 function sim(a,p,x,y,pl,m){
  const bs=B.map(b=>({x:b.x,y:b.y,vx:0,vy:0,tp:0,sd:0})),e={red:new Set(),foul:false,any:false};
  launch(bs,pl,a,p,x,y,m);
- for(let i=0;i<450&&bs.some(q=>q.vx||q.vy);i++)step(bs,e,pl);
+ for(let i=0;i<800&&bs.some(q=>q.vx||q.vy);i++)step(bs,e,pl);
  return e.foul||!e.any?-1:e.red.size===2?1:0;
 }
 function ai(){
  if(over||moving)return;
  msg='AI가 생각 중...';ui();
  setTimeout(()=>{
-  const good=[],safe=[],all=[];
+  const good=[],safe=[],all=[],SPS=[[0,0,0],[0,.8,0],[0,-.8,0],[.5,0,0],[-.5,0,0],[0,0,1],[0,0,-1]].slice(0,[1,5,7][lvl]);
   for(let k=0;k<120;k++){const a=k*Math.PI/60;
-   for(const p of[35,60,85])for(const s of[[0,0,0],[0,.8,0],[0,-.8,0],[.5,0,0],[-.5,0,0],[0,0,1],[0,0,-1]]){
+   for(const p of[35,60,85])for(const s of SPS){
     const r=sim(a,p,s[0],s[1],1,s[2]),c={a,p,x:s[0],y:s[1],m:s[2]};
     if(r===1)good.push(c);else if(r===0)safe.push(c);all.push(c);
    }}
@@ -146,20 +147,20 @@ function ai(){
   if(good.length){
    good.sort(()=>Math.random()-.5);
    let best=-1;
-   for(const c of good.slice(0,40)){
+   for(const c of good.slice(0,[1,12,40][lvl])){
     let n=0;for(const d of[-.03,-.015,.015,.03])if(sim(c.a+d,c.p,c.x,c.y,1,c.m)===1)n++;
     if(n>best){best=n;pick=c}
    }
   }else if(safe.length)pick=safe[Math.floor(Math.random()*safe.length)];
   else pick=all[Math.floor(Math.random()*all.length)];
-  pick={...pick,a:pick.a+(Math.random()-.5)*.012};
+  if(Math.random()<[.3,.08,0][lvl])pick=all[Math.floor(Math.random()*all.length)];
+  pick={...pick,a:pick.a+(Math.random()-.5)*[.12,.04,.012][lvl]};
   const sv=[pw,tx,ty,ms];ang=pick.a;pw=pick.p;tx=pick.x;ty=pick.y;ms=pick.m;aiShow=true;msg='AI 조준 중...';ui();
   setTimeout(()=>{aiShow=false;shoot(1,pick.a,pick.p,pick.x,pick.y,pick.m);pw=sv[0];tx=sv[1];ty=sv[2];ms=sv[3];ui()},1100);
  },60);
 }
 function ui(){
- 
-('s0').textContent=sc[0];('s1').textContent=sc[1];
+ ('s0').textContent=sc[0];('s1').textContent=sc[1];
  ('p0').classList.toggle('on',turn===0&&!over);('p1').classList.toggle('on',turn===1&&!over);
  ('msg').textContent=msg;('pw').value=pw;$('pv').textContent=Math.round(pw);
  $('go').disabled=moving||over||turn!==0;
@@ -212,7 +213,7 @@ function loop(){
 const canAim=()=>!moving&&!over&&turn===0;
 let lx=null;
 cv.addEventListener('pointerdown',e=>{lx=e.clientX;cv.setPointerCapture(e.pointerId)});
-cv.addEventListener('pointermove',e=>{if(lx!==null&&canAim()){ang+=(e.clientX-lx)*.0045;lx=e.clientX}});
+cv.addEventListener('pointermove',e=>{if(lx!==null&&canAim()){ang+=(e.clientX-lx)*.006;lx=e.clientX}});
 cv.addEventListener('pointerup',()=>lx=null);
 let iv;
 function hold(id,d){const el=$(id);
@@ -231,6 +232,9 @@ const MODES={n:[0,0,0],f:[0,.8,0],d:[0,-.8,0],l:[-.5,0,-1],r:[.5,0,1]};
 function mark(k){document.querySelectorAll('[data-m]').forEach(e=>e.classList.toggle('sel',e.dataset.m===k))}
 document.querySelectorAll('[data-m]').forEach(el=>el.onclick=()=>{if(!canAim())return;const m=MODES[el.dataset.m];tx=m[0];ty=m[1];ms=m[2];mark(el.dataset.m)});
 mark('n');
+function lm(){document.querySelectorAll('[data-l]').forEach(e=>e.classList.toggle('sel',+e.dataset.l===lvl))}
+document.querySelectorAll('[data-l]').forEach(el=>el.onclick=()=>{lvl=+el.dataset.l;lm()});
+lm();
 $('rs').onclick=()=>{setup()};
 addEventListener('keydown',e=>{
  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();if(canAim())shoot(0,ang,pw,tx,ty)}
