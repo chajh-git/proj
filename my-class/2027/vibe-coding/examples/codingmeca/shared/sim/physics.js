@@ -208,6 +208,8 @@ export function stepPhysics(world, dt) {
     moveEntity(world, e, dt);
   }
   collideEntities(world);
+  // 충돌로 밀려난 기체가 경기장 밖(보이지 않는 경계)이나 벽 안으로 들어가지 않게 마지막에 한 번 더 가둔다
+  for (const e of world.entities) if (e.alive) confine(world, e);
 }
 
 export const speedOf = (e) => Math.hypot(e.vel.x, e.vel.z);
