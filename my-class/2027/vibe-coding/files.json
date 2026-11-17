@@ -1,6 +1,10 @@
 {
   "examples": [
     {
+      "dir": "Souls Arena",
+      "entry": "Souls Arena.html"
+    },
+    {
       "dir": "codingmeca",
       "entry": "index.html"
     },
