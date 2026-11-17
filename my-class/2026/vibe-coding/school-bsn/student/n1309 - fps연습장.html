@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Range</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0a0a0f;font-family:system-ui,sans-serif;color:#eee;user-select:none}
+  canvas{display:block;width:100%;height:100%}
+  #ui{position:absolute;inset:0;pointer-events:none}
+  #menu{
+    position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#1a1a2e,#0a0a0f);
+    pointer-events:auto
+  }
+  #menu.hidden{display:none}
+  h1{font-size:2.5rem;letter-spacing:.15em;color:#ff4655;margin-bottom:.5rem}
+  .sub{color:#888;margin-bottom:2rem}
+  button{
+    padding:1rem 2.5rem;font-size:1.1rem;font-weight:700;border:none;border-radius:8px;
+    background:#ff4655;color:#fff;cursor:pointer
+  }
+  button:hover{background:#e03a48}
+  #hud{display:none;position:absolute;inset:0}
+  #hud.on{display:block}
+  .top{position:absolute;top:16px;left:0;right:0;display:flex;justify-content:center;gap:2.5rem;font-weight:700}
+  .top span{color:#ff4655}
+  .cross{
+    position:absolute;top:50%;left:50%;width:20px;height:20px;transform:translate(-50%,-50%)
+  }
+  .cross::before,.cross::after{content:'';position:absolute;background:#ff4655}
+  .cross::before{width:12px;height:2px;top:9px;left:4px}
+  .cross::after{width:2px;height:12px;left:9px;top:4px}
+  .ammo{
+    position:absolute;bottom:24px;left:0;right:0;text-align:center;
+    font-size:1.6rem;font-weight:700
+  }
+  .ammo b{color:#ff4655}
+  .hint{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:.75rem;color:#666}
+  #lock{
+    position:absolute;inset:0;z-index:5;display:none;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.55);font-size:1.3rem;font-weight:600;pointer-events:auto;cursor:pointer
+  }
+  #lock.show{display:flex}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="menu">
+    <h1>PRACTICE RANGE</h1>
+    <div class="sub">웹 에임 트레이너</div>
+    <button id="start">START</button>
+  </div>
+  <div id="hud">
+    <div class="top">
+      <div>SCORE <span id="score">0</span></div>
+      <div>HITS <span id="hits">0</span></div>
+      <div>ACC <span id="acc">100%</span></div>
+    </div>
+    <div class="cross"></div>
+    <div class="ammo"><b id="ammo">25</b> / <span id="reserve">75</span></div>
+    <div class="hint">WASD 이동 · 마우스 조준 · 클릭 사격 · R 재장전 · Space 점프 · ESC 메뉴</div>
+  </div>
+  <div id="lock">클릭하여 시작</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const MAX_AMMO = 25, MAX_RESERVE = 75, FIRE_MS = 103, DMG = 160, TARGET_HP = 160;
+
+const state = {
+  running: false, locked: false,
+  score: 0, hits: 0, shots: 0,
+  ammo: MAX_AMMO, reserve: MAX_RESERVE,
+  lastShot: 0, shooting: false,
+  targets: []
+};
+
+const menu = document.getElementById('menu');
+const hud = document.getElementById('hud');
+const lockEl = document.getElementById('lock');
+const scoreEl = document.getElementById('score');
+const hitsEl = document.getElementById('hits');
+const accEl = document.getElementById('acc');
+const ammoEl = document.getElementById('ammo');
+const reserveEl = document.getElementById('reserve');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 20, 80);
+
+const camera = new THREE.PerspectiveCamera(90, innerWidth / innerHeight, 0.05, 200);
+camera.position.set(0, 1.6, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.insertBefore(renderer.domElement, document.getElementById('ui'));
+
+scene.add(new THREE.AmbientLight(0x606080, 1));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(10, 20, 10);
+scene.add(sun);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(50, 50),
+  new THREE.MeshStandardMaterial({ color: 0x2a2a3a })
+);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+function wall(w, h, d, x, y, z) {
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({ color: 0x333348 })
+  );
+  m.position.set(x, y, z);
+  scene.add(m);
+}
+wall(50, 8, 1, 0, 4, -25);
+wall(1, 8, 50, -25, 4, 0);
+wall(1, 8, 50, 25, 4, 0);
+
+const gun = new THREE.Group();
+const gunMat = new THREE.MeshStandardMaterial({ color: 0x2a2a32, metalness: 0.7, roughness: 0.3 });
+const gBody = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.7), gunMat);
+gBody.position.set(0, 0, -0.5);
+gun.add(gBody);
+const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.4, 8), gunMat);
+barrel.rotation.x = Math.PI / 2;
+barrel.position.set(0, 0.02, -1.0);
+gun.add(barrel);
+gun.position.set(0.28, -0.28, -0.45);
+gun.rotation.set(0.08, 0.1, 0.04);
+camera.add(gun);
+scene.add(camera);
+
+const keys = {};
+const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+const vel = new THREE.Vector3();
+const GROUND = 1.6, JUMP = 7.5, GRAV = 22;
+let onGround = true;
+let recoilY = 0, recoilX = 0;
+
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['Space', 'KeyR'].includes(e.code)) e.preventDefault();
+  if (!state.running) return;
+  if (e.code === 'Space' && !e.repeat && onGround && state.locked) {
+    vel.y = JUMP; onGround = false;
+  }
+  if (e.code === 'KeyR') reload();
+  if (e.code === 'Escape') endGame();
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+document.addEventListener('mousemove', e => {
+  if (!state.locked) return;
+  euler.setFromQuaternion(camera.quaternion);
+  euler.y -= e.movementX * 0.0016;
+  euler.x -= e.movementY * 0.0016;
+  euler.x = Math.max(-1.5, Math.min(1.5, euler.x));
+  camera.quaternion.setFromEuler(euler);
+});
+
+document.addEventListener('mousedown', e => {
+  if (e.button !== 0 || !state.locked || !state.running) return;
+  state.shooting = true;
+  shoot();
+});
+document.addEventListener('mouseup', e => {
+  if (e.button === 0) state.shooting = false;
+});
+
+renderer.domElement.addEventListener('click', () => {
+  if (state.running) renderer.domElement.requestPointerLock();
+});
+lockEl.addEventListener('click', () => {
+  if (state.running) renderer.domElement.requestPointerLock();
+});
+document.addEventListener('pointerlockchange', () => {
+  state.locked = document.pointerLockElement === renderer.domElement;
+  lockEl.classList.toggle('show', state.running && !state.locked);
+});
+
+function makeTarget(x, z) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xff4655, emissive: 0xff2233, emissiveIntensity: 0.5
+  });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 1.4, 12), mat);
+  body.position.y = 0.7;
+  g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), mat.clone());
+  head.position.y = 1.55;
+  head.name = 'head';
+  g.add(head);
+  g.position.set(x, 0, z);
+  g.userData = { hp: TARGET_HP, alive: true };
+  scene.add(g);
+  return g;
+}
+
+function spawnTargets() {
+  state.targets.forEach(t => scene.remove(t));
+  state.targets = [];
+  for (let i = 0; i < 5; i++) {
+    state.targets.push(makeTarget((Math.random() - 0.5) * 20, -12 - Math.random() * 10));
+  }
+}
+
+function spawnOne() {
+  state.targets.push(makeTarget((Math.random() - 0.5) * 20, -12 - Math.random() * 10));
+}
+
+const raycaster = new THREE.Raycaster();
+const center = new THREE.Vector2(0, 0);
+
+function shoot() {
+  const now = Date.now();
+  if (now - state.lastShot < FIRE_MS) return;
+  if (state.ammo <= 0) { reload(); return; }
+  state.lastShot = now;
+  state.ammo--;
+  state.shots++;
+  recoilY = 0.08;
+  recoilX = (Math.random() - 0.5) * 0.04;
+  updateHUD();
+
+  raycaster.setFromCamera(center, camera);
+  const meshes = [];
+  state.targets.forEach(t => {
+    if (t.userData.alive) t.traverse(c => { if (c.isMesh) meshes.push(c); });
+  });
+  const hits = raycaster.intersectObjects(meshes);
+  if (hits.length) {
+    const obj = hits[0].object;
+    const group = obj.parent;
+    if (!group || !group.userData.alive) return;
+    const dmg = obj.name === 'head' ? Math.round(DMG * 1.5) : DMG;
+    group.userData.hp -= dmg;
+    state.hits++;
+    state.score += dmg;
+    if (group.userData.hp <= 0) {
+      group.userData.alive = false;
+      scene.remove(group);
+      state.targets = state.targets.filter(t => t !== group);
+      spawnOne();
+    }
+    updateHUD();
+  }
+  if (state.ammo <= 0) setTimeout(reload, 50);
+}
+
+function reload() {
+  state.ammo = MAX_AMMO;
+  state.reserve = MAX_RESERVE;
+  updateHUD();
+}
+
+function updateHUD() {
+  scoreEl.textContent = state.score;
+  hitsEl.textContent = state.hits;
+  accEl.textContent = state.shots ? Math.round(state.hits / state.shots * 100) + '%' : '100%';
+  ammoEl.textContent = state.ammo;
+  reserveEl.textContent = state.reserve;
+}
+
+function startGame() {
+  state.running = true;
+  state.score = 0; state.hits = 0; state.shots = 0;
+  state.ammo = MAX_AMMO; state.reserve = MAX_RESERVE;
+  menu.classList.add('hidden');
+  hud.classList.add('on');
+  camera.position.set(0, GROUND, 5);
+  euler.set(0, 0, 0);
+  camera.quaternion.setFromEuler(euler);
+  spawnTargets();
+  updateHUD();
+  renderer.domElement.requestPointerLock();
+  setTimeout(() => {
+    if (state.running && !state.locked) lockEl.classList.add('show');
+  }, 200);
+}
+
+function endGame() {
+  state.running = false;
+  state.shooting = false;
+  document.exitPointerLock();
+  lockEl.classList.remove('show');
+  hud.classList.remove('on');
+  menu.classList.remove('hidden');
+  state.targets.forEach(t => scene.remove(t));
+  state.targets = [];
+}
+
+document.getElementById('start').onclick = startGame;
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  if (state.running && state.locked) {
+    vel.x -= vel.x * 10 * dt;
+    vel.z -= vel.z * 10 * dt;
+
+    let ix = 0, iz = 0;
+    if (keys['KeyW']) iz -= 1;
+    if (keys['KeyS']) iz += 1;
+    if (keys['KeyA']) ix -= 1;
+    if (keys['KeyD']) ix += 1;
+    const sp = keys['ShiftLeft'] ? 14 : 8;
+    const len = Math.hypot(ix, iz) || 1;
+    vel.z += (iz / len) * sp * 25 * dt;
+    vel.x += (ix / len) * sp * 25 * dt;
+
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    if (fwd.lengthSq() > 1e-6) fwd.normalize();
+    else fwd.set(0, 0, -1);
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+
+    camera.position.addScaledVector(fwd, -vel.z * dt);
+    camera.position.addScaledVector(right, vel.x * dt);
+
+    vel.y -= GRAV * dt;
+    camera.position.y += vel.y * dt;
+    if (camera.position.y <= GROUND) {
+      camera.position.y = GROUND;
+      vel.y = 0;
+      onGround = true;
+    } else onGround = false;
+
+    camera.position.x = Math.max(-22, Math.min(22, camera.position.x));
+    camera.position.z = Math.max(-30, Math.min(8, camera.position.z));
+
+    if (state.shooting) shoot();
+  }
+
+  recoilY *= Math.max(0, 1 - 10 * dt);
+  recoilX *= Math.max(0, 1 - 10 * dt);
+  gun.rotation.x = 0.08 - recoilY;
+  gun.rotation.y = 0.1 + recoilX;
+  gun.position.z = -0.45 + recoilY * 0.3;
+
+  renderer.render(scene, camera);
+}
+animate();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
