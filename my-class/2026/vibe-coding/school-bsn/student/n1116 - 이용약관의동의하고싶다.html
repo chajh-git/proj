@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>이용약관에 동의하고 싶어 (오마주)</title>
+<style>
+:root{box-sizing:border-box;--bg:#d9dde3;--win:#f6f7f9;--ink:#1c2230;--bar:#2b4c8c;--ok:#1f8a4c;--no:#b3392f;--line:#aab1bd;--cv:#e9edf3;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171d;--win:#222833;--ink:#e8ebf1;--bar:#3c64b4;--line:#465063;--cv:#161a21}}
+:root[data-theme="dark"]{--bg:#14171d;--win:#222833;--ink:#e8ebf1;--bar:#3c64b4;--line:#465063;--cv:#161a21}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+body{display:flex;justify-content:center;padding:16px}
+#win{position:relative;width:100%;max-width:420px;background:var(--win);border:2px solid var(--line);border-radius:6px;overflow:hidden;align-self:flex-start;margin-top:4vh}
+#bar{display:flex;justify-content:space-between;align-items:center;background:var(--bar);color:#fff;padding:8px 12px;font-weight:700}
+#x{background:none;border:0;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+#prog{height:4px;background:var(--line)}#info{height:100%;width:0;background:var(--ok);transition:width .3s}
+#stage{padding:16px;min-height:340px;display:flex;flex-direction:column;gap:12px}
+p{margin:0;line-height:1.5}.big{font-size:28px;font-weight:800;text-align:center}.err{color:var(--no);min-height:1.4em}
+button{font:inherit;font-weight:700;padding:12px 16px;border-radius:4px;border:2px solid var(--line);background:var(--win);color:var(--ink);cursor:pointer;touch-action:manipulation}
+button.ok{background:var(--ok);border-color:var(--ok);color:#fff}button.no{background:none;border-color:var(--no);color:var(--no);margin-top:auto}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,input:focus-visible{outline:3px solid #f0b429;outline-offset:2px}
+input{font:inherit;font-size:20px;padding:10px;border:2px solid var(--line);border-radius:4px;background:var(--win);color:var(--ink);text-align:center}
+.field{position:relative;height:150px;border:1px dashed var(--line)}.field button{position:absolute}
+.meter,.bar{position:relative;height:22px;border:2px solid var(--line);background:var(--cv)}.meter i{display:block;height:100%;width:0;background:var(--ok)}
+.bar b{position:absolute;top:0;bottom:0;background:var(--ok);opacity:.55}.bar i{position:absolute;top:-4px;width:6px;height:28px;background:var(--no)}
+.terms{height:120px;overflow:auto;border:2px solid var(--line);padding:8px;font-size:13px;line-height:1.6;background:var(--cv)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.grid button{padding:14px 0;font-size:18px}
+canvas{width:100%;max-width:300px;align-self:center;background:var(--cv);border:2px solid var(--line);touch-action:none}
+label{display:block;padding:4px 0}
+#win{--win:#f4efe6;--ink:#1c2230;--line:#9a8f7c;--cv:#fbf8f2;background:#eee6da;color:#1c2230;border:5px solid #0a3ec0;border-radius:12px}
+#bar{background:linear-gradient(#2f7bf0,#0a4cd0 40%,#0841b8)}#tm{font-variant-numeric:tabular-nums}
+button.ok{background:linear-gradient(#a9f6cc,#27a858);border:3px solid #3b6383;border-radius:14px;color:#fff;text-shadow:0 0 3px #294154,1px 1px 0 #294154}
+button.no{background:linear-gradient(#ffb8b0,#d9453a);border:3px solid #6b2a24;border-radius:14px;color:#fff;text-shadow:0 0 3px #4a1a16,1px 1px 0 #4a1a16}
+#x{background:#dd3a2e;border:2px solid #fff;border-radius:5px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;padding:0;font-size:16px}
+.pad{display:flex;gap:8px}.pad button{flex:1;padding:16px 0;touch-action:none;user-select:none}
+@media (prefers-reduced-motion:reduce){#info{transition:none}}
+html,body{background:linear-gradient(#8fd3ff,#e8f7ff 62%,#7bd66b 62%) fixed;min-height:100vh}
+body::before{content:"두근두근 스무고개";position:fixed;top:calc(env(safe-area-inset-top,0px) + 1.5vh);left:0;right:0;text-align:center;font-size:30px;font-weight:900;color:#fff;text-shadow:2px 2px 0 #3b6383,-1px -1px 0 #3b6383;pointer-events:none}
+#win{margin-top:9vh;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+select{font:inherit;padding:10px;border:2px solid var(--line);border-radius:4px;background:var(--win);color:var(--ink);width:100%}
+</style></head>
+<body><div id="win">
+<div id="bar"><span id="tm" style="min-width:56px"></span><span id="title">이용약관</span><button id="x" aria-label="닫기">×</button></div>
+<div id="prog"><div id="info"></div></div>
+<div id="stage"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s),stage=$('#stage'),title=$('#title'),info=$('#info');
+let clause=0,order=[],timers=[],raf=0;let mode='classic',pen=0,gt0=0,lim=20,bonus=0;
+const T=(f,ms)=>{const t=setInterval(f,ms);timers.push(t);return t};
+const clear=()=>{timers.forEach(clearInterval);timers=[];cancelAnimationFrame(raf);$('#tm').textContent=''};
+const n=()=>clause+1;
+function ui(html){stage.innerHTML=html+'<button class="no" id="no">동의하지 않음</button>';$('#no').onclick=()=>over('“동의하지 않음”을 눌렀습니다.');
+stage.querySelectorAll('button.ok').forEach(b=>{if(b.textContent==='동의')b.textContent='동의함'});
+const r=Math.random();if(r<.35)$('#no').style.cssText='background:var(--ok);border-color:var(--ok);color:#fff';else if(r<.55)stage.querySelectorAll('button.ok').forEach(b=>{if(b.textContent==='동의함'){b.style.background='linear-gradient(#ffb8b0,#d9453a)';b.style.borderColor='#6b2a24'}})}
+function over(msg){clear();title.textContent='비동의 처리';const cz=mode==='casual'&&clause<12;stage.innerHTML=`<p class="big">비동의 처리됨</p><p>${msg}</p><button class="ok" id="r">${cz?'이 조항 다시 (+2분 패널티)':'제1조부터 다시'}</button>`;$('#r').onclick=()=>{if(cz){pen+=120;order[clause]=pickOne(clause);next()}else start()}}
+function pass(){clear();clause++;info.style.width=clause/12*100+'%';clause>=12?jump():setTimeout(next,250)}
+function next(){title.textContent=`이용약관 【제${n()}조】`;lim=clause<5?22:clause<9?18:14;order[clause]();countdown()}
+function countdown(){const t0=performance.now(),tm=$('#tm');T(()=>{const l=lim-(performance.now()-t0)/1000;tm.textContent=Math.max(0,l).toFixed(1)+'초';tm.style.color=l<5?'#ffd166':'';if(l<=0)over('일정 시간 입력이 없어 비동의 처리되었습니다.')},100)}
+function start(){clear();clause=0;info.style.width='0';const pick=(a,k)=>a.slice().sort(()=>Math.random()-.5).slice(0,k);
+pen=0;gt0=performance.now();order=[plain,...pick(poolA,4),...pick(poolB,4),...pick(poolC,3)];next()}
+$('#x').onclick=()=>over('창을 닫으면 비동의로 처리됩니다.');
+
+function run(){let c=0;ui(`<p>제${n()}조: 버튼을 3번 누르세요.</p><div class="field" id="f"><button class="ok" id="b">동의</button></div>`);
+const b=$('#b'),f=$('#f'),mv=()=>{b.style.left=Math.random()*(f.clientWidth-b.offsetWidth)+'px';b.style.top=Math.random()*(f.clientHeight-b.offsetHeight)+'px'};mv();
+b.onpointerenter=e=>{if(e.pointerType==='mouse'&&Math.random()<.5)mv()};b.onclick=()=>++c>=3?pass():mv()}
+
+function hold(){ui(`<p>제${n()}조: 버튼을 3.5초 동안 꾹 누르세요. 손을 떼면 처음부터입니다.</p><div class="meter"><i id="m"></i></div><button class="ok" id="b" style="touch-action:none">동의 (꾹 누르기)</button>`);
+let v=0,t=0;const b=$('#b'),m=$('#m'),stop=()=>{clearInterval(t);v=0;m.style.width='0'};
+b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);t=T(()=>{v+=50;m.style.width=v/35+'%';if(v>=3500)pass()},50)};
+b.onpointerup=b.onpointercancel=stop;b.oncontextmenu=e=>e.preventDefault()}
+
+function scroll(){const s='이용자는 본 약관의 모든 조항을 끝까지 읽었음을 확인하며, 읽지 않았더라도 읽은 것으로 간주됩니다. ';
+ui(`<p>제${n()}조: 약관을 끝까지 스크롤하세요.</p><div class="terms" id="t">${Array.from({length:28},(_,i)=>`제${i+1}항. ${s}`).join('<br>')}<br><b>이상입니다.</b></div><button class="ok" id="b" disabled>동의</button>`);
+const t=$('#t'),b=$('#b');t.onscroll=()=>{if(t.scrollTop+t.clientHeight>=t.scrollHeight-3)b.disabled=false};b.onclick=pass}
+
+function cap(){const mk=()=>String(1000+Math.random()*9000|0);let c=mk();
+ui(`<p>제${n()}조: 숫자를 거꾸로 입력하세요.</p><p class="big" id="c">${c}</p><input id="i" inputmode="numeric" maxlength="4" aria-label="거꾸로 입력"><button class="ok" id="b">동의</button><p class="err" id="e"></p>`);
+$('#b').onclick=()=>{if($('#i').value===[...c].reverse().join(''))pass();else{c=mk();$('#c').textContent=c;$('#i').value='';$('#e').textContent='틀렸습니다. 숫자가 바뀌었습니다.'}}}
+
+function timing(){ui(`<p>제${n()}조: 빨간 표시가 초록 구간에 있을 때 누르세요.</p><div class="bar"><b id="z"></b><i id="k"></i></div><button class="ok" id="b">정지</button><p class="err" id="e"></p>`);
+const zl=15+Math.random()*55;$('#z').style.cssText=`left:${zl}%;width:10%`;let p=0,d=2.2;const k=$('#k');
+T(()=>{p+=d;if(p>=97||p<=0)d=-d;k.style.left=p+'%'},16);
+$('#b').onclick=()=>p>=zl&&p<=zl+10?pass():$('#e').textContent='빗나갔습니다. 다시!'}
+
+function whack(){const w=['둥의','동익','똥의','돔의','동믜','동외','송의','등의'],it=[...w,'동의','동의','동의','동의'].sort(()=>Math.random()-.5);let c=0;
+ui(`<p>제${n()}조: 정확히 “동의”인 칸 4개만 누르세요.</p><div class="grid">${it.map(s=>`<button data-s="${s}">${s}</button>`).join('')}</div>`);
+stage.querySelectorAll('.grid button').forEach(b=>b.onclick=()=>{if(b.dataset.s!=='동의')return over('비슷하게 생긴 글자를 눌렀습니다.');b.disabled=true;if(++c>=4)pass()})}
+
+function seq(){const a=[1,2,3,4,5,6,7,8].sort(()=>Math.random()-.5);let c=1;ui(`<p>제${n()}조: 1부터 8까지 순서대로 누르세요.</p><div class="grid">${a.map(x=>`<button>${x}</button>`).join('')}</div><p class="err" id="e"></p>`);
+const bs=[...stage.querySelectorAll('.grid button')];bs.forEach(b=>b.onclick=()=>{if(+b.textContent!==c){c=1;bs.forEach(x=>x.disabled=false);return $('#e').textContent='순서가 틀렸습니다. 처음부터!'}b.disabled=true;if(++c>8)pass()})}
+function mash(){let c=0,t0=0;ui(`<p>제${n()}조: 4초 안에 25번 누르세요.</p><div class="meter"><i id="m"></i></div><button class="ok" id="b">동의 (연타)</button>`);
+$('#b').onclick=()=>{const now=performance.now();if(!t0||now-t0>4000){t0=now;c=0}c++;$('#m').style.width=c*4+'%';if(c>=25)pass()}}
+function slider(){const g=20+(Math.random()*60|0);ui(`<p>제${n()}조: 슬라이더를 정확히 ${g}에 맞추세요.</p><input type="range" id="r" min="0" max="100" value="0" aria-label="값"><p class="big" id="v">0</p><button class="ok" id="b">동의</button><p class="err" id="e"></p>`);
+$('#r').oninput=e=>$('#v').textContent=e.target.value;$('#b').onclick=()=>+$('#r').value===g?pass():$('#e').textContent='정확하지 않습니다.'}
+function math(){const a=6+(Math.random()*9|0),b=6+(Math.random()*9|0);ui(`<p>제${n()}조: ${a} × ${b} = ?</p><input id="i" inputmode="numeric" aria-label="답"><button class="ok" id="b">동의</button><p class="err" id="e"></p>`);
+$('#b').onclick=()=>+$('#i').value===a*b?pass():over('오답을 입력했습니다.')}
+function wait(){let t=0;ui(`<p>제${n()}조: 버튼이 초록색이 될 때까지 기다린 뒤 누르세요. 일찍 누르면 처음부터입니다.</p><button id="b">기다리는 중…</button><p class="err" id="e"></p>`);
+const b=$('#b'),arm=()=>{b.className='';b.textContent='기다리는 중…';clearTimeout(t);t=setTimeout(()=>{b.className='ok';b.textContent='지금 동의!'},3000);timers.push(t)};arm();
+b.onclick=()=>{if(b.className==='ok')pass();else{$('#e').textContent='너무 일찍 눌렀습니다.';arm()}}}
+function checks(){const L=['개인정보 수집','제3자 제공','마케팅 수신','쿠키 사용','위치 정보','분쟁 중재'];ui(`<p>제${n()}조: 모든 항목에 체크하세요. 체크가 가끔 풀립니다.</p>${L.map(x=>`<label><input type="checkbox"> ${x}</label>`).join('')}<button class="ok" id="b">동의</button><p class="err" id="e"></p>`);
+const bx=()=>[...stage.querySelectorAll('input')];T(()=>{const c=bx().filter(i=>i.checked);if(c.length)c[Math.random()*c.length|0].checked=false},2500);
+$('#b').onclick=()=>bx().every(i=>i.checked)?pass():$('#e').textContent='체크하지 않은 항목이 있습니다.'}
+function done(f){clear();let bt='';try{const t=(performance.now()-gt0)/1000+pen,k='agBest'+mode,o=+localStorage.getItem(k)||1e9;if(t<o)localStorage.setItem(k,t);bt=` · 최고 기록 ${Math.min(t,o).toFixed(1)}초`}catch(e){}title.textContent='클리어';stage.innerHTML=`<p class="big">약관 동의 완료!</p><p>클리어 타임 ${((performance.now()-gt0)/1000+pen).toFixed(1)}초 (패널티 ${pen}초 포함) · 사용한 질문 ${f}개${bt}</p><p>이제 게임을 즐기세요… 라고 하고 싶지만, 여기까지입니다.</p><button class="ok" id="r">다시 하기</button>`;$('#r').onclick=start}
+const topics=['목적','용어의 정의','약관의 효력','계정 관리','개인정보 취급','결제와 환불','게임 데이터 취급','금지 행위','서비스 변경','책임의 제한','분쟁 해결','준거법','부칙'];
+function wire(){const c=[['빨강','#d9453a'],['파랑','#2b6fd6'],['초록','#1f8a4c'],['노랑','#a88400']],t=c[Math.random()*4|0][0];const m=c.map(([a],i)=>[a,c[(i+1)%4][1]]).sort(()=>Math.random()-.5);
+ui(`<p>제${n()}조: 폭탄을 해체하세요. 글자가 “${t}”인 선만 자르세요. 색에 속지 마세요.</p>${m.map(([a,h])=>`<button class="w" data-a="${a}" style="background:${h};color:#fff;border-color:${h}">${a}</button>`).join('')}`);
+stage.querySelectorAll('.w').forEach(b=>b.onclick=()=>b.dataset.a===t?pass():over('폭탄이 터졌습니다.'))}
+function mines(){const W=4,H=3,N=12,mi=new Set();while(mi.size<2)mi.add(Math.random()*N|0);let safe=N-2;
+const cnt=i=>{let c=0;const x=i%W,y=i/W|0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=x+dx,Y=y+dy;if(X>=0&&X<W&&Y>=0&&Y<H&&mi.has(Y*W+X))c++}return c};
+ui(`<p>제${n()}조: 지뢰가 아닌 칸을 모두 여세요. (숫자는 주변 지뢰 수)</p><div class="grid">${Array.from({length:N},(_,i)=>`<button data-i="${i}">?</button>`).join('')}</div>`);
+stage.querySelectorAll('.grid button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(mi.has(i))return over('지뢰를 밟았습니다.');b.textContent=cnt(i);b.disabled=true;if(--safe<=0)pass()})}
+function flappy(){ui(`<p>제${n()}조: “날기”를 눌러 기둥 6개를 통과하세요.</p><canvas id="cv" width="300" height="200"></canvas><button class="ok" id="fb" style="touch-action:none">날기</button>`);
+const g=$('#cv').getContext('2d');let y=100,v=0,ps=[],f=0,sc=0;$('#fb').onpointerdown=()=>v=-5.2;
+const loop=()=>{v+=.35;y+=v;f++;if(f%80===1)ps.push({x:300,gy:50+Math.random()*100});ps.forEach(p=>p.x-=2);
+for(const p of ps){if(!p.d&&p.x<0){p.d=1;if(++sc>=6)return pass()}if(p.x<44&&p.x>0&&(y<p.gy-38||y+14>p.gy+38))return over('기둥에 부딪혔습니다.')}
+if(y<0||y>186)return over('땅에 떨어졌습니다.');
+g.clearRect(0,0,300,200);g.fillStyle='#1f8a4c';ps.forEach(p=>{g.fillRect(p.x,0,30,p.gy-38);g.fillRect(p.x,p.gy+38,30,200)});g.fillStyle='#f0b429';g.fillRect(30,y,14,14);raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+function plain(){ui(`<p>제${n()}조: 아래 약관에 동의하십시오.</p><div class="terms">제1항. 이용자는 이 게임을 즐길 것을 약속합니다.<br>제2항. 약관을 읽지 않고 누르는 행위는 권장되지 않습니다.<br>제3항. 동의함 버튼은 초록색인 경우가 많습니다. 항상은 아닙니다.</div><button class="ok" id="b">동의함</button>`);$('#b').onclick=pass}
+function fake(){ui(`<p>제${n()}조: 버튼의 색이 아니라 글자를 읽으세요.</p><button class="ok" id="a">동의함</button><button id="c">동의하지 않음</button>`);
+const a=$('#a'),c=$('#c');c.style.cssText='background:var(--no);border-color:var(--no);color:#fff';let sw=0;
+[a,c].forEach(b=>{b.onpointerenter=()=>{if(sw)return;sw=1;const t=a.textContent;a.textContent=c.textContent;c.textContent=t};b.onclick=()=>b.textContent==='동의함'?pass():over('“동의하지 않음”을 눌렀습니다.')})}
+function tiny(){ui(`<p>제${n()}조: 버튼이 아주 작습니다. 초록색이 동의함입니다.</p><div class="field" id="f"></div>`);const f=$('#f');
+[['#1f8a4c',1],['#b3392f',0],['#b3392f',0]].sort(()=>Math.random()-.5).forEach(([c,ok])=>{const b=document.createElement('button');b.style.cssText=`width:16px;height:16px;padding:0;border:0;background:${c};left:${Math.random()*(f.clientWidth-18)}px;top:${Math.random()*(f.clientHeight-18)}px`;b.setAttribute('aria-label',ok?'동의함':'동의하지 않음');b.onclick=()=>ok?pass():over('“동의하지 않음”을 눌렀습니다.');f.appendChild(b)})}
+function popups(){let k=0;ui(`<p>제${n()}조: 동의함을 누르세요.</p><div id="pf" style="position:relative;height:190px;border:1px dashed var(--line)"></div><button class="ok" id="b">동의함</button>`);const f=$('#pf');
+$('#b').onclick=()=>{if(k===1)return pass();if(k)return;k=5;for(let i=0;i<5;i++){const d=document.createElement('div');d.style.cssText=`position:absolute;left:${10+i*18}px;top:${8+i*22}px;background:var(--win);border:2px solid var(--no);padding:4px 6px;font-size:12px;display:flex;gap:8px;align-items:center;z-index:${i}`;d.innerHTML='<span>오류가 발생했습니다. 창을 닫아 주세요</span>';const x=document.createElement('button');x.textContent='×';x.style.padding='0 8px';x.onclick=i===2?()=>over('닫기 버튼이 “동의하지 않음”으로 바뀌어 있었습니다.'):()=>{d.remove();if(--k===0)k=1};d.appendChild(x);f.appendChild(d)}}}
+function shuffle(){const N=4;let ok=Math.random()*N|0,pos=[0,1,2,3],go=false;ui(`<p>제${n()}조: “동의함”의 위치를 눈으로 따라가세요.</p><div id="pf" style="position:relative;height:60px">${pos.map(i=>`<button style="position:absolute;top:0;width:23%;left:${i*25.5}%;transition:left .35s;font-size:12px;padding:14px 0">${i===ok?'동의함':'동의하지 않음'}</button>`).join('')}</div>`);
+const bs=[...$('#pf').children];timers.push(setTimeout(()=>{bs.forEach(b=>b.textContent='?');let c=0;const t=T(()=>{const a=Math.random()*N|0,b2=(a+1+(Math.random()*(N-1)|0))%N;[pos[a],pos[b2]]=[pos[b2],pos[a]];bs.forEach((x,i)=>x.style.left=pos[i]*25.5+'%');if(++c>=7){clearInterval(t);go=true}},600)},1800));
+bs.forEach((b,i)=>b.onclick=()=>{if(!go)return;i===ok?pass():over('“동의하지 않음”을 눌렀습니다.')})}
+function slot(){const L=['동의함','동의하지 않음'];let v=[0,0,0],i=0,live=[1,1,1],pa=.5;ui(`<p>제${n()}조: 세 칸을 멈추어 모두 “동의함”으로 맞추세요.</p><div class="grid" id="r" style="grid-template-columns:repeat(3,1fr)"><button disabled></button><button disabled></button><button disabled></button></div><button class="ok" id="s">스톱</button>`);
+const rs=[...$('#r').children];rs.forEach(r=>r.style.fontSize='12px');const spin=()=>rs.forEach((r,j)=>{if(live[j]){v[j]=Math.random()<pa?0:1;r.textContent=L[v[j]]}});spin();T(spin,130);
+$('#s').onclick=()=>{live[i]=0;if(++i<3)return;if(v.every(x=>x===0))return pass();if(v.every(x=>x===1))return over('모두 “동의하지 않음”으로 멈췄습니다.');pa=Math.min(.95,pa+.15);i=0;live=[1,1,1]}}
+const LOST='동의할 수단이 사라졌습니다.';
+function quiz(){const Q=[['물은 1기압에서 몇 ℃에서 끓을까요?',['100','90','120'],0],['태양계에서 가장 큰 행성은?',['토성','목성','지구'],1],['한 시간은 몇 분일까요?',['100','30','60'],2]],q=Q[Math.random()*3|0];
+ui(`<p>제${n()}조: 퀴즈에 답하세요. 오답은 즉시 비동의 처리됩니다.</p><p class="big" style="font-size:18px">${q[0]}</p>${q[1].map((t,i)=>`<button data-i="${i}">${t}</button>`).join('')}`);
+stage.querySelectorAll('button[data-i]').forEach(b=>b.onclick=()=>+b.dataset.i===q[2]?pass():over('오답입니다.'))}
+function mole(){ui(`<p>제${n()}조: “동의함”이 나왔을 때만 누르세요.</p><div class="grid" id="g" style="grid-template-columns:repeat(3,1fr)">${Array.from({length:9},()=>'<button style="font-size:12px;min-height:44px" disabled></button>').join('')}</div>`);
+const bs=[...$('#g').children];T(()=>{bs.forEach(b=>{b.textContent='';b.disabled=true});const c=Math.random()*9|0;bs[c].textContent=Math.random()<.35?'동의함':'동의하지 않음';bs[c].disabled=false},600);
+bs.forEach(b=>b.onclick=()=>b.textContent==='동의함'?pass():over('“동의하지 않음”을 눌렀습니다.'))}
+function hop(){ui(`<p>제${n()}조: 잠시 기다리세요. 솔아오른 “동의함”을 놓치지 마세요.</p><div id="pf" style="position:relative;height:130px;border:1px dashed var(--line);overflow:hidden"><button class="ok" id="b" style="position:absolute;left:${20+Math.random()*50}%;top:140px">동의함</button></div>`);
+const b=$('#b');let y=140,v=0,st=0;timers.push(setTimeout(()=>{v=-9;st=1},2000+Math.random()*2000));T(()=>{if(!st)return;v+=.4;y+=v;b.style.top=y+'px';if(y>140&&v>0)over(LOST)},16);b.onclick=pass}
+function just(T0=5,tol=.3){lim=T0+15;ui(`<p>제${n()}조: 시작을 누른 뒤 정확히 ${T0}초(±${tol}초)에 멈추세요. 숫자는 곧 사라집니다.</p><p class="big" id="t">0.0</p><button class="ok" id="b">시작</button><p class="err" id="e"></p>`);
+let t0=0,run=false,iv=0;const t=$('#t'),b=$('#b');b.onclick=()=>{if(!run){run=true;t0=performance.now();b.textContent='멈춤';iv=T(()=>{const s=(performance.now()-t0)/1000;t.textContent=s<1.5?s.toFixed(1):'?'},50)}else{const s=(performance.now()-t0)/1000;clearInterval(iv);if(Math.abs(s-T0)<=tol)return pass();run=false;b.textContent='시작';t.textContent='0.0';$('#e').textContent=s.toFixed(2)+'초였습니다. 다시!'}}}
+function giant(){ui(`<p>제${n()}조: “동의하지 않음”이 커지기 전에 “동의함”을 누르세요!</p><div id="pf" style="position:relative;height:150px;overflow:hidden"><button class="ok" id="b" style="position:absolute;left:calc(50% - 40px);top:48px;width:80px;z-index:1">동의함</button><button id="g" style="position:absolute;background:var(--no);border-color:var(--no);color:#fff;font-size:10px;padding:0;z-index:2">동의하지 않음</button></div>`);
+const f=$('#pf'),b=$('#b'),g=$('#g'),cx=f.clientWidth/2;let w=30;g.onclick=()=>over('“동의하지 않음”을 눌렀습니다.');b.onclick=pass;
+T(()=>{w+=.7;g.style.width=w+'px';g.style.height=w/2+'px';g.style.left=(cx-90-w/2)+'px';g.style.top=(70-w/4)+'px';if(w>=200)over(LOST)},16)}
+function cross(){ui(`<p>제${n()}조: 지나가는 “동의함”을 눌러야 합니다. 놓치면 끝입니다.</p><div id="pf" style="position:relative;height:110px;overflow:hidden;border:1px dashed var(--line)"><button class="ok" id="b" style="position:absolute;top:${20+Math.random()*40}px;left:-110px;width:100px">동의함</button></div>`);
+const f=$('#pf'),b=$('#b');let x=-110,st=0;b.onclick=pass;timers.push(setTimeout(()=>st=1,1500+Math.random()*2000));T(()=>{if(!st)return;x+=4.5;b.style.left=x+'px';if(x>f.clientWidth+10)over(LOST)},16)}
+function pillow(){let yes=Math.random()<.5;ui(`<p>제${n()}조: 베개가 YES 면일 때만 동의하세요. 베개를 눌러 뒤집을 수 있습니다.</p><button id="p" style="height:70px;font-size:22px;border-radius:30px">${yes?'YES':'NO'}</button><button class="ok" id="b">동의함</button>`);
+const p=$('#p');p.onclick=()=>{yes=!yes;p.textContent=yes?'YES':'NO'};$('#b').onclick=()=>yes?pass():over('베개가 NO 면이었습니다.')}
+function slowly(){ui(`<p>제${n()}조: 어딴가에 “동의함”이 천천히 나타납니다.</p><div id="pf" style="position:relative;height:190px;border:1px dashed var(--line)"><button class="ok" id="b" style="position:absolute;opacity:0;left:${Math.random()*60}%;top:${Math.random()*140}px">동의함</button></div>`);
+const b=$('#b');let o=0;T(()=>{o+=.004;b.style.opacity=Math.min(1,o)},16);b.onclick=pass}
+function garble(){const G='ㅁㄴㅇㄹ□■◇※▒@#%&',line=i=>[...'이용자는 본 약관에 따라 게임을 이용할 수 있습니다.'].map(c=>Math.random()<Math.min(1,i/14)?G[Math.random()*G.length|0]:c).join('');
+ui(`<p>제${n()}조: 약관 아래쪽에 단서가 있습니다.</p><div class="terms" id="t">${Array.from({length:24},(_,i)=>line(i)).join('<br>')}<br><button class="ok" id="b">동의함</button></div>`);$('#b').onclick=pass}
+function find(){const N=80,k=Math.random()*N|0;ui(`<p>제${n()}조: 80개의 버튼 중 “동의함”은 하나뿐입니다.</p><div class="grid" id="g" style="grid-template-columns:repeat(8,1fr);gap:3px">${Array.from({length:N},(_,i)=>`<button style="font-size:8px;padding:6px 0;border-width:1px">${i===k?'동의함':'동의하지 않음'}</button>`).join('')}</div>`);
+[...$('#g').children].forEach((b,i)=>b.onclick=()=>i===k?pass():over('“동의하지 않음”을 눌렀습니다.'))}
+function count(){const N=3+(Math.random()*5|0);ui(`<p>제${n()}조: 움직이는 동그라미의 개수를 세세요.</p><canvas id="cv" width="300" height="160"></canvas><input id="i" inputmode="numeric" aria-label="개수"><button class="ok" id="b">동의함</button>`);
+const g=$('#cv').getContext('2d'),cs=Array.from({length:N},()=>({x:Math.random()*280+10,y:Math.random()*140+10,vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3}));
+T(()=>{g.clearRect(0,0,300,160);g.fillStyle='#d9453a';cs.forEach(c=>{c.x+=c.vx;c.y+=c.vy;if(c.x<8||c.x>292)c.vx*=-1;if(c.y<8||c.y>152)c.vy*=-1;g.beginPath();g.arc(c.x,c.y,8,0,7);g.fill()})},16);
+$('#b').onclick=()=>+$('#i').value===N?pass():over('오답입니다.')}
+function puzzle(){lim=45;let a=[1,2,3,4,5,6,7,8,0],z=8;const mv=i=>{const d=z-i;if(![-3,3,-1,1].includes(d)||(Math.abs(d)===1&&(i/3|0)!==(z/3|0)))return false;[a[i],a[z]]=[a[z],a[i]];z=i;return true};
+for(let k=0;k<80;k++){const c=[z-3,z+3,z-1,z+1].filter(i=>i>=0&&i<9);mv(c[Math.random()*c.length|0])}
+ui(`<p>제${n()}조: 1부터 8까지 순서대로 맞추세요.</p><div class="grid" id="g" style="grid-template-columns:repeat(3,1fr)"></div>`);
+const g=$('#g'),draw=()=>{g.innerHTML=a.map((v,i)=>`<button data-i="${i}" ${v?'':'disabled'} style="padding:18px 0;font-size:20px">${v||''}</button>`).join('');g.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(mv(+b.dataset.i)){draw();if(a.every((v,i)=>v===(i+1)%9))pass()}})};draw()}
+function chicken(){ui(`<p>제${n()}조: 버튼을 눌러 차를 전진시키세요. 초록 구간에 멈추고, 절벽을 넘으면 끝입니다.</p><div class="bar"><b style="left:80%;width:10%"></b><i id="k" style="left:0"></i></div><div class="meter"><i id="m"></i></div><button class="ok" id="b" style="touch-action:none">꾹 누르기</button>`);
+let p=0,v=0,iv=0;const k=$('#k'),m=$('#m'),b=$('#b');b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);v=0;iv=T(()=>{v=Math.min(100,v+2);m.style.width=v+'%'},30)};
+b.onpointerup=()=>{clearInterval(iv);p+=v*.45;v=0;m.style.width='0';k.style.left=Math.min(p,99)+'%';if(p>90)over(LOST);else if(p>=80)pass()};b.oncontextmenu=e=>e.preventDefault()}
+function popup3d(){ui(`<p>제${n()}조: 팝업이 입체입니다. 드래그로 돌려 뒷면의 “동의함”을 찾으세요.</p><div id="sc" style="perspective:600px;height:120px;touch-action:none"><div id="cd" style="position:relative;height:100%;transform-style:preserve-3d"><div style="position:absolute;inset:0;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;border:3px solid var(--line);background:var(--cv)"><button class="no" id="n1" style="margin:0">동의하지 않음</button></div><div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;border:3px solid var(--line);background:var(--cv)"><button class="ok" id="b">동의함</button></div></div></div>`);
+const sc=$('#sc'),cd=$('#cd');let a=0,sx=0,dr=0;sc.onpointerdown=e=>{dr=1;sx=e.clientX-a*1.5};sc.onpointermove=e=>{if(!dr)return;a=(e.clientX-sx)/1.5;cd.style.transform=`rotateY(${a}deg)`};sc.onpointerup=sc.onpointercancel=()=>dr=0;
+$('#n1').onclick=()=>over('“동의하지 않음”을 눌렀습니다.');$('#b').onclick=pass}
+function baseball(){lim=60;const s=[...'0123456789'].sort(()=>Math.random()-.5).slice(0,3).join('');let t=10;ui(`<p>제${n()}조: 서로 다른 숫자 3개를 맞히세요. ★=숫자·자리 일치, ●=숫자만 일치. (10회)</p><input id="i" inputmode="numeric" maxlength="3" aria-label="숫자"><button class="ok" id="b">확인</button><div id="h" style="font-size:14px;line-height:1.6"></div>`);
+$('#b').onclick=()=>{const v=$('#i').value;if(!/^\d{3}$/.test(v)||new Set(v).size<3)return;let k=0,o=0;[...v].forEach((c,j)=>{if(c===s[j])k++;else if(s.includes(c))o++});if(k===3)return pass();$('#h').innerHTML+=`${v} ${'★'.repeat(k)}${'●'.repeat(o)}${k+o?'':'―'}<br>`;$('#i').value='';if(--t<=0)over('시도 횟수를 모두 사용했습니다.')}}
+function bullets(){ui(`<p>제${n()}조: 8초 동안 피하세요. 한 번 맞으면 끝입니다. (드래그로 이동)</p><canvas id="cv" width="300" height="200"></canvas>`);
+const cv=$('#cv'),g=cv.getContext('2d');let px=150,py=150,es=[],t0=performance.now();
+const mv=e=>{const r=cv.getBoundingClientRect();px=(e.clientX-r.left)*300/r.width;py=(e.clientY-r.top)*200/r.height};cv.onpointermove=mv;cv.onpointerdown=mv;
+const loop=now=>{g.clearRect(0,0,300,200);if(Math.random()<.15){const e=Math.random()*4|0,x=e<2?Math.random()*300:(e===2?0:300),y=e<2?(e?200:0):Math.random()*200,dx=px-x,dy=py-y,l=Math.hypot(dx,dy)||1;es.push({x,y,vx:dx/l*3,vy:dy/l*3})}
+es.forEach(b=>{b.x+=b.vx;b.y+=b.vy});es=es.filter(b=>b.x>-20&&b.x<320&&b.y>-20&&b.y<220);g.fillStyle='#d9453a';
+for(const b of es){g.fillRect(b.x-4,b.y-4,8,8);if(Math.abs(b.x-px)<8&&Math.abs(b.y-py)<8)return over('탄막에 맞았습니다.')}
+g.fillStyle='#2b8cff';g.beginPath();g.arc(px,py,5,0,7);g.fill();if(now-t0>8000)return pass();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+function breakout(){lim=40;ui(`<p>제${n()}조: 공으로 초록색 블록을 깨세요. 공을 놓치면 끝입니다. (드래그로 패들 이동, 누르면 발사)</p><canvas id="cv" width="300" height="220"></canvas>`);
+const cv=$('#cv'),g=cv.getContext('2d'),ag=Math.random()*7|0,bl=[];for(let r=0;r<3;r++)for(let c=0;c<7;c++)bl.push({x:c*43+2,y:r*18+10,a:r===0&&c===ag,on:1});
+let px=130,bx=150,by=190,vx=2.2,vy=-2.6,go=0;const mv=e=>{const r=cv.getBoundingClientRect();px=Math.max(0,Math.min(260,(e.clientX-r.left)*300/r.width-20))};cv.onpointermove=mv;cv.onpointerdown=e=>{go=1;mv(e)};
+const loop=()=>{if(go){bx+=vx;by+=vy}else{bx=px+20;by=194}if(bx<4||bx>296)vx=-vx;if(by<4)vy=-vy;
+if(vy>0&&by>196&&by<208&&bx>px-4&&bx<px+44){vy=-Math.abs(vy);vx=(bx-px-20)/8}
+for(const b of bl){if(b.on&&bx>b.x&&bx<b.x+40&&by>b.y&&by<b.y+14){b.on=0;vy=-vy;if(b.a)return pass();break}}
+if(by>225)return over(LOST);g.clearRect(0,0,300,220);bl.forEach(b=>{if(b.on){g.fillStyle=b.a?'#1f8a4c':'#b3392f';g.fillRect(b.x,b.y,40,14)}});g.fillStyle='#2b8cff';g.fillRect(px,200,40,6);g.beginPath();g.arc(bx,by,4,0,7);g.fill();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+const just20=()=>just(20,.5);
+function unstop(){lim=25;ui(`<p>제${n()}조: 빠르게 지나가는 버튼 중 “동의함”만 누르세요.</p><div id="pf" style="position:relative;height:60px;overflow:hidden;border:1px dashed var(--line)"></div>`);
+const f=$('#pf'),bs=['동의함','동의하지 않음','동의하지 않음','동의하지 않음'].map(t=>{const b=document.createElement('button');b.textContent=t;b.style.cssText='position:absolute;top:10px;width:110px;padding:8px 0;font-size:12px;color:#fff;background:'+(Math.random()<.5?'#1f8a4c':'#b3392f');b.onclick=()=>t==='동의함'?pass():over('“동의하지 않음”을 눌렀습니다.');f.appendChild(b);return b});
+let o=0;T(()=>{o+=5;bs.forEach((b,i)=>{b.style.left=(((o+i*120)%480)-120)+'px'})},16)}
+function flat(){lim=30;ui(`<p>제${n()}조: 내려오는 프레스의 빈틈으로 “동의함”을 이동해 8초 버티세요. (드래그)</p><canvas id="cv" width="300" height="200"></canvas>`);
+const cv=$('#cv'),g=cv.getContext('2d');let px=150,ps=[],t0=performance.now(),f=0;const mv=e=>{const r=cv.getBoundingClientRect();px=Math.max(14,Math.min(286,(e.clientX-r.left)*300/r.width))};cv.onpointermove=mv;cv.onpointerdown=mv;
+const loop=now=>{f++;if(f%70===1)ps.push({y:-14,gx:30+Math.random()*240,gw:46});ps.forEach(p=>p.y+=2.6);ps=ps.filter(p=>p.y<220);g.clearRect(0,0,300,200);g.fillStyle='#8b97ab';
+for(const p of ps){g.fillRect(0,p.y,p.gx-p.gw/2,14);g.fillRect(p.gx+p.gw/2,p.y,300,14);if(p.y+14>172&&p.y<192&&(px-14<p.gx-p.gw/2||px+14>p.gx+p.gw/2))return over('프레스에 눌렸습니다.')}
+g.fillStyle='#1f8a4c';g.fillRect(px-14,172,28,18);if(now-t0>8000)return pass();raf=requestAnimationFrame(loop)};raf=requestAnimationFrame(loop)}
+const poolA=[scroll,math,checks,wire,fake,tiny,quiz,pillow,slowly,garble,popup3d],poolB=[run,cap,slider,wait,whack,mines,popups,shuffle,slot,mole,hop,just,find,count,puzzle,baseball],poolC=[hold,timing,mash,seq,flappy,giant,cross,chicken,bullets,breakout,just20,unstop,flat];
+function pickOne(c){const t=c<1?[plain]:c<5?poolA:c<9?poolB:poolC;return t[Math.random()*t.length|0]}
+topics.pop();
+const QS={a:'살아 있나요?',b:'동물인가요?',c:'먹을 수 있나요?',d:'전기로 작동하나요?',e:'집 안에서 흔히 볼 수 있나요?',f:'손에 들고 쓸 수 있나요?',g:'바퀴가 있나요?',h:'하늘을 날 수 있나요?',i:'물과 관련이 있나요?',j:'빨간색을 자주 띠나요?',k:'달콤한가요?',l:'털이 있나요?',m:'사람보다 큰가요?',n:'금속이 들어 있나요?',o:'식물인가요?',p:'소리를 내나요?',q:'겨울에 더 많이 쓰이나요?',r:'학교에서 볼 수 있나요?',s:'한 손에 들어올 만큼 작은가요?',t:'네 발로 걷나요?',u:'사람이 만든 물건인가요?',v:'뜨거울 수 있나요?',w:'글자나 숫자와 관련이 있나요?',x:'탈것인가요?',y:'사람과 함께 산책하나요?',M:'마시는 건가요?',C:'차갑나요?',A:'몸에 입거나 착용하나요?',B:'둥근 부분이 있나요?',D:'빛을 내나요?',F:'야외에서 주로 쓰이나요?',G:'운동이나 놀이와 관련 있나요?',H:'위험할 수 있나요?',I:'악기인가요?',J:'바다에 사나요?',K:'초록색이 자주 보이나요?',L:'곤충인가요?',N:'주방에서 쓰이나요?',O:'병원에서 볼 수 있나요?',P:'하얀색을 자주 띠나요?'};
+const ITEMS=[['강아지','abelpty'],['고양이','abelpt'],['독수리','abhp'],['고래','abimpJ'],['코끼리','abmtp'],['상어','abiHJ'],['펭귄','abipJP'],['개미','aLs'],['나비','aLhs'],['토끼','ablt'],['말','abmltpFG'],['뱀','abH'],['장미','aoj'],['소나무','aomKF'],['해바라기','aoF'],['선인장','aoeHK'],['사과','cjksB'],['수박','ckBK'],['아이스크림','cfksC'],['라면','cve'],['커피','cveM'],['초콜릿','cksf'],['피자','cvBe'],['포도','ckBKs'],['계란','cBPsN'],['우유','cMP'],['케이크','ckB'],['콜라','cMkC'],['스마트폰','defpsuw'],['냉장고','deunCN'],['텔레비전','deupD'],['컴퓨터','deuwD'],['청소기','deup'],['선풍기','deupC'],['에어컨','deupCn'],['전등','udeD'],['자전거','gunxFG'],['자동차','gunxpm'],['비행기','hunxpmg'],['배','iuxm'],['잠수함','iuxnmJ'],['연필','fsuwre'],['가위','fsunreH'],['우산','fuei'],['장갑','uqseA'],['목도리','uqeA'],['책','uwref'],['시계','uefsnpwA'],['의자','uer'],['칠판','urw'],['피아노','uepIm'],['기타','uIpe'],['피리','uIfsp'],['북','uIpB'],['축구공','uBFG'],['농구공','uBFGf'],['야구방망이','ufFGH'],['안경','uAes'],['모자','uAF'],['운동화','uAFG'],['냄비','unvN'],['프라이팬','unvNf'],['숟가락','unfsN'],['칼','unfsNHe'],['손전등','udfsDF'],['신호등','udFDm'],['청진기','ufnOs'],['주사기','ufsOH'],['구급차','gxunpOmP'],['소방차','gjuxpmnF'],['풍선','uBsfG']];
+let lastIt='';
+function jump(){title.textContent='두근두근 스무고개';info.style.width='100%';
+let it;do{it=ITEMS[Math.random()*ITEMS.length|0]}while(it[0]===lastIt);lastIt=it[0];
+const core=['a','b','c','u','d','f'],rest=Object.keys(QS).filter(k=>!core.includes(k)).sort(()=>Math.random()-.5).slice(0,12),avail=[...core,...rest].sort(()=>Math.random()-.5);let left=15;
+stage.innerHTML=`<p>컴퓨터가 물건 하나를 떠올렸습니다. 질문 15개 안에 맞히세요. 질문 목록은 매번 달라지고, 정답은 직접 입력합니다. 틀리면 질문 2개가 사라집니다.</p><select id="q" aria-label="질문">${avail.map(k=>`<option value="${k}">${QS[k]}</option>`).join('')}</select><button class="ok" id="aq">질문하기</button><input id="g" placeholder="정답 입력" aria-label="정답"><button id="ag">정답 제출</button><p id="st"></p><div id="lg" class="terms" style="height:150px"></div>`;
+const st=$('#st'),lg=$('#lg'),upd=()=>st.textContent='남은 질문: '+left;upd();
+const log=t=>{lg.innerHTML+=t+'<br>';lg.scrollTop=lg.scrollHeight};
+const fail=()=>{if(mode==='classic')return over('스무고개에 실패했습니다. 정답은 “'+it[0]+'”였습니다.');clear();stage.innerHTML=`<p class="big">실패</p><p>정답은 “${it[0]}”였습니다.</p><button class="ok" id="r">다시 도전 (+2분 패널티)</button>`;$('#r').onclick=()=>{pen+=120;jump()}};
+$('#aq').onclick=()=>{const q=$('#q'),k=q.value;if(!k)return;log(`Q. ${QS[k]} → ${it[1].includes(k)?'예':'아니오'}`);q.querySelector(`option[value="${k}"]`).remove();left--;upd();if(left<=0)fail()};
+$('#ag').onclick=()=>{const v=$('#g').value.replace(/\s/g,'');if(!v)return;if(v===it[0])return done(15-left+1);log(`정답 제출: ${v} → 틀렸습니다. (질문 2개 차감)`);$('#g').value='';left=Math.max(0,left-2);upd();if(left<=0)fail()}}
+function menu(){title.textContent='두근두근 스무고개';info.style.width='0';stage.innerHTML='<p class="big">두근두근<br>스무고개</p><p>게임을 시작하려면 이용약관에 동의해야 합니다. 제1조부터 제12조까지 모두 동의하세요. 조항마다 제한 시간이 있습니다.</p><button id="m1">클래식 모드 (실패하면 제1조부터)</button><button id="m2">캐주얼 모드 (재도전 가능, 실패 시 +2분)</button>';$('#m1').onclick=()=>{mode='classic';start()};$('#m2').onclick=()=>{mode='casual';start()}}
+menu();
+</script></body></html>
