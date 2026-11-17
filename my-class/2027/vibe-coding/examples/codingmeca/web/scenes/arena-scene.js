@@ -1,5 +1,5 @@
 // web/scenes/arena-scene.js  (56번)
-// 관제 스크린: 경기장 + 관중석 실루엣 + 전광판. 경기를 그리는 장면이다. (명세 14-2, 15장)
+// 관제 스크린: 경기장 + 전광판. 경기를 그리는 장면이다. (명세 14-2, 15장)
 //   · loadMatch(init)  경기 시작 때 받은 정적 정보(makeInitInfo)로 전장·기체를 만든다
 //   · feed(frame)      관람 버퍼가 돌려준 { snap, events, t } 를 넘긴다 → 다음 update에서 기체·이펙트·소리·카메라에 반영
 //   · 지형: 벽·장애물·용암 가장자리·스파이크 패드·급축소 위험 구역·중앙 섬(물)·우주 별밭
@@ -211,9 +211,6 @@ export function createArenaScene(ctx) {
       s.extras.push(stars);
     }
 
-    // 관중석 + 관중 실루엣
-    buildStands(s, halfW, halfD);
-
     // 전광판
     const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(26, 7.3), board.material);
     screenMesh.position.set(0, 14, -halfD - 17);
@@ -234,58 +231,7 @@ export function createArenaScene(ctx) {
     return s;
   }
 
-  function buildStands(s, halfW, halfD) {
-    const g = s.group;
-    const standMat = steel('#1A212C', 0.9, 0.2);
-    const people = [];
-    const sides = [
-      { len: halfW * 2 + 12, axis: 'x', sign: -1, off: halfD },
-      { len: halfW * 2 + 12, axis: 'x', sign: 1, off: halfD },
-      { len: halfD * 2 + 12, axis: 'z', sign: -1, off: halfW },
-      { len: halfD * 2 + 12, axis: 'z', sign: 1, off: halfW },
-    ];
-    const spacing = Math.max(1.0, ((halfW + halfD) * 4 * 4) / Math.max(1, kit.count(420)));
-    for (const sd of sides) {
-      for (let k = 0; k < 4; k++) {
-        const d = 3.2 + k * 1.7;
-        const h = 0.9 + k * 1.15;
-        const pos = sd.off + d;
-        const w = sd.len;
-        if (sd.axis === 'x') box(w, h, 1.7, standMat, 0, h / 2, sd.sign * pos, g);
-        else box(1.7, h, w, standMat, sd.sign * pos, h / 2, 0, g);
-        for (let u = -w / 2 + 0.8; u < w / 2 - 0.5; u += spacing * rnd(0.9, 1.4)) {
-          if (Math.random() < 0.12) continue;
-          people.push({ x: sd.axis === 'x' ? u : sd.sign * pos, z: sd.axis === 'x' ? sd.sign * pos : u, y: h + 0.55, ph: rnd(0, 6.28), sc: rnd(0.85, 1.15) });
-        }
-      }
-    }
-    const geo = new THREE.CapsuleGeometry(0.26, 0.55, 3, 6);
-    geo.userData.shared = false;
-    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: '#FFFFFF', roughness: 0.95, metalness: 0 }), people.length);
-    const palette = ['#2A3550', '#3A2A3E', '#2A4048', '#40362A', '#25303A', '#4A3440', '#33404F'];
-    const c = new THREE.Color();
-    people.forEach((p, i) => { c.set(palette[i % palette.length]).offsetHSL(rnd(-0.02, 0.02), 0, rnd(-0.03, 0.05)); mesh.setColorAt(i, c); });
-    mesh.frustumCulled = false;
-    g.add(mesh);
-    s.crowd = { mesh, people };
-    updateCrowd(0, true);
-  }
-
-  const dummyM = new THREE.Object3D();
-  function updateCrowd(t, force = false) {
-    const cr = stage?.crowd;
-    if (!cr) return;
-    const amp = 0.08 + cheer * 0.55;
-    cr.people.forEach((p, i) => {
-      const jump = Math.max(0, Math.sin(t * (2 + cheer * 6) + p.ph)) * amp;
-      dummyM.position.set(p.x, p.y + jump, p.z);
-      dummyM.scale.set(p.sc, p.sc * (1 + cheer * 0.1), p.sc);
-      dummyM.updateMatrix();
-      cr.mesh.setMatrixAt(i, dummyM.matrix);
-    });
-    cr.mesh.instanceMatrix.needsUpdate = true;
-    void force;
-  }
+  function updateCrowd() {} // 관중석·관중은 없앴다(호출부 호환용)
 
   // ── 경기 불러오기·비우기 ─────────────────────────────
   function clearMatch() {
