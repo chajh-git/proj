@@ -1,1 +1,212 @@
 
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLACK AURA</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080812;color:#eee;font-family:Arial,sans-serif;text-align:center}
+header{padding:22px;background:#121222;border-bottom:1px solid #393956}
+h1{letter-spacing:5px;color:#bba5ff}
+button,select{background:#272744;color:white;border:1px solid #7770a8;border-radius:9px;padding:11px;margin:5px;cursor:pointer}
+button:hover{background:#51417d}
+button:disabled{opacity:.4;cursor:not-allowed}
+.panel{background:#141426;border:1px solid #383858;border-radius:14px;padding:15px;margin:12px auto;max-width:850px}
+#result{font-size:25px;min-height:100px;padding:20px;color:#d7c9ff}
+#inventory,#codex{display:flex;flex-wrap:wrap;justify-content:center;gap:7px}
+.item{background:#25253d;border:1px solid #555;padding:9px;border-radius:8px;min-width:120px}
+.muted{color:#888}
+.Common{color:#ddd}.Uncommon{color:#79e68b}.Rare{color:#68baff}
+.Epic{color:#c18aff}.Legendary{color:#ffca55}
+.Mythic{color:#ff7272}.Divine{color:#fff18a}
+.Celestial{color:#75efff}.Eternal{color:#ff9cff}
+#notice{color:#ffcf70;min-height:25px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>BLACK AURA</h1>
+<div>어둠 속에서 최강의 오라를 뽑아라</div>
+</header>
+
+<div class="panel">
+<h2>내 정보</h2>
+<div>코인: <b id="coins">0</b></div>
+<div>총 뽑기: <b id="pulls">0</b>회</div>
+<div>보유 오라: <b id="owned">0</b>종</div>
+<div id="status"></div>
+</div>
+
+<div class="panel">
+<h2>오라 뽑기</h2>
+<div id="result">뽑기를 시작해 보세요!</div>
+<div id="notice"></div>
+<button id="pullBtn" onclick="pull()">✨ 오라 뽑기</button>
+<button onclick="toggleAuto()" id="autoBtn">자동 뽑기 잠금</button>
+</div>
+
+<div class="panel">
+<h2>업그레이드 상점</h2>
+<button onclick="buyFast()">⚡ 빠른 뽑기 구매 — 1,000,000 코인</button>
+<button onclick="buyAuto()">🔄 자동 뽑기 구매 — 10,000,000 코인</button>
+<p id="upgradeStatus"></p>
+<hr>
+<button onclick="buyPotion(3,5000)">3회 행운 물약 — 5,000</button>
+<button onclick="buyPotion(10,20000)">10회 행운 물약 — 20,000</button>
+<button onclick="buyPotion(25,50000)">25회 행운 물약 — 50,000</button>
+<p id="potionStatus"></p>
+</div>
+
+<div class="panel">
+<h2>인벤토리</h2>
+<button onclick="sellAll()">모두 판매</button>
+<div id="inventory"></div>
+</div>
+
+<div class="panel">
+<h2>오라 도감</h2>
+<select id="filter" onchange="renderCodex()">
+<option value="all">전체 등급</option>
+<option>일반</option><option>고급</option><option>희귀</option>
+<option>영웅</option><option>전설</option><option>신화</option>
+<option>신성</option><option>천상</option><option>영원</option>
+</select>
+<div id="codex"></div>
+</div>
+
+<script>
+const tiers=[
+{name:"일반",key:"Common",chance:50,value:1,names:[
+"작은 불씨","초록 잎사귀","푸른 물방울","낡은 돌멩이","작은 별빛","은빛 먼지","바람 조각","붉은 깃털","노란 꽃잎","달빛 가루","숲의 숨결","잔잔한 파도","작은 수정","구름 조각","새벽 이슬","반짝이는 모래","따뜻한 불꽃","고요한 안개","푸른 나비","작은 종소리","햇살 조각","달의 파편","유리 구슬","꽃의 정령","별의 씨앗","은하 먼지","겨울 서리","여름 바람","빛나는 조약돌","평범한 영혼"]},
+{name:"고급",key:"Uncommon",chance:25,value:10,names:[
+"숲의 수호자","불꽃 사냥꾼","얼음 정령","번개의 조각","바다의 노래","바람의 날개","황금 나뭇잎","달의 사도","빛의 파수꾼","수정 골렘","안개 추적자","푸른 늑대","붉은 여우","별빛 사슴","태양의 씨앗","밤의 그림자","은빛 독수리","꽃의 기사","서리 마법사","폭풍의 눈","산의 정령","깊은 바다","황혼의 불꽃","새벽의 사자","꿈의 조각","달빛 고양이","고대 나무","유성 파편","수호의 방패","신비한 여행자"]},
+{name:"희귀",key:"Rare",chance:15,value:100,names:[
+"심연의 파도","폭풍 군주","얼음 여왕","화염 용병","천둥의 심장","검은 혜성","은하의 문","수정의 군주","망각의 사슬","푸른 용의 혼","황금 사자","달의 기사","별의 수호자","그림자 암살자","태양의 날개","붉은 폭풍","빙하의 심장","고대의 마법진","영혼 수집가","시간의 조각","심해의 괴수","유성의 기사","빛의 심판자","어둠의 사제","천둥새","공허의 눈","불멸의 꽃","은빛 폭군","차원의 열쇠","운명의 파수꾼"]},
+{name:"영웅",key:"Epic",chance:7,value:1000,names:[
+"차원의 지배자","불멸의 용","태양의 왕관","달빛 황제","심연의 마검","시간의 마술사","은하의 폭군","천공의 수호자","검은 태양","영혼의 폭풍","얼음의 제왕","화염의 군주","별의 창조자","공허의 기사","무한의 수정","차원 파괴자","황금 불사조","망각의 왕","빛의 대천사","어둠의 군주","운명의 사슬","천둥 황제","신비의 성배","심연의 군주","별무리의 검","영원의 문지기","태초의 불꽃","푸른 초신성","시간의 심장","우주의 파수꾼"]},
+{name:"전설",key:"Legendary",chance:2.5,value:10000,names:[
+"창조의 군주","파멸의 황제","절대자의 검","무한한 왕좌","태양신의 심장","달의 여신","우주 용왕","영겁의 수호자","차원의 황금왕","시간의 폭군","별의 절대자","심연의 황금룡","빛의 창조주","어둠의 절대왕","영원의 성검","초신성 황제","운명의 지배자","천상의 폭풍","신들의 왕관","공허의 창조자","우주 심판자","영혼의 절대자","무한의 대천사","태초의 지배자","별의 파멸자","시간의 신","차원의 절대검","황금 우주룡","영겁의 군주","세계의 왕"]},
+{name:"신화",key:"Mythic",chance:.45,value:100000,names:[
+"혼돈의 신","무한의 파괴자","태초의 황제","공허의 창조신","영원의 심판자","우주를 삼킨 자","시간의 절대자","차원의 초월자","별들의 지배자","검은 창조주","무한한 심연","신들의 파멸","절대 영혼","영겁의 폭군","초월의 왕좌","태양계의 심장","은하 창조자","우주 종말자","운명의 초월자","절대 혼돈","시간의 창조신","차원 너머의 왕","빛과 어둠의 신","무한 우주룡","심연의 초월자","태초의 심판자","세계의 파괴신","영원한 초월자","신화의 절대왕","궁극의 창조자"]},
+{name:"신성",key:"Divine",chance:.049,value:100000000,names:[
+"신들의 심판","절대 신성","천상의 창조주","영혼의 구원자","빛의 절대신","태초의 신성","우주 대성자","영원의 성좌","무한의 신탁","신성한 종말"]},
+{name:"천상",key:"Celestial",chance:.0009,value:3000000000,names:[
+"천상의 태양","별들의 낙원","영겁의 천국","무한한 광휘","초월의 천상"]},
+{name:"영원",key:"Eternal",chance:.0001,value:10000000000,names:[
+"영원 제로","절대적 시작","시간의 끝","무한의 지배자","최초의 빛"]}
+];
+
+let state=JSON.parse(localStorage.getItem("blackAura")||"null")||{
+coins:0,pulls:0,inventory:[],discovered:[],fast:false,auto:false,
+potions:0,bonus:false,cooldown:0
+};
+let autoTimer=null,cooldownTimer=null;
+
+function save(){localStorage.setItem("blackAura",JSON.stringify(state));render()}
+function fmt(n){return n.toLocaleString("ko-KR")}
+function render(){
+coins.textContent=fmt(state.coins);
+pulls.textContent=fmt(state.pulls);
+owned.textContent=state.discovered.length;
+status.textContent="행운 물약 남은 횟수: "+state.potions+
+" | 5회 보너스: "+(state.bonus?"대기 중":"없음");
+upgradeStatus.textContent="빠른 뽑기: "+(state.fast?"구매 완료":"미구매")+
+" | 자동 뽑기: "+(state.auto?"구매 완료":"미구매");
+potionStatus.textContent="행운 물약: "+state.potions+"회";
+autoBtn.textContent=state.auto?"자동 뽑기 켜기/끄기":"자동 뽑기 잠금";
+pullBtn.disabled=state.cooldown>0;
+pullBtn.textContent=state.cooldown>0?"쿨타임 "+state.cooldown+"초":"✨ 오라 뽑기";
+renderInventory();renderCodex();
+}
+function chooseAura(){
+let weights=tiers.map((t,i)=>t.chance*(i>=2?((state.potions>0||state.bonus)?5:1):1));
+let total=weights.reduce((a,b)=>a+b,0),r=Math.random()*total;
+for(let i=0;i<tiers.length;i++){r-=weights[i];if(r<=0){
+let t=tiers[i];return {name:t.names[Math.floor(Math.random()*t.names.length)],tier:t.name,key:t.key,value:t.value};
+}}
+return {name:"작은 불씨",tier:"일반",key:"Common",value:1};
+}
+function pull(){
+if(state.cooldown>0)return;
+let aura=chooseAura();
+state.pulls++;
+state.inventory.push(aura);
+if(!state.discovered.includes(aura.name))state.discovered.push(aura.name);
+if(state.potions>0)state.potions--;
+if(state.bonus)state.bonus=false;
+if(state.pulls%5===0)state.bonus=true;
+result.innerHTML=`<span class="${aura.key}">✨ ${aura.name} ✨</span><br><small>${aura.tier} 등급 | 가치 ${fmt(aura.value)} 코인</small>`;
+if(["신화","신성","천상","영원"].includes(aura.tier)){
+result.innerHTML=`<div style="font-size:32px;animation:flash .7s infinite alternate">🌌 ${aura.tier} 각성! 🌌</div><span class="${aura.key}">${aura.name}</span><br>가치 ${fmt(aura.value)} 코인`;
+}
+if(state.fast)startCooldown();
+save();
+}
+function startCooldown(){
+state.cooldown=2;
+clearInterval(cooldownTimer);
+cooldownTimer=setInterval(()=>{
+state.cooldown--;
+if(state.cooldown<=0){clearInterval(cooldownTimer);state.cooldown=0}
+render();
+},1000);
+}
+function buyFast(){
+if(state.fast)return alert("이미 구매했습니다!");
+if(state.coins<1000000)return alert("코인이 부족합니다!");
+state.coins-=1000000;state.fast=true;save();
+}
+function buyAuto(){
+if(state.auto)return alert("이미 구매했습니다!");
+if(state.coins<10000000)return alert("코인이 부족합니다!");
+state.coins-=10000000;state.auto=true;save();
+}
+function toggleAuto(){
+if(!state.auto)return alert("자동 뽑기를 먼저 구매하세요!");
+if(autoTimer){clearInterval(autoTimer);autoTimer=null;notice.textContent="자동 뽑기 꺼짐";}
+else{autoTimer=setInterval(()=>{if(state.cooldown===0)pull()},state.fast?2000:1000);notice.textContent="자동 뽑기 실행 중";}
+}
+function buyPotion(count,price){
+if(state.coins<price)return alert("코인이 부족합니다!");
+state.coins-=price;state.potions+=count;save();
+}
+function sellOne(index){
+let a=state.inventory.splice(index,1)[0];
+state.coins+=a.value;save();
+}
+function sellAll(){
+if(!state.inventory.length)return;
+state.coins+=state.inventory.reduce((sum,a)=>sum+a.value,0);
+state.inventory=[];save();
+}
+function renderInventory(){
+inventory.innerHTML="";
+state.inventory.forEach((a,i)=>{
+let d=document.createElement("div");d.className="item";
+d.innerHTML=`<span class="${a.key}">${a.name}</span><br>${a.tier}<br>${fmt(a.value)} 코인<br><button>판매</button>`;
+d.querySelector("button").onclick=()=>sellOne(i);
+inventory.appendChild(d);
+});
+}
+function renderCodex(){
+let f=document.getElementById("filter").value;
+codex.innerHTML="";
+tiers.filter(t=>f==="all"||t.name===f).forEach(t=>{
+t.names.forEach(name=>{
+let found=state.discovered.includes(name);
+let d=document.createElement("div");d.className="item";
+d.innerHTML=`<span class="${t.key}">${found?name:"??????"}</span><br><small>${t.name}</small>`;
+codex.appendChild(d);
+});
+});
+}
+render();
+</script>
+<style>
+@keyframes flash{from{opacity:.4;transform:scale(.95)}to{opacity:1;transform:scale(1.05)}}
+</style>
+</body>
+</html>
