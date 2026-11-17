@@ -49,8 +49,8 @@ kbd{background:#2a3050;border:1px solid var(--line);border-bottom-width:3px;bord
 
 <canvas id="mm" class="hud" width="205" height="145"></canvas><div id="fxl" class="hud"></div><div id="al" class="hud"><i id="alf"></i></div><div id="tb"><button id="bh">숨기</button><button id="br">달리기</button></div><div id="inv"></div><div id="toast"></div>
 <div id="ov"><h1 id="oh">학교 탈출 3D</h1><p id="op"></p><div id="df"></div><button id="ob">시작하기</button></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
+<script>function __boot(){
+
 const U=2,W=41,H=29,NEED=3,FOV=1.15,$=id=>document.getElementById(id),rnd=(a,b)=>a+Math.random()*(b-a),ri=n=>Math.random()*n|0;
 const NAMES=['수학쌤','체육쌤','교감쌤','생활지도쌤','영어쌤','음악쌤','교장쌤'],COL=[0xd6455d,0x3a86ff,0x9b5de5,0x1aa38a],ROLE=['hunter','rover','rover','sentry','hunter','rover','sentry'];
 const IT={xray:{i:'🕶️',n:'매직안경',c:'rgba(80,220,255,.6)'},energy:{i:'⚡',n:'에너지',c:'rgba(255,230,60,.6)'},decoy:{i:'📢',n:'소음 미끼',c:'rgba(255,150,60,.6)'},cloak:{i:'🧥',n:'투명망토',c:'rgba(200,140,255,.6)'},freeze:{i:'💤',n:'수면 스프레이',c:'rgba(130,190,255,.6)'},radar:{i:'🧭',n:'열쇠 레이더',c:'rgba(120,255,160,.6)'},flash:{i:'📸',n:'섬광탄',c:'rgba(255,255,255,.6)'},tele:{i:'🌀',n:'순간이동',c:'rgba(255,100,220,.6)'},silent:{i:'🥿',n:'살금살금 신발',c:'rgba(180,180,200,.6)'},master:{i:'🗝️',n:'마스터키',c:'rgba(255,190,40,.8)'}};
@@ -61,8 +61,9 @@ function say(m,s=2){const e=$('toast');e.textContent=m;e.style.opacity=1;clearTi
 const fmt=t=>(t/60|0)+':'+String(t%60|0).padStart(2,'0');
 function lock(){try{const p=$('c').requestPointerLock();p&&p.catch&&p.catch(()=>{})}catch(e){}}
 function renderDF(){const e=
-('df');e.style.display=S&&S.state!='play'?'flex':'none';e.innerHTML=DIFF.map((d,i)=>`<buttonclass="{i==DF?'on':''}" onclick="DF=i;renderDF()">{d.n}<small>${d.d}</small></button>`).join('')}
-function show(h,p,b,fn){document.exitPointerLock&&document.exitPointerLock();renderDF();('oh').textContent=h;('op').innerHTML=p;('ob').textContent=b;('ov').style.display='flex';$('ob').onclick=()=>{$('ov').style.display='none';lock();fn()};$('ob').focus()}
+('df');e.style.display=S&&S.state!='play'?'flex':'none';e.innerHTML=DIFF.map((d,i)=>`<buttonclass="{i==DF?'on':''}" data-i="i">{d.n}<small>${d.d}</small></button>`).join('')}
+$('df').onclick=e=>{const b=e.target.closest('button');if(b){DF=+b.dataset.i;renderDF()}};
+function show(h,p,b,fn){document.exitPointerLock&&document.exitPointerLock();renderDF();('oh').textContent=h;('op').innerHTML=p;('ob').textContent=b;('ov').style.display='flex';$('ob').onclick=()=>{$('ov').style.display='none';try{window.focus()}catch(e){}lock();try{fn()}catch(e){$('ov').style.display='flex';(window.__fail||console.error)(e)}};$('ob').focus()}
 
 /* 맵 생성 */
 const solid=(x,y)=>x<0||y<0||x>=W||y>=H||'#LD'.includes(G[y][x]),blk=(x,y)=>x<0||y<0||x>=W||y>=H||'#L'.includes(G[y][x]);
@@ -87,7 +88,7 @@ function ft(x,y){x=Math.max(1,Math.min(W-2,x|0));y=Math.max(1,Math.min(H-2,y|0))
 const ren=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));ren.outputEncoding=THREE.sRGBEncoding;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.15;
 const scene=new THREE.Scene(),FOGC=new THREE.Color(0x070913);scene.background=FOGC;scene.fog=new THREE.Fog(0x070913,5,34);
 const cam=new THREE.PerspectiveCamera(74,1,.1,100);cam.rotation.order='YXZ';scene.add(cam);
-function resize(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',resize);resize();
+function resize(){const w=innerWidth||document.documentElement.clientWidth||800,h=innerHeight||document.documentElement.clientHeight||600;ren.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()}addEventListener('resize',resize);resize();
 const hemi=new THREE.HemisphereLight(0x9fb0e0,0x2a2a3a,.5);scene.add(hemi);
 const spot=new THREE.SpotLight(0xfff0cc,1.7,24,.6,.55);spot.target.position.set(0,0,-1);cam.add(spot,spot.target);const pl=new THREE.PointLight(0xffe9b0,.6,8);cam.add(pl);
 function cvs(w,h,fn,rep){const c=document.createElement('canvas');c.width=w;c.height=h;fn(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t}
@@ -255,7 +256,8 @@ function useItem(i){const it=S.inv[i];if(!it||S.state!='play'||S.p.hid)return;co
  else if(it=='freeze'){let b=null,bd=9;for(const t of S.t){const d=Math.hypot(t.x-p.x,t.y-p.y);if(d<bd&&Math.abs(angd(p.yaw,Math.atan2(t.y-p.y,t.x-p.x)))<.5&&los(p.x,p.y,t.x,t.y)){bd=d;b=t}}
   if(b){b.frz=6;b.mode='search';b.sus=0;b.path=[];b.m.jk.color.setHex(0x88ccff);beep(900,.3,'sine',.07,-500);say('💤 선생님이 얼어붙었다! (6초)')}else{ok=false;say('앞에 선생님이 없다',1.2)}}
  if(ok){S.inv[i]=null;renderInv()}}
-function renderInv(){$('inv').innerHTML=[0,1,2].map(i=>{const t=S.inv[i];return`<div class="slot${t?' on':''}" onclick="useItem(i)"><b>{i+1}</b>${t?IT[t].i+'<small>'+IT[t].n+'</small>':''}</div>`}).join('')}
+function renderInv(){$('inv').innerHTML=[0,1,2].map(i=>{const t=S.inv[i];return`<div class="slot${t?' on':''}" data-i="i"><b>{i+1}</b>${t?IT[t].i+'<small>'+IT[t].n+'</small>':''}</div>`}).join('')}
+$('inv').onclick=e=>{const d=e.target.closest('.slot');if(d)useItem(+d.dataset.i)};
 function update(dt){S.tick+=dt;S.time+=dt;S.dark=Math.max(0,S.dark-dt);const fx=S.fx;for(const k in fx)fx[k]=Math.max(0,fx[k]-dt);
  S.dir-=dt;if(S.dir<=0){S.dir=rnd(14,26);director()}
  S.dec=S.dec.filter(d=>{d.life-=dt;d.s.position.y=1+Math.sin(S.tick*8)*.1;if(d.life<=0){world.remove(d.s);return false}return true});
@@ -287,7 +289,7 @@ function render(){const p=S.p,fx=S.fx,tk=S.tick,dk=S.dark>0;
   if(kv)S.k.forEach(k=>{if(!k.got){mc.fillStyle='#ffd23f';mc.beginPath();mc.arc(k.x*s,k.y*s,3.5,0,7);mc.fill()}});
   if(fx.xray>0)S.t.forEach(t=>{mc.fillStyle='rgba(255,60,80,.3)';mc.beginPath();mc.moveTo(t.x*s,t.y*s);mc.arc(t.x*s,t.y*s,RV()*s,t.ang-FOV/2,t.ang+FOV/2);mc.fill();mc.fillStyle='#ff3a55';mc.beginPath();mc.arc(t.x*s,t.y*s,3,0,7);mc.fill()});
   mc.fillStyle='#4cc9f0';mc.beginPath();mc.moveTo(p.x*s+Math.cos(p.yaw)*5,p.y*s+Math.sin(p.yaw)*5);mc.lineTo(p.x*s+Math.cos(p.yaw+2.5)*3.5,p.y*s+Math.sin(p.yaw+2.5)*3.5);mc.lineTo(p.x*s+Math.cos(p.yaw-2.5)*3.5,p.y*s+Math.sin(p.yaw-2.5)*3.5);mc.fill()}}
-let last=0;function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(S.state=='play'&&$('ov').style.display=='none')update(dt);render();requestAnimationFrame(loop)}
+let last=0,RW=0,RH=0,failed=0;function loop(ts){try{if(innerWidth!=RW||innerHeight!=RH){RW=innerWidth;RH=innerHeight;resize()}const dt=Math.min(.05,(ts-last)/1000||0);last=ts;if(S.state=='play'&&$('ov').style.display=='none')update(dt);render()}catch(e){if(!failed){failed=1;(window.__fail||console.error)(e)}}requestAnimationFrame(loop)}
 
 /* 입력 */
 const CM={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d',KeyE:'e',Space:' ',ShiftLeft:'Shift',ShiftRight:'Shift',Digit1:'1',Digit2:'2',Digit3:'3',Numpad1:'1',Numpad2:'2',Numpad3:'3'},kk=e=>CM[e.code]||e.key;
@@ -307,8 +309,20 @@ $('c').addEventListener('click',()=>{if($('ov').style.display=='none'&&!document
 document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&S&&S.state=='play'&&$('ov').style.display=='none')show('일시정지','화면을 클릭하거나 버튼을 눌러 계속하세요.','계속하기',()=>{})});
 
 startGame();S.state='menu';
-show('학교 탈출 3D','야간자율학습 중, 거대한 학교를 빠져나가자! 맵은 <b>매 판 새로 생성</b>되고, 선생님들은 <b>역할(추격형·순찰형·경비형)</b>이 있어 예측하기 어렵게 움직여요. 교내 방송, 정전, 순찰 구역 교대 같은 돌발 상황도 일어납니다.<br><b>열쇠 3개</b>를 모아 동쪽 끝 정문으로 탈출하세요.<br><br><kbd>WASD</kbd> 이동 &nbsp; <kbd>마우스</kbd> 시점 &nbsp; <kbd>Shift</kbd> 달리기(소리 남) &nbsp; <kbd>E</kbd> 숨기 &nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 아이템 사용<br><br>🕶️ 투시 · ⚡ 에너지 · 🧥 투명망토 · 📢 소음 미끼 · 💤 수면 스프레이 · 🧭 열쇠 레이더 · 📸 섬광탄 · 🌀 순간이동 · 🥿 무음 신발 · 🗝️ 마스터키(열쇠 +1)<br><b>난이도</b> — 쉬움: 선생님 3명, 지도에 열쇠 표시 · 보통: 선생님 5명, 지도는 있지만 열쇠는 숨김 · 어려움: 선생님 7명, 지도도 열쇠 표시도 없음 (🧭 레이더 아이템은 어느 난이도에서나 열쇠를 보여줘요).<br>모바일: 왼쪽 드래그=이동, 오른쪽 드래그=시점.<br>인벤토리는 3칸! 사물함에 숨어도 선생님이 문 앞에서 오래 서 있으면 들킬 수 있어요.','시작하기',()=>startGame());
+show('학교 탈출 3D','야간자율학습 중, 거대한 학교를 빠져나가자! 맵은 <b>매 판 새로 생성</b>되고, 선생님들은 <b>역할(추격형·순찰형·경비형)</b>이 있어 예측하기 어렵게 움직여요. 교내 방송, 정전, 순찰 구역 교대 같은 돌발 상황도 일어납니다.<br><b>열쇠 3개</b>를 모아 동쪽 끝 정문으로 탈출하세요.<br><br><kbd>WASD</kbd> 이동 &nbsp; <kbd>마우스</kbd> 시점(마우스 잠금이 안 되는 사이트에서는 클릭한 채 드래그) &nbsp; <kbd>Shift</kbd> 달리기(소리 남) &nbsp; <kbd>E</kbd> 숨기 &nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 아이템 사용<br><br>🕶️ 투시 · ⚡ 에너지 · 🧥 투명망토 · 📢 소음 미끼 · 💤 수면 스프레이 · 🧭 열쇠 레이더 · 📸 섬광탄 · 🌀 순간이동 · 🥿 무음 신발 · 🗝️ 마스터키(열쇠 +1)<br><b>난이도</b> — 쉬움: 선생님 3명, 지도에 열쇠 표시 · 보통: 선생님 5명, 지도는 있지만 열쇠는 숨김 · 어려움: 선생님 7명, 지도도 열쇠 표시도 없음 (🧭 레이더 아이템은 어느 난이도에서나 열쇠를 보여줘요).<br>모바일: 왼쪽 드래그=이동, 오른쪽 드래그=시점.<br>인벤토리는 3칸! 사물함에 숨어도 선생님이 문 앞에서 오래 서 있으면 들킬 수 있어요.','시작하기',()=>startGame());
 requestAnimationFrame(loop);
+
+}</script>
+<script>
+(function(){
+ var urls=['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js','https://unpkg.com/three@0.128.0/build/three.min.js'],i=0;
+ function err(m){if(document.getElementById('__err'))return;var d=document.createElement('div');d.id='__err';d.style.cssText='position:fixed;left:10px;right:10px;top:10px;z-index:99;background:#7a1020;color:#fff;border:2px solid #ff6b81;border-radius:10px;padding:12px 16px;font:14px/1.5 sans-serif';d.innerHTML='<b>⚠ 게임을 실행하지 못했어요</b><br>'+m;document.body.appendChild(d)}
+ window.__fail=function(e){var m=String(e&&e.message||e);if(/WebGL/i.test(m))m='이 브라우저/기기에서 WebGL(3D)을 쓸 수 없어요. 브라우저의 하드웨어 가속 설정을 확인해 주세요. ('+m+')';err(m)};
+ window.addEventListener('error',function(ev){var m=ev.message||'';if(/ResizeObserver|^Script error/i.test(m))return;err(m+(ev.lineno?' (줄 '+ev.lineno+')':''))});
+ function go(){try{__boot()}catch(e){window.__fail(e)}}
+ function next(){if(window.THREE)return go();if(i>=urls.length)return err('3D 엔진(three.js)을 불러오지 못했어요. 인터넷 연결, 또는 사이트의 보안 설정이 cdnjs.cloudflare.com / cdn.jsdelivr.net 접속을 막고 있는지 확인해 주세요. 파일을 내 컴퓨터에 저장해서 열면 대부분 해결돼요.');var s=document.createElement('script');s.src=urls[i++];s.onload=function(){window.THREE?go():next()};s.onerror=next;document.head.appendChild(s)}
+ next();
+})();
 </script>
 </body>
 </html>
