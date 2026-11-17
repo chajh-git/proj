@@ -11,6 +11,7 @@
 
 import { createWorld, teamHpRatio, pushEvent } from './world.js';
 import { isDecisionTick, decideAll } from '../tactics/interpreter.js';
+import { manualCommand } from '../tactics/manual.js';
 import { refreshDynamics, updateEnergy, beginTick, spendEnergy } from './energy.js';
 import { stepPhysics } from './physics.js';
 import { fireWeapons, stepProjectiles, stepEffects, stepWeaponTimers } from './weapons.js';
@@ -115,6 +116,7 @@ export function stepMatch(match) {
 
   // ① 판단
   if (isDecisionTick(world)) decideAll(world);
+  for (const e of world.entities) if (e.alive && e.manual) e.cmd = manualCommand(world, e); // 수동 조종 기체는 전술 대신 입력을 매 틱 명령으로
   // ② 명령 적용 + 무기 발사
   for (const e of world.entities) if (e.alive) applyCommands(world, match, e);
   fireWeapons(world, dt);

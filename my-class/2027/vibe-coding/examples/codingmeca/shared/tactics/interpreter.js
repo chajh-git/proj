@@ -31,7 +31,7 @@ function switchTo(world, e, stanceId, reason) {
 }
 
 export function decideEntity(world, e) {
-  if (!e.alive) return;
+  if (!e.alive || e.manual) return; // 수동 조종 중이면 전술을 돌리지 않는다
   refreshLock(world, e);
   const perceptions = perceiveAll(world, e);
   const base = { world, self: e, perceptions, target: null };

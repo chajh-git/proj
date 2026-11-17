@@ -4,7 +4,7 @@
 // 화면(three) 객체는 camera 하나만 만지며, 위치·시선은 목표값을 부드럽게 따라간다.
 //
 //   const dir = createCameraDirector({ camera, arena: { halfW, halfD } });
-//   dir.setMode('overview');                       // 'overview' | 'follow' | 'duel' | 'turntable' | 'free'
+//   dir.setMode('overview');                       // 'overview' | 'follow' | 'duel' | 'turntable' | 'free' | 'shoulder'(조종 시점)
 //   dir.update(dt, entities);                      // entities: [{ id, x, z, h, alive, alt }] (보간된 스냅샷의 ents)
 //   dir.onEvent(ev, entities);                     // 서버 사건에 반응: 흔들림·집중 연출
 //   dir.focus({ id | point:{x,y,z}, seconds, distance }) // 잠깐 한 곳을 비춘 뒤 원래 모드로 복귀
@@ -45,6 +45,7 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
   const follow = { id: null };
   const duel = { a: null, b: null };
   const turntable = { center: { x: 0, y: 1, z: 0 }, radius: 8, height: 3.5, speed: 0.35, yaw: 0.6, fovBase: 42 };
+  const shoulder = { id: null, yaw: 0, pitch: 0.18, dist: 7.5, side: 1.5 }; // 오버더숄더(조종 시점): yaw 는 조종사가 보는 방향(heading 규약)
   let free = { yaw: 0.4, pitch: 0.55, dist: 34, target: { x: 0, y: 0, z: 0 } };
 
   // 임시 연출
@@ -104,6 +105,22 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
           tx: f.target.x, ty: f.target.y, tz: f.target.z,
           px: f.target.x + Math.sin(f.yaw) * Math.cos(f.pitch) * f.dist, py: f.target.y + Math.sin(f.pitch) * f.dist, pz: f.target.z + Math.cos(f.yaw) * Math.cos(f.pitch) * f.dist,
           fov: O.fov,
+        };
+      }
+      case 'shoulder': {
+        const e = byId(ents, shoulder.id);
+        if (!e) break;
+        // 기체 뒤·오른쪽 어깨 너머에서, 조종사가 보는 방향의 앞쪽을 바라본다
+        const fx = -Math.sin(shoulder.yaw);
+        const fz = -Math.cos(shoulder.yaw);
+        const rx = Math.cos(shoulder.yaw);
+        const rz = -Math.sin(shoulder.yaw);
+        const d = shoulder.dist;
+        const lift = 2.2 + shoulder.pitch * 7;
+        return {
+          tx: e.x + fx * 16 + rx * 0.4, ty: HEIGHT + 0.2 - shoulder.pitch * 4, tz: e.z + fz * 16 + rz * 0.4,
+          px: e.x - fx * d + rx * shoulder.side, py: lift, pz: e.z - fz * d + rz * shoulder.side,
+          fov: O.fov + 4,
         };
       }
       case 'follow': {
@@ -170,6 +187,7 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
     setMode(m, opts = {}) {
       mode = m;
       if (m === 'follow') follow.id = opts.id ?? follow.id;
+      if (m === 'shoulder') { shoulder.id = opts.id ?? shoulder.id; if (opts.yaw !== undefined) shoulder.yaw = opts.yaw; }
       if (m === 'duel') { duel.a = opts.a ?? duel.a; duel.b = opts.b ?? duel.b; }
       if (m === 'turntable') Object.assign(turntable, opts);
       if (m === 'free') free = { ...free, ...opts };
@@ -179,7 +197,13 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
     setAuto(v) { auto = Boolean(v); },
 
     // 자유 시점 조작: 마우스 드래그·휠에서 호출
+    // 오버더숄더: 조종사가 보는 방향·기울기 (매 프레임 입력에서 호출)
+    setPilotAim(yaw, pitch) {
+      shoulder.yaw = yaw;
+      if (pitch !== undefined) shoulder.pitch = clamp(pitch, -0.15, 0.7);
+    },
     orbitBy(dyaw, dpitch) {
+      if (mode === 'shoulder') return; // 조종 중에는 드래그로 시점이 바뀌지 않는다
       if (mode !== 'free') {
         // 다른 모드에서 드래그하면 지금 시점에서 자유 시점으로 넘어간다
         const dx = cur.px - cur.tx;
@@ -192,12 +216,14 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
       free.pitch = clamp(free.pitch + dpitch, 0.08, 1.4);
     },
     zoomBy(factor) {
-      if (mode === 'free') free.dist = clamp(free.dist * factor, 6, 90);
+      if (mode === 'shoulder') shoulder.dist = clamp(shoulder.dist * factor, 4, 14);
+      else if (mode === 'free') free.dist = clamp(free.dist * factor, 6, 90);
       else if (mode === 'turntable') turntable.radius = clamp(turntable.radius * factor, 3, 40);
     },
 
     // 잠깐 한 곳을 비춘다
     focus({ id = null, point = null, seconds = 1.5, distance = 9, yawOffset = 0.6, fov = null } = {}) {
+      if (mode === 'shoulder') return; // 조종 중에는 연출이 시점을 빼앗지 않는다
       focusState = { id, point, until: time + seconds, distance, yawOffset, fov };
     },
     clearFocus() { focusState = null; },
@@ -248,8 +274,9 @@ export function createCameraDirector({ camera, arena = { halfW: 20, halfD: 20 },
         Object.assign(cur, want);
         hasPose = true;
       }
-      const kp = damp(focusState ? O.damping * 1.8 : O.damping, dt);
-      const kl = damp(O.lookDamping, dt);
+      const sh = mode === 'shoulder' && !focusState; // 조종 시점은 입력에 바로 반응해야 한다
+      const kp = damp(sh ? 14 : focusState ? O.damping * 1.8 : O.damping, dt);
+      const kl = damp(sh ? 30 : O.lookDamping, dt);
       cur.px += (want.px - cur.px) * kp;
       cur.py += (want.py - cur.py) * kp;
       cur.pz += (want.pz - cur.pz) * kp;

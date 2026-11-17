@@ -21,8 +21,8 @@
 import { CONSTANTS } from '../../config/constants.js';
 import { interpolateSnapshots } from '../../shared/sim/snapshot.js';
 
-export const CLIENT_MSG = Object.freeze(['auth', 'join_view', 'cmd', 'practice_start', 'practice_stop', 'practice_pause', 'practice_resume', 'ping']);
-export const SERVER_MSG = Object.freeze(['auth_ok', 'error', 'pong', 'res', 'view_ok', 'league_update', 'match_prepare', 'match_start', 'match_status', 'state', 'event', 'cinematic_start', 'cinematic_resume', 'cinematic_end', 'match_end', 'practice_ok']);
+export const CLIENT_MSG = Object.freeze(['auth', 'join_view', 'cmd', 'practice_start', 'practice_stop', 'practice_pause', 'practice_resume', 'pilot', 'ping']);
+export const SERVER_MSG = Object.freeze(['auth_ok', 'error', 'pong', 'res', 'view_ok', 'league_update', 'match_prepare', 'match_start', 'match_status', 'state', 'event', 'cinematic_start', 'cinematic_resume', 'cinematic_end', 'match_end', 'practice_ok', 'pilot_state']);
 
 // ── 상태 버퍼 ────────────────────────────────────────────
 export function createStateBuffer({ delay = CONSTANTS.gauge.viewBufferSeconds, catchUp = CONSTANTS.gauge.catchUpSpeed, maxKeep = 400 } = {}) {
@@ -73,6 +73,7 @@ export function createStateBuffer({ delay = CONSTANTS.gauge.viewBufferSeconds, c
       return { snap, events, t: renderT };
     },
 
+    setDelay(x) { delay = Math.max(0.05, Math.min(2, x)); },
     setTimeScale(x) { timeScale = Math.max(0.05, Math.min(3, x)); },
     reset() { snaps = []; renderT = null; fired = -Infinity; timeScale = 1; },
     get lagSeconds() { return renderT === null ? 0 : latestT() - renderT; },

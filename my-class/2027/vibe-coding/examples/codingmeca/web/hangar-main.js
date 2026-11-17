@@ -33,6 +33,8 @@ import { emptyTactics } from '../shared/tactics/schema.js';
 import { validateTactics } from '../shared/tactics/validator.js';
 import { createMatch, stepMatch } from '../shared/sim/referee.js';
 import { makeInitInfo } from '../shared/sim/snapshot.js';
+import { enableManual, disableManual, setManualInput } from '../shared/tactics/manual.js';
+import { createManualPilot } from './core/manual-pilot.js';
 
 const LS_ROBOTS = 'codingmeca.local.robots';
 const LS_TACTICS_DRAFT = 'codingmeca.draft.tactics';
@@ -289,8 +291,24 @@ export async function startHangar() {
     hud.setVisible(true);
     setPanels('play');
 
-    const st = { speed: 1, acc: 0, last: performance.now(), raf: 0, shown: false };
+    const st = { speed: 1, acc: 0, last: performance.now(), raf: 0, shown: false, pilot: null };
     practice = st;
+    // 직접 조종: 키보드·마우스(신경 연산실 전술과 별개). 켜 있는 동안 내 기체의 전술은 멈춘다(완전 수동).
+    const me = () => match.world.byId.get('A1');
+    const pilot = createManualPilot({
+      arena, canvas, uiRoot, send: (raw) => { const e = me(); if (e?.manual) setManualInput(e, raw); },
+      onStop: () => { const e = me(); if (e) disableManual(e); manualBtn.classList.remove('on'); arena.setCameraMode('overview'); },
+    });
+    st.pilot = pilot;
+    const toggleManual = () => {
+      if (pilot.active) return pilot.stop();
+      const e = me();
+      if (!e || !e.alive || match.status !== 'running') return toast('지금은 직접 조종할 수 없습니다', 'error');
+      enableManual(e);
+      pilot.start({ id: 'A1', heading: e.heading });
+      manualBtn.classList.add('on');
+    };
+    const manualBtn = el('button', { type: 'button', class: 'cm-btn', title: '키보드·마우스로 내 기체를 직접 조종합니다(전술은 멈춤)', onClick: toggleManual }, '직접 조종');
     const tick = (now) => {
       if (practice !== st) return;
       st.raf = requestAnimationFrame(tick);
@@ -303,6 +321,7 @@ export async function startHangar() {
       if (st.acc > 14 / 60) st.acc = 0;
       const frame = buf.advance(dt * eff);
       if (frame) { arena.feed(frame); hud.update(frame.snap); hud.pushEvents(frame.events); }
+      if (pilot.active) { pilot.frame(dt, frame?.snap); if (match.status !== 'running') pilot.stop(); }
       if (match.status !== 'running' && !st.shown && buf.lagSeconds < 0.03) { st.shown = true; hud.showResult(match.result, { mySide: 'A' }); }
     };
     st.raf = requestAnimationFrame(tick);
@@ -313,12 +332,13 @@ export async function startHangar() {
     playCtl.append(el('div', { class: 'ctl' },
       el('button', { type: 'button', class: 'cm-btn primary', onClick: stopPractice }, '← 돌아가기'),
       spd(0.5), spd(1), spd(2), spd(4),
-      cam('overview', '전체'), cam('follow', '추적', { id: 'A1' }), cam('duel', '대결')));
+      cam('overview', '전체'), cam('follow', '추적', { id: 'A1' }), cam('duel', '대결'), manualBtn));
   }
 
   async function stopPractice() {
     if (!practice) return;
     cancelAnimationFrame(practice.raf);
+    practice.pilot?.dispose();
     practice = null;
     hud.reset();
     hud.setVisible(false);

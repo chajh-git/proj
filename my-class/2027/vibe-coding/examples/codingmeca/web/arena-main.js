@@ -11,6 +11,7 @@ import { createNetClient, createStateBuffer } from './core/net-client.js';
 import { createAdapter, setPartViewAdapter } from './render/part-view-adapter.js';
 import { createArenaScene } from './scenes/arena-scene.js';
 import { createHud } from './ui/hud.js';
+import { createManualPilot } from './core/manual-pilot.js';
 import { createCinematicPlayer } from './cinematics/cinematic-player.js';
 import { createScoreboard, statusLabel } from './ui/scoreboard.js';
 import { createBracketView } from './ui/bracket-view.js';
@@ -90,6 +91,8 @@ export async function startArena() {
   let refreshTimer = 0;
   let camMode = 'overview';
   let followIdx = 0;
+  let myId = null;
+  let lastSnap = null;
 
   const say = (text, ms = 0) => {
     clearTimeout(bannerTimer);
@@ -121,6 +124,8 @@ export async function startArena() {
   }
 
   function endMatchView() {
+    pilot.stop();
+    pilotBtn.style.display = 'none';
     live = false; ended = null; shown = false; matchId = null; init = null;
     arena.clearMatch?.();
     cine.cancelAll();
@@ -140,7 +145,8 @@ export async function startArena() {
   }
   const net = createNetClient({ url: ENV.serverUrl, getToken: () => client.getToken(), store: shell.store });
   net.on('close', () => { conn.textContent = '연결이 끊어졌습니다. 다시 연결하는 중…'; });
-  net.on('auth_ok', async () => {
+  net.on('auth_ok', async (m) => {
+    myId = m?.user?.id ?? null;
     conn.textContent = isCommander ? '지휘관 · 연결됨' : '연결됨';
     if (ref?.leagueId) { await net.request('room.join', { leagueId: ref.leagueId }); refresh(); }
     else if (!ref) await showPicker();
@@ -151,7 +157,9 @@ export async function startArena() {
 
   net.on('match_prepare', (m) => {
     if (m.practice) return;
+    pilot.stop();
     matchId = m.match; init = m.init; live = true; ended = null; shown = false;
+    pilotBtn.style.display = myId && init.entities?.some((e) => e.owner === myId) ? '' : 'none';
     clearTimeout(endTimer);
     buf.reset();
     arena.loadMatch(init);
@@ -193,6 +201,39 @@ export async function startArena() {
   net.connect();
   if (code) net.joinView(code);
 
+  // ── 직접 조종(키보드·마우스) ─────────────────────────────
+  // 서버가 '내 기체인지·리그가 허용했는지'를 판단한다. 조종 중에는 지연을 줄여 반응이 빠르게 보이게 한다.
+  const pilot = createManualPilot({
+    arena, canvas, uiRoot, sendEveryMs: 50,
+    send: (raw) => net.send('pilot', { match: matchId, input: raw }),
+    onStop: () => {
+      if (matchId) net.send('pilot', { match: matchId, on: false });
+      buf.setDelay(CONSTANTS.gauge.viewBufferSeconds);
+      pilotBtn.classList.remove('on');
+      setMode(camMode);
+    },
+  });
+  let asking = false;
+  const pilotBtn = el('button', { type: 'button', class: 'cm-btn', style: { display: 'none' }, title: '내 기체를 키보드·마우스로 직접 조종합니다(리그가 허용한 경기만)', onClick: () => {
+    if (pilot.active) return pilot.stop();
+    if (!live || !matchId) return;
+    const mine = init?.entities?.find((e) => e.owner === myId);
+    asking = true;
+    net.send('pilot', { match: matchId, on: true, ent: mine?.id });
+  } }, '직접 조종');
+  const REASON = { disabled: '이 리그는 직접 조종이 꺼져 있습니다', not_owner: '내 기체가 이 경기에 없습니다', not_running: '경기가 진행 중일 때만 조종할 수 있습니다', dead: '기체가 이미 격파되었습니다' };
+  net.on('pilot_state', (m) => {
+    if (m.match !== matchId) return;
+    if (!m.ok) { if (asking || pilot.active) say(REASON[m.reason] || '직접 조종을 시작할 수 없습니다', 3000); asking = false; if (pilot.active) pilot.stop(); return; }
+    asking = false;
+    if (m.on && !pilot.active) {
+      const h = lastSnap?.ents?.find((e) => e.id === m.ent)?.h ?? init?.entities?.find((e) => e.id === m.ent)?.h ?? 0;
+      buf.setDelay(0.15);
+      pilot.start({ id: m.ent, heading: h });
+      pilotBtn.classList.add('on');
+    }
+  });
+
   // ── 카메라·조작 막대 ────────────────────────────────────
   const modeBtns = new Map();
   const mkMode = (mode, label) => {
@@ -207,7 +248,7 @@ export async function startArena() {
     for (const [k, b] of modeBtns) b.classList.toggle('on', k === mode);
   }
   const showBoard = el('button', { type: 'button', class: 'cm-btn', onClick: () => { if (!live) return; const open = !idle.classList.contains('on'); idle.classList.toggle('on', open); corner.classList.toggle('on', !open); } }, '순위표');
-  const bar = el('div', { class: 'cm-panel ar-bar' }, mkMode('overview', '전체'), mkMode('follow', '추적'), mkMode('duel', '대결'), mkMode('free', '자유'), showBoard,
+  const bar = el('div', { class: 'cm-panel ar-bar' }, mkMode('overview', '전체'), mkMode('follow', '추적'), mkMode('duel', '대결'), mkMode('free', '자유'), showBoard, pilotBtn,
     isCommander ? el('button', { type: 'button', class: 'cm-btn', onClick: () => shell.router.go('command') }, '지휘 본부') : null);
   uiRoot.append(bar);
   modeBtns.get('overview').classList.add('on');
@@ -222,7 +263,8 @@ export async function startArena() {
     buf.setTimeScale(Math.min(arena.timeScale || 1, cine.timeScale));
     const frame = buf.advance(dt);
     cine.update(dt, frame?.snap?.ents ?? null);
-    if (frame) { arena.feed(frame); hud.update(frame.snap); hud.pushEvents(frame.events); cine.handleEvents(frame.events); }
+    if (frame) { lastSnap = frame.snap; arena.feed(frame); hud.update(frame.snap); hud.pushEvents(frame.events); cine.handleEvents(frame.events); }
+    if (pilot.active) pilot.frame(dt, frame?.snap ?? lastSnap);
     if (ended && !ended.aborted && !shown && buf.lagSeconds < 0.03) {
       shown = true;
       hud.showResult(ended, {});

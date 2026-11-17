@@ -76,6 +76,7 @@ export function createLeagueUI({ root, net, toast, onSelect = () => {} } = {}) {
     if (locked) { f.teamSize.disabled = true; f.format.disabled = true; }
     const maint = check('경기 사이 정비 허용', c.maintenance ?? CONSTANTS.league.allowRepairBetweenMatches);
     const codex = check('도감 공개(발견 즉시 모두에게)', c.codexPublic);
+    const manual = check('직접 조종 허용(키보드·마우스로 내 기체를 조종, 전술은 멈춤)', c.manualControl === true);
     const mapsPub = check('전장을 미리 공개', c.mapsPublic !== false);
     const pool = new Set(c.mapPool?.length ? c.mapPool : [MAPS[0].id]);
     const mapChecks = MAPS.map((m) => ({ id: m.id, ...check(m.name, pool.has(m.id)) }));
@@ -85,7 +86,7 @@ export function createLeagueUI({ root, net, toast, onSelect = () => {} } = {}) {
       matchSeconds: Number(f.matchSeconds.value), mapMode: f.mapMode.value, mapPool: mapChecks.filter((x) => x.input.checked).map((x) => x.id),
       mapsPublic: mapsPub.input.checked, format: f.format.value, seedMode: f.seedMode.value,
       points: { win: Number(f.win.value), draw: Number(f.draw.value), loss: Number(f.loss.value) },
-      maintenance: maint.input.checked, codexPublic: codex.input.checked, concurrent: Number(f.concurrent.value),
+      maintenance: maint.input.checked, codexPublic: codex.input.checked, concurrent: Number(f.concurrent.value), manualControl: manual.input.checked,
     });
 
     detail.append(
@@ -99,7 +100,7 @@ export function createLeagueUI({ root, net, toast, onSelect = () => {} } = {}) {
       el('div', { class: 'sec' }, '진행 방식'),
       el('div', { class: 'grid2' }, field('형식', f.format), field('시드(토너먼트)', f.seedMode)),
       el('div', { class: 'cm-row' }, el('span', { style: { fontSize: '12px' } }, '승점'), '승', f.win, '무', f.draw, '패', f.loss),
-      el('div', { style: { marginTop: '8px' } }, maint.node, codex.node),
+      el('div', { style: { marginTop: '8px' } }, maint.node, codex.node, manual.node),
       el('div', { class: 'actions' },
         el('button', { type: 'button', class: 'cm-btn primary', onClick: async () => {
           const body = collect();

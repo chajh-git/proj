@@ -490,6 +490,7 @@ export function createArenaScene(ctx) {
     onDrag: (dx, dy) => director.orbitBy(-dx * 0.005, dy * 0.004),
     onWheel: (dy) => director.zoomBy(1 + dy * 0.0012),
     setCameraMode: (m, o) => director.setMode(m, o),
+    setPilotAim: (yaw, pitch) => director.setPilotAim(yaw, pitch),
     focus: (o) => director.focus(o),
     cheer(amount = 1) { cheer = Math.max(cheer, amount); kit.play('crowd_cheer', 0.7); },
     dispose() {
