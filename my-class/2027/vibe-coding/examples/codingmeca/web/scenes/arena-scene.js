@@ -219,15 +219,6 @@ export function createArenaScene(ctx) {
     g.add(screenMesh);
     for (const sx of [-12, 12]) box(0.8, 14, 0.8, steel('#10151D', 0.5, 0.7), sx, 7, -halfD - 17.5, g);
 
-    // 모서리 조명 기둥(빛줄기)
-    for (const [x, z] of [[-halfW - 3, -halfD - 3], [halfW + 3, -halfD - 3], [-halfW - 3, halfD + 3], [halfW + 3, halfD + 3]]) {
-      cyl(0.35, 0.5, 8, steel('#1A2029', 0.5, 0.7), x, 4, z, g);
-      const shaft = new THREE.Mesh(new THREE.ConeGeometry(4.5, 8, 16, 1, true), additive('#CFE4FF', 0.07));
-      shaft.position.set(x * 0.9, 4, z * 0.9);
-      shaft.rotation.set((z < 0 ? 1 : -1) * 0.25, 0, (x < 0 ? -1 : 1) * 0.25);
-      shaft.position.y = 4.5;
-      g.add(shaft);
-    }
     return s;
   }
 
@@ -312,7 +303,7 @@ export function createArenaScene(ctx) {
       case 'hit': play((ev.amount || 0) >= 40 ? 'hit_heavy' : 'hit_light'); break;
       case 'part_broken': play('part_break'); break;
       case 'part_lost': play('part_detach_boom'); break;
-      case 'ko': play('ko'); cheer = 1.2; kit.play('crowd_cheer', 0.7); break;
+      case 'ko': play('ko'); cheer = 1.2; break;
       case 'ram': play('robot_collide'); break;
       case 'shield_break': play('shield_break'); break;
       case 'absorbed': play('shield_hit', 0.8); break;
@@ -325,7 +316,7 @@ export function createArenaScene(ctx) {
       case 'revive': play('revive'); break;
       case 'transform': play('transform'); break;
       case 'extension': kit.play('hazard_warn'); break;
-      case 'end': kit.play('match_end'); cheer = 1.5; kit.play('crowd_cheer', 0.8); break;
+      case 'end': kit.play('match_end'); cheer = 1.5; break;
       case 'rail': play('wp_rail_fire'); break;
       default: break;
     }
@@ -438,7 +429,7 @@ export function createArenaScene(ctx) {
     setCameraMode: (m, o) => director.setMode(m, o),
     setPilotAim: (yaw, pitch) => director.setPilotAim(yaw, pitch),
     focus: (o) => director.focus(o),
-    cheer(amount = 1) { cheer = Math.max(cheer, amount); kit.play('crowd_cheer', 0.7); },
+    cheer(amount = 1) { cheer = Math.max(cheer, amount); },
     dispose() {
       offQ();
       clearMatch();
