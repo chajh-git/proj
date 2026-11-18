@@ -62,7 +62,6 @@ export function createKoCinematic(env) {
         const p = V(x, 5 + Math.random() * 5, z);
         env.particles.explosion(p, 1.2 + Math.random(), Math.random() < 0.5 ? color : '#FFE29A');
         env.particles.sparks(p, '#FFFFFF', 10, 6);
-        if (Math.random() < 0.4) env.play('crowd_cheer', 0.25);
       }
       return true;
     });
