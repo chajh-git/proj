@@ -15,8 +15,8 @@
   A.PAGE = "vibe-coding";                    // 연도 폴더 안의 기본 수업 페이지 폴더
   A.FALLBACK_YEARS = ["2026", "2027"];
   A.LEGACY_YEARS = new Set(["2026"]);        // 조회수 키가 '파일명만'인 예전 방식 연도
-  A.SB_URL = "https://sdhpzypjqmowhrhxvvsj.supabase.co/rest/v1/";
-  A.SB_KEY = "sb_publishable_RRyqMtpm4qI0BZ9gdIjTvw_XOnJiaHc";   // 갤러리와 같은 공개(읽기용) 키
+  A.SB_URL = "https://uzkicgzshaxsjsmjznhl.supabase.co/rest/v1/";
+  A.SB_KEY = "sb_publishable_0mL1dcNMbKGSaDgi66mvLA_tuVftomj";   // 갤러리와 같은 공개(읽기용) 키
 
   /* ═══ 작은 도구 ═══ */
   A.$ = id => document.getElementById(id);
