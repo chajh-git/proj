@@ -26,14 +26,14 @@
     const btn = $("ar-csv"); btn.disabled = true;
     try {
       const Y = await A.loadYear(A.year), S = await A.loadStats(A.year), c = Y.curation;
-      const head = ["학년도", "학교", "학번", "이름", "표시 제목", "원래 제목", "조회수", "평균 별점", "별점 수", "추천", "숨김", "업로드 시각", "주소"];
+      const head = ["학년도", "학교", "학번", "이름", "표시 제목", "원래 제목", "👍 수", "추천", "숨김", "업로드 시각", "주소"];
       const rows = Y.students.map(s => {
-        const r = S.ratings[s.key] || { sum: 0, cnt: 0 }, m = c.meta[s.ck] || {};
-        return [A.year, A.schoolLabel(s.school), s.id, s.name, m.title || s.title, s.title, S.views[s.key] || 0, r.cnt ? (r.sum / r.cnt).toFixed(2) : "", r.cnt,
+        const m = c.meta[s.ck] || {};
+        return [A.year, A.schoolLabel(s.school), s.id, s.name, m.title || s.title, s.title, S.thumbs[s.key] || 0,
           c.featured.includes(s.ck) ? "Y" : "", c.hidden.includes(s.ck) ? "Y" : "", A.timeOf(Y, s), A.publicUrl(s.rel)];
       });
       A.download(`vibe-coding-${A.year}.csv`, "﻿" + [head, ...rows].map(r => r.map(csvCell).join(",")).join("\r\n") + "\r\n", "text/csv;charset=utf-8");
-      A.toast(`${rows.length}행을 내려받았습니다` + (S.ok ? "" : " (조회수는 불러오지 못해 0)"), S.ok ? "ok" : "err");
+      A.toast(`${rows.length}행을 내려받았습니다` + (S.ok ? "" : " (👍 수는 불러오지 못해 0)"), S.ok ? "ok" : "err");
     } catch (e) { A.toast(e.message, "err"); }
     btn.disabled = false;
   }
@@ -115,7 +115,7 @@
       <div class="panel"><h2>학년말 점검</h2><div id="ar-check"></div><div class="row" style="margin-top:12px"><button id="ar-rerun" class="sm" type="button">다시 점검</button></div></div>
       <div class="panel" style="margin-top:18px"><h2>내보내기</h2>
         <div class="row"><button id="ar-csv" type="button">작품 목록 CSV (엑셀용)</button><button id="ar-bak" type="button">디자인·작품 관리 설정 백업(JSON)</button></div>
-        <p class="hint">CSV에는 학번, 이름, 제목, 조회수, 평균 별점, 추천·숨김 여부, 업로드 시각, 주소가 들어갑니다. 한글이 깨지지 않도록 UTF-8(BOM)으로 저장합니다.</p></div>
+        <p class="hint">CSV에는 학번, 이름, 제목, 👍 수, 추천·숨김 여부, 업로드 시각, 주소가 들어갑니다. 한글이 깨지지 않도록 UTF-8(BOM)으로 저장합니다.</p></div>
       <div class="panel" style="margin-top:18px"><h2>새 학년도 · 프로젝트 만들기</h2>
         <div class="row"><div><label for="sc-year">학년도</label><input id="sc-year" type="text" maxlength="4" style="width:100px"></div>
           <div><label for="sc-proj">프로젝트 폴더</label><input id="sc-proj" type="text" value="${A.PAGE}" style="width:180px"></div>

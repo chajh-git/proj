@@ -14,7 +14,7 @@
   A.BASE = "my-class";                       // 저장소 안의 폴더
   A.PAGE = "vibe-coding";                    // 연도 폴더 안의 기본 수업 페이지 폴더
   A.FALLBACK_YEARS = ["2026", "2027"];
-  A.LEGACY_YEARS = new Set(["2026"]);        // 조회수 키가 '파일명만'인 예전 방식 연도
+  A.LEGACY_YEARS = new Set(["2026"]);        // 👍 키가 '파일명만'인 예전 방식 연도
   A.SB_URL = "https://uzkicgzshaxsjsmjznhl.supabase.co/rest/v1/";
   A.SB_KEY = "sb_publishable_0mL1dcNMbKGSaDgi66mvLA_tuVftomj";   // 갤러리와 같은 공개(읽기용) 키
 
@@ -159,7 +159,7 @@
     return {
       year: String(year), file, school, cls, id, name, title,
       ck: `${school}/${file}`,                                                                  // 작품 관리(curation.json) 키
-      key: legacy ? file : [A.BASE, year, A.PAGE, school, "student", file].join("/"),           // 조회수·별점(Supabase) 키
+      key: legacy ? file : [A.BASE, year, A.PAGE, school, "student", file].join("/"),           // 👍(Supabase) 키
       rel: `${year}/${A.PAGE}/${school}/student/${file}`,
       href: new URL(`../${year}/${A.PAGE}/${school}/student/${encodeURIComponent(file)}`, location.href).href,
     };
@@ -221,7 +221,7 @@
   A.getCur = year => (A.curDraft[year] = A.curDraft[year] || A.clone(A.cache[year].curation));
   A.timeOf = (Y, s) => (Y.meta && Y.meta[`${s.school}/student/${s.file}`]) || "";
 
-  /* ═══ Supabase (조회수·별점) ═══ */
+  /* ═══ Supabase (👍 추천 수) ═══ */
   async function sb(path, opts = {}) {
     const res = await fetch(A.SB_URL + path, { ...opts, headers: { apikey: A.SB_KEY, Authorization: "Bearer " + A.SB_KEY, "Content-Type": "application/json", ...(opts.headers || {}) } });
     if (!res.ok && res.status !== 404) throw new Error("Supabase " + res.status);
@@ -241,14 +241,8 @@
     year = String(year);
     if (!force && A.statsCache[year]) return A.statsCache[year];
     const filter = A.isLegacy(year) ? "" : `&file=like.${encodeURIComponent(`${A.BASE}/${year}/${A.PAGE}`)}/*`;
-    const out = { views: {}, ratings: {}, ok: true, ratingsOk: true };
-    try { (await A.sbAll(`views?select=file,views${filter}`)).forEach(r => { out.views[r.file] = r.views; }); } catch (e) { out.ok = false; out.error = e.message; }
-    try {
-      (await A.sbAll(`ratings?select=file,score${filter}`)).forEach(r => {
-        const a = out.ratings[r.file] = out.ratings[r.file] || { sum: 0, cnt: 0 };
-        a.sum += r.score; a.cnt += 1;
-      });
-    } catch { out.ratingsOk = false; }
+    const out = { thumbs: {}, ok: true };
+    try { (await A.sbAll(`thumbsups?select=file,thumbs${filter}`)).forEach(r => { out.thumbs[r.file] = r.thumbs; }); } catch (e) { out.ok = false; out.error = e.message; }
     A.statsCache[year] = out;
     return out;
   };
