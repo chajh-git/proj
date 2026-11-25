@@ -328,7 +328,7 @@
 <body>
 
 <header>
-  <div class="title-main" id="title-main">AI 바이브 랩 : 창작 전시관</div>
+  <div class="title-main" id="title-main">AI 바이브코딩 랩 : 창작 전시관</div>
   <div class="title-sub" id="title-sub"></div>
   <p class="lab-lead"><strong>AI를 활용한 나만의 프로그램 만들기</strong> </br></p>
   <ol class="lab-steps">
@@ -1203,7 +1203,7 @@ function featuredSectionHTML() {
   /* 머리말 */
   const subEl = document.getElementById("title-sub");
   subEl.textContent = `${YEAR}학년도 ${SUBJECT}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
-  document.title = `AI 바이브 랩 : 창작 전시관 · ${YEAR}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
+  document.title = `AI 바이브코딩 랩 : 창작 전시관 · ${YEAR}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
   if (FIXED_SCHOOL) {
     const back = document.getElementById("back-link");
     back.href = IN_SCHOOL_DIR ? "../" : location.pathname;
