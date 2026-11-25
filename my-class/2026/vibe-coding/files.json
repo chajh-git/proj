@@ -31,10 +31,6 @@
     {
       "dir": "탱크",
       "entry": "Tank.html"
-    },
-    {
-      "dir": "폭탄 돌리기",
-      "entry": "index.html"
     }
   ],
   "schools": {
