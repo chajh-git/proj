@@ -885,25 +885,36 @@ function renderClassList() {
     return;
   }
 
+  /* 순위는 전체 작품 기준 (전체 작품 목록의 순위와 같음) */
+  const rankOf = new Map([...ALL_STUDENTS].sort(rankCompare).map((s, i) => [s.key, i]));
+
   box.innerHTML = `
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>번호</th><th>이름</th><th>작품명</th><th>👍</th>
+            <th style="text-align:center">순위</th><th>구분</th><th>번호</th>
+            ${THUMBS_ENABLED ? "<th>미리보기</th>" : ""}
+            <th>작품명</th><th>👍</th>
           </tr>
         </thead>
         <tbody>
-          ${list.map(s => `
+          ${list.map(s => {
+            const i = rankOf.get(s.key), t = tierOf(i);
+            return `
             <tr>
+              <td class="rank-cell">${t ? `<span class="tier-icon">${t.icon}</span><span class="rk">${i + 1}</span>` : `<span class="rk rk0" style="color:var(--muted);font-size:.85rem">${i + 1}</span>`}</td>
+              <td class="school-cell">${esc(schoolLabel(s.school))}</td>
               <td class="id-cell">${esc(s.id || "-")}</td>
-              <td class="name-cell">${esc(s.name || "-")}</td>
+              ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
               <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a>${featBadge(s)}${noteHTML(s)}</td>
               <td class="views-cell">${thumbBtn(s)}</td>
-            </tr>`).join("")}
+            </tr>`;
+          }).join("")}
         </tbody>
       </table>
     </div>`;
+  if (THUMBS_ENABLED) initThumbs(box);
 }
 
 function bindClassChips() {
