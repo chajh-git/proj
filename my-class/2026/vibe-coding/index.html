@@ -918,7 +918,7 @@ function renderClassList() {
   if (!box) return;
 
   if (!selectedKey) {
-    box.innerHTML = `<div class="class-hint">학반을 선택하면 해당 반 학생들의 작품이 학번 순서대로 표시됩니다.</div>`;
+    box.innerHTML = `<div class="class-hint">반을 선택하면 작품이 순서대로 표시됩니다.</div>`;
     return;
   }
 
@@ -937,7 +937,7 @@ function renderClassList() {
       <table>
         <thead>
           <tr>
-            <th>학번</th><th>이름</th><th>작품명</th><th>조회수</th>
+            <th>번호</th><th>이름</th><th>작품명</th><th>조회수</th>
             ${RATING_ENABLED ? "<th>별점</th>" : ""}
           </tr>
         </thead>
@@ -1049,7 +1049,7 @@ function render() {
           <tr>
             <th style="text-align:center">순위</th>
             ${multi ? "<th>구분</th>" : ""}
-            <th>학번</th>
+            <th>번호</th>
             ${THUMBS_ENABLED ? "<th>미리보기</th>" : ""}
             <th>작품명</th><th>조회수</th>
             ${RATING_ENABLED ? "<th>별점</th>" : ""}
@@ -1086,7 +1086,7 @@ function render() {
   /* 진단 패널: 주소 끝에 ?debug=1 */
   if (new URLSearchParams(location.search).has("debug")) {
     const rows = ALL_STUDENTS.map(s => {
-      const where = `${schoolLabel(s.school)} ${s.cls ? classLabel(s.cls) : "⚠ 학번 인식 안 됨"}`;
+      const where = `${schoolLabel(s.school)} ${s.cls ? classLabel(s.cls) : "⚠ 번호 인식 안 됨"}`;
       return `<tr><td>${esc(s.file)}</td><td>${esc(where)}</td></tr>`;
     }).join("");
     app.insertAdjacentHTML("beforeend", `
