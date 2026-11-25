@@ -50,7 +50,7 @@
       position: relative;
       z-index: 10;
       text-align: center;
-      padding: 60px 24px 40px;
+      padding: 60px 24px 12px;   /* 아래 여백 40→12 (카드~명예의 전당 간격 축소) */
     }
     header::after {
       content: '';
@@ -58,7 +58,7 @@
       width: 120px;
       height: 3px;
       background: linear-gradient(90deg, var(--accent), var(--accent2));
-      margin: 20px auto 0;
+      margin: 14px auto 0;
       border-radius: 2px;
     }
     .title-main {
@@ -124,6 +124,7 @@
       margin: 40px 0 16px;
       font-weight: 500;
     }
+    #app > .section-label:first-child { margin-top: 12px; }   /* 맨 위 제목(명예의 전당)은 카드와 가깝게 */
     .section-label::after {
       content: '';
       flex: 1;
