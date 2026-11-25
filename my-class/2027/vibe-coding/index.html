@@ -602,18 +602,50 @@ function paintThumb(key, count, on) {
   });
 }
 
+/* 중복 방지 (조회수 24시간 방지와 같은 방식: 이 브라우저에 기록)
+   · 같은 작품에 👍를 누른 뒤 취소했다면, 처음 누른 때부터 24시간이 지나야 다시 누를 수 있음
+   · 한 기기에서 1시간에 THUMB_HOURLY_MAX 번까지만 변경 가능 (반복 클릭·자동 클릭 방지) */
+const COOLDOWN_MS      = 24 * 60 * 60 * 1000;
+const THUMB_HOURLY_MAX = 30;
+const LS_THUMB_TIME    = "my_thumbsup_time";    // { 작품키: 마지막으로 👍를 누른 시각 }
+const LS_THUMB_LOG     = "my_thumbsup_log";     // [최근 변경 시각들]
+
+function thumbToast(msg) {
+  let el = document.getElementById("thumb-toast");
+  if (!el) {
+    el = document.createElement("div"); el.id = "thumb-toast"; el.setAttribute("role", "status");
+    el.style.cssText = "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:9999;max-width:90vw;padding:10px 18px;border-radius:999px;background:#10131c;color:#fff;border:1px solid rgba(255,255,255,.25);font-size:.95rem;box-shadow:0 6px 24px rgba(0,0,0,.45);transition:opacity .25s;pointer-events:none";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg; el.style.opacity = "1";
+  clearTimeout(thumbToast.t); thumbToast.t = setTimeout(() => { el.style.opacity = "0"; }, 2800);
+}
+const fmtLeft = ms => { const t = Math.ceil(ms / 60000), h = Math.floor(t / 60), m = t % 60; return h ? `${h}시간${m ? ` ${m}분` : ""}` : `${m}분`; };
+const recentThumbLog = () => { const now = Date.now(), r = lsGet(LS_THUMB_LOG); return (Array.isArray(r) ? r : []).filter(t => now - t < 3600000); };
+
 const thumbBusy = new Set();
 async function toggleThumb(key) {
   if (thumbBusy.has(key)) return;
   const s = ALL_STUDENTS.find(x => x.key === key);
   if (!s) return;
+  const wasOn = isMyThumb(key);
+  const log = recentThumbLog();
+  if (log.length >= THUMB_HOURLY_MAX) { thumbToast("너무 자주 눌렀어요. 잠시 뒤에 다시 시도해 주세요."); return; }
+  const times = lsGet(LS_THUMB_TIME), last = times[key];
+  if (!wasOn && last && Date.now() - last < COOLDOWN_MS) {
+    thumbToast(`이미 👍를 눌렀던 작품이에요. ${fmtLeft(COOLDOWN_MS - (Date.now() - last))} 뒤에 다시 누를 수 있어요.`);
+    return;
+  }
   thumbBusy.add(key);
-  const wasOn = isMyThumb(key), before = s.thumbs;
+  const before = s.thumbs;
   s.thumbs = Math.max(0, before + (wasOn ? -1 : 1));       // 먼저 화면에 반영
   setMyThumb(key, !wasOn);
   paintThumb(key, s.thumbs, !wasOn);
-  try { await (wasOn ? removeThumb(key) : addThumb(key)); }
-  catch (err) {                                             // 실패하면 되돌림
+  try {
+    await (wasOn ? removeThumb(key) : addThumb(key));
+    if (!wasOn) { const t = lsGet(LS_THUMB_TIME); t[key] = Date.now(); lsSet(LS_THUMB_TIME, t); }
+    lsSet(LS_THUMB_LOG, [...log, Date.now()]);
+  } catch (err) {                                           // 실패하면 되돌림
     console.warn("추천 저장 실패", err);
     s.thumbs = before; setMyThumb(key, wasOn); paintThumb(key, before, wasOn);
   }
