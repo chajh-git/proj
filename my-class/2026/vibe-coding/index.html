@@ -251,25 +251,18 @@
     .school-cell { font-size: .8rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
     .id-cell     { font-size: .85rem; color: var(--accent2); font-weight: 700; white-space: nowrap; }
 
-    /* ── 별점 ── */
-    td.star-cell { white-space: nowrap; min-width: 140px; }
-    .star-widget { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 5px; user-select: none; }
-    .star-row { display: flex; gap: 3px; cursor: pointer; position: relative; }
-    .star-row svg { width: 22px; height: 22px; flex-shrink: 0; pointer-events: none; transition: transform .1s; }
-    .star-row:hover svg { transform: scale(1.12); }
-    .star-avg { font-size: .74rem; color: var(--muted); letter-spacing: .02em; padding-left: 2px; }
-    .star-avg span { color: var(--gold); font-weight: 700; }
-
-    .rating-soon-banner {
-      display: flex; align-items: center; gap: 10px;
-      background: linear-gradient(135deg, #1c2030, #252a3a);
-      border: 1px solid var(--border); border-left: 3px solid var(--accent2);
-      border-radius: 10px; padding: 14px 20px; margin: 20px 0 0;
-      font-size: .85rem; color: var(--muted);
+    /* ── 👍 추천 버튼 ── */
+    .thumb-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+      border: 1px solid var(--border); border-radius: 999px; cursor: pointer; user-select: none;
+      font-size: 1rem; color: var(--muted); background: transparent;
+      transition: transform .12s, border-color .2s, color .2s, background .2s;
     }
-    .rating-soon-banner .banner-icon { font-size: 1.3rem; }
-    .rating-soon-banner strong { color: var(--text); font-weight: 600; }
-    .rating-soon-banner .banner-date { color: var(--accent); font-weight: 700; margin-left: 4px; }
+    .thumb-btn:hover { transform: scale(1.06); border-color: var(--accent); color: var(--text); }
+    .thumb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .thumb-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: rgba(127,232,255,.1); font-weight: 700; }
+    .thumb-btn[aria-pressed="false"] .thumb-ico { filter: grayscale(1); opacity: .7; }
+    .thumb-btn .thumb-n { font-weight: inherit; }
 
     /* ── 학반 선택 ── */
     .class-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -359,9 +352,6 @@
    ★ 설정 (보통 여기만 수정하면 됩니다)
 ═══════════════════════════════════════════════════════ */
 
-/* 별점 오픈 날짜 — 이 날짜 00:00 이후부터 별점 기능 활성화 ("YYYY-MM-DD") */
-const RATING_OPEN_DATE = "2026-08-31";
-
 /* 학교 코드(폴더명) → 화면에 표시할 이름. 목록에 없는 코드는 폴더명 그대로 표시 */
 const SCHOOL_LABELS = {
   "school-bsn": "BSN",
@@ -376,7 +366,7 @@ const GITHUB_USER   = "";
 const GITHUB_REPO   = "";
 const GITHUB_BRANCH = "main";
 
-/* 조회수·별점 저장 키 방식
+/* 👍 저장 키 방식
    true : 파일명만 키로 사용 (2026년 기존 데이터를 그대로 이어 쓸 때)
    false: "저장소 경로/학교/student/파일명" 을 키로 사용 (2027년부터의 새 방식) */
 const LEGACY_KEYS = true;
@@ -385,11 +375,10 @@ const LEGACY_KEYS = true;
 const STUDENT_DIR  = "student";    // 학교 폴더 안의 학생 작품 폴더
 const EXAMPLES_DIR = "examples";   // vibe-coding 폴더 안의 예시 폴더
 
-/* Supabase (조회수 · 별점) */
+/* Supabase (👍 추천 수) */
 const SUPABASE_URL  = "https://uzkicgzshaxsjsmjznhl.supabase.co/rest/v1/";
 const SUPABASE_KEY  = "sb_publishable_0mL1dcNMbKGSaDgi66mvLA_tuVftomj";
-const TABLE         = "views";
-const RATINGS_TABLE = "ratings";
+const TABLE         = "thumbsups";   // 열: file(작품 키), thumbs(👍 수)
 
 /* 명예의 전당 등급 (위에서부터 순서대로 인원 배정: 다이아 3 → 금 6 → 은 9) */
 const TIERS = [
@@ -433,7 +422,6 @@ const GH_USER   = GITHUB_USER || (location.hostname.endsWith(".github.io") ? loc
 const REPO_PATH = repoSegs.join("/");
 const YEAR      = (REPO_PATH.match(/(?:^|\/)(20\d{2})(?:\/|$)/) || [])[1] || new Date().getFullYear();
 
-const RATING_ENABLED = Date.now() >= new Date(RATING_OPEN_DATE + "T00:00:00").getTime();
 
 /* ═══════════════════════════════════════════════════════
    공통 유틸
@@ -545,9 +533,9 @@ function parseStudent(file, school) {
 
   return {
     file, school, cls, id, name, title,
-    key:  LEGACY_KEYS ? file : [REPO_PATH, school, STUDENT_DIR, file].filter(Boolean).join("/"),   // 조회수·별점 저장용 고유 키
+    key:  LEGACY_KEYS ? file : [REPO_PATH, school, STUDENT_DIR, file].filter(Boolean).join("/"),   // 👍 저장용 고유 키
     href: `${ROOT_REL}${school}/${STUDENT_DIR}/${encodeURIComponent(file)}`,
-    views: 0, avgRating: null,
+    thumbs: 0,
   };
 }
 
@@ -582,116 +570,59 @@ async function sbAll(path) {
 
 const keyFilter = () => (!LEGACY_KEYS && REPO_PATH) ? `&file=like.${encodeURIComponent(REPO_PATH)}/*` : "";
 
-async function incrementViews(key) {
-  await sbFetch("rpc/increment_views", { method: "POST", body: JSON.stringify({ p_file: key }) });
-}
+async function addThumb(key)    { await sbFetch("rpc/add_thumbsup",    { method: "POST", body: JSON.stringify({ p_file: key }) }); }
+async function removeThumb(key) { await sbFetch("rpc/remove_thumbsup", { method: "POST", body: JSON.stringify({ p_file: key }) }); }
 
-async function loadAllViews() {
+async function loadAllThumbs() {
   try {
-    const rows = await sbAll(`${TABLE}?select=file,views${keyFilter()}`);
+    const rows = await sbAll(`${TABLE}?select=file,thumbs${keyFilter()}`);
     const map = {};
-    rows.forEach(r => { map[r.file] = r.views; });
+    rows.forEach(r => { map[r.file] = r.thumbs; });
     return map;
   } catch { return {}; }
 }
 
-async function submitRating(key, score) {
-  await sbFetch(RATINGS_TABLE, {
-    method: "POST", prefer: "return=minimal",
-    body: JSON.stringify({ file: key, score }),
-  });
-}
-
-async function loadAllRatings() {
-  if (!RATING_ENABLED) return {};
-  try {
-    const rows = await sbAll(`${RATINGS_TABLE}?select=file,score${keyFilter()}`);
-    const acc = {};
-    rows.forEach(r => {
-      if (!acc[r.file]) acc[r.file] = { sum: 0, cnt: 0 };
-      acc[r.file].sum += r.score;
-      acc[r.file].cnt += 1;
-    });
-    const avg = {};
-    Object.keys(acc).forEach(k => { avg[k] = acc[k].sum / acc[k].cnt; });
-    return avg;
-  } catch { return {}; }
-}
-
 /* ═══════════════════════════════════════════════════════
-   24시간 조회수 중복 방지 / 내가 준 별점 기억
+   👍 추천 — 한 기기에서 작품당 1번, 다시 누르면 취소
 ═══════════════════════════════════════════════════════ */
-const COOLDOWN_MS   = 24 * 60 * 60 * 1000;
-const LS_KEY        = "viewed_works";
-const LS_RATING_KEY = "my_ratings";
+const LS_THUMB_KEY = "my_thumbsup";
 
 function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch { return {}; } }
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+const isMyThumb = key => !!lsGet(LS_THUMB_KEY)[key];
+function setMyThumb(key, on) { const r = lsGet(LS_THUMB_KEY); if (on) r[key] = 1; else delete r[key]; lsSet(LS_THUMB_KEY, r); }
 
-function canCount(key)  { const r = lsGet(LS_KEY); return !r[key] || Date.now() - r[key] > COOLDOWN_MS; }
-function markViewed(key){ const r = lsGet(LS_KEY); r[key] = Date.now(); lsSet(LS_KEY, r); }
-function getMyRating(key)       { return lsGet(LS_RATING_KEY)[key] ?? null; }
-function saveMyRating(key, sc)  { const r = lsGet(LS_RATING_KEY); r[key] = sc; lsSet(LS_RATING_KEY, r); }
-
-/* ═══════════════════════════════════════════════════════
-   별점 위젯
-═══════════════════════════════════════════════════════ */
-function starSVG(filled) {
-  return `<svg viewBox="0 0 24 24" fill="${filled ? "var(--gold)" : "none"}"
-    stroke="var(--gold)" stroke-width="1.8" stroke-linejoin="round">
-    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-  </svg>`;
+function thumbBtn(s) {
+  const on = isMyThumb(s.key);
+  return `<span class="thumb-btn" role="button" tabindex="0" data-tkey="${esc(s.key)}" aria-pressed="${on}" aria-label="추천 ${s.thumbs}개">`
+       + `<span class="thumb-ico">\u{1F44D}</span><b class="thumb-n">${s.thumbs.toLocaleString()}</b></span>`;
 }
 
-function paintStars(row, n) {
-  row.querySelectorAll("svg").forEach((svg, i) => svg.setAttribute("fill", i < n ? "var(--gold)" : "none"));
-}
-
-function buildStarWidget(key, avg) {
-  const avgText = avg !== null
-    ? `<div class="star-avg">평균 <span>${avg.toFixed(1)}</span>점</div>`
-    : `<div class="star-avg" style="opacity:.45">아직 평점 없음</div>`;
-  return `<div class="star-widget">
-    <div class="star-row" data-key="${esc(key)}">${[1,2,3,4,5].map(() => starSVG(false)).join("")}</div>
-    ${avgText}
-  </div>`;
-}
-
-function attachStarEvents(root = document) {
-  if (!RATING_ENABLED) return;
-
-  root.querySelectorAll(".star-row").forEach(row => {
-    const key = row.dataset.key;
-    const mine = getMyRating(key);
-    if (mine) paintStars(row, mine);
-
-    row.addEventListener("mousemove", e => {
-      const rect  = row.getBoundingClientRect();
-      const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      paintStars(row, Math.ceil(ratio * 5));
-    });
-    row.addEventListener("mouseleave", () => paintStars(row, getMyRating(key) ?? 0));
-
-    row.addEventListener("click", async e => {
-      e.preventDefault();
-      e.stopPropagation();
-      const score = [...row.querySelectorAll("svg")].filter(s => s.getAttribute("fill") !== "none").length;
-      if (score === 0) return;
-
-      saveMyRating(key, score);
-      paintStars(row, score);
-
-      try {
-        await submitRating(key, score);
-        const newAvg = (await loadAllRatings())[key] ?? null;
-        const avgEl  = row.closest(".star-widget")?.querySelector(".star-avg");
-        if (avgEl) {
-          avgEl.style.opacity = "1";
-          avgEl.innerHTML = newAvg !== null ? `평균 <span>${newAvg.toFixed(1)}</span>점` : `아직 평점 없음`;
-        }
-      } catch (err) { console.warn("별점 저장 실패", err); }
-    });
+function paintThumb(key, count, on) {
+  document.querySelectorAll(".thumb-btn").forEach(b => {
+    if (b.dataset.tkey !== key) return;
+    b.setAttribute("aria-pressed", String(on));
+    b.setAttribute("aria-label", `추천 ${count}개`);
+    b.querySelector(".thumb-n").textContent = count.toLocaleString();
   });
+}
+
+const thumbBusy = new Set();
+async function toggleThumb(key) {
+  if (thumbBusy.has(key)) return;
+  const s = ALL_STUDENTS.find(x => x.key === key);
+  if (!s) return;
+  thumbBusy.add(key);
+  const wasOn = isMyThumb(key), before = s.thumbs;
+  s.thumbs = Math.max(0, before + (wasOn ? -1 : 1));       // 먼저 화면에 반영
+  setMyThumb(key, !wasOn);
+  paintThumb(key, s.thumbs, !wasOn);
+  try { await (wasOn ? removeThumb(key) : addThumb(key)); }
+  catch (err) {                                             // 실패하면 되돌림
+    console.warn("추천 저장 실패", err);
+    s.thumbs = before; setMyThumb(key, wasOn); paintThumb(key, before, wasOn);
+  }
+  thumbBusy.delete(key);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -863,19 +794,10 @@ function initThumbs(root = document) {
 /* ═══════════════════════════════════════════════════════
    상수 / 상태
 ═══════════════════════════════════════════════════════ */
-const eyeIcon = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-  stroke="currentColor" stroke-width="2">
-  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-
 let TREE         = { examples: [], schools: {} };
 let VISIBLE      = [];      // 이 페이지에 표시할 학교 코드들
 let ALL_STUDENTS = [];      // 표시 대상 학생 작품
 let selectedKey  = null;    // 예: "school-a|21"
-
-function formatOpenDate() {
-  const d = new Date(RATING_OPEN_DATE + "T00:00:00");
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
-}
 
 /* 순위 번호(0부터)로 등급 찾기. 등급 밖이면 null */
 function tierOf(i) {
@@ -887,10 +809,9 @@ function tierOf(i) {
   return null;
 }
 
-/* 정렬: 조회수 내림차순 → (같으면) 별점 평균 내림차순 → 작품명 */
-const ratingOf = s => (s.avgRating === null || s.avgRating === undefined) ? -1 : s.avgRating;
+/* 정렬: 👍 많은 순 → (같으면) 작품명 */
 function rankCompare(a, b) {
-  return (b.views - a.views) || (ratingOf(b) - ratingOf(a)) || cmp(a.title, b.title);
+  return (b.thumbs - a.thumbs) || cmp(a.title, b.title);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -942,8 +863,7 @@ function renderClassList() {
       <table>
         <thead>
           <tr>
-            <th>번호</th><th>이름</th><th>작품명</th><th>조회수</th>
-            ${RATING_ENABLED ? "<th>별점</th>" : ""}
+            <th>번호</th><th>이름</th><th>작품명</th><th>👍</th>
           </tr>
         </thead>
         <tbody>
@@ -952,14 +872,11 @@ function renderClassList() {
               <td class="id-cell">${esc(s.id || "-")}</td>
               <td class="name-cell">${esc(s.name || "-")}</td>
               <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a>${featBadge(s)}${noteHTML(s)}</td>
-              <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
-              ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
+              <td class="views-cell">${thumbBtn(s)}</td>
             </tr>`).join("")}
         </tbody>
       </table>
     </div>`;
-
-  attachStarEvents(box);
 }
 
 function bindClassChips() {
@@ -1007,15 +924,6 @@ function render() {
   const multi    = VISIBLE.length > 1;
   const sorted   = [...ALL_STUDENTS].sort(rankCompare);
 
-  const soonBanner = !RATING_ENABLED ? `
-    <div class="rating-soon-banner">
-      <span class="banner-icon">⭐</span>
-      <div>
-        <strong>별점 기능 오픈 예정</strong>
-        <span class="banner-date">${formatOpenDate()}</span>부터
-        친구들의 작품에 별점을 줄 수 있어요!
-      </div>
-    </div>` : "";
 
   /* 명예의 전당: 다이아 → 금 → 은 등급별로 구분해서 표시 */
   let medalBody = "";
@@ -1035,7 +943,7 @@ function render() {
             </div>
             <div class="card-name">${multi ? esc(schoolLabel(s.school)) + " · " : ""}${esc(s.name || s.id || "")}</div>
             <div class="card-title">${esc(s.title)}${featBadge(s)}</div>
-            <div class="card-views">${eyeIcon} ${s.views.toLocaleString()}</div>
+            <div class="card-views">${thumbBtn(s)}</div>
           </a>`).join("")}
       </div>`;
     offset += t.count;
@@ -1043,8 +951,7 @@ function render() {
 
   const medalHTML = !sorted.length ? "" : `
     <div class="section-label">🏆 명예의 전당</div>
-    ${medalBody}
-    ${soonBanner}`;
+    ${medalBody}`;
 
   const tableHTML = !sorted.length ? "" : `
     <div class="section-label">📋 전체 작품 목록</div>
@@ -1056,8 +963,7 @@ function render() {
             ${multi ? "<th>구분</th>" : ""}
             <th>번호</th>
             ${THUMBS_ENABLED ? "<th>미리보기</th>" : ""}
-            <th>작품명</th><th>조회수</th>
-            ${RATING_ENABLED ? "<th>별점</th>" : ""}
+            <th>작품명</th><th>👍</th>
           </tr>
         </thead>
         <tbody>
@@ -1070,8 +976,7 @@ function render() {
               <td class="id-cell">${esc(s.id || "-")}</td>
               ${THUMBS_ENABLED ? `<td class="thumb-cell"><a class="thumb-link" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${thumbHTML(s.href)}</a></td>` : ""}
               <td><a class="work-title" href="${s.href}" target="_blank" rel="noopener" data-key="${esc(s.key)}">${esc(s.title)}</a>${featBadge(s)}${noteHTML(s)}</td>
-              <td class="views-cell">${eyeIcon}&nbsp;${s.views.toLocaleString()}</td>
-              ${RATING_ENABLED ? `<td class="star-cell">${buildStarWidget(s.key, s.avgRating)}</td>` : ""}
+              <td class="views-cell">${thumbBtn(s)}</td>
             </tr>`;
           }).join("")}
         </tbody>
@@ -1085,7 +990,6 @@ function render() {
 
   bindClassChips();
   renderClassList();
-  attachStarEvents(app);
   initThumbs(app);
 
   /* 진단 패널: 주소 끝에 ?debug=1 */
@@ -1108,14 +1012,17 @@ function render() {
   }
 }
 
-/* ── 작품 클릭 → 조회수 증가 (이벤트 위임) ── */
-document.addEventListener("click", async e => {
-  const a = e.target.closest("a[data-key]");
-  if (!a) return;
-  const key = a.dataset.key;
-  if (!canCount(key)) return;
-  markViewed(key);
-  try { await incrementViews(key); } catch (err) { console.warn(err); }
+/* ── 👍 버튼 (이벤트 위임) — 카드 안에 있어도 작품 링크가 열리지 않게 먼저 가로챔 ── */
+document.addEventListener("click", e => {
+  const b = e.target.closest(".thumb-btn");
+  if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  toggleThumb(b.dataset.tkey);
+}, true);
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("thumb-btn")) {
+    e.preventDefault(); toggleThumb(e.target.dataset.tkey);
+  }
 });
 
 /* ═══════════════════════════════════════════════════════
@@ -1230,11 +1137,10 @@ function featuredSectionHTML() {
         .forEach(n => students.push(parseStudent(n, code)));
     });
 
-    const [viewMap, ratingMap, cur] = await Promise.all([loadAllViews(), loadAllRatings(), loadCuration()]);
+    const [thumbMap, cur] = await Promise.all([loadAllThumbs(), loadCuration()]);
     CURATION = cur;
     students.forEach(s => {
-      s.views     = viewMap[s.key]   ?? 0;
-      s.avgRating = ratingMap[s.key] ?? null;
+      s.thumbs = thumbMap[s.key] ?? 0;
     });
 
     ALL_STUDENTS = applyCuration(students);
