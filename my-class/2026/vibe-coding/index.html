@@ -222,6 +222,15 @@
     td.thumb-cell { width: 192px; min-width: 192px; }
     td.thumb-cell .thumb { width: 176px; }
 
+    /* 학반별 작품 보기: 컬럼명 가운데 정렬 / 구분·번호는 같은 너비로 좁히고 그만큼 미리보기를 넓힘 */
+    #class-list th { text-align: center; }
+    @media (min-width: 641px) {
+      #class-list th:nth-child(2), #class-list th:nth-child(3),
+      #class-list td.school-cell, #class-list td.id-cell { width: 76px; min-width: 76px; max-width: 76px; }
+      #class-list td.thumb-cell { width: 219px; min-width: 219px; }
+      #class-list td.thumb-cell .thumb { width: 203px; }
+    }
+
     /* ── 테이블 ── */
     .table-wrap {
       overflow-x: auto;
