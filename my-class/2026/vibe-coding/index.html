@@ -82,13 +82,6 @@
       letter-spacing: .06em;
       font-weight: 300;
     }
-    .back-link {
-      display: inline-block; margin-top: 14px;
-      font-size: .8rem; color: var(--accent); text-decoration: none;
-      border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px;
-      transition: border-color .2s;
-    }
-    .back-link:hover { border-color: var(--accent); }
 
     /* ── 메인 메시지 (큰 타이틀 아래 설명 + 활동 3단계) ── */
     .lab-lead {
@@ -343,7 +336,6 @@
     <li><span class="no">02</span><b>바이브코딩하기</b><span class="d">알고리즘을 설계하고, AI와 대화하며 나만의 웹 앱을 만들어요.</span></li>
     <li><span class="no">03</span><b>전시하기</b><span class="d">완성한 작품을 공개하고 친구들의 프로그램도 체험해 보세요.</span></li>
   </ol>
-  <a class="back-link" id="back-link" style="display:none">← 전체 학교 보기</a>
 </header>
 
 <main>
@@ -1166,13 +1158,8 @@ function featuredSectionHTML() {
 
   /* 머리말 */
   const subEl = document.getElementById("title-sub");
-  subEl.textContent = `${YEAR}학년도 ${SUBJECT}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
+  subEl.textContent = `${YEAR}학년도 ${SUBJECT}`;
   document.title = `AI 바이브코딩 랩 : 창작 전시관 · ${YEAR}` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
-  if (FIXED_SCHOOL) {
-    const back = document.getElementById("back-link");
-    back.href = IN_SCHOOL_DIR ? "../" : location.pathname;
-    back.style.display = "inline-block";
-  }
 
   try {
     const { tree, source } = await loadTree();
