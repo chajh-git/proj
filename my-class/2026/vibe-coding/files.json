@@ -1,10 +1,6 @@
 {
   "examples": [
     {
-      "dir": "Souls Arena",
-      "entry": "Souls Arena.html"
-    },
-    {
       "dir": "기억의 물방울",
       "entry": "Memory Droplets.html"
     },
