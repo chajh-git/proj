@@ -1155,7 +1155,7 @@ function featuredSectionHTML() {
   const subEl = document.getElementById("title-sub");
   subEl.textContent = "";            // '○○학년도' 줄은 사용하지 않음 (제목에 연도 포함)
   subEl.style.display = "none";
-  document.title = `${YEAR}. 우리학교 AI 바이브코딩 전시관` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
+  document.title = `${YEAR} 우리학교 AI 바이브코딩 전시관` + (FIXED_SCHOOL ? ` · ${schoolLabel(FIXED_SCHOOL)}` : "");
 
   try {
     const { tree, source } = await loadTree();
